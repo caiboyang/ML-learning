@@ -115,3 +115,8 @@ GRPO（全称 Group Relative Policy Optimization）是 DeepSeek-V3, R1 等最新
 ---
 
 > **结语**：RLHF的进阶不在于堆砌新奇的公式，大浪淘沙留下的多是像 GRPO 这样结合长文本客观情景进行的“断舍离设计”。而制胜的王道更多隐藏诸如KL散度加设阈值的控制、奖励机制去方差技巧以及超长样本的分布平衡当中。
+
+---
+
+## 📚 参考资料 / References
+* 关于深入实现与技术细节的补充阅读：[RLHF Book - Policy Gradients (Implementation)](https://rlhfbook.com/c/06-policy-gradients#implementation)
