@@ -2,14 +2,14 @@
 layout: null
 ---
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hans">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Three Quarters of the Way &mdash; Demis Hassabis on the path to AGI</title>
+<title>走完四分之三 — Demis Hassabis 谈通往 AGI 的路</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --void: #07090F;
@@ -31,9 +31,9 @@ layout: null
   body {
     background: var(--void);
     color: var(--paper);
-    font-family: 'Newsreader', serif;
+    font-family: 'Newsreader', 'Noto Serif SC', serif;
     font-size: 19px;
-    line-height: 1.62;
+    line-height: 1.78;
     -webkit-font-smoothing: antialiased;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='1' cy='1' r='1' fill='%23232C44' opacity='0.45'/></svg>");
     background-size: 36px 36px;
@@ -42,9 +42,8 @@ layout: null
   a:hover { color: var(--phosphor-glow); }
 
   .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-  .sans { font-family: 'Inter Tight', sans-serif; }
+  .sans { font-family: 'Inter Tight', 'Noto Sans SC', sans-serif; }
 
-  /* === HERO === */
   .hero {
     position: relative; padding: 88px 28px 72px;
     background: linear-gradient(to bottom, rgba(7,9,15,0.92), rgba(7,9,15,0.6) 80%, transparent), var(--night);
@@ -60,11 +59,10 @@ layout: null
   }
   .hero-inner { position: relative; max-width: 880px; margin: 0 auto; }
   .crumbs { display: flex; gap: 14px; align-items: center; color: var(--paper-muted); }
-  .crumbs a { color: var(--paper-muted); }
   .crumbs .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--paper-muted); display: inline-block; }
   .eyebrow { color: var(--phosphor); margin-top: 28px; }
   .kicker {
-    font-family: 'Inter Tight', sans-serif;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
     font-size: clamp(40px, 7vw, 76px);
     font-weight: 700; line-height: 1.02; letter-spacing: -.025em;
     margin: 18px 0 22px;
@@ -75,8 +73,9 @@ layout: null
     background: linear-gradient(90deg, var(--ghost), var(--ghost-glow));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .lede { font-size: 22px; line-height: 1.5; color: var(--paper-dim); max-width: 680px; }
+  .lede { font-size: 21px; line-height: 1.72; color: var(--paper-dim); max-width: 720px; }
   .lede em { color: var(--paper); font-style: italic; }
+  .lede strong { color: var(--paper); font-weight: 600; }
 
   .meta-grid {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
@@ -84,10 +83,9 @@ layout: null
   }
   @media (max-width: 720px) { .meta-grid { grid-template-columns: repeat(2, 1fr); } }
   .meta-grid .label { color: var(--paper-muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-  .meta-grid .value { color: var(--paper); margin-top: 4px; font-size: 16px; font-family: 'Inter', sans-serif; }
+  .meta-grid .value { color: var(--paper); margin-top: 4px; font-size: 15px; font-family: 'Inter', 'Noto Sans SC', sans-serif; }
   .meta-grid .value a { color: var(--phosphor); }
 
-  /* === ARTICLE === */
   article { max-width: 760px; margin: 0 auto; padding: 72px 28px 32px; }
 
   section.essay { margin: 96px 0; }
@@ -95,7 +93,7 @@ layout: null
 
   .section-head {
     display: flex; align-items: baseline; gap: 18px;
-    margin-bottom: 28px;
+    margin-bottom: 8px;
     border-top: 1px solid var(--rule);
     padding-top: 24px;
   }
@@ -104,20 +102,25 @@ layout: null
     font-size: 13px; letter-spacing: .14em;
   }
   .section-title {
-    font-family: 'Inter Tight', sans-serif; font-weight: 700;
-    font-size: 30px; letter-spacing: -.015em; line-height: 1.1;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif; font-weight: 700;
+    font-size: 30px; letter-spacing: -.005em; line-height: 1.18;
     color: var(--paper); margin: 0;
   }
+  .section-sub {
+    color: var(--paper-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    margin-bottom: 22px;
+  }
   .deck {
-    font-style: italic; color: var(--ghost-glow); font-size: 22px; line-height: 1.45;
+    font-style: italic; color: var(--ghost-glow); font-size: 21px; line-height: 1.6;
     margin: 0 0 26px; padding-left: 14px; border-left: 2px solid var(--ghost);
   }
 
   p { margin: 0 0 18px; }
   p strong { color: var(--paper); font-weight: 600; }
-  em { color: var(--phosphor-glow); }
+  em { color: var(--phosphor-glow); font-style: italic; }
 
-  /* === CONCEPT TILES (like v1.0/v2.0/v3.0) === */
   .tiles {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
     margin: 28px 0;
@@ -132,23 +135,22 @@ layout: null
     color: var(--amber); margin-bottom: 6px;
   }
   .tile h4 {
-    font-family: 'Inter Tight', sans-serif; font-size: 18px;
-    margin: 0 0 8px; color: var(--paper); font-weight: 600; letter-spacing: -.01em;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif; font-size: 17px;
+    margin: 0 0 8px; color: var(--paper); font-weight: 600; letter-spacing: -.005em;
   }
-  .tile p { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.55;
+  .tile p { font-family: 'Inter', 'Noto Sans SC', sans-serif; font-size: 14px; line-height: 1.7;
     color: var(--paper-dim); margin: 0; }
 
-  /* === PULL QUOTE === */
   .pullquote {
     margin: 36px -10px; padding: 22px 26px;
     background: linear-gradient(90deg, rgba(181,155,255,0.08), transparent 70%);
     border-left: 3px solid var(--ghost);
     border-radius: 0 10px 10px 0;
   }
-  .pullquote p { font-style: italic; font-size: 23px; line-height: 1.4; color: var(--paper); margin: 0; }
+  .pullquote p { font-style: italic; font-size: 23px; line-height: 1.4; color: var(--paper); margin: 0; font-family: 'Newsreader', 'Noto Serif SC', serif; }
   .pullquote .who { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--paper-muted); margin-top: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .pullquote .gloss { display: block; margin-top: 10px; font-size: 14.5px; font-style: normal; color: var(--paper-dim); font-family: 'Inter', 'Noto Sans SC', sans-serif; line-height: 1.6; }
 
-  /* === FOUNDER NOTE / CALLOUT === */
   .note {
     margin: 30px 0; padding: 20px 22px;
     background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
@@ -161,11 +163,10 @@ layout: null
   }
   .note .label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .14em;
     color: var(--phosphor); margin-bottom: 8px; text-transform: uppercase; }
-  .note h5 { font-family: 'Inter Tight', sans-serif; font-size: 17px; margin: 0 0 8px; color: var(--paper); font-weight: 600; letter-spacing: -.01em; }
-  .note p { font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6; color: var(--paper-dim); margin: 0; }
-  .note p + p { margin-top: 8px; }
+  .note h5 { font-family: 'Inter Tight', 'Noto Sans SC', sans-serif; font-size: 17px; margin: 0 0 10px; color: var(--paper); font-weight: 600; letter-spacing: -.005em; line-height: 1.4; }
+  .note p { font-family: 'Inter', 'Noto Sans SC', sans-serif; font-size: 15px; line-height: 1.75; color: var(--paper-dim); margin: 0; }
+  .note p + p { margin-top: 10px; }
 
-  /* === STAT ROW === */
   .stat-row {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
     margin: 24px 0;
@@ -175,41 +176,38 @@ layout: null
     background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
     padding: 16px 18px;
   }
-  .stat .num { font-family: 'Inter Tight', sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -.02em; color: var(--phosphor); }
-  .stat .lbl { font-family: 'Inter', sans-serif; font-size: 13px; color: var(--paper-dim); margin-top: 4px; line-height: 1.4; }
+  .stat .num { font-family: 'Inter Tight', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -.02em; color: var(--phosphor); }
+  .stat .lbl { font-family: 'Inter', 'Noto Sans SC', sans-serif; font-size: 13px; color: var(--paper-dim); margin-top: 4px; line-height: 1.55; }
 
-  /* === ARROW LIST === */
   .arrow-list { list-style: none; padding: 0; margin: 22px 0; }
   .arrow-list li {
     padding: 12px 0 14px 24px; border-bottom: 1px dashed var(--rule-soft);
-    position: relative; font-family: 'Inter', sans-serif; font-size: 15.5px;
-    color: var(--paper-dim); line-height: 1.55;
+    position: relative; font-family: 'Inter', 'Noto Sans SC', sans-serif; font-size: 15.5px;
+    color: var(--paper-dim); line-height: 1.75;
   }
   .arrow-list li::before {
     content: '→'; position: absolute; left: 0; top: 12px; color: var(--phosphor);
   }
   .arrow-list li b { color: var(--paper); font-weight: 600; }
 
-  /* === RAPID FIRE === */
   .rapid {
     background: var(--surface); border: 1px solid var(--rule); border-radius: 12px;
     padding: 8px 0; margin: 28px 0;
   }
-  .rapid-row { display: grid; grid-template-columns: 220px 1fr; gap: 0;
+  .rapid-row { display: grid; grid-template-columns: 240px 1fr; gap: 0;
     padding: 16px 22px; border-bottom: 1px solid var(--rule-soft); align-items: baseline; }
   .rapid-row:last-child { border-bottom: 0; }
-  .rapid-row .q { font-family: 'JetBrains Mono', monospace; font-size: 12px;
-    color: var(--paper-muted); letter-spacing: .08em; text-transform: uppercase; }
-  .rapid-row .a { font-family: 'Inter Tight', sans-serif; font-size: 18px; color: var(--paper); font-weight: 600; }
-  .rapid-row .a span.gloss { color: var(--paper-muted); font-weight: 400; font-size: 14px; margin-left: 8px; font-family: 'Inter', sans-serif; }
+  .rapid-row .q { font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+    color: var(--paper-muted); letter-spacing: .06em; text-transform: uppercase; }
+  .rapid-row .a { font-family: 'Inter Tight', 'Noto Sans SC', sans-serif; font-size: 18px; color: var(--paper); font-weight: 600; }
+  .rapid-row .a span.gloss { color: var(--paper-muted); font-weight: 400; font-size: 14px; margin-left: 8px; font-family: 'Inter', 'Noto Sans SC', sans-serif; font-style: italic; }
   @media (max-width: 720px) { .rapid-row { grid-template-columns: 1fr; gap: 4px; } }
 
-  /* === FOOTER === */
   footer {
     margin-top: 80px; padding: 40px 28px;
     border-top: 1px solid var(--rule);
-    color: var(--paper-muted); font-family: 'Inter', sans-serif; font-size: 13px;
-    text-align: center;
+    color: var(--paper-muted); font-family: 'Inter', 'Noto Sans SC', sans-serif; font-size: 13px;
+    text-align: center; line-height: 1.75;
   }
   footer a { color: var(--phosphor); }
 
@@ -221,7 +219,7 @@ layout: null
 <header class="hero">
   <div class="hero-inner">
     <div class="crumbs mono">
-      <a href="#">notes</a>
+      <span>notes</span>
       <span class="dot"></span>
       <span>ai ascent 2026</span>
       <span class="dot"></span>
@@ -230,12 +228,10 @@ layout: null
     <div class="eyebrow mono">Demis Hassabis &times; Konstantine Buhler</div>
     <h1 class="kicker">Three quarters<br/>of the way<span class="accent"> &rarr; AGI.</span></h1>
     <p class="lede">
-      A 27-minute fireside with the CEO of Google DeepMind on the
-      <em>20-year mission</em> he is now five years from finishing &mdash; why
-      drug discovery is about to collapse from ten years to days, why
-      simulations may eat the social sciences, and why he thinks
-      <em>information</em>, not matter or energy, is what the universe is
-      really made of.
+      Demis Hassabis &mdash; Google DeepMind 的 CEO &mdash; 在 Sequoia AI Ascent 2026 上的一段 27 分钟对谈。
+      他 2010 年立的那个 <em>20 年计划</em>，今天还剩 5 年。
+      这场聊到了几件事: 新药研发为什么有可能从 10 年压到几天、为什么 simulation 会改写经济学这种"软科学"，
+      以及在他眼里，宇宙最底下那一层<strong>不是物质，也不是能量，而是 information</strong>。
     </p>
 
     <div class="meta-grid">
@@ -265,20 +261,21 @@ layout: null
 <section class="essay">
   <div class="section-head">
     <span class="section-num">01</span>
-    <h2 class="section-title">The plan from age 15</h2>
+    <h2 class="section-title">15 岁那年，他就把这条路看完了</h2>
   </div>
-  <p class="deck">There is a common thread, and maybe I made it into one &mdash; but I&rsquo;ve known what I was building toward since I was a teenager.</p>
+  <div class="section-sub mono">The plan from age 15</div>
+  <p class="deck">&ldquo;There is a common thread &mdash; or maybe I made it into one. But I&rsquo;ve known what I was building toward since I was a teenager.&rdquo;</p>
 
-  <p>Chess prodigy. Game designer at 17. Neuroscience PhD. Founder of DeepMind. From the outside, four careers; from Demis&rsquo; vantage, one. He decided as a teenager that AI was the most important and most interesting thing he could possibly work on, and then picked everything that came after as <em>preparation</em>.</p>
+  <p>象棋神童、十七岁开始做游戏、神经科学博士、DeepMind 创始人 &mdash; 这四段履历，外人看是四件事，他自己心里只有一件。早在十几岁，他就认定 AI 是这辈子最值得做的事。后面读什么专业、进什么公司、做什么项目，全是冲着 DeepMind 来的。</p>
 
-  <p>Games were the detour that wasn&rsquo;t a detour. The 90s game industry was where the most cutting-edge tech of the era actually shipped &mdash; the first GPUs (designed for graphics, not yet for matrix multiplies), real-time simulation, AI as a gameplay primitive. Theme Park, which he wrote at 17, simulated thousands of guests with their own little economic preferences. Ten million copies sold. What stuck with him wasn&rsquo;t the sales figure: it was watching ordinary people <em>delight</em> in interacting with an AI.</p>
+  <p>做游戏看着像绕路，其实不是。九十年代真正在用最前沿技术的就是游戏行业 &mdash; 第一代 GPU 是给图形渲染做的，那时候没人想过它后来会被用来跑矩阵乘法。游戏要做实时 simulation，要把 AI 写进玩法。他 17 岁写的 <em>Theme Park</em> 里有上千个小人，每个都有自己的偏好，这游戏卖了 1000 万套。但他自己记住的不是这个数字 &mdash; 是普通玩家跟那些 AI 玩起来时被逗乐的样子。</p>
 
-  <p>Then neuroscience &mdash; not for its own sake, but to mine the brain for algorithmic ideas, and to acquire a tool he&rsquo;d need later: <em>a way to study the artifacts he was about to build</em>. By the time DeepMind started, the pieces were already in his hand. He was assembling them in public.</p>
+  <p>再往后去读神经科学，他不是为了神经科学本身，是想从大脑里找点算法上的灵感；同时也提前给自己准备好一件工具 &mdash; 等以后真把"那种东西"造出来了，他知道该怎么去研究它。等 DeepMind 开张那天，这副牌他其实早就攒齐了，剩下的只是当众一张张摆出来。</p>
 
   <div class="note">
-    <div class="label">The Elixir lesson</div>
-    <h5>You want to be five years ahead. Not fifty.</h5>
-    <p>At Elixir Studios he tried to build <em>Republic</em> &mdash; a million-citizen simulated country, on a Pentium, in the late 90s. Too ambitious. The studio paid for it. The lesson he carried out: when an idea is obvious to everyone, you&rsquo;re too late; when it&rsquo;s fifty years out, you can&rsquo;t reach it. The window is narrow. Aim for it.</p>
+    <div class="label">The Elixir Lesson</div>
+    <h5>&ldquo;You want to be five years ahead. Not fifty.&rdquo;</h5>
+    <p>在 Elixir Studios，他做过一款叫 <em>Republic</em> 的游戏 &mdash; 想在一台 Pentium 上模拟一整个百万人口的国家，那是 90 年代末。结果就是太超前了，整个工作室赔了进去。他从这件事带走的判断是 &mdash; 一件事大家都看得见的时候，你已经晚了；一件事还要 50 年才能落地的时候，你又根本够不到。<strong>中间这个窗口很窄，但你必须瞄着它</strong>。</p>
   </div>
 </section>
 
@@ -286,44 +283,46 @@ layout: null
 <section class="essay">
   <div class="section-head">
     <span class="section-num">02</span>
-    <h2 class="section-title">Keepers of a secret, 2009</h2>
+    <h2 class="section-title">守着一个秘密 &mdash; 2009</h2>
   </div>
-  <p class="deck">Academia rolled their eyes when we said &ldquo;AGI.&rdquo; We figured: if we fail, at least we&rsquo;ll fail in an original way.</p>
+  <div class="section-sub mono">Keepers of a secret</div>
+  <p class="deck">&ldquo;Academia rolled their eyes when we said &lsquo;AGI.&rsquo; We figured &mdash; if we fail, at least we&rsquo;ll <em>fail in an original way</em>.&rdquo;</p>
 
-  <p>The DeepMind founding bet was not one idea but a stack of four, all of them unfashionable in 2009 and obvious in retrospect:</p>
+  <p>DeepMind 在 2009 年的那场赌，不是押在某一个想法上，是押在四件事上 &mdash; 这四件事在当时都不流行，回头再看才发现都是常识:</p>
 
   <div class="tiles">
     <div class="tile">
       <div class="tag">ingredient 01</div>
       <h4>Deep learning</h4>
-      <p>Hinton and colleagues had just made it work. Almost no one in academia or industry thought it was a big deal yet.</p>
+      <p>Hinton 那一拨人刚把它跑通，但学术界、工业界基本都没当回事。</p>
     </div>
     <div class="tile">
       <div class="tag">ingredient 02</div>
       <h4>Reinforcement learning</h4>
-      <p>A separate, siloed corner of AI. Demis&rsquo; conviction: if you fused it with deep learning, it would scale. Eventually all the way.</p>
+      <p>当时是 AI 里另一个孤立的角落。Demis 的判断很笃定 &mdash; 把它跟 deep learning 拼到一起，能 scale，而且能一路 scale 到 AGI。</p>
     </div>
     <div class="tile">
       <div class="tag">ingredient 03</div>
       <h4>Accelerated compute</h4>
-      <p>GPUs, then TPUs. The graphics-card industry was about to become the substrate for intelligence and didn&rsquo;t know it.</p>
+      <p>GPU、后来的 TPU。整个显卡产业即将变成"智能"的物理底座 &mdash; 它自己当时还没意识到这件事。</p>
     </div>
     <div class="tile">
       <div class="tag">ingredient 04</div>
       <h4>Brain principles</h4>
-      <p>Computational neuroscience supplied the hunches &mdash; including the conviction that RL could carry all the way to AGI.</p>
+      <p>计算神经科学给的不是公式，是直觉 &mdash; 比如那条"RL 一路能把人送到 AGI"的判断。</p>
     </div>
     <div class="tile" style="grid-column: span 2;">
       <div class="tag">ingredient 05</div>
       <h4>An original failure mode</h4>
-      <p>The 90s expert-systems crowd had failed honestly. If DeepMind failed too, at least it would fail differently. That alone made the bet worth taking.</p>
+      <p>九十年代搞 expert systems 的那拨人是认认真真失败过的。如果 DeepMind 也要失败，至少会以一种不一样的方式失败 &mdash; 光这一点就值得赌一把。</p>
     </div>
   </div>
 
-  <p>The original mission statement, he repeats verbatim: <strong>Step one &mdash; solve intelligence. Step two &mdash; use it to solve everything else.</strong> Sixteen years later he is still working on step one. He thinks step one is now ~75% done.</p>
+  <p>他到现在还能一字不差地复述当年的 mission statement: <strong>&ldquo;Step one &mdash; solve intelligence. Step two &mdash; use it to solve everything else.&rdquo;</strong> 16 年过去，他还在做 Step One。他自己估，Step One 现在大概走完了 75%。</p>
 
   <div class="pullquote">
     <p>&ldquo;We thought it would be a 20-year mission. We&rsquo;re basically exactly on track.&rdquo;</p>
+    <span class="gloss">当年定的就是 20 年。今天回头看，差不多卡着这个时间点在走。</span>
     <div class="who">Demis &mdash; on the 2010 prediction</div>
   </div>
 </section>
@@ -332,50 +331,52 @@ layout: null
 <section class="essay">
   <div class="section-head">
     <span class="section-num">03</span>
-    <h2 class="section-title">The meta move &rarr; AI for science</h2>
+    <h2 class="section-title">绕一层去做 &mdash; AI for Science</h2>
   </div>
-  <p class="deck">My personal mission was always to advance science. Building AGI was the meta way to do it.</p>
+  <div class="section-sub mono">The meta move</div>
+  <p class="deck">&ldquo;My personal mission was always to advance science. Building AGI was the <em>meta way to do it</em>.&rdquo;</p>
 
-  <p>Here is the structural argument that has organized DeepMind since day one. If your goal is to make breakthroughs in science, you can either work on one science &mdash; pick a discipline and grind &mdash; or you can build the <em>tool</em> that will eventually move every discipline. Demis chose the meta path. Build the lever; come back later for the rocks.</p>
+  <p>这是 DeepMind 自打第一天就有的那个结构性想法。如果你想在某个学科里做出真正的突破，你有两条路 &mdash; 盯着一门学科死磕，或者，造一个最终能撬动每一门学科的工具。Demis 走的是后一条 &mdash; <strong>先把杠杆造出来，回头再去搬石头</strong>。</p>
 
-  <p>The AI-for-Science group at DeepMind was formally started <em>the day after</em> they got back from Seoul, ten years ago this month. AlphaGo was the signal that the algorithms were finally general enough. Once they were, the highest-impact thing you could do with them was not another game.</p>
+  <p>DeepMind 的 AI for Science 部门是首尔回来的<strong>第二天</strong>就成立的 &mdash; AlphaGo 那场比赛之后，正好就是 10 年前的这个月。AlphaGo 给的信号很清楚: 算法终于够 general 了。一旦它够 general，它能干的最重要的事就再也不是下棋了。</p>
 
   <div class="stat-row">
-    <div class="stat"><div class="num">~10y</div><div class="lbl">Today&rsquo;s average drug-discovery timeline</div></div>
-    <div class="stat"><div class="num">months &rarr; weeks</div><div class="lbl">Where Isomorphic Labs is aiming, near-term</div></div>
-    <div class="stat"><div class="num">days</div><div class="lbl">The ceiling, eventually. <em>&ldquo;All disease in reach.&rdquo;</em></div></div>
+    <div class="stat"><div class="num">~10y</div><div class="lbl">现在做一款新药平均要花的时间</div></div>
+    <div class="stat"><div class="num">months &rarr; weeks</div><div class="lbl">Isomorphic Labs 接下来几年的目标</div></div>
+    <div class="stat"><div class="num">days</div><div class="lbl">最后的天花板。<em>&ldquo;All disease in reach.&rdquo;</em></div></div>
   </div>
 
-  <p>AlphaFold cracked the 3D shape of proteins &mdash; a fifty-year grand challenge &mdash; but shape is only one step. <strong>Isomorphic Labs</strong> is the natural next layer: design the compound that binds the right pocket on the right protein and <em>nothing else</em>. The dream is to push 99% of drug discovery into silicon and reserve the wet lab for what it&rsquo;s actually good at &mdash; final validation. That is what collapses ten years into days.</p>
+  <p>AlphaFold 解决的是蛋白质 3D 结构预测 &mdash; 一个搁了 50 年的难题。但形状只是第一步。<strong>Isomorphic Labs</strong> 是自然的下一层: 去设计真正能精确结合到目标蛋白靶点的分子，<em>而且不结合到别的任何地方</em>。理想是把 99% 的药物发现搬进电脑里跑，把 wet lab 留给它真正擅长的最后一步 &mdash; 验证。这条路一通，10 年就压成了几天。</p>
 </section>
 
 <!-- 04 -->
 <section class="essay">
   <div class="section-head">
     <span class="section-num">04</span>
-    <h2 class="section-title">New sciences the labs aren&rsquo;t building yet</h2>
+    <h2 class="section-title">实验室还没在做的&ldquo;新科学&rdquo;</h2>
   </div>
-  <p class="deck">Will AI eventually create entirely new sciences, the way thermodynamics fell out of the industrial revolution?</p>
+  <div class="section-sub mono">New sciences not yet built</div>
+  <p class="deck">&ldquo;Will AI eventually create <em>entirely new sciences</em>, the way thermodynamics fell out of the industrial revolution?&rdquo;</p>
 
-  <p>Demis answers yes, and gives two concrete shapes for it.</p>
+  <p>Demis 的回答是会，而且他给了两种具体的样子。</p>
 
-  <p><strong>The first new science is the study of AI itself.</strong> The artifacts we are building will, before long, be as complex as the human brain. They will need their own field &mdash; mechanistic interpretability is part of it, but only part. Neuroscience took a century and we still don&rsquo;t fully understand the brain. Why would we expect to understand a trillion-parameter network in a quarter?</p>
+  <p><strong>第一种新科学，是研究 AI 自己。</strong> 我们正在造的这些东西，过不了多久复杂度就跟人脑一个量级了 &mdash; 它得有自己的学科。Mech interp 是其中一部分，但远远不止。神经科学搞了一个世纪，我们对大脑的理解都还差得远；凭什么觉得一个季度就能把万亿参数的网络看明白？</p>
 
-  <p><strong>The second is simulation as a method.</strong> Economics and the other &ldquo;social sciences&rdquo; aren&rsquo;t sciences in the physics sense, not because they&rsquo;re less serious but because you can&rsquo;t run controlled experiments on them. You raise rates by half a percent <em>once</em>, in the real world, and then you spend a decade arguing about what it did.</p>
+  <p><strong>第二种新科学，是把 simulation 当成方法。</strong> 经济学这些"社会科学"，按物理学的标准不算硬科学 &mdash; 不是因为它们不严肃，是因为<em>你没法在它们身上做对照实验</em>。央行加息半个点这件事，真实世界里只能加一次，加完之后大家花十年争论这一下到底起了什么作用。</p>
 
-  <p>If you can build a simulator accurate enough to sample from rigorously &mdash; not a toy model with a closed-form equation, but a <em>learned</em> simulator that captures the messy real dynamics &mdash; then suddenly you can run that intervention ten thousand times. The whole epistemic shape of the field changes.</p>
+  <p>但如果你能学出一个足够准、可以反复采样的 simulator &mdash; 不是带闭式解的玩具模型，而是真的能把现实里那些乱糟糟的动态全部捕捉下来的那种 &mdash; 那一瞬间，你就可以把"加息半个点"这件事跑一万次再做决定。<strong>整个学科的认识论都会变形状</strong>。</p>
 
   <ul class="arrow-list">
-    <li><b>Weather Next.</b> DeepMind&rsquo;s learned weather simulator is now the most accurate in the world &mdash; and runs vastly faster than the meteorologists&rsquo; physics-based ones.</li>
-    <li><b>Virtual cell.</b> An emergent dynamical system &mdash; biology &mdash; rendered in a model so we can interrogate it computationally.</li>
-    <li><b>Economy, climate, ecology.</b> Anywhere we have lots of weak signals, no usable closed-form math, and only one real-world copy of the experiment to run.</li>
+    <li><b>Weather Next.</b> DeepMind 用 ML 学出来的天气模型，现在比气象学家自己用的物理模型都更准，还快得多。</li>
+    <li><b>Virtual cell.</b> 把生物 &mdash; 一个典型的 emergent dynamical 系统 &mdash; 装进模型里，让人能用计算的方式去审讯它。</li>
+    <li><b>经济、气候、生态.</b> 凡是&ldquo;信号弱、维度高、没现成数学公式、真实世界又只能跑一次&rdquo;的领域。</li>
   </ul>
 
   <div class="note">
-    <div class="label">The deep claim</div>
-    <h5>Machine learning is the right description language for biology, the way math was for physics.</h5>
-    <p>Physics got mathematics because its systems are clean enough that a few symbols capture them. Biology &mdash; and most of the &ldquo;social&rdquo; sciences &mdash; aren&rsquo;t. They&rsquo;re emergent, dynamical, soaked in weak correlations no human can hold in their head. ML is the first description language wide enough to fit them.</p>
-    <p>And once you have the learned simulator, maybe &mdash; maybe &mdash; you can extract <em>explicit</em> equations back out of it. A new Maxwell, fished from the weights.</p>
+    <div class="label">真正深的那一句</div>
+    <h5>&ldquo;ML is the right description language for biology, the way math was for physics.&rdquo;</h5>
+    <p>物理之所以能用数学写下来，是因为它的系统干净，几个符号就装得下。生物不是。社会科学也不是。它们 emergent、动态、布满人脑装不下的弱关联。<strong>ML 是有史以来第一种宽到能装下它们的描述语言</strong>。</p>
+    <p>更进一步 &mdash; 一旦你有了学好的 simulator，也许有一天你能反过来从它身上抽出 <em>explicit equations</em>。<strong>一个新的 Maxwell，从权重里钓出来</strong>。</p>
   </div>
 </section>
 
@@ -383,105 +384,117 @@ layout: null
 <section class="essay">
   <div class="section-head">
     <span class="section-num">05</span>
-    <h2 class="section-title">Information is what the universe is</h2>
+    <h2 class="section-title">宇宙的底色，是 information</h2>
   </div>
-  <p class="deck">Energy and matter are interconvertible &mdash; Einstein settled that in 1905. I think information has the same kind of equivalency. And of the three, I think it&rsquo;s the most fundamental.</p>
+  <div class="section-sub mono">Information is what the universe is</div>
+  <p class="deck">&ldquo;Energy and matter are interconvertible &mdash; Einstein settled that in 1905. I think <em>information</em> has the same kind of equivalency. And of the three, <em>it&rsquo;s the most fundamental</em>.&rdquo;</p>
 
-  <p>This is the part of the talk that goes furthest from the day-to-day product roadmap and matters the most for understanding what Demis thinks he&rsquo;s doing.</p>
+  <p>这一段离日常的产品最远，但要看懂 Demis 在干什么，<strong>这一段最重要</strong>。</p>
 
-  <p>The 1920s physicists put matter and energy at the floor of the universe. He&rsquo;d flip it. Structure that resists entropy &mdash; biology, brains, civilizations &mdash; is, at heart, <em>information processing</em>. If information is the most fundamental of the three convertible quantities, then AI is not just one more technology. It is the one that operates directly on the substance the universe is actually made of.</p>
+  <p>1920 年代的物理学家把物质和能量摆在宇宙最底层。Demis 想把这一层翻过来。所有抵抗熵的结构 &mdash; 生物、大脑、文明 &mdash; 本质上都是在做 <em>information processing</em>。如果 information 才是这三个可互换量里最底层的那个，那 AI 就不是又一项普通技术 &mdash; 它是<strong>直接作用在宇宙真正底色上的那一种</strong>。</p>
 
   <div class="pullquote">
     <p>&ldquo;Somehow we&rsquo;re reading the language of the universe.&rdquo;</p>
+    <span class="gloss">说到底，我们好像是在&ldquo;阅读宇宙的语言&rdquo;。</span>
     <div class="who">on what doing AI feels like</div>
   </div>
 
-  <p>The companion idea: <strong>Turing&rsquo;s Champion</strong>. A classical Turing machine &mdash; in modern dress, a neural net &mdash; turns out to model things we thought required quantum computation. Protein folding is the demonstration. The water bonds, the small-particle quantum effects, the things that made the problem look intractable &mdash; AlphaFold approximated past all of them on a classical substrate. It&rsquo;s an existence proof, not a theorem, but it shifts the prior. A lot of problems we filed under <em>needs quantum</em> may not.</p>
+  <p>跟这个想法配套的，叫 <strong>Turing&rsquo;s Champion</strong>。一台经典的 Turing machine &mdash; 换上现代的衣服就是神经网络 &mdash; 居然能搞定那些我们一直以为非 quantum computation 不可的事情。<strong>蛋白质折叠就是证据</strong>: 水分子键怎么作用、那些小尺度的量子效应 &mdash; 所有让这个问题看起来"不可解"的东西 &mdash; AlphaFold 在 classical substrate 上<em>全部近似过去了</em>。这不是定理，是一个存在性证明，但它已经把先验改了 &mdash; <strong>很多我们以前归到&ldquo;非量子不可&rdquo;那一档的问题，可能根本不需要量子</strong>。</p>
 </section>
 
 <!-- 06 -->
 <section class="essay">
   <div class="section-head">
     <span class="section-num">06</span>
-    <h2 class="section-title">Tool first. Agency second.</h2>
+    <h2 class="section-title">先把工具造出来。意志的事，回头再说。</h2>
   </div>
-  <p class="deck">Build the tool. Cross the rubicon that already matters. Then, with the tool in hand, face the questions you couldn&rsquo;t face before.</p>
+  <div class="section-sub mono">Tool first. Agency second.</div>
+  <p class="deck">&ldquo;Build the tool. Cross the rubicon that already matters. Then, <em>with the tool in hand</em>, face the questions you couldn&rsquo;t face before.&rdquo;</p>
 
-  <p>Asked when AI stops being a tool and becomes <em>something else</em>, Demis is unusually deliberate. He thinks the right sequencing is: build an incredibly intelligent and precise <em>instrument</em> first &mdash; one rubicon &mdash; and only then turn to the harder ones. Agency. Consciousness. Experience.</p>
+  <p>被问到&ldquo;AI 什么时候不再是 tool、变成另外的东西&rdquo;，Demis 的回答出奇地谨慎。他认为对的顺序是 &mdash; <strong>先造一个无比聪明、无比精准的工具</strong>，这一步过了，已经是一道很深的鸿沟。再往后才是更难的那几道: agency、consciousness、experience。</p>
 
-  <p>What he&rsquo;s sure about: the components people gesture at when they say &ldquo;conscious&rdquo; &mdash; self-awareness, a self/other distinction, continuity over time &mdash; are <em>necessary but not sufficient</em>. Behavior alone won&rsquo;t close it.</p>
+  <p>他笃信的一件事是: 大家说&ldquo;意识&rdquo;时挥手指的那些东西 &mdash; <em>self-awareness</em>、<em>self/other</em> 的边界、跨时间的连续性 &mdash; 都是<strong>必要不充分</strong>。光看行为，永远关不上这道闸。</p>
 
   <div class="note">
-    <div class="label">The substrate gap</div>
-    <h5>Why we don&rsquo;t debate whether other people are conscious</h5>
-    <p>Two reasons we extend consciousness to each other: behavioral &mdash; you act conscious; and substrate &mdash; you&rsquo;re running on the same wetware I am. Parsimony does the rest.</p>
-    <p>With an artificial system, the behavioral half can be matched. The substrate half can&rsquo;t. So even with a sufficiently agentic AI, the &ldquo;is it experiencing anything?&rdquo; gap may never fully close. Behaviorally yes; experientially, we may simply have to live with the question.</p>
+    <div class="label">The Substrate Gap</div>
+    <h5>我们为什么从来不会争论&ldquo;别人是不是有意识&rdquo;</h5>
+    <p>我们之所以默认其他人有意识，靠的是两件事: 行为上你看着像有意识，加上 substrate 上你跟我跑在同一种生物硬件上。剩下的事 parsimony 帮你做完。</p>
+    <p>但对一个 artificial system，行为这一半你可以让它对得上 &mdash; <strong>substrate 这一半永远对不上</strong>。所以哪怕一个 agent 已经足够 agentic，&ldquo;它真的在体验什么吗&rdquo;这道闸<em>也许永远关不上</em>。行为上能验证，体验上我们大概只能带着这个问题继续活下去。</p>
   </div>
 
-  <p>His preferred conversation partner on this, before he died, was Daniel Dennett. The hope is that AGI itself becomes the better lens &mdash; that the tool we built helps us define consciousness more precisely than the philosophy of the last two thousand years has been able to.</p>
+  <p>这件事他生前最常聊的对话伙伴是 <strong>Daniel Dennett</strong>。Demis 的希望是 AGI 自己能成为一个更好的透镜 &mdash; 我们造出来的工具，反过来帮我们把&ldquo;意识&rdquo;这件事定义得<strong>比过去 2000 年的哲学更清楚一点</strong>。</p>
 </section>
 
 <!-- 07 -->
 <section class="essay">
   <div class="section-head">
     <span class="section-num">07</span>
-    <h2 class="section-title">Kant and Spinoza, side by side</h2>
+    <h2 class="section-title">Kant 与 Spinoza，并排放</h2>
   </div>
-  <p class="deck">Kant: the mind constructs reality. Spinoza: doing science is reading the universe. Demis takes one from each.</p>
+  <div class="section-sub mono">Kant and Spinoza, side by side</div>
+  <p class="deck">&ldquo;Kant: <em>the mind constructs reality</em>. Spinoza: <em>doing science is reading the universe</em>. Demis takes one from each.&rdquo;</p>
 
-  <p>From Kant, the reason understanding the brain matters at all: if the mind is what assembles the world we experience, then to understand reality we have to understand the apparatus. That was the through-line of his neuroscience PhD; it is also why interpretability of AI matters in his framing &mdash; the apparatus has changed.</p>
+  <p>从 <strong>Kant</strong> 那儿，他取的是&ldquo;为什么研究大脑这件事重要&rdquo;: 如果心智是组装我们所体验到的那个世界的装置，那要理解 reality，<em>你就得先理解那台装置</em>。这条线是他神经科学博士论文的暗线。也是为什么他特别在意 AI 的 <strong>interpretability</strong> &mdash; 装置已经换过了。</p>
 
-  <p>From Spinoza, the disposition. Doing science isn&rsquo;t merely engineering or business; there is something almost devotional about it &mdash; an attempt to make contact with the structure of the universe by speaking its language back to it. AI, in his telling, is just the latest dialect.</p>
+  <p>从 <strong>Spinoza</strong> 那儿，他取的是态度。做 science 不只是 engineering 或 business &mdash; 它有一种近乎宗教的东西在里面: <strong>你试着把宇宙的语言学回来，再说回去，去跟它的结构产生接触</strong>。AI 在他看来，不过是这门语言最新的一种方言。</p>
 </section>
 
 <!-- 08 -->
 <section class="essay">
   <div class="section-head">
     <span class="section-num">08</span>
-    <h2 class="section-title">Rapid fire</h2>
+    <h2 class="section-title">快问快答</h2>
   </div>
-  <p class="deck">Four short answers. Each one tells you something he wouldn&rsquo;t have said in long form.</p>
+  <div class="section-sub mono">Rapid fire</div>
+  <p class="deck">四个短答案。每一个都告诉你<em>一件他在长答案里不会说的事</em>。</p>
 
   <div class="rapid">
     <div class="rapid-row">
-      <div class="q">Year of AGI &mdash; over/under</div>
-      <div class="a">2030 <span class="gloss">&ldquo;I&rsquo;ve been pretty consistent about that.&rdquo;</span></div>
+      <div class="q">押 AGI 年份 &middot; over / under</div>
+      <div class="a">2030 <span class="gloss">&ldquo;我一直就是这个判断。&rdquo;</span></div>
     </div>
     <div class="rapid-row">
-      <div class="q">Must-read for after AGI</div>
-      <div class="a">The Fabric of Reality <span class="gloss">David Deutsch &mdash; &ldquo;I&rsquo;d hope to answer the questions in that book with the AGI.&rdquo;</span></div>
+      <div class="q">AGI 之后必读的一本书</div>
+      <div class="a">The Fabric of Reality <span class="gloss">David Deutsch &mdash; &ldquo;希望那时候我们能用 AGI 把这本书里的问题都答了。&rdquo;</span></div>
     </div>
     <div class="rapid-row">
-      <div class="q">Proudest moment</div>
+      <div class="q">最骄傲的一刻</div>
       <div class="a">AlphaFold</div>
     </div>
     <div class="rapid-row">
-      <div class="q">A historical scientist on your team in a strategy game</div>
+      <div class="q">想拉一位历史科学家加你的策略游戏队</div>
       <div class="a">John von Neumann <span class="gloss">&ldquo;He invented game theory. I think he&rsquo;s the best.&rdquo;</span></div>
     </div>
   </div>
 </section>
 
-<!-- COUNTDOWN -->
+<!-- 09 -->
 <section class="essay">
   <div class="section-head">
     <span class="section-num">09</span>
-    <h2 class="section-title">What it adds up to</h2>
+    <h2 class="section-title">加起来是什么</h2>
   </div>
-  <p class="deck">Three quarters there means the next five years are not like the last five.</p>
+  <div class="section-sub mono">What it adds up to</div>
+  <p class="deck">&ldquo;走完四分之三&rdquo;意味着 &mdash; <em>接下来这五年，跟过去那五年不会是一回事</em>。</p>
 
-  <p>The argument as one breath: the original 2010 plan called for a 20-year arc; we&rsquo;re 16 years in, on track, with five to go. The bottleneck for the great open problems &mdash; medicine, materials, the social sciences as actual sciences &mdash; was never moral or political. It was algorithmic. The algorithm is now arriving.</p>
+  <p>整段论证总结起来一句话: 2010 年定的 20 年计划，今天我们是第 16 年，还在轨道上，还剩 5 年。那些重大的开放问题 &mdash; 医学、材料、社会科学想成为真正的 science &mdash; 卡住的从来不是道德或政治，是 <em>algorithmic</em>。<strong>算法现在终于来了</strong>。</p>
 
-  <p>Drug discovery collapses first because it&rsquo;s the cleanest target: a search problem with a verifiable test at the end. Then biology as a whole, via virtual cells. Then economics, climate, ecology, anything that has resisted analysis because it&rsquo;s emergent and only runs once. The shape of the change isn&rsquo;t productivity-percent improvements. It&rsquo;s <em>new sciences</em>, in the strong sense.</p>
+  <p>药物研发会先垮 &mdash; 因为它最干净，本质就是一个有验证终点的 search problem。然后是整个生物学，靠 virtual cells。然后是 economics、climate、ecology &mdash; 所有那些<em>因为 emergent、因为只能跑一次，长期抗拒分析</em>的领域。变化的形状不是&ldquo;产能提高 X%&rdquo;，是真正意义上的<strong>新的 science 在出现</strong>。</p>
 
-  <p>And underneath all of it, a quiet metaphysical claim &mdash; that information is more fundamental than matter or energy &mdash; that, if it holds, makes the whole project less an industry and more a continuation of physics itself. The next five years aren&rsquo;t a roadmap. They&rsquo;re a deadline.</p>
+  <p>而这一切的底下，是一个安静的形而上断言 &mdash; <em>information 比 matter 或 energy 更底层</em>。如果它成立，那这件事就不是一个产业，<strong>是物理学的延续</strong>。</p>
+
+  <div class="pullquote">
+    <p>&ldquo;The next five years aren&rsquo;t a roadmap. They&rsquo;re a deadline.&rdquo;</p>
+    <span class="gloss">接下来这五年，不是 roadmap &mdash; 是 deadline。</span>
+    <div class="who">closing line</div>
+  </div>
 </section>
 
 </article>
 
 <footer>
-  An editorial distillation of <a href="https://www.youtube.com/watch?v=AFpeWo1GTeg" target="_blank" rel="noopener">Demis Hassabis at AI Ascent 2026</a>.
-  Quotes lightly edited from auto-generated captions. Built with care.
+  这是一份对 <a href="https://www.youtube.com/watch?v=AFpeWo1GTeg" target="_blank" rel="noopener">Demis Hassabis &times; AI Ascent 2026</a> 的中文整理。<br/>
+  英文引用基于 auto-generated captions 做了一点修订。Built with care.
 </footer>
 
 </body>
