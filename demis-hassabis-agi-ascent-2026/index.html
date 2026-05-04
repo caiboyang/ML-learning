@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Three Quarters of the Way &mdash; Demis Hassabis on the path to AGI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #07090F;
+    --night: #0E1320;
+    --surface: #141A2A;
+    --rule: #232C44;
+    --rule-soft: #1A2238;
+    --paper: #E8E5DD;
+    --paper-dim: #B6B2A6;
+    --paper-muted: #8B8378;
+    --ghost: #B59BFF;
+    --ghost-glow: #D4C2FF;
+    --phosphor: #7BE3D7;
+    --phosphor-glow: #A7F2EA;
+    --amber: #FFB57A;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--void);
+    color: var(--paper);
+    font-family: 'Newsreader', serif;
+    font-size: 19px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='1' cy='1' r='1' fill='%23232C44' opacity='0.45'/></svg>");
+    background-size: 36px 36px;
+  }
+  a { color: var(--phosphor); text-decoration: none; }
+  a:hover { color: var(--phosphor-glow); }
+
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .sans { font-family: 'Inter Tight', sans-serif; }
+
+  /* === HERO === */
+  .hero {
+    position: relative; padding: 88px 28px 72px;
+    background: linear-gradient(to bottom, rgba(7,9,15,0.92), rgba(7,9,15,0.6) 80%, transparent), var(--night);
+    border-bottom: 1px solid var(--rule);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(900px 380px at 80% 0%, rgba(123,227,215,.10), transparent 60%),
+      radial-gradient(700px 380px at 0% 90%, rgba(181,155,255,.10), transparent 60%);
+    pointer-events: none;
+  }
+  .hero-inner { position: relative; max-width: 880px; margin: 0 auto; }
+  .crumbs { display: flex; gap: 14px; align-items: center; color: var(--paper-muted); }
+  .crumbs a { color: var(--paper-muted); }
+  .crumbs .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--paper-muted); display: inline-block; }
+  .eyebrow { color: var(--phosphor); margin-top: 28px; }
+  .kicker {
+    font-family: 'Inter Tight', sans-serif;
+    font-size: clamp(40px, 7vw, 76px);
+    font-weight: 700; line-height: 1.02; letter-spacing: -.025em;
+    margin: 18px 0 22px;
+    background: linear-gradient(90deg, var(--paper) 0%, var(--paper-dim) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .kicker .accent {
+    background: linear-gradient(90deg, var(--ghost), var(--ghost-glow));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede { font-size: 22px; line-height: 1.5; color: var(--paper-dim); max-width: 680px; }
+  .lede em { color: var(--paper); font-style: italic; }
+
+  .meta-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    margin-top: 56px; padding: 22px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  }
+  @media (max-width: 720px) { .meta-grid { grid-template-columns: repeat(2, 1fr); } }
+  .meta-grid .label { color: var(--paper-muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  .meta-grid .value { color: var(--paper); margin-top: 4px; font-size: 16px; font-family: 'Inter', sans-serif; }
+  .meta-grid .value a { color: var(--phosphor); }
+
+  /* === ARTICLE === */
+  article { max-width: 760px; margin: 0 auto; padding: 72px 28px 32px; }
+
+  section.essay { margin: 96px 0; }
+  section.essay:first-of-type { margin-top: 32px; }
+
+  .section-head {
+    display: flex; align-items: baseline; gap: 18px;
+    margin-bottom: 28px;
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+  }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace; color: var(--phosphor);
+    font-size: 13px; letter-spacing: .14em;
+  }
+  .section-title {
+    font-family: 'Inter Tight', sans-serif; font-weight: 700;
+    font-size: 30px; letter-spacing: -.015em; line-height: 1.1;
+    color: var(--paper); margin: 0;
+  }
+  .deck {
+    font-style: italic; color: var(--ghost-glow); font-size: 22px; line-height: 1.45;
+    margin: 0 0 26px; padding-left: 14px; border-left: 2px solid var(--ghost);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--paper); font-weight: 600; }
+  em { color: var(--phosphor-glow); }
+
+  /* === CONCEPT TILES (like v1.0/v2.0/v3.0) === */
+  .tiles {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin: 28px 0;
+  }
+  @media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } }
+  .tile {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 18px 18px 20px; position: relative;
+  }
+  .tile .tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .1em;
+    color: var(--amber); margin-bottom: 6px;
+  }
+  .tile h4 {
+    font-family: 'Inter Tight', sans-serif; font-size: 18px;
+    margin: 0 0 8px; color: var(--paper); font-weight: 600; letter-spacing: -.01em;
+  }
+  .tile p { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.55;
+    color: var(--paper-dim); margin: 0; }
+
+  /* === PULL QUOTE === */
+  .pullquote {
+    margin: 36px -10px; padding: 22px 26px;
+    background: linear-gradient(90deg, rgba(181,155,255,0.08), transparent 70%);
+    border-left: 3px solid var(--ghost);
+    border-radius: 0 10px 10px 0;
+  }
+  .pullquote p { font-style: italic; font-size: 23px; line-height: 1.4; color: var(--paper); margin: 0; }
+  .pullquote .who { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--paper-muted); margin-top: 12px; letter-spacing: .12em; text-transform: uppercase; }
+
+  /* === FOUNDER NOTE / CALLOUT === */
+  .note {
+    margin: 30px 0; padding: 20px 22px;
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    position: relative;
+  }
+  .note::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(180deg, var(--phosphor), var(--ghost));
+    border-radius: 10px 0 0 10px;
+  }
+  .note .label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .14em;
+    color: var(--phosphor); margin-bottom: 8px; text-transform: uppercase; }
+  .note h5 { font-family: 'Inter Tight', sans-serif; font-size: 17px; margin: 0 0 8px; color: var(--paper); font-weight: 600; letter-spacing: -.01em; }
+  .note p { font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6; color: var(--paper-dim); margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* === STAT ROW === */
+  .stat-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin: 24px 0;
+  }
+  @media (max-width: 720px) { .stat-row { grid-template-columns: 1fr; } }
+  .stat {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .stat .num { font-family: 'Inter Tight', sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -.02em; color: var(--phosphor); }
+  .stat .lbl { font-family: 'Inter', sans-serif; font-size: 13px; color: var(--paper-dim); margin-top: 4px; line-height: 1.4; }
+
+  /* === ARROW LIST === */
+  .arrow-list { list-style: none; padding: 0; margin: 22px 0; }
+  .arrow-list li {
+    padding: 12px 0 14px 24px; border-bottom: 1px dashed var(--rule-soft);
+    position: relative; font-family: 'Inter', sans-serif; font-size: 15.5px;
+    color: var(--paper-dim); line-height: 1.55;
+  }
+  .arrow-list li::before {
+    content: '→'; position: absolute; left: 0; top: 12px; color: var(--phosphor);
+  }
+  .arrow-list li b { color: var(--paper); font-weight: 600; }
+
+  /* === RAPID FIRE === */
+  .rapid {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 12px;
+    padding: 8px 0; margin: 28px 0;
+  }
+  .rapid-row { display: grid; grid-template-columns: 220px 1fr; gap: 0;
+    padding: 16px 22px; border-bottom: 1px solid var(--rule-soft); align-items: baseline; }
+  .rapid-row:last-child { border-bottom: 0; }
+  .rapid-row .q { font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--paper-muted); letter-spacing: .08em; text-transform: uppercase; }
+  .rapid-row .a { font-family: 'Inter Tight', sans-serif; font-size: 18px; color: var(--paper); font-weight: 600; }
+  .rapid-row .a span.gloss { color: var(--paper-muted); font-weight: 400; font-size: 14px; margin-left: 8px; font-family: 'Inter', sans-serif; }
+  @media (max-width: 720px) { .rapid-row { grid-template-columns: 1fr; gap: 4px; } }
+
+  /* === FOOTER === */
+  footer {
+    margin-top: 80px; padding: 40px 28px;
+    border-top: 1px solid var(--rule);
+    color: var(--paper-muted); font-family: 'Inter', sans-serif; font-size: 13px;
+    text-align: center;
+  }
+  footer a { color: var(--phosphor); }
+
+  ::selection { background: var(--ghost); color: var(--void); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="crumbs mono">
+      <a href="#">notes</a>
+      <span class="dot"></span>
+      <span>ai ascent 2026</span>
+      <span class="dot"></span>
+      <span>2026&middot;04&middot;30</span>
+    </div>
+    <div class="eyebrow mono">Demis Hassabis &times; Konstantine Buhler</div>
+    <h1 class="kicker">Three quarters<br/>of the way<span class="accent"> &rarr; AGI.</span></h1>
+    <p class="lede">
+      A 27-minute fireside with the CEO of Google DeepMind on the
+      <em>20-year mission</em> he is now five years from finishing &mdash; why
+      drug discovery is about to collapse from ten years to days, why
+      simulations may eat the social sciences, and why he thinks
+      <em>information</em>, not matter or energy, is what the universe is
+      really made of.
+    </p>
+
+    <div class="meta-grid">
+      <div>
+        <div class="label">Speaker</div>
+        <div class="value">Demis Hassabis</div>
+      </div>
+      <div>
+        <div class="label">Format</div>
+        <div class="value">Fireside chat</div>
+      </div>
+      <div>
+        <div class="label">Captured</div>
+        <div class="value">Apr 29, 2026</div>
+      </div>
+      <div>
+        <div class="label">Source</div>
+        <div class="value"><a href="https://www.youtube.com/watch?v=AFpeWo1GTeg" target="_blank" rel="noopener">youtube &rarr;</a></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<article>
+
+<!-- 01 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">01</span>
+    <h2 class="section-title">The plan from age 15</h2>
+  </div>
+  <p class="deck">There is a common thread, and maybe I made it into one &mdash; but I&rsquo;ve known what I was building toward since I was a teenager.</p>
+
+  <p>Chess prodigy. Game designer at 17. Neuroscience PhD. Founder of DeepMind. From the outside, four careers; from Demis&rsquo; vantage, one. He decided as a teenager that AI was the most important and most interesting thing he could possibly work on, and then picked everything that came after as <em>preparation</em>.</p>
+
+  <p>Games were the detour that wasn&rsquo;t a detour. The 90s game industry was where the most cutting-edge tech of the era actually shipped &mdash; the first GPUs (designed for graphics, not yet for matrix multiplies), real-time simulation, AI as a gameplay primitive. Theme Park, which he wrote at 17, simulated thousands of guests with their own little economic preferences. Ten million copies sold. What stuck with him wasn&rsquo;t the sales figure: it was watching ordinary people <em>delight</em> in interacting with an AI.</p>
+
+  <p>Then neuroscience &mdash; not for its own sake, but to mine the brain for algorithmic ideas, and to acquire a tool he&rsquo;d need later: <em>a way to study the artifacts he was about to build</em>. By the time DeepMind started, the pieces were already in his hand. He was assembling them in public.</p>
+
+  <div class="note">
+    <div class="label">The Elixir lesson</div>
+    <h5>You want to be five years ahead. Not fifty.</h5>
+    <p>At Elixir Studios he tried to build <em>Republic</em> &mdash; a million-citizen simulated country, on a Pentium, in the late 90s. Too ambitious. The studio paid for it. The lesson he carried out: when an idea is obvious to everyone, you&rsquo;re too late; when it&rsquo;s fifty years out, you can&rsquo;t reach it. The window is narrow. Aim for it.</p>
+  </div>
+</section>
+
+<!-- 02 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Keepers of a secret, 2009</h2>
+  </div>
+  <p class="deck">Academia rolled their eyes when we said &ldquo;AGI.&rdquo; We figured: if we fail, at least we&rsquo;ll fail in an original way.</p>
+
+  <p>The DeepMind founding bet was not one idea but a stack of four, all of them unfashionable in 2009 and obvious in retrospect:</p>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="tag">ingredient 01</div>
+      <h4>Deep learning</h4>
+      <p>Hinton and colleagues had just made it work. Almost no one in academia or industry thought it was a big deal yet.</p>
+    </div>
+    <div class="tile">
+      <div class="tag">ingredient 02</div>
+      <h4>Reinforcement learning</h4>
+      <p>A separate, siloed corner of AI. Demis&rsquo; conviction: if you fused it with deep learning, it would scale. Eventually all the way.</p>
+    </div>
+    <div class="tile">
+      <div class="tag">ingredient 03</div>
+      <h4>Accelerated compute</h4>
+      <p>GPUs, then TPUs. The graphics-card industry was about to become the substrate for intelligence and didn&rsquo;t know it.</p>
+    </div>
+    <div class="tile">
+      <div class="tag">ingredient 04</div>
+      <h4>Brain principles</h4>
+      <p>Computational neuroscience supplied the hunches &mdash; including the conviction that RL could carry all the way to AGI.</p>
+    </div>
+    <div class="tile" style="grid-column: span 2;">
+      <div class="tag">ingredient 05</div>
+      <h4>An original failure mode</h4>
+      <p>The 90s expert-systems crowd had failed honestly. If DeepMind failed too, at least it would fail differently. That alone made the bet worth taking.</p>
+    </div>
+  </div>
+
+  <p>The original mission statement, he repeats verbatim: <strong>Step one &mdash; solve intelligence. Step two &mdash; use it to solve everything else.</strong> Sixteen years later he is still working on step one. He thinks step one is now ~75% done.</p>
+
+  <div class="pullquote">
+    <p>&ldquo;We thought it would be a 20-year mission. We&rsquo;re basically exactly on track.&rdquo;</p>
+    <div class="who">Demis &mdash; on the 2010 prediction</div>
+  </div>
+</section>
+
+<!-- 03 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">03</span>
+    <h2 class="section-title">The meta move &rarr; AI for science</h2>
+  </div>
+  <p class="deck">My personal mission was always to advance science. Building AGI was the meta way to do it.</p>
+
+  <p>Here is the structural argument that has organized DeepMind since day one. If your goal is to make breakthroughs in science, you can either work on one science &mdash; pick a discipline and grind &mdash; or you can build the <em>tool</em> that will eventually move every discipline. Demis chose the meta path. Build the lever; come back later for the rocks.</p>
+
+  <p>The AI-for-Science group at DeepMind was formally started <em>the day after</em> they got back from Seoul, ten years ago this month. AlphaGo was the signal that the algorithms were finally general enough. Once they were, the highest-impact thing you could do with them was not another game.</p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="num">~10y</div><div class="lbl">Today&rsquo;s average drug-discovery timeline</div></div>
+    <div class="stat"><div class="num">months &rarr; weeks</div><div class="lbl">Where Isomorphic Labs is aiming, near-term</div></div>
+    <div class="stat"><div class="num">days</div><div class="lbl">The ceiling, eventually. <em>&ldquo;All disease in reach.&rdquo;</em></div></div>
+  </div>
+
+  <p>AlphaFold cracked the 3D shape of proteins &mdash; a fifty-year grand challenge &mdash; but shape is only one step. <strong>Isomorphic Labs</strong> is the natural next layer: design the compound that binds the right pocket on the right protein and <em>nothing else</em>. The dream is to push 99% of drug discovery into silicon and reserve the wet lab for what it&rsquo;s actually good at &mdash; final validation. That is what collapses ten years into days.</p>
+</section>
+
+<!-- 04 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">04</span>
+    <h2 class="section-title">New sciences the labs aren&rsquo;t building yet</h2>
+  </div>
+  <p class="deck">Will AI eventually create entirely new sciences, the way thermodynamics fell out of the industrial revolution?</p>
+
+  <p>Demis answers yes, and gives two concrete shapes for it.</p>
+
+  <p><strong>The first new science is the study of AI itself.</strong> The artifacts we are building will, before long, be as complex as the human brain. They will need their own field &mdash; mechanistic interpretability is part of it, but only part. Neuroscience took a century and we still don&rsquo;t fully understand the brain. Why would we expect to understand a trillion-parameter network in a quarter?</p>
+
+  <p><strong>The second is simulation as a method.</strong> Economics and the other &ldquo;social sciences&rdquo; aren&rsquo;t sciences in the physics sense, not because they&rsquo;re less serious but because you can&rsquo;t run controlled experiments on them. You raise rates by half a percent <em>once</em>, in the real world, and then you spend a decade arguing about what it did.</p>
+
+  <p>If you can build a simulator accurate enough to sample from rigorously &mdash; not a toy model with a closed-form equation, but a <em>learned</em> simulator that captures the messy real dynamics &mdash; then suddenly you can run that intervention ten thousand times. The whole epistemic shape of the field changes.</p>
+
+  <ul class="arrow-list">
+    <li><b>Weather Next.</b> DeepMind&rsquo;s learned weather simulator is now the most accurate in the world &mdash; and runs vastly faster than the meteorologists&rsquo; physics-based ones.</li>
+    <li><b>Virtual cell.</b> An emergent dynamical system &mdash; biology &mdash; rendered in a model so we can interrogate it computationally.</li>
+    <li><b>Economy, climate, ecology.</b> Anywhere we have lots of weak signals, no usable closed-form math, and only one real-world copy of the experiment to run.</li>
+  </ul>
+
+  <div class="note">
+    <div class="label">The deep claim</div>
+    <h5>Machine learning is the right description language for biology, the way math was for physics.</h5>
+    <p>Physics got mathematics because its systems are clean enough that a few symbols capture them. Biology &mdash; and most of the &ldquo;social&rdquo; sciences &mdash; aren&rsquo;t. They&rsquo;re emergent, dynamical, soaked in weak correlations no human can hold in their head. ML is the first description language wide enough to fit them.</p>
+    <p>And once you have the learned simulator, maybe &mdash; maybe &mdash; you can extract <em>explicit</em> equations back out of it. A new Maxwell, fished from the weights.</p>
+  </div>
+</section>
+
+<!-- 05 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Information is what the universe is</h2>
+  </div>
+  <p class="deck">Energy and matter are interconvertible &mdash; Einstein settled that in 1905. I think information has the same kind of equivalency. And of the three, I think it&rsquo;s the most fundamental.</p>
+
+  <p>This is the part of the talk that goes furthest from the day-to-day product roadmap and matters the most for understanding what Demis thinks he&rsquo;s doing.</p>
+
+  <p>The 1920s physicists put matter and energy at the floor of the universe. He&rsquo;d flip it. Structure that resists entropy &mdash; biology, brains, civilizations &mdash; is, at heart, <em>information processing</em>. If information is the most fundamental of the three convertible quantities, then AI is not just one more technology. It is the one that operates directly on the substance the universe is actually made of.</p>
+
+  <div class="pullquote">
+    <p>&ldquo;Somehow we&rsquo;re reading the language of the universe.&rdquo;</p>
+    <div class="who">on what doing AI feels like</div>
+  </div>
+
+  <p>The companion idea: <strong>Turing&rsquo;s Champion</strong>. A classical Turing machine &mdash; in modern dress, a neural net &mdash; turns out to model things we thought required quantum computation. Protein folding is the demonstration. The water bonds, the small-particle quantum effects, the things that made the problem look intractable &mdash; AlphaFold approximated past all of them on a classical substrate. It&rsquo;s an existence proof, not a theorem, but it shifts the prior. A lot of problems we filed under <em>needs quantum</em> may not.</p>
+</section>
+
+<!-- 06 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Tool first. Agency second.</h2>
+  </div>
+  <p class="deck">Build the tool. Cross the rubicon that already matters. Then, with the tool in hand, face the questions you couldn&rsquo;t face before.</p>
+
+  <p>Asked when AI stops being a tool and becomes <em>something else</em>, Demis is unusually deliberate. He thinks the right sequencing is: build an incredibly intelligent and precise <em>instrument</em> first &mdash; one rubicon &mdash; and only then turn to the harder ones. Agency. Consciousness. Experience.</p>
+
+  <p>What he&rsquo;s sure about: the components people gesture at when they say &ldquo;conscious&rdquo; &mdash; self-awareness, a self/other distinction, continuity over time &mdash; are <em>necessary but not sufficient</em>. Behavior alone won&rsquo;t close it.</p>
+
+  <div class="note">
+    <div class="label">The substrate gap</div>
+    <h5>Why we don&rsquo;t debate whether other people are conscious</h5>
+    <p>Two reasons we extend consciousness to each other: behavioral &mdash; you act conscious; and substrate &mdash; you&rsquo;re running on the same wetware I am. Parsimony does the rest.</p>
+    <p>With an artificial system, the behavioral half can be matched. The substrate half can&rsquo;t. So even with a sufficiently agentic AI, the &ldquo;is it experiencing anything?&rdquo; gap may never fully close. Behaviorally yes; experientially, we may simply have to live with the question.</p>
+  </div>
+
+  <p>His preferred conversation partner on this, before he died, was Daniel Dennett. The hope is that AGI itself becomes the better lens &mdash; that the tool we built helps us define consciousness more precisely than the philosophy of the last two thousand years has been able to.</p>
+</section>
+
+<!-- 07 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Kant and Spinoza, side by side</h2>
+  </div>
+  <p class="deck">Kant: the mind constructs reality. Spinoza: doing science is reading the universe. Demis takes one from each.</p>
+
+  <p>From Kant, the reason understanding the brain matters at all: if the mind is what assembles the world we experience, then to understand reality we have to understand the apparatus. That was the through-line of his neuroscience PhD; it is also why interpretability of AI matters in his framing &mdash; the apparatus has changed.</p>
+
+  <p>From Spinoza, the disposition. Doing science isn&rsquo;t merely engineering or business; there is something almost devotional about it &mdash; an attempt to make contact with the structure of the universe by speaking its language back to it. AI, in his telling, is just the latest dialect.</p>
+</section>
+
+<!-- 08 -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">08</span>
+    <h2 class="section-title">Rapid fire</h2>
+  </div>
+  <p class="deck">Four short answers. Each one tells you something he wouldn&rsquo;t have said in long form.</p>
+
+  <div class="rapid">
+    <div class="rapid-row">
+      <div class="q">Year of AGI &mdash; over/under</div>
+      <div class="a">2030 <span class="gloss">&ldquo;I&rsquo;ve been pretty consistent about that.&rdquo;</span></div>
+    </div>
+    <div class="rapid-row">
+      <div class="q">Must-read for after AGI</div>
+      <div class="a">The Fabric of Reality <span class="gloss">David Deutsch &mdash; &ldquo;I&rsquo;d hope to answer the questions in that book with the AGI.&rdquo;</span></div>
+    </div>
+    <div class="rapid-row">
+      <div class="q">Proudest moment</div>
+      <div class="a">AlphaFold</div>
+    </div>
+    <div class="rapid-row">
+      <div class="q">A historical scientist on your team in a strategy game</div>
+      <div class="a">John von Neumann <span class="gloss">&ldquo;He invented game theory. I think he&rsquo;s the best.&rdquo;</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- COUNTDOWN -->
+<section class="essay">
+  <div class="section-head">
+    <span class="section-num">09</span>
+    <h2 class="section-title">What it adds up to</h2>
+  </div>
+  <p class="deck">Three quarters there means the next five years are not like the last five.</p>
+
+  <p>The argument as one breath: the original 2010 plan called for a 20-year arc; we&rsquo;re 16 years in, on track, with five to go. The bottleneck for the great open problems &mdash; medicine, materials, the social sciences as actual sciences &mdash; was never moral or political. It was algorithmic. The algorithm is now arriving.</p>
+
+  <p>Drug discovery collapses first because it&rsquo;s the cleanest target: a search problem with a verifiable test at the end. Then biology as a whole, via virtual cells. Then economics, climate, ecology, anything that has resisted analysis because it&rsquo;s emergent and only runs once. The shape of the change isn&rsquo;t productivity-percent improvements. It&rsquo;s <em>new sciences</em>, in the strong sense.</p>
+
+  <p>And underneath all of it, a quiet metaphysical claim &mdash; that information is more fundamental than matter or energy &mdash; that, if it holds, makes the whole project less an industry and more a continuation of physics itself. The next five years aren&rsquo;t a roadmap. They&rsquo;re a deadline.</p>
+</section>
+
+</article>
+
+<footer>
+  An editorial distillation of <a href="https://www.youtube.com/watch?v=AFpeWo1GTeg" target="_blank" rel="noopener">Demis Hassabis at AI Ascent 2026</a>.
+  Quotes lightly edited from auto-generated captions. Built with care.
+</footer>
+
+</body>
+</html>
