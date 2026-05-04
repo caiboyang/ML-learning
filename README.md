@@ -5,7 +5,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 ## Contents
 
 ### 1. Reinforcement Learning from Human Feedback (RLHF)
-* [Chapter 6: Policy Gradients Study Notes](./ch06_rlhf_policy_gradients/RLHF_Policy_Gradients_Study_Notes.md) 
+* [Chapter 6: Policy Gradients Study Notes](https://caiboyang.github.io/ML-learning/ch06_rlhf_policy_gradients/RLHF_Policy_Gradients_Study_Notes.html) 
   * *A comprehensive breakdown of policy gradient algorithms (REINFORCE, RLOO, PPO, GRPO, GSPO, CISPO) bridging intuition, theoretical formulas, and engineering architecture for large language models.*
 
 ### 2. AI Talks & Interview Distillations
