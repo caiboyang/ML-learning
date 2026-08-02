@@ -1153,17 +1153,23 @@ stateDiagram-v2
 
 ```python
 if response.stop_reason == "pause_turn":
-    messages = [
-        {"role": "user", "content": user_query},
-        {"role": "assistant", "content": response.content},
-    ]
+    # ✅ 追加到已有历史，不要重建 messages
+    messages.append({"role": "assistant", "content": response.content})
     # 直接再发一次；不要追加 "Continue." 这种 user 消息
     response = client.messages.create(
-        model="claude-opus-5", messages=messages, tools=tools
+        model="claude-opus-5",
+        max_tokens=16000,        # 必填参数，别漏
+        messages=messages,
+        tools=tools,
     )
 ```
 
 API 检测到结尾的 `server_tool_use` block 就知道要续跑，**加 "Continue." 反而是错的**。
+
+> ⚠️ **两个容易抄错的点**：
+>
+> 1. **必须 `append` 而不是重建 `messages`。** 官方文档那段示例写的是 `messages = [{"role": "user", ...}, {"role": "assistant", ...}]`，那是**单轮对话的最简演示**。真实 agent 里 `pause_turn` 往往发生在若干轮之后——这么写会把之前所有的对话历史、客户端工具结果、用户给的约束条件全部丢掉，续跑出来的答案就没了上下文。
+> 2. **`max_tokens` 是必填的。** 漏掉它不是逻辑错误而是直接抛参数缺失异常。一般传和原请求相同的值。
 
 > ⚠️ SDK 的 Tool Runner **不会自动处理 `pause_turn`**。一个暂停的 turn 会让 runner 静默退出并把它当成最终消息返回——没有报错、没有警告，只是答案被悄悄截断。混用服务端工具时要每轮检查。
 
@@ -1954,7 +1960,8 @@ Schema 从函数签名和 docstring **自动生成**——课程 287753 那一�
   ⑤ max_tokens 从 1000 提到 16000
   ⑥ 工具加 strict + additionalProperties: false
   ⑦ 并行结果打包进一条 user 消息（课程结构本就正确，这里显式说明）
-  ⑧ 时区契约：在 IANA 时区里做日历算术，跨 DST 保持本地钟点不变
+  ⑧ 时区契约：在 IANA 时区里做日历算术，跨 DST 保持本地钟点，
+     并把落进 spring-forward 空洞的结果归一化到真实时刻
 """
 import json
 import anthropic
@@ -1967,7 +1974,7 @@ MAX_ITERATIONS = 10
 # ⑧ 时区契约：全程 timezone-aware，日历算术在 IANA 时区内完成。
 #    课程原版用裸 datetime.now() 和无时区字符串——部署机器时区、用户时区、
 #    夏令时切换任意一个不同，提醒就会漂到错误的时刻。
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from zoneinfo import ZoneInfo          # Python 3.9+
 
 def get_current_datetime(timezone: str) -> str:
@@ -1977,11 +1984,15 @@ def get_current_datetime(timezone: str) -> str:
 def add_duration_to_datetime(
     datetime_str: str, duration: int, unit: str, timezone: str
 ) -> str:
-    """在指定 IANA 时区里做日历加减，返回带正确 DST offset 的 ISO 8601。
+    """在指定 IANA 时区里做日历加减，返回真实存在且 offset 正确的 ISO 8601。
 
-    关键：必须先 astimezone(ZoneInfo) 再做加法。
-    fromisoformat() 只还原出一个「固定 offset」的时区，直接加 timedelta
-    会把原来的 offset 一路带过去——跨夏令时边界时结果就偏一小时。
+    两个坑都要躲：
+      1. 必须先 astimezone(ZoneInfo) 再加。fromisoformat() 只还原出一个
+         「固定 offset」的时区，直接加 timedelta 会把原 offset 一路带过去
+         —— 跨夏令时边界结果就偏一小时。
+      2. 加完还要经 UTC 往返归一化。ZoneInfo 的算术不会自动处理
+         spring-forward 空洞：3 月某天 01:30 + 1h 会算出本地根本不存在的
+         02:30，往返一次才会落到真实的 03:30。
     """
     base = datetime.fromisoformat(datetime_str)
     if base.tzinfo is None:
@@ -1995,9 +2006,11 @@ def add_duration_to_datetime(
         "days":    timedelta(days=duration),
         "weeks":   timedelta(weeks=duration),
     }[unit]
-    # 挂回 IANA 时区后再加：offset 会按「结果那天」的 DST 规则重新计算
-    local = base.astimezone(ZoneInfo(timezone))
-    return (local + delta).isoformat()
+    zone = ZoneInfo(timezone)
+    # ① 挂回 IANA 时区再加：offset 按「结果那天」的 DST 规则算
+    result = base.astimezone(zone) + delta
+    # ② 经 UTC 往返：把落进 spring-forward 空洞的不存在时刻归一化到真实时刻
+    return result.astimezone(dt_timezone.utc).astimezone(zone).isoformat()
 
 def set_reminder(content: str, timestamp: str) -> str:
     """timestamp 必须是带 offset 的 ISO 8601。真实实现应写库 / 调日历 API。"""
@@ -2040,7 +2053,9 @@ TOOLS = [
             "The input MUST include a UTC offset; call get_current_datetime first if the base "
             "date is 'today'. Arithmetic is done in the given IANA timezone, so the local "
             "wall-clock time is preserved across daylight saving boundaries: 9am plus 177 days "
-            "is still 9am local, and the returned offset reflects DST on the result date."
+            "is still 9am local, and the returned offset reflects DST on the result date. "
+            "If the result would land in a spring-forward gap (a local time that does not "
+            "exist), it is normalized forward to a real instant."
         ),
         "input_schema": {
             "type": "object",
