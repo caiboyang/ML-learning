@@ -12,5 +12,9 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 * [Demis Hassabis × Sequoia AI Ascent 2026 — *Three Quarters of the Way to AGI*](https://caiboyang.github.io/ML-learning/demis-hassabis-agi-ascent-2026/)
   * *An editorial distillation of the 27-minute fireside chat: the 75% / 2030 deadline framing, AI-for-science, simulations as a new method, ML as the right description language for biology, and tool-then-agency sequencing. ([source video](https://www.youtube.com/watch?v=AFpeWo1GTeg))*
 
+### 3. Tool Calling with Claude
+* [Claude Tool Use: Schemas, Message Blocks, and Agentic Loops](tool-calling/README.md)
+  * *A Chinese study guide to custom and Anthropic-provided tools, covering JSON Schema, `tool_use` / `tool_result` blocks, multi-turn back-and-forth, parallel calls, streaming, system diagrams, error handling, and production safety boundaries.*
+
 ---
 *More notes will be added here soon...*
