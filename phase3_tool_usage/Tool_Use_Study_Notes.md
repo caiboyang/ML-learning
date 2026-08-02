@@ -56,7 +56,9 @@ description: "Anthropic Academy「Tool Use」9 课时精炼 + 当前官方文档
 
 # 第 0 部分 · 先看这个：课程代码的 6 个过时点
 
-课程的教学结构依然优秀（渐进式建构，从单工具到多轮循环），**但直接照抄课程代码跑在当前模型上会出问题**。按严重程度排序：
+课程的教学结构依然优秀（渐进式建构，从单工具到多轮循环），**但直接照抄课程代码跑在当前模型上会出问题**。
+
+**共 6 处过时**，按严重程度排序——**前 3 处（①②③）会真正出事**（直接 400 或静默给出错误/截断的答案），后 3 处（④⑤⑥）是配置对不上或走了废弃路径：
 
 | # | 症状 | 课程写法 | 当前正确写法 | 后果 |
 |---|---|---|---|---|
@@ -185,7 +187,7 @@ get_current_datetime_schema = ToolParam({
 
 功能上不是必需的，但能避免类型错误。这条现在依然有效。
 
-> ⚠️ **课程缺失**：课程只讲了必填三字段。当前 API 在工具定义上还支持 `strict`、`input_examples`、`cache_control`、`defer_loading`、`allowed_callers`、`eager_input_streaming` 六个可选字段——见[第 3 部分](#第-3-部分--schema-完整参考)。其中 `strict` 能彻底消灭参数缺失/类型错误，是对课程这一课最直接的补强。
+> ⚠️ **课程缺失**：课程只讲了必填三字段。当前 API 在工具定义上还支持 `strict`、`input_examples`、`cache_control`、`defer_loading`、`allowed_callers`、`eager_input_streaming` 六个可选字段——见[第 3 部分](#第-3-部分--schema-完整参考)。其中 `strict` 能把参数缺失/类型错误从格式层消掉，是对课程这一课最直接的补强（注意它不保证业务语义正确，见 [3.4](#34-strict--大幅收敛参数缺失问题)）。
 
 ---
 
@@ -428,7 +430,10 @@ def chat(messages, system=None, stop_sequences=None, tools=None):
 | `temperature=0` 求确定性 | `output_config={"effort": "low"}` + 更收紧的 prompt（注意：`temperature=0` 从来也不保证输出完全一致） |
 | 高 temperature 求多样性 | 在 prompt 里明确要求变化，比如 "Vary your phrasing and structure across responses" |
 
-> 顺带一提：课程的 `max_tokens: 1000` 也偏小。当前建议非流式 ~16000，流式 ~64000（详见[第 12 部分](#第-12-部分--最佳实践与报错速查)）。Opus 5 上 `max_tokens` 是 **thinking + 正文的总上限**，thinking 默认开启会吃掉预算。
+> 顺带一提：课程的 `max_tokens: 1000` 在当前模型上偏小。Opus 5 上 `max_tokens` 是 **thinking + 可见回答的总硬上限**，thinking 默认开启会先吃掉一部分预算，1000 很容易在正文还没写完时就 `max_tokens` 截断。
+>
+> ⚠️ 官方**没有**给出通用的推荐数值——这个值要按模型、任务复杂度、成本预算和你自己的 eval 来标定。本笔记后续示例统一用 16000，那只是一个够用的起点，不是官方建议。
+> 另外 streaming 改变的是传输方式（避免长请求超时），**不对应另一套语义预算**，不要理解成"流式就该配更大的 max_tokens"。
 
 ---
 
@@ -1183,16 +1188,23 @@ else:
 
 ## 3.2 可选字段全表
 
-课程完全没覆盖这一层。这些字段**可以自由组合**——同一个工具上同时设 `defer_loading` + `cache_control` + `strict` 是合法的。
+课程完全没覆盖这一层。这些字段**大体可以组合**，但有一个例外见下。
 
 | 字段 | 作用 | 适用范围 |
 |---|---|---|
 | `input_examples` | 提供合法输入示例数组 | 用户自定义 + Anthropic-schema 客户端工具。**服务端工具不支持** |
-| `strict` | 强制 schema 校验，保证 `tool_use.input` 100% 符合 schema | 除 `mcp_toolset` 外全部 |
+| `strict` | 约束 `tool_use.input` 匹配 schema（受支持子集） | 除 `mcp_toolset` 外全部 |
 | `cache_control` | 在该工具定义处打一个 prompt cache 断点 | 全部工具 |
 | `defer_loading` | 不放进初始 system prompt，配合 tool search 按需加载 | 全部工具 |
 | `allowed_callers` | 限制谁能调这个工具 | 除 `mcp_toolset` 外全部 |
 | `eager_input_streaming` | 细粒度输入流式（见 [1.8](#18-fine-grained-tool-calling细粒度流式313160)） | 仅用户自定义工具 |
+
+> ⛔ **唯一的互斥组合：`defer_loading: true` 的工具不能同时带 `cache_control`，API 返回 400。**
+> cache breakpoint 要打在**非 deferred** 的工具上。
+>
+> 这一点两个官方页面说法不一致：Tool reference 页写的是"These properties compose: you can set `defer_loading` and `cache_control` and `strict` on the same tool"，
+> 而 Tool search tool 页明确写"A tool with `defer_loading: true` can't also carry `cache_control`: the API returns a 400."
+> **以后者为准**——它更具体，且直接描述了 API 的报错行为。`defer_loading` + `strict` 组合则确实没问题（官方说明 strict 的语法从完整工具集构建，两者组合不会触发语法重编译）。
 
 ## 3.3 `input_examples`
 
@@ -1215,9 +1227,9 @@ else:
 
 **什么时候用**：官方立场是"描述优先"，但对**嵌套对象、格式敏感参数、复杂输入**的工具，示例比再多描述都管用。
 
-## 3.4 `strict` —— 彻底解决课程里的参数缺失问题
+## 3.4 `strict` —— 大幅收敛参数缺失问题
 
-课程 287752 提到工具参数可能不全（当前文档也说：参数缺失时 Claude 会**自动重试 2–3 次**补全，之后才向用户道歉）。`strict` 直接从根上消灭这个问题：
+课程 287752 提到工具参数可能不全（当前文档也说：参数缺失时 Claude 会**自动重试 2–3 次**补全，之后才向用户道歉）。`strict` 把这个问题从"靠描述和重试"变成"靠语法约束"：
 
 ```json
 {
@@ -1236,6 +1248,15 @@ else:
   }
 }
 ```
+
+> ⚠️ **别把 `strict` 当成万能校验。** 它的保证边界是：**正常完成（`end_turn` / `tool_use`）时，输出匹配你 schema 中受支持的那个子集**。以下情况仍可能拿到不匹配 schema 的东西，客户端校验不能省：
+>
+> - **异常结束**：`refusal`、`max_tokens`、`model_context_window_exceeded` 都可能给出截断或空的内容
+> - **不受支持的约束**：下表"❌ 不支持"那一列里的约束（`minimum` / `maxLength` / 递归 schema 等）**不进语法**，SDK 会把它们从发给 API 的 schema 里剥掉再在客户端校验——也就是说这些约束根本不由 `strict` 保证
+> - **业务规则**：schema 管不了的东西（这个 ticker 真实存在吗？这个用户有权限下单吗？）永远要服务端验
+> - `enum` / `const` 的大小写等边角仍有 caveat
+>
+> 一句话：`strict` 消除的是**格式层**的错（缺必填、类型不对、多余字段），不是**语义层**的错。
 
 - `strict` 是**工具定义的顶层字段**，不是放在 `tool_choice` 里
 - schema **必须**有 `additionalProperties: false` 和 `required`
@@ -1302,6 +1323,22 @@ Python / TypeScript SDK 会自动处理不支持的约束：从发给 API 的 sc
 
 > 响应中 `tool_use` block 会带 `caller` 字段标明是谁调的。回复待处理的 PTC 调用时，user 消息里**只能有 `tool_result` block**（不能有 text）。
 > `strict: true` 与 PTC **不兼容**。
+
+### ⛔ `allowed_callers` 不是安全边界
+
+省略 `"direct"` **不是 API 层面的硬阻断**。官方原文：
+
+> "`allowed_callers` controls how the tool is presented to Claude and is validated against `tool_choice`, but it is **not a hard API-level block on direct invocation**. Claude is strongly guided to respect it, but your client should still be prepared to handle a direct `tool_use` for any tool it defines. **Do not rely on `allowed_callers` as a security boundary.**"
+
+也就是说：写了 `"allowed_callers": ["code_execution_20260120"]`，模型**仍然可能**直接返回这个工具的 `tool_use` block。它是**引导**，不是权限控制。
+
+工程含义：
+
+- 你的 `run_tool` 路由**必须**能处理任何已定义工具的直接调用——要么正常执行，要么显式拒绝并回填 `is_error`
+- 真正的授权检查（这个调用者有权删这条记录吗？）放在**工具函数内部**，或者更靠后的服务层
+- 不要因为某个工具设了 `allowed_callers` 就以为它"只能被沙箱代码调用"从而省掉鉴权
+
+这和[第 11 部分](#第-11-部分--安全工具结果是不可信输入)是同一条原则：**模型输出是不可信输入，工具边界不是信任边界。**
 
 ## 3.7 `cache_control`
 
@@ -1667,7 +1704,7 @@ tool search 的 `type` 也接受不带日期的别名：`tool_search_tool_regex`
 | 287752 | `response.content[1].input` | Opus 5 默认开 thinking，content 可能是 `[thinking, text, tool_use]` → 索引 1 拿到 text block；`tool_choice: any` 时 content 只有 `[tool_use]` → IndexError | `[b for b in response.content if b.type == "tool_use"]` |
 | 287758 | `if response.stop_reason != "tool_use": break` | `pause_turn` / `refusal` / `model_context_window_exceeded` 都会被当成"完成"，答案静默截断 | 显式分支处理每个 stop_reason（见 [2.4](#24-stop_reason-状态机)） |
 | 287758 | `while True` 无迭代上限 | 工具实现有 bug 时无限循环烧 token | 加 `MAX_ITERATIONS` |
-| 287750 | `max_tokens: 1000` | Opus 5 上 `max_tokens` 是 thinking + 正文的**总上限**，thinking 默认开启会吃预算，容易 `max_tokens` 截断 | 非流式 ~16000，流式 ~64000 |
+| 287750 | `max_tokens: 1000` | Opus 5 上 `max_tokens` 是 thinking + 可见回答的**总硬上限**，thinking 默认开启会吃预算，容易截断 | 按模型/任务/成本自行标定并跑 eval；官方无通用推荐值 |
 
 ## 8.3 走的是废弃路径（仍能跑，但该换）
 
@@ -1700,7 +1737,7 @@ tool search 的 `type` 也接受不带日期的别名：`tool_search_tool_regex`
 
 | 能力 | 价值 |
 |---|---|
-| `strict: true` | 彻底消灭参数缺失/类型错误 |
+| `strict: true` | 从格式层消掉参数缺失/类型错误（业务语义仍需自验） |
 | `input_examples` | 复杂嵌套 schema 的调用准确率 |
 | `defer_loading` + tool search | 上千工具时不炸 context、不破缓存 |
 | `allowed_callers` + PTC | 多步串联时把中间结果挡在 context 之外 |
@@ -1752,6 +1789,7 @@ def get_weather(location: str, unit: str = "celsius") -> str:
 runner = client.beta.messages.tool_runner(
     model="claude-opus-5",
     max_tokens=16000,
+    max_iterations=10,        # ← 别省：不设就只有"模型不再调工具"这一个退出条件
     tools=[get_weather],
     messages=[{"role": "user", "content": "What's the weather in Paris?"}],
 )
@@ -1761,6 +1799,11 @@ for message in runner:
 ```
 
 Schema 从函数签名和 docstring **自动生成**——课程 287753 那一整课的手写 schema 工作被省掉了。`run_tool` 的 if/elif 路由（287749）也不需要了。
+
+> ⚠️ **`max_iterations` 要显式设。** 官方原文：runner "loops until Claude returns a message without a tool use, **or until it reaches `max_iterations` if you set it**"。
+> 不设就意味着**唯一的退出条件是模型主动停止调工具**——工具之间互相触发（A 的结果让模型去调 B，B 的结果又让它回头调 A）时会一直转下去。
+> 手写 loop 里我们加了 `MAX_ITERATIONS`，用 Tool Runner 时这个边界同样不能省。**七个 SDK 都支持这个参数。**
+> 你也可以在循环体里随时 `break` 退出。
 
 ### 常见误解澄清
 
@@ -1900,6 +1943,7 @@ Schema 从函数签名和 docstring **自动生成**——课程 287753 那一�
   ⑤ max_tokens 从 1000 提到 16000
   ⑥ 工具加 strict + additionalProperties: false
   ⑦ 并行结果打包进一条 user 消息（课程结构本就正确，这里显式说明）
+  ⑧ 时区契约：timezone-aware datetime + IANA 时区 + 带 offset 的 ISO 8601
 """
 import json
 import anthropic
@@ -1909,18 +1953,23 @@ MODEL = "claude-opus-5"
 MAX_ITERATIONS = 10
 
 # ── 工具定义 ────────────────────────────────────────────────────────────
+# ⑧ 时区契约：全程用 timezone-aware datetime + IANA 时区名 + 带 offset 的 ISO 8601。
+#    课程原版用裸 datetime.now() 和无时区字符串——部署机器时区、用户时区、
+#    夏令时切换任意一个不同，提醒就会漂到错误的时刻。
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo          # Python 3.9+
 
-def get_current_datetime(date_format: str = "%Y-%m-%d %H:%M:%S") -> str:
-    if not date_format:
-        raise ValueError("date_format cannot be empty")
-    return datetime.now().strftime(date_format)
+def get_current_datetime(timezone: str) -> str:
+    """返回指定 IANA 时区的当前时间，ISO 8601 带 offset。"""
+    return datetime.now(ZoneInfo(timezone)).isoformat()
 
-def add_duration_to_datetime(
-    datetime_str: str, duration: int = 0, unit: str = "days",
-    input_format: str = "%Y-%m-%d %H:%M:%S",
-) -> str:
-    base = datetime.strptime(datetime_str, input_format)
+def add_duration_to_datetime(datetime_str: str, duration: int, unit: str) -> str:
+    """对一个带 offset 的 ISO 8601 时间做加减，返回同样带 offset 的 ISO 8601。"""
+    base = datetime.fromisoformat(datetime_str)
+    if base.tzinfo is None:
+        raise ValueError(
+            f"datetime_str must include a UTC offset (e.g. '2050-01-01T09:00:00-05:00'), got: {datetime_str}"
+        )
     delta = {
         "seconds": timedelta(seconds=duration),
         "minutes": timedelta(minutes=duration),
@@ -1928,30 +1977,37 @@ def add_duration_to_datetime(
         "days":    timedelta(days=duration),
         "weeks":   timedelta(weeks=duration),
     }[unit]
-    return (base + delta).strftime("%A, %B %d, %Y %I:%M:%S %p")
+    return (base + delta).isoformat()
 
 def set_reminder(content: str, timestamp: str) -> str:
-    # 真实实现应写入数据库 / 调用日历 API
-    return f"Reminder set for {timestamp}: {content}"
+    """timestamp 必须是带 offset 的 ISO 8601。真实实现应写库 / 调日历 API。"""
+    when = datetime.fromisoformat(timestamp)
+    if when.tzinfo is None:
+        raise ValueError(
+            f"timestamp must include a UTC offset (e.g. '2050-06-27T09:00:00-04:00'), got: {timestamp}"
+        )
+    # 存储统一转 UTC，展示时再转回用户时区
+    return f"Reminder set for {when.astimezone(ZoneInfo('UTC')).isoformat()} (UTC): {content}"
 
 TOOLS = [
     {
         "name": "get_current_datetime",
         "description": (
-            "Returns the current date and time, formatted with a Python strftime "
-            "format string. Use this whenever the user's request depends on 'now' "
-            "(today, tomorrow, in 3 weeks) and no explicit date was given. It does "
-            "NOT do date arithmetic — use add_duration_to_datetime for that."
+            "Returns the current date and time in a given IANA timezone, as an ISO 8601 "
+            "string with a UTC offset (e.g. '2026-08-02T14:30:00-04:00'). Use this whenever "
+            "the request depends on 'now' (today, tomorrow, in 3 weeks) and no explicit date "
+            "was given. It does NOT do date arithmetic — use add_duration_to_datetime for that. "
+            "Always pass the user's timezone; ask them for it if it is not already known."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "date_format": {
+                "timezone": {
                     "type": "string",
-                    "description": "Python strftime format, e.g. '%Y-%m-%d %H:%M:%S'.",
+                    "description": "IANA timezone name, e.g. 'America/New_York' or 'Asia/Seoul'.",
                 }
             },
-            "required": [],
+            "required": ["timezone"],
             "additionalProperties": False,
         },
         "strict": True,
@@ -1959,27 +2015,27 @@ TOOLS = [
     {
         "name": "add_duration_to_datetime",
         "description": (
-            "Adds a duration to a datetime string and returns the resulting datetime "
-            "in a long human-readable form. Use this for any date arithmetic — the "
-            "model should not compute dates itself. The input datetime must already "
-            "be known; call get_current_datetime first if the base date is 'today'."
+            "Adds a duration to an ISO 8601 datetime and returns the result, also as ISO 8601 "
+            "with a UTC offset. Use this for any date arithmetic — do not compute dates yourself. "
+            "The input MUST include a UTC offset; call get_current_datetime first if the base "
+            "date is 'today'. Note this shifts absolute time, so a result that crosses a daylight "
+            "saving boundary keeps the original offset — convert to the user's timezone for display."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "datetime_str": {"type": "string", "description": "Base datetime string."},
+                "datetime_str": {
+                    "type": "string",
+                    "description": "Base datetime, ISO 8601 with offset, e.g. '2050-01-01T09:00:00-05:00'.",
+                },
                 "duration": {"type": "integer", "description": "Amount to add (may be negative)."},
                 "unit": {
                     "type": "string",
                     "enum": ["seconds", "minutes", "hours", "days", "weeks"],
                     "description": "Unit for the duration.",
                 },
-                "input_format": {
-                    "type": "string",
-                    "description": "strftime format of datetime_str, e.g. '%Y-%m-%d %H:%M:%S'.",
-                },
             },
-            "required": ["datetime_str", "duration", "unit", "input_format"],
+            "required": ["datetime_str", "duration", "unit"],
             "additionalProperties": False,
         },
         "strict": True,
@@ -1987,9 +2043,11 @@ TOOLS = [
     {
         "name": "set_reminder",
         "description": (
-            "Schedules a reminder to be delivered to the user at a specific time. "
-            "Use this only once the exact target timestamp is known — resolve any "
-            "relative date with the datetime tools first. Returns a confirmation string."
+            "Schedules a reminder to be delivered to the user at a specific absolute time. "
+            "Use this only once the exact target timestamp is known — resolve any relative date "
+            "with the datetime tools first. The timestamp MUST include a UTC offset so the "
+            "reminder does not drift across timezones or daylight saving changes. "
+            "Returns a confirmation string."
         ),
         "input_schema": {
             "type": "object",
@@ -1997,7 +2055,7 @@ TOOLS = [
                 "content": {"type": "string", "description": "What to remind the user about."},
                 "timestamp": {
                     "type": "string",
-                    "description": "ISO-8601 timestamp for delivery, e.g. '2050-06-27T09:00:00'.",
+                    "description": "Delivery time, ISO 8601 with offset, e.g. '2050-06-27T09:00:00-04:00'.",
                 },
             },
             "required": ["content", "timestamp"],
@@ -2089,9 +2147,10 @@ def run_conversation(user_input: str) -> str:
 
 
 if __name__ == "__main__":
-    # 课程的测试用例
+    # 课程的测试用例（补上时区——新 schema 要求带 offset）
     print(run_conversation(
-        "Set a reminder for my doctors appointment. Its 177 days after Jan 1st, 2050."
+        "I'm in America/New_York. Set a reminder for my doctors appointment. "
+        "It's 177 days after Jan 1st, 2050."
     ))
 ```
 
@@ -2104,22 +2163,23 @@ from anthropic import beta_tool
 client = anthropic.Anthropic()
 
 @beta_tool
-def get_current_datetime(date_format: str = "%Y-%m-%d %H:%M:%S") -> str:
-    """Returns the current date and time.
+def get_current_datetime(timezone: str) -> str:
+    """Returns the current date and time as ISO 8601 with a UTC offset.
 
     Use this whenever the request depends on 'now' and no explicit date was given.
-    Does NOT do date arithmetic.
+    Does NOT do date arithmetic. Always pass the user's timezone.
 
     Args:
-        date_format: Python strftime format, e.g. '%Y-%m-%d %H:%M:%S'.
+        timezone: IANA timezone name, e.g. 'America/New_York' or 'Asia/Seoul'.
     """
-    return datetime.now().strftime(date_format)
+    return datetime.now(ZoneInfo(timezone)).isoformat()
 
 # ... 同理定义 add_duration_to_datetime / set_reminder
 
 runner = client.beta.messages.tool_runner(
     model="claude-opus-5",
     max_tokens=16000,
+    max_iterations=10,        # ← 和手写 loop 的 MAX_ITERATIONS 等价，别省
     tools=[get_current_datetime, add_duration_to_datetime, set_reminder],
     messages=[{"role": "user", "content":
                "Set a reminder for my doctors appointment. Its 177 days after Jan 1st, 2050."}],
@@ -2222,13 +2282,14 @@ mindmap
 - [Web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool) · [Web fetch tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-fetch-tool)
 - [Tool search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool) · [Programmatic tool calling](https://platform.claude.com/docs/en/agents-and-tools/tool-use/programmatic-tool-calling)
 - [Parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use)
+- [Tool runner (SDK)](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner)
 - [Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
 - [Model migration guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide)
 - [Writing tools for agents（Anthropic Engineering）](https://www.anthropic.com/engineering/writing-tools-for-agents)
 
 <!-- GitHub Pages（Jekyll）不原生渲染 mermaid，这里补一个 CDN 渲染器；在 github.com 直接看 .md 时会被忽略，走 GitHub 自带的 mermaid 渲染。 -->
 <script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.12.0/dist/mermaid.esm.min.mjs";
   document.querySelectorAll("code.language-mermaid").forEach((code) => {
     const pre = code.parentElement;
     const div = document.createElement("div");
