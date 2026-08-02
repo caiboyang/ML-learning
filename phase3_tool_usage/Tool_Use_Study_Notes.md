@@ -684,6 +684,17 @@ with client.messages.stream(
 
 旧 beta header **仍被兼容**：带着它的请求会对所有没显式设置该字段的工具开启细粒度流式；显式设 `false` 的工具即使带着旧 header 也保持缓冲模式。但新代码应该用字段。
 
+> 💡 **两套事件，别搞混**（这是个高频困惑点）：
+>
+> | 用法 | 事件形态 | 怎么读参数片段 |
+> |---|---|---|
+> | `client.messages.stream(...)`（SDK 辅助类） | 在原始事件之外**额外**合成便捷事件 | `event.type == "input_json"` → `event.partial_json` |
+> | `client.messages.create(..., stream=True)`（原始 SSE） | 只有原始事件 | `event.type == "content_block_delta"` 且 `event.delta.type == "input_json_delta"` → `event.delta.partial_json` |
+>
+> 上面那段用的是 `.stream()`，所以 `event.type == "input_json"` 是对的。
+> 注意 `.stream()` **两种事件都会发**——下面「累积契约」那段示例同样用 `.stream()`，但走的是原始的 `content_block_delta` 分支，两种写法都成立。
+> 如果你把 `input_json` 这种写法搬到裸的 `stream=True` 上，循环会一声不响地什么都不打印。
+
 ### 当前文档补充的两件事（课程没讲）
 
 **1. 累积契约**
@@ -694,7 +705,7 @@ with client.messages.stream(
 2. 每个 `content_block_delta` 且 `type: "input_json_delta"` → `input_json += event.delta.partial_json`
 3. `content_block_stop` → 解析累积的字符串
 
-`input: {}`（对象）和 `partial_json`（字符串）的类型不一致是**设计如此**：空对象标记数组里的位置，delta 字符串构建真实值。
+`input: {}` 和 `partial_json` 类型不同是故意设计的：`content_block_start` 里发个空对象 `{}` 只是为了在 `content` 块列表中先占位，后续推过来的 delta 拼接出来的字符串才是真实的参数内容。
 
 **2. 非法 JSON 的标准回填格式**
 
@@ -876,7 +887,7 @@ def safe_path(raw: str) -> Path:
 
 **永远不要**直接拿原始 `path` 去调 `open()` / `writeFile` / `unlink`。
 
-同族的 `bash` 工具（`bash_20250124`，课程没讲）风险更高：在隔离环境（容器 / VM / 受限用户）里跑，用**白名单**限定可执行程序，拒绝 shell 操作符（`&&`、`|`、`;`、`` ` ``、`$()`），设超时和资源上限，记录每一条命令。**黑名单不够。**
+同族的 `bash` 工具（`bash_20250124`，课程没讲）风险更高：**必须在隔离沙箱（容器 / VM / 受限用户）中运行、仅允许白名单内的命令、禁止使用 shell 管道符与拼接符（`&&`、`|`、`;`、`` ` ``、`$()`），同时限制执行超时与资源上限并留存日志。** 仅靠黑名单拦截是不安全的——你没法穷举所有危险命令。
 
 ---
 
@@ -1204,7 +1215,7 @@ else:
 >
 > 这一点两个官方页面说法不一致：Tool reference 页写的是"These properties compose: you can set `defer_loading` and `cache_control` and `strict` on the same tool"，
 > 而 Tool search tool 页明确写"A tool with `defer_loading: true` can't also carry `cache_control`: the API returns a 400."
-> **以后者为准**——它更具体，且直接描述了 API 的报错行为。`defer_loading` + `strict` 组合则确实没问题（官方说明 strict 的语法从完整工具集构建，两者组合不会触发语法重编译）。
+> **以后者为准**——它更具体，且直接描述了 API 的报错行为。`defer_loading` + `strict` 组合则确实没问题——因为 strict 的约束语法是基于全部已加载工具一次性编译生成的，动态加载工具不会导致语法重新编译。
 
 ## 3.3 `input_examples`
 
@@ -1306,7 +1317,7 @@ Python / TypeScript SDK 会自动处理不支持的约束：从发给 API 的 sc
 | `"direct"` | 模型可在 `tool_use` block 里直接调用（**省略 `allowed_callers` 时的默认值**） |
 | `"code_execution_20260120"` | 沙箱里运行的代码可以调用这个工具 |
 
-`"code_execution_20260120"` 和 `"code_execution_20260521"` 在这里**可以互换**——用任一版本的 code execution 工具发请求，都能满足列了其中任一 caller 的工具。响应 block 里的 caller 标记**始终是 `code_execution_20260120`**，无论请求声明了哪个版本。
+`"code_execution_20260120"` 和 `"code_execution_20260521"` 在这里**可以互换**：无论你请求里用哪个版本的 code execution，都能正常调起声明了这两个 caller 中任意一个的工具。响应 block 里的 caller 标记**始终是 `code_execution_20260120`**，无论请求声明了哪个版本。
 
 ```json
 {
@@ -1673,10 +1684,10 @@ tool search 的 `type` 也接受不带日期的别名：`tool_search_tool_regex`
 
 | 关系 | 例子 | 该怎么选 |
 |---|---|---|
-| **能力键控** | `web_search_20260209` 加了 dynamic filtering；`web_fetch_20260309` 加了 cache bypass；`code_execution_20260120` 加了 PTC | 新旧**都是当前版本**，取决于你要不要那个新能力 |
-| **模型键控** | `text_editor_20250728` 给 Claude 4+，`text_editor_20250124` 给更早模型 | 取决于你用的模型（**课程踩的就是这个坑**） |
-| **变体而非版本** | `tool_search_tool_regex_*` vs `..._bm25_*` | 同时发布的两种搜索算法，互不取代 |
-| **遗留版本** | `code_execution_20250522` 只支持 Python；`_20250825` 加了 Bash 和文件操作 | 直接升级 |
+| **按功能特征区分** | `web_search_20260209` 加了 dynamic filtering；`web_fetch_20260309` 加了 cache bypass；`code_execution_20260120` 加了 PTC | 新旧**都是当前版本**，取决于你要不要那个新能力 |
+| **绑定特定模型** | `text_editor_20250728` 是 Claude 4+ 专属，`text_editor_20250124` 给更早模型 | 取决于你用的模型（**课程踩的就是这个坑**） |
+| **并列变体，不分新旧** | `tool_search_tool_regex_*` vs `..._bm25_*` | 同时发布的两种搜索算法，互不取代 |
+| **纯粹的旧版本** | `code_execution_20250522` 只支持 Python；`_20250825` 加了 Bash 和文件操作 | 直接升级 |
 
 `mcp_toolset` 不带日期后缀——版本由 `anthropic-beta` header 承载。
 
@@ -1943,7 +1954,7 @@ Schema 从函数签名和 docstring **自动生成**——课程 287753 那一�
   ⑤ max_tokens 从 1000 提到 16000
   ⑥ 工具加 strict + additionalProperties: false
   ⑦ 并行结果打包进一条 user 消息（课程结构本就正确，这里显式说明）
-  ⑧ 时区契约：timezone-aware datetime + IANA 时区 + 带 offset 的 ISO 8601
+  ⑧ 时区契约：在 IANA 时区里做日历算术，跨 DST 保持本地钟点不变
 """
 import json
 import anthropic
@@ -1953,7 +1964,7 @@ MODEL = "claude-opus-5"
 MAX_ITERATIONS = 10
 
 # ── 工具定义 ────────────────────────────────────────────────────────────
-# ⑧ 时区契约：全程用 timezone-aware datetime + IANA 时区名 + 带 offset 的 ISO 8601。
+# ⑧ 时区契约：全程 timezone-aware，日历算术在 IANA 时区内完成。
 #    课程原版用裸 datetime.now() 和无时区字符串——部署机器时区、用户时区、
 #    夏令时切换任意一个不同，提醒就会漂到错误的时刻。
 from datetime import datetime, timedelta
@@ -1963,8 +1974,15 @@ def get_current_datetime(timezone: str) -> str:
     """返回指定 IANA 时区的当前时间，ISO 8601 带 offset。"""
     return datetime.now(ZoneInfo(timezone)).isoformat()
 
-def add_duration_to_datetime(datetime_str: str, duration: int, unit: str) -> str:
-    """对一个带 offset 的 ISO 8601 时间做加减，返回同样带 offset 的 ISO 8601。"""
+def add_duration_to_datetime(
+    datetime_str: str, duration: int, unit: str, timezone: str
+) -> str:
+    """在指定 IANA 时区里做日历加减，返回带正确 DST offset 的 ISO 8601。
+
+    关键：必须先 astimezone(ZoneInfo) 再做加法。
+    fromisoformat() 只还原出一个「固定 offset」的时区，直接加 timedelta
+    会把原来的 offset 一路带过去——跨夏令时边界时结果就偏一小时。
+    """
     base = datetime.fromisoformat(datetime_str)
     if base.tzinfo is None:
         raise ValueError(
@@ -1977,7 +1995,9 @@ def add_duration_to_datetime(datetime_str: str, duration: int, unit: str) -> str
         "days":    timedelta(days=duration),
         "weeks":   timedelta(weeks=duration),
     }[unit]
-    return (base + delta).isoformat()
+    # 挂回 IANA 时区后再加：offset 会按「结果那天」的 DST 规则重新计算
+    local = base.astimezone(ZoneInfo(timezone))
+    return (local + delta).isoformat()
 
 def set_reminder(content: str, timestamp: str) -> str:
     """timestamp 必须是带 offset 的 ISO 8601。真实实现应写库 / 调日历 API。"""
@@ -2018,8 +2038,9 @@ TOOLS = [
             "Adds a duration to an ISO 8601 datetime and returns the result, also as ISO 8601 "
             "with a UTC offset. Use this for any date arithmetic — do not compute dates yourself. "
             "The input MUST include a UTC offset; call get_current_datetime first if the base "
-            "date is 'today'. Note this shifts absolute time, so a result that crosses a daylight "
-            "saving boundary keeps the original offset — convert to the user's timezone for display."
+            "date is 'today'. Arithmetic is done in the given IANA timezone, so the local "
+            "wall-clock time is preserved across daylight saving boundaries: 9am plus 177 days "
+            "is still 9am local, and the returned offset reflects DST on the result date."
         ),
         "input_schema": {
             "type": "object",
@@ -2034,8 +2055,12 @@ TOOLS = [
                     "enum": ["seconds", "minutes", "hours", "days", "weeks"],
                     "description": "Unit for the duration.",
                 },
+                "timezone": {
+                    "type": "string",
+                    "description": "IANA timezone the arithmetic is performed in, e.g. 'America/New_York'.",
+                },
             },
-            "required": ["datetime_str", "duration", "unit"],
+            "required": ["datetime_str", "duration", "unit", "timezone"],
             "additionalProperties": False,
         },
         "strict": True,
@@ -2287,15 +2312,37 @@ mindmap
 - [Model migration guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide)
 - [Writing tools for agents（Anthropic Engineering）](https://www.anthropic.com/engineering/writing-tools-for-agents)
 
-<!-- GitHub Pages（Jekyll）不原生渲染 mermaid，这里补一个 CDN 渲染器；在 github.com 直接看 .md 时会被忽略，走 GitHub 自带的 mermaid 渲染。 -->
+<!--
+  GitHub Pages（Jekyll）不原生渲染 mermaid，这里补一个 CDN 渲染器。
+  在 github.com 直接看 .md 时这段会被忽略，走 GitHub 自带的 mermaid 渲染。
+
+  选择器要覆盖两种 DOM 结构：
+    - Kramdown + Rouge（GitHub Pages 默认）把 language-mermaid 放在**外层 wrapper** 上：
+      <div class="language-mermaid highlighter-rouge"><div class="highlight"><pre><code>…</code></pre></div></div>
+    - 其他渲染器可能直接放在 <code> 上：<pre><code class="language-mermaid">…</code></pre>
+  只写 code.language-mermaid 会在 GitHub Pages 上一个都匹配不到，页面显示图表源码。
+-->
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.12.0/dist/mermaid.esm.min.mjs";
-  document.querySelectorAll("code.language-mermaid").forEach((code) => {
-    const pre = code.parentElement;
+
+  const blocks = new Set([
+    // Kramdown/Rouge：class 在外层 wrapper 上
+    ...document.querySelectorAll(".language-mermaid code"),
+    // 其他渲染器：class 直接在 code 上
+    ...document.querySelectorAll("code.language-mermaid"),
+  ]);
+
+  blocks.forEach((code) => {
+    // 替换掉最外层的高亮 wrapper，避免残留 Rouge 的背景样式
+    const target =
+      code.closest(".language-mermaid.highlighter-rouge") ||
+      code.closest("pre") ||
+      code;
     const div = document.createElement("div");
     div.className = "mermaid";
     div.textContent = code.textContent;
-    pre.replaceWith(div);
+    target.replaceWith(div);
   });
+
   mermaid.initialize({ startOnLoad: true, theme: "neutral" });
 </script>
