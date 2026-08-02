@@ -9,8 +9,8 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *A comprehensive breakdown of policy gradient algorithms (REINFORCE, RLOO, PPO, GRPO, GSPO, CISPO) bridging intuition, theoretical formulas, and engineering architecture for large language models.*
 
 ### 2. Building with the Claude API
-* [Phase 3: Tool Use Study Notes](https://caiboyang.github.io/ML-learning/phase3_tool_usage/Tool_Use_Study_Notes.html)
-  * *Anthropic Academy「Tool Use」9 课时精炼 + 当前官方文档全面校准。涵盖 tool 定义的 schema 全字段、client vs server tools 的系统架构、逐条报文的请求-响应往返、`stop_reason` agentic loop 状态机、并行调用与 `tool_result` 格式红线、`strict` / `defer_loading` / programmatic tool calling / prompt cache，以及一张**版本漂移对照表**——课程录制于 Claude 3.5/3.7 时代，共 6 处写法已过时（其中 3 处会在当前模型上直接 400 或静默截断答案），逐条给出了修法和现代化重写。*
+* [Phase 3 · Tool Use 周](https://caiboyang.github.io/ML-learning/phase3_tool_usage/Tool_Use_Study_Notes.html)
+  * *工具调用学习笔记，约 55 分钟。从一个前提——**Claude 只能产出文本，碰不到外界**——推出四个问题，四篇 reading 各答一个：schema 怎么写才让模型调对（含 `strict` / `input_examples` / `tool_choice`）、一次调用在协议层怎么往返（`tool_use` → `tool_result`、三条会 400 的格式红线、`stop_reason` 驱动的 agentic loop）、代码到底谁在跑（client vs server tools 及版本语义）、上生产后什么会塌（prompt cache、tool search、programmatic tool calling、间接 prompt injection）。附按症状查表、课程录制后的 API 变更对照，以及一份可直接运行的参考实现。*
 
 ### 3. AI Talks & Interview Distillations
 * [Demis Hassabis × Sequoia AI Ascent 2026 — *Three Quarters of the Way to AGI*](https://caiboyang.github.io/ML-learning/demis-hassabis-agi-ascent-2026/)
