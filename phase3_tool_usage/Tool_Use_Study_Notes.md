@@ -22,6 +22,8 @@ description: "工具调用学习笔记：一个前提推出四个问题，四篇
 
 **节奏**：按建议顺序走，时间自己安排；每篇结构一致：导语 → 正文 → 来源
 
+**配套 PPT**：[Tool_Use_Study_Deck_CN.pptx](./Tool_Use_Study_Deck_CN.pptx)
+
 ---
 
 ### 目录
@@ -251,6 +253,29 @@ Here are the functions available in JSONSchema format:
 
 ### 控制什么时候调：`tool_choice`
 
+`tool_choice` 不是工具定义的一部分，而是 **Messages API 请求级的调用策略**。它不描述工具能做什么，只回答这一轮“允许不调用吗、必须调用吗、必须调用哪一个”。把几层职责拆开看最清楚：
+
+| 层 | 作用 |
+|---|---|
+| `tools` | 给 Claude 一张工具菜单 |
+| `tool_choice` | 规定这一轮要不要选、必须选哪个 |
+| `input_schema` / `strict` | 规定选中工具后，参数必须长什么样 |
+| 你的 handler | 真正执行客户端工具 |
+
+```python
+response = client.messages.create(
+    model="claude-opus-5",
+    max_tokens=1024,
+    tools=TOOLS,
+    # 四选一：
+    tool_choice={"type": "auto"},
+    # tool_choice={"type": "any"},
+    # tool_choice={"type": "tool", "name": "get_weather"},
+    # tool_choice={"type": "none"},
+    messages=[{"role": "user", "content": "旧金山天气如何？"}],
+)
+```
+
 ```mermaid
 flowchart LR
     TC{"tool_choice"} -->|"auto（默认）"| A["模型自己决定"]
@@ -269,11 +294,25 @@ flowchart LR
     style D fill:#fce4ec
 ```
 
-传了 `tools` 时默认 `auto`；没传时默认 `none`。任意取值都可以加 `"disable_parallel_tool_use": true` 限制一次只调一个。
+传了 `tools` 时默认 `auto`；没传时默认 `none`。
+
+> **“无自然语言前言”只说调用之前。** `any` / `tool` 会让这一轮直接从 `tool_use` block 开始，不会先说“我来帮你查”。你执行工具并回填 `tool_result` 后，下一轮仍然可以正常生成最终自然语言答案。
+
+`disable_parallel_tool_use` 要放在 **`tool_choice` 对象里面**，不是顶层请求参数：
+
+```python
+tool_choice={
+    "type": "auto",
+    "disable_parallel_tool_use": True,
+}
+```
+
+- `auto` + `disable_parallel_tool_use: true`：这一轮调用 **零个或一个**工具
+- `any` / `tool` + `disable_parallel_tool_use: true`：这一轮调用**恰好一个**工具
 
 四个坑：
 
-1. **`any` / `tool` 会吞掉自然语言前言。** API 预填 assistant 消息来强制调用，模型不会在 `tool_use` 前输出解释文字，即使你明确要求。想同时要解释和强制调用，用 `auto` + 在 user 消息里明说：`"Use the get_weather tool in your response."` 官方测试表明这不降低性能。
+1. **`any` / `tool` 会吞掉调用前的自然语言前言。** API 预填 assistant 消息来强制调用，模型不会在 `tool_use` 前输出解释文字，即使你明确要求。想同时要解释和强制调用，用 `auto` + 在 user 消息里明说：`"Use the get_weather tool in your response."` 官方测试表明这不降低性能。
 2. **改 `tool_choice` 会让 message 缓存失效**（工具定义和 system prompt 仍缓存）。
 3. **手动 extended thinking 与强制调用不兼容**，`any` / `tool` 直接报错。自适应思考（含 Opus 5 这种默认开思考的）则支持。
 4. 想同时保证"一定调工具"和"参数一定合法"：`tool_choice: any` + `strict: true`。
@@ -283,6 +322,7 @@ flowchart LR
 ### 来源
 
 - **[Define tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools)** — 官方措辞和更多示例；本节已覆盖主体
+- **[Parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use)** — `disable_parallel_tool_use` 的位置和精确语义
 - **[Strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use)** · 可选 — 只需看 schema 支持范围那一节
 - **[Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents)** · 可选 — 工具设计（合并、命名、返回值塑形）的深入版
 - 课程：[Tool schemas](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287753)
