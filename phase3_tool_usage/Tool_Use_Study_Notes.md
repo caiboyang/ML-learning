@@ -80,9 +80,13 @@ flowchart TB
 顺序别打乱，时间怎么分自己定。必修项约 55 分钟外加 Academy 课时。
 
 **Step 1** · Anthropic Academy「Tool Use」单元（需注册，自定进度）· **必修**
+
 **Step 2** · Reading 1 · 定义一个工具（12 min）· **必修**
+
 **Step 3** · Reading 2 · 一次完整的往返（15 min）· **必修**
+
 **Step 4** · Reading 3 · 代码在哪里跑（10 min）· **必修**
+
 **Step 5** · Reading 4 · 生产边界（15 min）· **必修**
 
 附录 A/B/C 不用线性读，需要时查。
