@@ -582,11 +582,13 @@ flowchart LR
 |---|---|---|
 | 执行位置 | 你的应用 | Anthropic 基础设施 |
 | 要写 handler 吗 | ✅ 必须 | ❌ 不用 |
-| 会不会中断成 `stop_reason: tool_use` | ✅ 会，等你回填 | ❌ 单次响应内完成 |
+| 要回填 `tool_result` 吗 | ✅ 必须 | ❌ 不用 |
+| 会不会中断成 `stop_reason: tool_use` | ✅ 会，等你回填 | ❌ 不会（除非和客户端工具混在同一轮） |
+| **会不会中断成 `stop_reason: pause_turn`** | ❌ 不会 | **✅ 会**，内部迭代达上限时 |
 | 结果 block | `tool_result`（你构造） | `web_search_tool_result` 等（API 返回） |
 | 计费 | 只算 token | token + 可能有按次计费 |
 
-服务端工具用起来最省事——一次请求就拿到带引用的答案，不需要 loop：
+服务端工具省掉的是**客户端工具那套 `tool_result` 回填循环**——简单查询确实一次请求就拿到带引用的答案：
 
 ```json
 {
@@ -596,6 +598,10 @@ flowchart LR
   "messages": [{ "role": "user", "content": "火星车最新进展？" }]
 }
 ```
+
+> ⚠️ **但"省掉一种循环"不等于"不需要任何循环"。** 复杂查询下服务端工具的内部循环会达到迭代上限（默认 10 次），此时 API 返回 `stop_reason: "pause_turn"`，你必须把 assistant content 追加进历史再发一次请求让它续跑——机制见 [Reading 2](#从一次往返到循环)。
+>
+> 照抄上面这个单请求示例、不判 `stop_reason` 的后果是：简单查询看着一切正常，复杂查询**静默返回半截答案**，没有任何报错。所以即使只用服务端工具，`stop_reason` 也必须每轮检查。
 
 ### 容易混淆的中间类：Anthropic 定义 schema 的客户端工具
 
