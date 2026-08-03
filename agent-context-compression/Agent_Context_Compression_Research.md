@@ -40,7 +40,7 @@
 | 平台 | 一句话概括 |
 |---|---|
 | **OpenClaw** | 「绝对余量」触发 + 分阶段 map-reduce 摘要 + 质量审计重试；compaction 与 tool-result pruning 是**两套独立机制**，且 pruning 按 **prompt cache TTL** 决定何时动手。 |
-| **Hermes** | 「双层百分比」触发（agent 50% / gateway 85%）+ 四阶段压缩；独有 **micro-compaction**（每回合吞掉一个 exchange 的滚动摘要），并把「**用户消息永不被摘要**」写成硬不变量。 |
+| **Hermes** | 「双层百分比」触发（agent 层配置 50%，但 <512K 模型被下限抬到 **75%** / gateway 85%）+ 四阶段压缩；独有 **micro-compaction**（每回合吞掉一个 exchange 的滚动摘要），并把「**用户消息永不被摘要**」写成硬不变量。 |
 | **OpenHands SDK** | 把 compaction 建模成**事件**（`Condensation`），View 由事件流重放得出；用**二分查找 + 真实 tokenizer** 精确定位切点；condenser 可**管道串联**。 |
 | **Codex CLI** | 最激进：压缩后**丢弃全部 assistant/tool 消息**，只保留 canonical context + **20K token 预算内的原文用户消息** + 摘要；支持**服务端 compaction**和**不做摘要**的 token-budget 模式。 |
 | **Gemini CLI** | 按**字符占比**切 70/30，摘要产出 XML `<state_snapshot>`；独有**二次 probe 自我批判重写**，以及 token 变多就**回滚**的护栏。 |
@@ -113,10 +113,12 @@ flowchart LR
 | 项目 | 头部保护量 |
 |---|---|
 | OpenHands | `keep_first = 2` |
-| Hermes | `protect_first_n = 3`（system prompt 另算） |
+| Hermes | `protect_first_n = 3`（system prompt 另算）—— **仅首次压缩**，之后衰减为 0 |
 | Codex | 只保留 canonical initial context |
 
 头部要的不是「多」，而是**任务定义和硬约束**——system prompt 加最初一两轮就够覆盖，再往后是执行细节，属于可压缩内容。
+
+Hermes 的衰减机制（§4.3）把这条推得更远：早期回合在第一次压缩时已经进了摘要，**此后连那 3 条也不再保护**，只剩 system prompt 永久受保护。源码给的理由是不让早期回合「fossilize」。所以更准确的表述是——头部值得保护的是**任务定义**，而不是「最早的那几条消息」；一旦任务定义已经被摘要接管，原始的早期消息就没有特殊地位了。
 
 对比尾部：Hermes 20K token、OpenClaw 20K token、Cline 20K token、Gemini CLI 后 30%——保护量普遍大一个数量级。因为尾部承载的是**当前工作状态**，模型的下一步动作直接依赖它。
 
@@ -136,7 +138,7 @@ _MAX_TAIL_MESSAGE_FLOOR = 8
 
 ### 2.3 结构化摘要模板 —— 四重收益
 
-九家全部用固定 section 模板，没有一家用「summarize this conversation」。【机制解释】这利用了 LLM 的四个性质：
+内建压缩的九家里，**没有一条摘要路径**用「summarize this conversation」了事：七家用固定 section 或 schema，Codex 与 ADK 至少给出必含要点清单（分档统计见 §15.1）。【机制解释】结构化约束利用了 LLM 的四个性质：
 
 **(1) 降低生成方差。** 自由格式摘要的内容取决于模型当次「觉得什么重要」，同样的历史两次摘要可能侧重完全不同。模板把「什么重要」这个决策从**运行时**前置到**设计时**。
 
@@ -154,7 +156,7 @@ _MAX_TAIL_MESSAGE_FLOOR = 8
 
 【机制解释】摘要是有损压缩。对摘要再摘要，等于有损压缩的级联，误差会累积放大——就像复印件的复印件。一个压过 10 次的会话，如果每次都是「对上一份摘要重新摘要」，最初的信息几乎必然面目全非。
 
-九家的共同解法是把任务**从「再压缩」改成「复制 + 增补」**：
+所有会生成摘要的路径，共同解法都是把任务**从「再压缩」改成「复制 + 增补」**：
 
 > OpenClaw `UPDATE_SUMMARIZATION_PROMPT`：
 > - PRESERVE all existing information from the previous summary
@@ -167,7 +169,7 @@ _MAX_TAIL_MESSAGE_FLOOR = 8
 
 ```mermaid
 flowchart TD
-    A["方案一 · 摘要传递摘要<br/>九家通用"] --> A1["摘要_n = f(摘要_n-1, 新事件)"]
+    A["方案一 · 摘要传递摘要<br/>绝大多数摘要路径"] --> A1["摘要_n = f(摘要_n-1, 新事件)"]
     A1 --> A2["原始材料只被读过一次<br/>此后一直在摘要之间传递"]
     B["方案二 · 事件级重叠<br/>ADK overlap_size"] --> B1["摘要_n 的区间与 摘要_n-1 有交集"]
     B1 --> B2["交集部分的原始事件被完整读过两次<br/>第二次仍是看原文, 不是看转述"]
@@ -573,7 +575,7 @@ flowchart LR
 
 `TURN_PREFIX_SUMMARIZATION_PROMPT` 的 section 是专门设计的：`## Original Request` / `## Early Progress` / `## Context for Suffix` —— 目标不是概括，而是**让保留下来的后半段能被读懂**。
 
-> 这是 8 个项目中**唯一**显式处理「回合被切成两半」的实现。Hermes 的做法相反：`_align_boundary_backward()` 把边界往回推到整个回合之外，宁可少压也不切开。
+> 这是十三家中**唯一**显式处理「回合被切成两半」的实现。Hermes 的做法相反：`_align_boundary_backward()` 把边界往回推到整个回合之外，宁可少压也不切开。
 
 ### 3.7 摘要模板
 
@@ -2008,7 +2010,7 @@ _DEFAULT_PROMPT_TEMPLATE = (
 )
 ```
 
-1. **「在摘要顶部显式声明用户使用的主要语言」** —— 针对的失败模式很具体：压缩之后 agent 突然从中文切回英文。**十家里只有 ADK 处理了这个**（对中文用户尤其相关）。
+1. **「在摘要顶部显式声明用户使用的主要语言」** —— 针对的失败模式很具体：压缩之后 agent 突然从中文切回英文。在所有会生成摘要的实现里**只有 ADK 处理了这个**（对中文用户尤其相关）。
 2. **「准确列出用过的工具名以维持 tool grounding」** —— 压缩后模型容易忘记自己有哪些工具、用过哪些，导致重复调用或幻觉工具名。
 
 还有两个细节：
@@ -2034,7 +2036,7 @@ from ..events._rewind_events import _apply_rewinds
 # "Drop rewound invocations first so the summary covers only live events."
 ```
 
-ADK 支持 rewind（回退到历史某点），压缩前**先应用 rewind**，保证摘要只覆盖仍然有效的事件。**十家里只有 ADK 处理了 rewind × compaction 的交互**（Gemini CLI 有 `docs/cli/rewind.md` 但未见与压缩的耦合处理）。
+ADK 支持 rewind（回退到历史某点），压缩前**先应用 rewind**，保证摘要只覆盖仍然有效的事件。**十三家里只有 ADK 处理了 rewind × compaction 的交互**（Gemini CLI 有 `docs/cli/rewind.md`、LangGraph 有 checkpointer time-travel、Antigravity 有 `/fork`，但均未见与压缩的耦合处理）。
 
 ### 11.7 Context caching 是独立的一层
 
@@ -2049,11 +2051,11 @@ docstring 说明了硬性前提：
 
 > "Caching begins on the **second turn** of a session at the earliest and requires the cacheable prefix to reach the model-specific minimum: **2048 tokens for Gemini 2.5 or 4096 tokens for Gemini 3**. Short or single-turn sessions are therefore never cached."
 
-> 对照：只有 **ADK** 和 **Hermes** 把 caching 做成与 compaction 并列的一等配置项。OpenClaw 走的是第三条路 —— 不单独暴露 caching 配置，而是让 pruning 策略（`cache-ttl`）去**适应** cache 的存在。
+> 对照：只有 **ADK** 和 **Hermes** 把 caching 做成与 compaction 并列的**一等配置项**。OpenClaw 走的是第三条路 —— 不单独暴露 caching 配置，而是让 pruning 策略（`cache-ttl`）去**适应** cache 的存在。（Letta 也有 cache 兼容处理，但那是 self-compact 实现里的一个细节而非配置项，见 §16.5 的两列拆分。）
 
 ### 11.8 观测性
 
-`_build_compaction_attributes()` 把 `session_id` / `trigger`（`token_threshold` vs 滑动窗口）/ `summarizer_type` / `event_count` / 四个配置参数全部打进 OpenTelemetry span（`compact_events {trigger}`），并在结束时记录结果属性。这是**十家里 tracing 做得最完整的**（Cline 有遥测事件但不是 tracing span）。
+`_build_compaction_attributes()` 把 `session_id` / `trigger`（`token_threshold` vs 滑动窗口）/ `summarizer_type` / `event_count` / 四个配置参数全部打进 OpenTelemetry span（`compact_events {trigger}`），并在结束时记录结果属性。这是**十三家里 tracing 做得最完整的**（Cline 有遥测事件但不是 tracing span）。
 
 ---
 
@@ -2131,7 +2133,7 @@ Antigravity 公开的上下文架构由三根柱子构成，**都不是压缩算
 | L6 Persistence | KI 独立于 session 持久化，带回指引用 | Letta 的 recall memory + lookup hints |
 | 检索 | 开场读 KI 摘要 | OpenClaw `postIndexSync`、Hermes `session_search` |
 
-**关键差异（若属实）**：其他九家的压缩都发生在**会话内、达到阈值时、同步阻塞**；这套机制发生在**会话外、结束时、异步**。压缩的产物也不是「替换历史的摘要」，而是「下次会用到的知识」。
+**关键差异（若属实）**：内建压缩的其他九家，压缩都发生在**会话内、被某个条件触发、同步阻塞**（CrewAI 也在会话内，只是触发条件是 provider 报错）；这套机制发生在**会话外、结束时、异步**。产物也不是「替换历史的摘要」，而是「下次会用到的知识」。
 
 ### 12.3 诚实的结论
 
@@ -2149,7 +2151,7 @@ Antigravity 公开的上下文架构由三根柱子构成，**都不是压缩算
 
 前面十家都是「**自带一套压缩策略的成品 agent**」。但还有三个被广泛使用的开源平台，代表了三种**完全不同的责任划分**——把它们排除在外，会让人误以为「agent 平台必然内建 compaction」。
 
-> **统计口径说明**：§14 与 §15 的「9/9」「8/9」「其余七家」等比例，指的是**前九个内建压缩策略的开源平台**（OpenClaw、Hermes、OpenHands、Codex、Gemini CLI、Cline、Goose、Letta、ADK）。本节这三家不参与那些统计——LangGraph 与 AutoGen 根本没有内建摘要器，把它们计入「多少家用结构化模板」只会让分母失去意义。
+> **统计口径说明**：§15 与 §16 的「8/9」「其余七家」等比例，指的是**前九个内建压缩策略的开源平台**（OpenClaw、Hermes、OpenHands、Codex、Gemini CLI、Cline、Goose、Letta、ADK）。本节这三家不参与那些统计——LangGraph 与 AutoGen 根本没有内建摘要器，把它们计入「多少家用结构化模板」只会让分母失去意义。
 
 ### 13.1 LangGraph —— 只给 primitives，策略责任在应用层
 
@@ -2321,7 +2323,12 @@ flowchart TD
 | **Goose** | 百分比 | 0.8 | 摘要替换 | `provider.manages_own_context()` 则跳过 |
 | **Letta** | 百分比 | **1.0**（GPT-5 家族 0.9） | sliding window 保留 30% | 最激进的「晚压」 |
 | **Google ADK** | **两族并存**：token 阈值 / 滑动窗口 cadence | **无默认，不配不压** | 保留 `event_retention_size` 条原始事件 | 两族都配时 token 优先；`overlap_size` 让相邻摘要重叠 |
-| **Antigravity** | n/a（未公开） | n/a | n/a | 架构上靠 Artifacts/KI 外置状态来推迟触顶 |
+| **Antigravity** | n/a（未公开） | n/a | n/a | 架构上靠 subagent 隔离 / skill 渐进披露 / 状态外置来推迟触顶 |
+| *LangGraph* | 由应用在 `pre_model_hook` 里自定 | **无内建策略** | 由应用决定 | 不写 hook 就一直增长到 provider 报错 |
+| *AutoGen* | 确定性视图，每次请求重算 | **`Unbounded`（不限制）** | `Buffered` 最近 N / `HeadAndTail` 前 N 后 M / `TokenLimited` 按 token | 无 LLM 调用；`TokenLimited` 从正中间逐条弹出 |
+| *CrewAI* | **provider 报错后才触发** | 无阈值（纯 reactive） | 全部非-system 历史 → 摘要，**不留 raw tail** | `respect_context_window=False` 时 `SystemExit` |
+
+> 斜体三行是 §13 的框架，责任划分不同，不参与 §15 / §16 的比例统计。
 
 ### 14.2 L1 测量
 
@@ -2380,7 +2387,7 @@ flowchart TD
 | **Google ADK** | **区间式 compaction 事件**（可重叠共存，subsumption 消解），View 由事件流推导 | ✓ 事件不可变，原始事件只是被区间遮蔽 | 事件流可回放；旧 compaction 保留 |
 | **Antigravity** | Knowledge Items 独立于 session 持久化（`~/.gemini/antigravity/`） | ✓ 官方确证 KI 与 Artifacts 落盘 | 官方确证 agent 可访问该目录 |
 
-同一个问题「压缩后原始数据怎么办」，开源九家给出了五种答案：
+同一个问题「压缩后原始数据怎么办」，开源九家给出了六种答案：
 
 ```mermaid
 flowchart LR
@@ -2389,11 +2396,15 @@ flowchart LR
     Q -->|"同 id 重写<br/>旧行标 active=0"| B["Hermes<br/>soft archive"]
     Q -->|"翻转 agent_visible 标志"| C["Goose<br/>双可见性"]
     Q -->|"落在存活区间内<br/>就不进 prompt"| D["ADK<br/>区间遮蔽"]
+    Q -->|"打标记但保留<br/>markPreservedByCompaction"| F["Cline"]
+    Q -->|"新 window / 独立消息表"| G["Codex 窗口链<br/>Letta 消息表 + recall"]
     Q -->|"直接替换数组"| E["Gemini CLI<br/>不保留"]
     A --> R["可检索回捞"]
     B --> R
     D --> R
+    G --> R
     C --> U["UI 看得到全量<br/>但无检索"]
+    F --> U
     E --> N["丢了就是丢了"]
 ```
 
@@ -2411,6 +2422,9 @@ flowchart LR
 | **Letta** | `CompactionSettings`（mode/model/prompt 全可配）+ plugins 系统 |
 | **Google ADK** | `BaseEventsSummarizer` ABC + 自定义 `prompt_template`；触发参数全外露且**无默认值**（策略完全交给应用作者） |
 | **Antigravity** | Rules / Workflows / Skills / MCP（均为上下文**注入**扩展点，非压缩扩展点） |
+| *LangGraph* | **整个策略就是扩展点**：`pre_model_hook` + `RemoveMessage`，且 `messages` / `llm_input_messages` 双输出把「改持久状态」与「只改本次投影」做成了公开契约 |
+| *AutoGen* | `ChatCompletionContext` 基类可继承；四个内置实现都是确定性的 |
+| *CrewAI* | `respect_context_window` 开关 + 可覆盖 summarizer prompt（i18n slice） |
 
 ---
 
@@ -2495,7 +2509,7 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 
 ### 15.7 压缩不销毁数据
 
-8/9 保留全量历史（Gemini CLI 是唯一直接替换内存数组的）。四种解法：append-only entry（OpenClaw / OpenHands）、soft archive（Hermes）、可见性标志（Goose）、**区间遮蔽**（ADK —— 原始事件仍在，只是落在某个存活 compaction 区间内就不进 prompt）。
+8/9 保留全量历史（Gemini CLI 是唯一直接替换内存数组的）。六种解法：append-only entry（OpenClaw / OpenHands）、soft archive（Hermes）、可见性标志（Goose）、**区间遮蔽**（ADK —— 原始事件仍在，只是落在某个存活 compaction 区间内就不进 prompt）、压缩标记保留（Cline）、新窗口链 / 独立消息表（Codex、Letta）。完整分类见 §14.5 的图。
 
 ### 15.8 压缩+检索的组合拳
 
@@ -2524,8 +2538,10 @@ Gemini 0.50 ── Hermes 0.75* ── Goose 0.80 ── Cline 0.90 ── OpenC
   主流模型（Claude 200K、GPT 128K/272K）全部落在这一档；只有 512K+ 的大窗口才真跑 0.50。
 ```
 
-- **早压**（Hermes / Gemini）：每次处理的历史少、摘要质量高、单次成本低；代价是压缩次数多、cache 反复失效、信息经多轮摘要**累积失真**。Hermes 用 `_previous_summary` 迭代更新来对冲。
-- **晚压**（OpenClaw / Letta）：最大化上下文利用，压缩次数最少；代价是单次要处理巨量历史 —— OpenClaw 因此必须做分块 map-reduce，Letta 因此几乎必然遇到「摘要器装不下」。
+- **早压**（Gemini CLI 全程 50%；Hermes 仅在 512K+ 大窗口模型上跑 50%）：每次处理的历史少、摘要质量高、单次成本低；代价是压缩次数多、cache 反复失效、信息经多轮摘要**累积失真**。Hermes 用 `_previous_summary` 迭代更新来对冲。
+- **晚压**（Goose 80%、OpenClaw 90%、Letta 100%；Hermes 在主流的 <512K 模型上因下限落到 75%，实际也在这一侧）：最大化上下文利用，压缩次数最少；代价是单次要处理巨量历史 —— OpenClaw 因此必须做分块 map-reduce，Letta 因此几乎必然遇到「摘要器装不下」。
+
+> 值得注意的是 **Hermes 横跨两侧**：同一份配置（`threshold: 0.50`）在 512K+ 模型上是早压，在 200K 模型上被下限抬成 0.75 变晚压。它的实际位置取决于挂的是哪个模型，这也是本报告初版误判它「默认 50% = 早压」的原因。
 
 **OpenClaw 的绝对余量口径是这个光谱之外的第三种答案**：不问用了百分之多少，只问「还剩不剩得下一次响应」。窗口越大它越晚压 —— 这在 1M 窗口时代比固定百分比更合理。
 
@@ -2538,13 +2554,13 @@ Gemini 0.50 ── Hermes 0.75* ── Goose 0.80 ── Cline 0.90 ── OpenC
 ```mermaid
 flowchart TD
     T{"触发时机选在哪"}
-    T -->|"早压 · Hermes 50% · Gemini 50%"| E1["每次处理的历史少"]
+    T -->|"早压 · Gemini 50% · Hermes 512K+ 模型 50%"| E1["每次处理的历史少"]
     E1 --> E2["摘要质量高<br/>单次成本低"]
     E1 --> E3["压缩次数多<br/>cache 反复失效"]
     E3 --> E4["信息经多轮摘要累积失真"]
     E4 --> E5["对冲：迭代更新 previous_summary<br/>ADK 再加事件级 overlap"]
 
-    T -->|"晚压 · OpenClaw 92%+ · Letta 100%"| L1["每次处理的历史巨大"]
+    T -->|"晚压 · Hermes 小窗口 75% · Goose 80%<br/>OpenClaw 90% · Letta 100%"| L1["每次处理的历史巨大"]
     L1 --> L2["压缩次数最少<br/>上下文利用最大化"]
     L1 --> L3["摘要器很可能装不下"]
     L3 --> L4["对冲：分块 map-reduce · 头尾保留<br/>递减重试 · 源头限流"]
@@ -2688,7 +2704,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 | 维度 | OpenClaw | Hermes |
 |---|---|---|
-| **触发口径** | **绝对余量**（`ctx > window - 16384`），窗口越大越晚压 | **百分比**（0.50），双层（gateway 0.85 兜底），有 per-model 覆盖和小窗口下限 |
+| **触发口径** | **绝对余量**（`ctx > window - reserveTokens`，生效值 **20000**），窗口越大越晚压；200K = 90.0% | **百分比**，双层（gateway 0.85 兜底）。配置默认 0.50，但 **<512K 模型被下限抬到 0.75**；另有三条 per-model/route 覆盖 |
 | **超大历史** | **分块 map-reduce**（0.4 → 0.15 自适应），超大单条消息变占位符 | **头尾保留 + 省略标记**（160K 字符），单次调用 |
 | **切点落在回合中间** | **允许**，并为被切开的前半段做**第二次专门摘要**（`TURN_PREFIX_SUMMARIZATION_PROMPT`） | **不允许**，`_align_boundary_backward()` 把边界推到回合之外 |
 | **持久化** | **append-only session tree**，追加 `compaction` entry + `firstKeptEntryId` 指针 | **in-place 重写同一 session id** + soft archive（`active=0, compacted=1`）。文档称这消灭了整簇 session-rotation bug |
@@ -2744,6 +2760,9 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 19. **把「未闭合义务」而不只是 tool pair 作为切点约束**（ADK）—— 待确认工具、待鉴权请求同样不能被切开
 20. **相邻摘要在原始事件层面重叠**（ADK `overlap_size`）—— 比「摘要传递摘要」更能抑制多轮累积失真
 21. **把状态外置而不是压缩**（Antigravity 的架构取向 + OpenClaw memory flush + Letta sleeptime agent）—— 最好的压缩是不需要压缩
+22. **把产生大宗 tool 输出的子任务整体挪出主上下文**（Antigravity subagent 不继承父历史，官方明说是为防 context pollution）—— 上下文分区，比压缩更彻底
+23. **能力/技能渐进披露**（Antigravity skills：先只给 name + description，匹配上才读全文）—— 从源头避免「加载了又被压掉」的浪费，正好与 Hermes 的 ghost-skill 防御互为上下游
+24. **把「改写持久状态」与「只改本次请求投影」做成两个显式出口**（LangGraph 的 `messages` / `llm_input_messages`；OpenClaw 的 compaction / pruning 之分）—— 两者的失效代价完全不同，混在一起迟早出事
 
 ---
 
