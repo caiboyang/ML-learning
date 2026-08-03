@@ -46,9 +46,31 @@ description: "工具调用学习笔记：一个前提推出四个问题，四篇
 
 ## 本周脉络：一个前提，四个问题
 
-本周所有内容都从一个事实推出来——**Claude 只能产出文本，它碰不到任何东西**。
+### 先看这堵墙
 
-它读不了你的数据库，发不了邮件，看不到今天的天气。所谓"工具调用"，本质上是模型**用一段结构化的 JSON 说出"我想调这个函数、传这些参数"**，然后**你的代码**去真正执行，再把结果说给它听。模型全程没碰过外界。
+问 Claude 一个它答不了的问题：
+
+> **User**：旧金山现在天气怎么样？
+> **Claude**：I'm sorry, but I don't have access to up-to-date weather information.
+
+它不是不会聊天气，是**够不着数据**。默认情况下 Claude 只知道训练数据里的东西——拿不到当前事件、实时数据、你的数据库、你的内部系统。用户要的恰恰是这些，而且这些问题它"本来应该能帮上忙"，所以体验格外挫败。
+
+这就是本周所有内容的起点：
+
+> **Claude 只能产出文本，它碰不到任何东西。**
+
+它读不了你的数据库，发不了邮件，看不到今天的天气。所谓"工具调用"，本质上是模型**用一段结构化的 JSON 说出"我想调这个函数、传这些参数"**，然后**你的代码**去真正执行，再把结果说给它听。模型全程没碰过外界——它拿到的只是你转述给它的文本。
+
+### 绕过这堵墙的四步
+
+1. **发起请求** —— 你把问题连同"可以怎么取外部数据"的说明一起发给 Claude
+2. **工具请求** —— Claude 判断需要额外信息，说出它具体要什么
+3. **取数据** —— **你的服务器**跑代码，去调外部 API 或查数据库
+4. **最终回答** —— 你把取回的数据送回去，Claude 结合原问题和新数据作答
+
+这四步就是 [Reading 2](#reading-2--一次完整的往返) 的全部内容。走通之后，Claude 就从一个静态知识库变成了能处理实时数据的东西——不只是天气，还有股价、库存、工单、你自己系统里的任何东西。
+
+### 四个问题
 
 叠加上一阶段那个前提——**API 是无状态的，每次请求都要把完整历史重发一遍**——就得到本周的四个问题，每篇 reading 答一个：
 
@@ -93,16 +115,20 @@ flowchart TB
 
 附录 A/B/C 不用线性读，需要时查。
 
+> 本节对应课程的 [Introducing tool use](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287747)。
+
 ---
 
 <sub>**课程材料 · 先看**</sub>
 
 ## 课程材料 · 先看
 
-Anthropic Academy《Building with the Claude API》的 Tool Use 单元，九个课时。它把一个手写的 agentic loop 从零建起来——先定 schema，再处理多 block 响应，再回填结果，再套上循环，最后接入内置工具。**这条建构路线是这门课最好的部分**，比任何文档的分类式组织都更容易形成肌肉记忆。
+Anthropic Academy《Building with the Claude API》的 Tool Use 单元，十一个课时。它把一个手写的 agentic loop 从零建起来——先讲清为什么需要工具，再写函数，再定 schema，再处理多 block 响应，再回填结果，再套上循环，最后接入内置工具。**这条建构路线是这门课最好的部分**，比任何文档的分类式组织都更容易形成肌肉记忆。
 
 | 课时 | 内容 |
 |---|---|
+| [Introducing tool use](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287747) | 为什么需要工具；四步往返的全景 |
+| [Tool functions](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287756) | 工具函数本身；命名、校验、错误信息 |
 | [Tool schemas](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287753) | 三段式规格；让 Claude 帮你生成 schema 的技巧 |
 | [Handling message blocks](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287757) | 响应变成多 block；必须完整保存 |
 | [Sending tool results](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287752) | `tool_result` 的三个字段；ID 配对 |
@@ -124,6 +150,35 @@ Anthropic Academy《Building with the Claude API》的 Tool Use 单元，九个�
 ## Reading 1 · 定义一个工具：schema 就是全部接口
 
 模型对你的工具**一无所知**，除了你写进 schema 的那些字。它看不到函数体、看不到你的数据库、不知道调用失败会怎样。这段 JSON 就是全部接口——**description 写得好不好，是决定工具调用质量的头号因素**，其重要性超过模型选择。
+
+### 一个工具是两件东西
+
+**一个普通函数** + **一段描述它的 schema**。
+
+函数本身没有任何特殊之处，就是你早就会写的 Python：
+
+```python
+from datetime import datetime
+
+def get_current_datetime(date_format="%Y-%m-%d %H:%M:%S"):
+    if not date_format:
+        raise ValueError("date_format cannot be empty")
+    return datetime.now().strftime(date_format)
+```
+
+特殊的是**它的调用者是模型**。这带来三条和平时写函数不同的要求：
+
+1. **函数名和参数名要自解释** —— 它们会连同描述一起进入模型的上下文，是模型判断"该不该调这个"的依据之一。`get_current_datetime(date_format)` 比 `get_dt(f)` 强得多。
+2. **校验输入并抛错** —— 不要默默接受空值或非法值。
+3. **错误信息要写清楚** —— 这条最反直觉：
+
+> **Claude 看得见你抛出的错误信息，并会据此重试。**
+
+`raise ValueError("date_format cannot be empty")` 不只是防御性编程，它是你和模型之间的一句话。模型收到这条错误后，往往会带着**修正后的参数再调一次**。写 `"invalid input"` 它无从修正；写 `"Location cannot be empty"` 它立刻知道该补什么。
+
+换句话说，**函数的错误路径也是接口的一部分**，和 description 一样要认真写。这条会在 [Reading 2 的 `is_error`](#失败也要回填) 再出现一次——那里讲的是怎么把这条错误**送回**给模型。
+
+剩下的部分讲另一半：schema。
 
 ### 三个必填字段
 
@@ -325,7 +380,7 @@ tool_choice={
 - **[Parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use)** — `disable_parallel_tool_use` 的位置和精确语义
 - **[Strict tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use)** · 可选 — 只需看 schema 支持范围那一节
 - **[Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents)** · 可选 — 工具设计（合并、命名、返回值塑形）的深入版
-- 课程：[Tool schemas](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287753)
+- 课程：[Tool functions](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287756) · [Tool schemas](https://anthropic.skilljar.com/claude-with-the-anthropic-api/287753)
 
 ---
 
