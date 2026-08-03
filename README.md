@@ -18,7 +18,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ### 4. Agent Engineering
 * [开源 Agent 平台的 Context Compression 机制研究](agent-context-compression/Agent_Context_Compression_Research.md)（含 12 张 Mermaid 图，在 GitHub 上直接渲染）
-  * *十个平台的横向对照：OpenClaw、Hermes Agent、OpenHands SDK、Codex CLI、Gemini CLI、Cline、Goose、Letta、Google ADK、Antigravity。逐文件读源码 + 官方文档交叉验证（冲突处以源码为准，结尾单列一致性说明）。*
+  * *十三个平台的横向对照。内建压缩策略的十家：OpenClaw、Hermes Agent、OpenHands SDK、Codex CLI、Gemini CLI、Cline、Goose、Letta、Google ADK、Antigravity；外加代表另三种责任划分的框架：LangGraph（只给原语）、AutoGen（确定性视图）、CrewAI（overflow-only）。逐文件读源码 + 官方文档交叉验证，附版本快照矩阵；冲突处以源码为准，结尾单列一致性说明（含 OpenClaw 与 Hermes 官方文档各自的一处错误）。*
   * *先建立统一的六层参照模型（测量/触发/选点/减法/重组/持久化）解决各家术语打架的问题；再用一整节讲**设计理念**——头尾保留中间压缩在利用长上下文检索的 U 形曲线（Lost in the Middle）、迭代更新在规避有损压缩的级联失真、保留用户原话背后的信息论不对称、为什么不能告诉模型"上下文快满了"、摘要器为何是一个信任降级点、压缩与 prompt cache 的根本张力；然后逐家深挖，最后横向对比触发哲学（绝对余量 vs 百分比 vs cadence）、减法哲学、持久化模型，以及 OpenClaw × Hermes 逐项对照与可借鉴设计清单。*
 
 ---
