@@ -2915,3 +2915,6 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 - **Hermes 的「摘要模型窗口必须 ≥ 主模型」**：官方文档的这条警告已过时。当前 `main` 的 `check_compression_model_feasibility()` 在**第一次 compression attempt** 才 lazy 执行（不是 session startup），会硬拒 <64K 的 aux 模型，并在 `aux_context < threshold` 时**自动下调本 session 阈值**，而非静默丢中段（§4.3）。
 - **Hermes 的 `protect_first_n`**：仅在**首次**压缩生效。`_effective_protect_first_n()` 在 `compression_count >= 1` 或已有 previous summary 时返回 0，此后只保护 system prompt（§4.3）。初版报告的示意图未标注这一点。
 - **ADK 的 `EventsCompactionConfig`** 在 v2.6.1 仍带 `@experimental`，其配置 schema 不是稳定 API，且不可由 Python 实现外推其他语言 SDK（§11.2）。
+
+<!-- GitHub Pages/Jekyll emits Mermaid fences as code blocks; render them client-side. -->
+<script type="module" src="{{ '/assets/js/mermaid-render.js' | relative_url }}"></script>
