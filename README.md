@@ -17,7 +17,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *An editorial distillation of the 27-minute fireside chat: the 75% / 2030 deadline framing, AI-for-science, simulations as a new method, ML as the right description language for biology, and tool-then-agency sequencing. ([source video](https://www.youtube.com/watch?v=AFpeWo1GTeg))*
 
 ### 4. Agent Engineering
-* [开源 Agent 平台的 Context Compression 机制研究](https://caiboyang.github.io/ML-learning/agent-context-compression/Agent_Context_Compression_Research.html)
+* [开源 Agent 平台的 Context Compression 机制研究](agent-context-compression/Agent_Context_Compression_Research.md)（含 12 张 Mermaid 图，在 GitHub 上直接渲染）
   * *十个平台的横向对照：OpenClaw、Hermes Agent、OpenHands SDK、Codex CLI、Gemini CLI、Cline、Goose、Letta、Google ADK、Antigravity。逐文件读源码 + 官方文档交叉验证（冲突处以源码为准，结尾单列一致性说明）。先建立统一的六层参照模型（测量/触发/选点/减法/重组/持久化）解决各家术语打架的问题，再逐家深挖，最后横向对比：触发哲学（绝对余量 vs 百分比 vs cadence）、减法哲学（map-reduce 分块 / 区间重叠 / 只留用户原话）、持久化模型（append-only 事件 / soft archive / 双可见性），以及 OpenClaw × Hermes 的逐项对照与可借鉴设计清单。*
 
 ---
