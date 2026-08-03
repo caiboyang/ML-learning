@@ -38,7 +38,19 @@ L5  Reassembly     —— 压完怎么拼回去：角色交替合法性、tool c
 L6  Persistence    —— 磁盘上怎么记：原地重写 / 追加事件 / 双可见性 / 可否检索回捞
 ```
 
-**关键洞察**：这八个项目在 L1/L3/L5 上高度趋同（几乎是同一套工程解法），真正拉开差距的是 **L2（触发哲学）**、**L4（减法哲学）** 和 **L6（持久化模型）**。
+**关键洞察**：这些项目在 L1/L3/L5 上高度趋同（几乎是同一套工程解法），真正拉开差距的是 **L2（触发哲学）**、**L4（减法哲学）** 和 **L6（持久化模型）**——下图中标 ⭐ 的三层。
+
+```mermaid
+flowchart TD
+    L1["L1 Measurement 测量<br/>provider usage · 字符估算 · 真 tokenizer"]
+    L2["⭐ L2 Trigger 触发<br/>百分比 · 绝对余量 · 事件数 · cadence · 溢出补救"]
+    L3["L3 Selection 选点<br/>保护头尾 · tool 组原子性 · 切点合法性"]
+    L4["⭐ L4 Reduction 减法<br/>LLM 摘要 · 确定性裁剪 · 去重 · 丢弃 · 服务端压缩"]
+    L5["L5 Reassembly 重组<br/>角色交替 · call/result 配对修复 · cache 影响"]
+    L6["⭐ L6 Persistence 持久化<br/>原地重写 · 追加事件 · 双可见性 · 区间遮蔽"]
+    L1 --> L2 --> L3 --> L4 --> L5 --> L6
+    L6 -.->|"下一回合"| L1
+```
 
 ---
 
@@ -131,6 +143,17 @@ else if (toolResultReducibleChars >= truncateOnlyThresholdChars) route = "trunca
 else                                                             route = "compact_then_truncate";
 ```
 
+```mermaid
+flowchart TD
+    S["发请求前估算 prompt 压力"] --> Q1{"overflowTokens 大于 0"}
+    Q1 -->|"否"| R0["route = fits<br/>什么都不做"]
+    Q1 -->|"是"| Q2{"可裁减的 tool result 字符数 大于 0"}
+    Q2 -->|"否"| R1["route = compact_only<br/>没得裁, 只能摘要"]
+    Q2 -->|"是"| Q3{"可裁减量 ≥ max 溢出+2048字符, 溢出×1.5"}
+    Q3 -->|"是"| R2["route = truncate_tool_results_only<br/>不调 LLM, 最省"]
+    Q3 -->|"否"| R3["route = compact_then_truncate<br/>两个都要"]
+```
+
 **只有当可裁减量「显著超过」溢出量时才走纯裁剪路线** —— 宁可多压一次也不要压完还是不够。同时保底：
 
 ```ts
@@ -200,6 +223,19 @@ function isCutPointMessage(message): boolean {
 **Turn Context (split turn):**
 
 {回合前缀摘要}
+```
+
+```mermaid
+flowchart LR
+    A["早期历史<br/>messagesToSummarize"] --> S1["SUMMARIZATION_PROMPT<br/>maxTokens = 0.8 × reserveTokens"]
+    B["被切开回合的前缀<br/>turnPrefixMessages"] --> S2["TURN_PREFIX_SUMMARIZATION_PROMPT<br/>maxTokens = 0.5 × reserveTokens"]
+    C["被切开回合的后缀<br/>原文保留"] --> K["保留区"]
+    S1 --> M["历史摘要"]
+    S2 --> N["Turn Context 段"]
+    M --> F["最终 summary<br/>两段用 --- 分隔"]
+    N --> F
+    F --> OUT["下一轮上下文"]
+    K --> OUT
 ```
 
 `TURN_PREFIX_SUMMARIZATION_PROMPT` 的 section 是专门设计的：`## Original Request` / `## Early Progress` / `## Context for Suffix` —— 目标不是概括，而是**让保留下来的后半段能被读懂**。
@@ -395,7 +431,26 @@ Hermes 还单独维护了一个离线评测仓库 `NousResearch/hermes-compressi
 
 文档里明确解释了为什么 gateway 层要更高：「Setting it at 50% (same as the agent) caused premature compression on every turn in long gateway sessions.」—— gateway 层用粗估，估不准就会在长会话里每回合都误触发。
 
-阈值解析链（`resolve_model_threshold` + `_effective_threshold_percent`）：
+阈值解析链（`resolve_model_threshold` + `_effective_threshold_percent`）比看起来复杂，是一条四级流水线：
+
+```mermaid
+flowchart TD
+    A["compression.model_thresholds<br/>子串匹配, 最长键胜出"] --> B{"有匹配的键"}
+    B -->|"是"| C["用该覆盖值"]
+    B -->|"否"| D["用全局 threshold = 0.50"]
+    C --> E{"context_window 小于 512K"}
+    D --> E
+    E -->|"是"| F["抬到 0.75 小窗口下限<br/>raise-only, 高于它则保留"]
+    E -->|"否"| G["保持"]
+    F --> H{"Codex OAuth 路由 且 gpt-5.5"}
+    G --> H
+    H -->|"是"| I["抬到 0.85<br/>该路由硬限 272K 的特判"]
+    H -->|"否"| J["最终 threshold"]
+    I --> J
+    J --> K["threshold_tokens = threshold × context_length<br/>输出预留 max_tokens 另计"]
+```
+
+具体规则：
 
 1. `compression.model_thresholds` 子串匹配，**最长键胜出**（`glm-5.2-1M` 压过 `glm-5.2`）
 2. 无匹配 → 全局 `compression.threshold`（默认 0.50）
@@ -439,6 +494,17 @@ _SUMMARY_TOKENS_CEILING = 10_000    # 「摘要本身超过 1K–10K 就成了�
 摘要调用不许在 wire 层设 max_tokens 上限，只能在 prompt 侧限输入 —— 因为截断的摘要比短摘要更糟。这条还有专门的 contract test 守着。
 
 ### 3.3 四阶段压缩
+
+```mermaid
+flowchart TD
+    P1["Phase 1 · 免费预处理<br/>不调 LLM"] --> P1a["md5 去重 · 信息化降级<br/>tool_call 参数截断 · 压力 pass"]
+    P1a --> P15["Phase 1.5 · ghost-skill 防御<br/>SKILL_PRUNED 标记 + 「## Pruned Skills」"]
+    P15 --> P2["Phase 2 · 边界确定"]
+    P2 --> P2a["protect_first_n=3 + system<br/>tail 预算 = 阈值 × 0.20<br/>对齐到 tool 组之外<br/>保证 N 条真实用户消息"]
+    P2a --> P3["Phase 3 · 结构化摘要<br/>调 aux LLM · 输入上限 160K 字符"]
+    P3 --> P4["Phase 4 · 重组<br/>_sanitize_tool_pairs 修孤儿"]
+    P3 -.->|"失败"| FB["auth/network → ABORT 保持不变<br/>其他 → 确定性 fallback 或 ABORT"]
+```
 
 #### Phase 1 — 便宜的 tool result 裁剪（不调 LLM）
 
@@ -542,6 +608,20 @@ _SUMMARY_INPUT_MAX_CHARS = 160_000   # ≈40K token
 ### 3.4 Micro-compaction：Hermes 的独门武器
 
 默认**关闭**（`compression.micro_compact: true` 开启）。它不是「到阈值才压」，而是**每回合的空闲时间吞掉一个 exchange**：
+
+```mermaid
+flowchart LR
+    subgraph B["批量压缩 · 到阈值才动手"]
+        direction LR
+        B1["回合 1"] --> B2["回合 2"] --> B3["…"] --> B4["回合 N<br/>触发"] --> B5["一次性摘要<br/>大量历史"]
+    end
+    subgraph M["micro-compaction · 每回合"]
+        direction LR
+        M1["回合 1<br/>吞 exchange 1"] --> M2["回合 2<br/>吞 exchange 2"] --> M3["…"] --> M4["滚动摘要变胖<br/>≥ 2000 tok"] --> M5["defrag<br/>就地重写 marker"]
+    end
+```
+
+一个 exchange = 第一条 assistant 消息到下一条 user 消息之前的全部内容，**user 消息本身永不被吞**：
 
 ```python
 def _micro_compact(self, messages):
@@ -699,7 +779,19 @@ Condensation(
 )
 ```
 
-`View` 不是被存储的状态，而是**由完整事件流重放推导出来的投影**（`View.from_events`）。Condenser 返回 `View | Condensation`：
+`View` 不是被存储的状态，而是**由完整事件流重放推导出来的投影**（`View.from_events`）。整个机制是一个不动点循环：
+
+```mermaid
+flowchart TD
+    E["完整事件流 events[]<br/>不可变, 只追加"] --> V["View.from_events"]
+    V --> C{"condenser.condense view"}
+    C -->|"返回 View"| A1["agent 正常使用这个 view"]
+    C -->|"返回 Condensation"| A2["agent 必须把它当作本步 action 返回<br/>而不是自己产出 action"]
+    A2 --> E2["Condensation 事件追加进事件流<br/>forgotten_event_ids + summary + summary_offset"]
+    E2 --> E
+```
+
+Condenser 返回 `View | Condensation`：
 
 - 返回 `View` → agent 正常用
 - 返回 `Condensation` → agent **必须把它当作本步的 action 返回**，下一步 condenser 用它推导出新的 View
@@ -871,6 +963,28 @@ fn build_compacted_history_with_limit(mut history, user_messages, summary_text, 
 ```
 
 压缩后的历史 = **canonical initial context** + **20K token 预算内的用户消息原文（从新到旧）** + **摘要（作为最后一条 user 消息）**。
+
+```mermaid
+flowchart LR
+    subgraph BEFORE["压缩前"]
+        direction TB
+        b1["initial context"]
+        b2["user 消息 × N"]
+        b3["assistant 消息 × M"]
+        b4["tool result × K"]
+    end
+    subgraph AFTER["压缩后"]
+        direction TB
+        a1["canonical initial context<br/>重新注入"]
+        a2["user 消息原文<br/>≤ 20K token, 从新往回取<br/>边界那条按剩余预算截断"]
+        a3["摘要, 编码成一条 user 消息"]
+    end
+    b1 --> a1
+    b2 --> a2
+    b3 -.->|"全部丢弃"| X["✗"]
+    b4 -.->|"全部丢弃"| X
+    X -.->|"靠 WorldState 承载<br/>工具状态快照"| a3
+```
 
 **assistant 消息和 tool result 全部丢弃，一条不留。**
 
@@ -1357,7 +1471,35 @@ EventCompaction(
  compaction_2(2-4), event_4(ts=6)]
 ```
 
-组装上下文时（`_process_compaction_events`）：
+```mermaid
+flowchart TD
+    subgraph EV["事件流 · 按时间戳"]
+        direction LR
+        e1["e1<br/>ts=1"] --- e2["e2<br/>ts=2"] --- e3["e3<br/>ts=4"] --- e4["e4<br/>ts=6"]
+    end
+    c1["compaction_1<br/>区间 1 到 2"]
+    c2["compaction_2<br/>区间 2 到 4"]
+    c1 -.->|"覆盖"| e1
+    c1 -.->|"覆盖"| e2
+    c2 -.->|"覆盖"| e2
+    c2 -.->|"覆盖"| e3
+```
+
+注意 `e2` 被**两个区间同时覆盖**，而 `compaction_1` 的区间完全落在 `compaction_2` 之内——这正是 subsumption 要消解的情况。组装上下文时（`_process_compaction_events`）：
+
+```mermaid
+flowchart TD
+    S["收集所有区间完整的 compaction"] --> D{"区间被另一个完全包含"}
+    D -->|"是"| X["丢弃 subsumed"]
+    D -->|"区间完全相同"| Y["保留较晚的那个事件"]
+    D -->|"否"| K["存活"]
+    Y --> K
+    K --> M["在 end_timestamp 处物化成<br/>role=model 的消息"]
+    M --> F["落在任一存活区间内的<br/>原始事件被过滤掉"]
+    F --> O["按时间戳排序<br/>同戳用原始下标做稳定 tie-break"]
+```
+
+具体规则：
 
 1. 收集所有区间完整的 compaction
 2. **Subsumption 消解**：区间被另一个完全包含的就丢弃；区间完全相同则**保留较晚的那个事件**
@@ -1646,6 +1788,23 @@ Antigravity 公开的上下文架构由三根柱子构成，**都不是压缩算
 | **Google ADK** | **区间式 compaction 事件**（可重叠共存，subsumption 消解），View 由事件流推导 | ✓ 事件不可变，原始事件只是被区间遮蔽 | 事件流可回放；旧 compaction 保留 |
 | **Antigravity** | Knowledge Items 独立于 session 持久化（`~/.gemini/antigravity/`） | ✓ 官方确证 KI 与 Artifacts 落盘 | 官方确证 agent 可访问该目录 |
 
+同一个问题「压缩后原始数据怎么办」，开源九家给出了五种答案：
+
+```mermaid
+flowchart LR
+    Q{"压缩后<br/>原始数据怎么办"}
+    Q -->|"追加边界 entry<br/>指针跳过"| A["OpenClaw · OpenHands<br/>append-only"]
+    Q -->|"同 id 重写<br/>旧行标 active=0"| B["Hermes<br/>soft archive"]
+    Q -->|"翻转 agent_visible 标志"| C["Goose<br/>双可见性"]
+    Q -->|"落在存活区间内<br/>就不进 prompt"| D["ADK<br/>区间遮蔽"]
+    Q -->|"直接替换数组"| E["Gemini CLI<br/>不保留"]
+    A --> R["可检索回捞"]
+    B --> R
+    D --> R
+    C --> U["UI 看得到全量<br/>但无检索"]
+    E --> N["丢了就是丢了"]
+```
+
 ### 12.6 可插拔性
 
 | 平台 | 扩展点 |
@@ -1764,6 +1923,23 @@ Hermes 0.50 ── Gemini 0.50 ── Goose 0.80 ── Cline 0.90 ── OpenCl
 **ADK 是第四种答案：不用压力口径，用 cadence 口径。** 滑动窗口触发只问「距上次压缩又完成了几个 invocation」，与 token 用量无关。好处是压缩节奏**可预测**（利于 cache 规划与成本建模），坏处是与真实压力脱钩 —— 所以 ADK 同时提供 token 阈值那一族作为「absolute safety net」，官方文档明确说它是给「大文件上传、大代码块这类不可预测负载」兜底的。
 
 **Antigravity 是第五种取向：尽量不触发。** 把工作状态外置到 Artifacts、把跨会话知识外置到 Knowledge Items、把约定外置到 Rules，从源头压低上下文增长速率（该取向为官方文档确证；具体的触发机制未公开）。
+
+早压和晚压各自会引出一条必然的后果链，以及各自的对冲手段：
+
+```mermaid
+flowchart TD
+    T{"触发时机选在哪"}
+    T -->|"早压 · Hermes 50% · Gemini 50%"| E1["每次处理的历史少"]
+    E1 --> E2["摘要质量高<br/>单次成本低"]
+    E1 --> E3["压缩次数多<br/>cache 反复失效"]
+    E3 --> E4["信息经多轮摘要累积失真"]
+    E4 --> E5["对冲：迭代更新 previous_summary<br/>ADK 再加事件级 overlap"]
+
+    T -->|"晚压 · OpenClaw 92%+ · Letta 100%"| L1["每次处理的历史巨大"]
+    L1 --> L2["压缩次数最少<br/>上下文利用最大化"]
+    L1 --> L3["摘要器很可能装不下"]
+    L3 --> L4["对冲：分块 map-reduce · 头尾保留<br/>递减重试 · 源头限流"]
+```
 
 ### 14.2 「谁的话最不能丢」：三种答案
 
@@ -1928,8 +2104,8 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 ## 16. 可借鉴的设计清单（按投入产出比排序）
 
-1. **迭代更新摘要而非重新摘要** —— 8/8 共识，成本几乎为零
-2. **结构化 section 模板** —— 8/8 共识；Progress 分 Done/In-Progress/Blocked 是最小可用集
+1. **迭代更新摘要而非重新摘要** —— 9/9 共识，成本几乎为零
+2. **结构化 section 模板** —— 9/9 共识；Progress 分 Done/In-Progress/Blocked 是最小可用集
 3. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头
 4. **tool call/result 配对不可破坏 + 事后修复** —— 不做就是 provider 400 错误
 5. **压缩到限额的一半而非刚好达标** —— OpenHands 的迟滞设计，一行代码消除抖动
