@@ -268,7 +268,7 @@ Cline 更进一步，摘要时**强制关掉 thinking**（`thinking: false`）�
 
 ### 2.10 压到一半而不是刚好达标 —— 迟滞
 
-【机制解释】OpenHands 总是压到限额的一半，Hermes 的 tail 预算是阈值的 20%，Cline target 0.7。都不是「压到刚好低于阈值」。
+【机制解释】OpenHands 在阈值触发（`EVENTS` / `TOKENS`）时压到**限额的一半**，Hermes 的 tail 预算是阈值的 20%，Cline target 0.7。都不是「压到刚好低于阈值」。（OpenHands 的显式 `REQUEST` 路径基数不同，是当前 view 的一半，见 §5.3。）
 
 > 注意 Hermes 那个 20% 是**尾部预算**，不是压缩后上下文的总量——重组后的上下文还包含受保护的头部和生成的摘要；而且 tail 的 1.5 倍 soft ceiling 和 `min_tail_user_messages` 保证都可能把尾部撑到超出该预算（§4.3）。所以它的实际迟滞幅度小于「只剩 20%」的字面读法。
 
@@ -1239,7 +1239,15 @@ if Reason.TOKENS  in reasons:  tokens_to_reduce = total_tokens - (self.max_token
 events_from_tail = min(suffix_events_to_keep)   # 多个理由取最严
 ```
 
-**总是压到限额的一半**，而不是压到刚好低于阈值 —— 天然的迟滞，避免每回合都在阈值边缘反复触发。
+**都是压到「一半」，但三个 Reason 的基数不同**，这一点容易看漏：
+
+| 触发原因 | 目标基数 | 含义 |
+|---|---|---|
+| `EVENTS` | `max_size // 2` | 配置**限额**的一半 |
+| `TOKENS` | `max_tokens // 2` | 配置**限额**的一半 |
+| `REQUEST` | `len(view) // 2` | **当前 view** 的一半，与限额无关 |
+
+前两者是相对阈值的迟滞——压到限额一半，留出足够空程，避免每回合都在阈值边缘反复触发。但 `REQUEST` 不同：用户在远未触及 `max_size` / `max_tokens` 时手动请求压缩，目标是当前 view 的一半，**可能远低于限额的一半**。多个 Reason 同时成立时取 `min(suffix_events_to_keep)`，即最严的那个。
 
 > 对照：Hermes 用 `tail_token_budget = threshold × 0.20` 达到同样效果（压完只剩阈值的 20%），Cline 用 `DEFAULT_TARGET_RATIO = 0.7`。
 
@@ -1893,7 +1901,11 @@ flowchart TD
     c2 -.->|"覆盖"| e3
 ```
 
-注意 `e2` 被**两个区间同时覆盖**，而 `compaction_1` 的区间完全落在 `compaction_2` 之内——这正是 subsumption 要消解的情况。组装上下文时（`_process_compaction_events`）：
+这个例子（来自 ADK 源码注释）演示的是**重叠**而非 subsumption：`e2` 同时落在两个区间里，但 `[1,2]` 并不被 `[2,4]` 包含（需要 `other_start <= 1`，而 2 > 1），所以两条 compaction **都会存活**，`e2` 只是作为「落在某个存活区间内的原始事件」被过滤掉一次。
+
+真正触发 subsumption 的是**嵌套**——比如后来又生成了一条 `compaction_3(1-4)`，它完整包住 `compaction_1(1-2)` 与 `compaction_2(2-4)`，这两条就都被判为 subsumed 而丢弃，只留 `compaction_3`。区间完全相同时则保留**较晚**的那个事件。
+
+组装上下文时（`_process_compaction_events`）：
 
 ```mermaid
 flowchart TD
@@ -2333,7 +2345,7 @@ flowchart TD
 |---|---|---|---|---|
 | **OpenClaw** | **绝对余量** | 剩余 < **20000** tok（runtime floor，core 常量 16384 被 `max()` 覆盖） | `keepRecentTokens` 20000 | 200K 窗口 = 90.0%，1M = 98.0%；小窗口另有 cap |
 | **Hermes** | 百分比，双层 | 配置 0.50，但 **<512K 模型实际 0.75** / gateway 0.85 | 阈值 × 0.20 | 三条 per-model/route 覆盖（0.85 / 0.70 / 0.75）；阈值另有 64K 绝对下限 |
-| **OpenHands** | 事件数 + token + 显式请求 | `max_size` 240 events | **限额的一半** | TOKENS/REQUEST=HARD, EVENTS=SOFT |
+| **OpenHands** | 事件数 + token + 显式请求 | `max_size` 240 events | EVENTS/TOKENS → **限额的一半**；REQUEST → **当前 view 的一半** | TOKENS/REQUEST=HARD, EVENTS=SOFT；多因同时成立取最严 |
 | **Codex** | token 限额（Total / BodyAfterPrefix） | `model_auto_compact_token_limit` | 20K 用户消息 + 摘要 | 切换到小窗口模型也触发 |
 | **Gemini CLI** | 百分比 | 0.5 | 保留最后 30%（按字符） | `model.compressionThreshold` 可配 |
 | **Cline** | 百分比 | 0.9 | target 0.7（长会话 0.5） | preserve recent 20000 tok |
@@ -2763,7 +2775,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 2. **结构化摘要约束** —— 无一条路径用「summarize this」了事；其中固定 section 7/9，Codex 与 ADK 只列必含要点。Progress 分 Done/In-Progress/Blocked 是最小可用集
 3. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。九家里七家这么做；OpenHands 走通用事件截断、Codex 直接全丢，是两个例外
 4. **tool call/result 配对不可破坏 + 事后修复** —— 不做就是 provider 400 错误
-5. **压缩到限额的一半而非刚好达标** —— OpenHands 的迟滞设计，一行代码消除抖动
+5. **阈值触发时压到限额的一半而非刚好达标** —— OpenHands 的迟滞设计，一行代码消除抖动（注意其显式请求路径基数是当前 view，不是限额）
 6. **保护用户原话**（Hermes 的理由最有说服力：不可重建且极便宜）
 7. **摘要用便宜的独立模型**（Letta 的 per-provider 默认值最省心）
 8. **压缩不销毁数据 + 留一条检索回捞的路**
