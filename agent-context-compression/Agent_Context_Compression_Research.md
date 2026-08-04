@@ -1744,7 +1744,7 @@ private fitCompactCountToWindow(messages, compactedCount) {
 
 目录：`sdk/packages/core/src/extensions/context/`。
 
-### 8.1 常量
+### 9.1 常量
 
 ```ts
 export const DEFAULT_MAX_INPUT_TOKENS       = 128_000;
@@ -1754,7 +1754,7 @@ export const DEFAULT_PRESERVE_RECENT_TOKENS = 20_000;
 const LONG_CONVERSATION_TARGET_RATIO        = 0.5;    // 长会话压得更狠
 ```
 
-### 8.2 两种内置策略并列
+### 9.2 两种内置策略并列
 
 | | `runBasicCompaction` (709 行) | `runAgenticCompaction` (283 行) |
 |---|---|---|
@@ -1774,7 +1774,7 @@ summarizer 的 provider 配置被强制改写：
 
 **摘要一律关 thinking** —— 摘要不需要推理预算，纯浪费。（对比：OpenClaw 反而给了 `compaction.thinkingLevel` 让你可以**开**。）
 
-### 8.3 摘要模板（最简洁的一档）
+### 9.3 摘要模板（最简洁的一档）
 
 ```
 Summarize this session for continuation. Be concise and factual.
@@ -1788,7 +1788,7 @@ Summarize this session for continuation. Be concise and factual.
 
 `## Files` 的内容由 `extractFileOps` 提取后**直接字符串插值进 prompt**，`ensureFilesSection` 保证它一定在。与 OpenClaw 的 `formatFileOperations` 同构。
 
-### 8.4 compaction 是一等扩展点
+### 9.4 compaction 是一等扩展点
 
 ```
 sdk/examples/plugins/custom-compaction.ts
@@ -1807,7 +1807,7 @@ apps/cli/src/utils/compaction-mode.ts
 
 文件：`crates/goose/src/context_mgmt/mod.rs`、`structured.rs`、`crates/goose/src/prompts/compaction{,_summary}.md`。
 
-### 9.1 触发
+### 10.1 触发
 
 ```rust
 pub const DEFAULT_COMPACTION_THRESHOLD: f64 = 0.8;   // GOOSE_AUTO_COMPACT_THRESHOLD
@@ -1831,7 +1831,7 @@ pub async fn check_if_compaction_needed(...) -> Result<bool> {
 
 官方文档补充：`GOOSE_CONTEXT_STRATEGY` 可选 `summarize` / `truncate` / `clear` / `prompt`（后三个 CLI 专有）。
 
-### 9.2 最独特：schema 约束的 JSON 摘要 + 用户可覆盖的渲染模板
+### 10.2 最独特：schema 约束的 JSON 摘要 + 用户可覆盖的渲染模板
 
 `compaction.md` 要求模型先在 `<analysis>` 里当草稿推理，然后**只输出一个 JSON 代码块**：
 
@@ -1898,7 +1898,7 @@ fn apply_structured_summary(response: &mut Message) {
 
 另有一处契约细节：注释写明 **每个列表都按「最重要的在前」排序**，因为渲染层可能只取前 N 条（`user_intent[:3]`）。排序本身是 schema 契约的一部分，不是巧合。
 
-### 9.3 双可见性：模型视图 ≠ UI 视图
+### 10.3 双可见性：模型视图 ≠ UI 视图
 
 ```rust
 // 1. Original messages become user_visible but not agent_visible
@@ -1911,7 +1911,7 @@ let summary_msg = summary_message.with_metadata(MessageMetadata::agent_only());
 
 > 这是与 OpenClaw（append-only tree + firstKeptEntryId）、Hermes（in-place + soft archive 行）不同的第三种持久化解法，但三者的目标一致：**压缩绝不销毁数据**。
 
-### 9.4 保留最近的用户消息（自动压缩时）
+### 10.4 保留最近的用户消息（自动压缩时）
 
 ```rust
 let (preserved_user_message, is_most_recent) = if !manual_compact {
@@ -1927,7 +1927,7 @@ let (preserved_user_message, is_most_recent) = if !manual_compact {
 
 > 又一次印证了「用户原话最珍贵」这条跨项目共识 —— Codex 20K 预算、Hermes `min_tail_user_messages`、Goose 保留最近一条、Letta 摘要里单独一个 `user_messages` 字段。
 
-### 9.5 按触发来源区分的续接指令
+### 10.5 按触发来源区分的续接指令
 
 ```rust
 const CONVERSATION_CONTINUATION_TEXT: &str =
@@ -1941,7 +1941,7 @@ const MANUAL_COMPACT_CONTINUATION_TEXT: &str = // ...at the user's request...
 
 三种续接词，区别在「接下来该干嘛」：正常对话 / 继续跑工具 / 用户主动要求的。而且都明确要求**不要提起压缩这件事**。
 
-### 9.6 增量 tool-pair 摘要（后台）
+### 10.6 增量 tool-pair 摘要（后台）
 
 ```rust
 const TOOLCALL_SUMMARIZATION_BATCH_SIZE: usize = 10;
@@ -1970,7 +1970,7 @@ if eligible <= cutoff + TOOLCALL_SUMMARIZATION_BATCH_SIZE { return Vec::new(); }
 
 > §20.4 提到「本报告各家的压缩几乎全是同步阻塞在关键路径上」——Goose 的 tool-pair 这条路径和 Hermes 的 micro-compaction 一样是例外，且 Goose 用的是真正的异步任务。
 
-### 9.7 摘要器自己装不下时：逐级剥离 tool response 后重试
+### 10.7 摘要器自己装不下时：逐级剥离 tool response 后重试
 
 这是初版报告漏掉的一条，也是 Goose 最该被抄的机制。`do_compact()` 并不假设「待摘要的内容一定塞得进摘要模型」：
 
@@ -2006,7 +2006,7 @@ for (attempt, &remove_percent) in removal_percentages.iter().enumerate() {
 >
 > 三种解法分别动的是触发点、输入内容、压缩范围——正交，可叠加。
 
-### 9.8 计费口径与保留口径分开
+### 10.8 计费口径与保留口径分开
 
 `CompactionResult` 同时给出两个数，注释解释得很清楚：
 
@@ -2025,7 +2025,7 @@ pub retained_context_tokens: i32,  // 保留：结构化渲染之后真正留在
 
 目录：`letta/services/summarizer/`。
 
-### 10.1 四种模式
+### 11.1 四种模式
 
 ```python
 mode: Literal["all", "sliding_window", "self_compact_all", "self_compact_sliding_window"]
@@ -2047,7 +2047,7 @@ self-compact 的实现细节：摘要请求作为一条 user 消息追加，并�
 >
 > 注意 OpenClaw 和 ADK 都**支持**换模型，只是不配就走主模型；Goose 则是直接用主 provider。
 
-### 10.2 触发：GPT-5 特判
+### 11.2 触发：GPT-5 特判
 
 ```python
 def get_compaction_trigger_threshold(llm_config, *, force_proactive=False) -> int:
@@ -2063,7 +2063,7 @@ def get_compaction_trigger_threshold(llm_config, *, force_proactive=False) -> in
 
 > 与 Hermes 的 Codex gpt-5.5 特判（272K 上限 → 抬到 85%）指向**同一个真实工程约束**，两个项目独立地打了同一个补丁。
 
-### 10.3 按 provider 选便宜的摘要模型
+### 11.3 按 provider 选便宜的摘要模型
 
 ```python
 summarizer_defaults = {
@@ -2077,7 +2077,7 @@ summarizer_defaults = {
 
 **唯一把「摘要用便宜模型」做成 per-provider 默认值**的项目。其他家要么给你一个 `model` 配置项自己填（OpenClaw、Hermes、Cline），要么直接用主模型（Codex）。
 
-### 10.4 摘要 prompt 里的 Lookup hints（与检索配套）
+### 11.4 摘要 prompt 里的 Lookup hints（与检索配套）
 
 `SLIDING_PROMPT` 的五个 section：
 
@@ -2099,7 +2099,7 @@ summarizer_defaults = {
 
 第 3 条的「identifiers verbatim」与 OpenClaw 的 `extractOpaqueIdentifiers` + strict 审计是同一个关切的两种解法：**Letta 靠 prompt 要求，OpenClaw 靠代码验证**。
 
-### 10.5 周边
+### 11.5 周边
 
 - `EphemeralSummaryAgent` / `VoiceSleeptimeAgent` / `sleeptime_multi_agent_v2` —— 后台「睡眠时间」agent 整理长期记忆，与在线 compaction 解耦
 - 旧版 `Summarizer` 的 `STATIC_MESSAGE_BUFFER`（`message_buffer_limit=10` / `message_buffer_min=3`）已标 legacy
@@ -2120,7 +2120,7 @@ summarizer_defaults = {
 | 上下文组装 | `src/google/adk/flows/llm_flows/contents.py`（`_process_compaction_events`） |
 | 模型侧缓存 | `src/google/adk/agents/context_cache_config.py`、`models/gemini_context_cache_manager.py` |
 
-### 11.1 最本质的差异：区间式 compaction，可重叠共存
+### 12.1 最本质的差异：区间式 compaction，可重叠共存
 
 前面八个可核实的开源实现都以**一个切点**划分待压缩前缀与保留后缀。ADK 不是 —— 它的 compaction 是一个**带时间区间的事件**：
 
@@ -2182,7 +2182,7 @@ flowchart TD
 
 **这等于把「历史的哪一段被什么摘要覆盖」做成了一个可查询的区间集合**，而不是一个不可逆的指针推进。旧 compaction 不用删除，被新的更大区间自然吞掉。
 
-### 11.2 两族触发，必须至少配一族
+### 12.2 两族触发，必须至少配一族
 
 > ⚠️ **稳定性限定**：在 ADK Python **v2.6.1**（本报告核对版本）中，`EventsCompactionConfig` 与 `ResumabilityConfig` 都带 `@experimental` 装饰器。下面的配置 schema 不应被当作稳定 API，且**不能由 Python 实现外推其他语言 SDK 的 API 形状**（官方文档中 TypeScript 侧是 `LlmAgent` 上的 `contextCompactors`，形状就不同）。
 
@@ -2215,7 +2215,7 @@ if not (token_threshold_set or compaction_interval_set):
 
 官方文档补充了两族的定位与优先级：token 阈值是「absolute safety net」（应对大文件上传、大代码块这类不可预测负载），滑动窗口适合「regular, predictable text chats」；**两者都配时 token 优先**，token 压缩触发的那一回合跳过滑动窗口压缩。
 
-### 11.3 `overlap_size`：让相邻摘要故意重叠（独一份）
+### 12.3 `overlap_size`：让相邻摘要故意重叠（独一份）
 
 滑动窗口触发时，新的压缩区间**从上一个区间末尾往回退 `overlap_size` 个 invocation 开始**。源码 docstring 的例子（`compaction_interval=2, overlap_size=1`）：
 
@@ -2233,7 +2233,7 @@ session: [E(1), E(1), E(2), E(2), C[1,2], E(3), E(3), E(4), E(4), C[2,4]]
 >
 > 顺带一提，ADK 的 token 阈值路径**两种手段都用**：`_events_to_compact_for_token_threshold()` 会把上一个 compaction 的 `compacted_content` 作为 **seed event 放在待压缩列表最前面**，注释「so the next summary can supersede it」。
 
-### 11.4 安全边界：把「未闭合的义务」推广到工具确认与鉴权
+### 12.4 安全边界：把「未闭合的义务」推广到工具确认与鉴权
 
 其他平台只保证 tool call/result 配对。ADK 把它抽象成**未闭合义务（open obligations）**：
 
@@ -2266,7 +2266,7 @@ def _longest_self_contained_prefix(events: list[Event]) -> list[Event]:
 
 —— 长时工具调用会让 call 和真实 response 跨越压缩边界，需要把被压掉的 call 事件**重新注入**回去。这是别处没有处理的一类边界情况。
 
-### 11.5 摘要 prompt：两条别人没有的指令
+### 12.5 摘要 prompt：两条别人没有的指令
 
 ```python
 _DEFAULT_PROMPT_TEMPLATE = (
@@ -2303,7 +2303,7 @@ _MAX_TOOL_CONTENT_CHARS = 2000
 
 摘要器是可替换的（`BaseEventsSummarizer` ABC），`prompt_template` 可自定义，摘要模型独立于 agent 模型。
 
-### 11.6 与 rewind 的交互
+### 12.6 与 rewind 的交互
 
 ```python
 from ..events._rewind_events import _apply_rewinds
@@ -2312,7 +2312,7 @@ from ..events._rewind_events import _apply_rewinds
 
 ADK 支持 rewind（回退到历史某点），压缩前**先应用 rewind**，保证摘要只覆盖仍然有效的事件。可核实实现里**只有 ADK 处理了 rewind × compaction 的交互**（Gemini CLI 有 `docs/cli/rewind.md`、LangGraph 有 checkpointer time-travel、Antigravity 有 `/fork`，但均未见与压缩的耦合处理）。
 
-### 11.7 Context caching 是独立的一层
+### 12.7 Context caching 是独立的一层
 
 ```python
 class ContextCacheConfig(BaseModel):
@@ -2327,7 +2327,7 @@ docstring 说明了硬性前提：
 
 > 对照：只有 **ADK** 和 **Hermes** 把 caching 做成与 compaction 并列的**一等配置项**。OpenClaw 走的是第三条路 —— 不单独暴露 caching 配置，而是让 pruning 策略（`cache-ttl`）去**适应** cache 的存在。（Letta 也有 cache 兼容处理，但那是 self-compact 实现里的一个细节而非配置项，见 §17.5 的两列拆分。）
 
-### 11.8 观测性
+### 12.8 观测性
 
 `_build_compaction_attributes()` 把 `session_id` / `trigger`（`token_threshold` vs 滑动窗口）/ `summarizer_type` / `event_count` / 四个配置参数全部打进 OpenTelemetry span（`compact_events {trigger}`），并在结束时记录结果属性。这是**可核实实现里 tracing 做得最完整的**（Cline 有遥测事件但不是 tracing span）。
 
@@ -2339,7 +2339,7 @@ docstring 说明了硬性前提：
 >
 > 因此本节严格分成两块：**(A) 官方文档确证的**、**(B) 第三方博客描述、未经官方证实的**。不做无依据的推断。
 
-### 12.1 (A) 官方文档确证：外部持久化 + 上下文分区，而非公开的压缩算法
+### 13.1 (A) 官方文档确证：外部持久化 + 上下文分区，而非公开的压缩算法
 
 Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱子上。它们**都不是压缩算法**，但也不能一概归结为「把状态搬到上下文之外」：Artifacts 与 KI 确实是外部持久化，Rules 恰恰相反——它是被当作稳定、可复用的 prompt context 注入进来的。
 
@@ -2398,7 +2398,7 @@ Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱�
 
 > 这与 §16 的通用共识形成有趣对照：OpenClaw 的 memory flush（压缩前先让 agent 写盘）+ `postCompactionSections`（压缩后重注入 AGENTS.md 章节）、Letta 的 sleeptime agent、Hermes 的四层记忆引擎，本质上都在做同一件事的**局部版本**。Antigravity 把它做成了架构主线。
 
-### 12.2 (B) 第三方描述（未经官方证实，仅供参考）
+### 13.2 (B) 第三方描述（未经官方证实，仅供参考）
 
 多篇第三方分析（见 §21 来源）描述了以下机制。**这些说法我在官方文档中未能找到对应表述，请以「社区观察」而非「事实」对待**：
 
@@ -2418,7 +2418,7 @@ Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱�
 
 不过这个对比要限定在批量路径上，因为其他平台也有若干**不由阈值触发**的路径：Hermes micro-compaction 按回合 cadence、Goose 的 tool-pair 摘要跑在后台（也不阻塞）、OpenHands 可由显式请求或事件数触发、ADK 的滑动窗口按 invocation cadence、CrewAI 则由 provider 报错触发。真正只有 Antigravity 独有的是「**会话外**」这一点。
 
-### 12.3 诚实的结论
+### 13.3 诚实的结论
 
 就本研究关心的问题——**「当上下文快满时这个平台具体怎么做」**——Antigravity 没有可核实的公开答案。已知的只是：
 
@@ -2436,7 +2436,7 @@ Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱�
 
 > **统计口径说明**：§16 与 §17 的「8/10」「其余七家」等比例，指的是**十个内建压缩策略的开源平台**（OpenClaw、Hermes、OpenHands、Codex、opencode、kimi-code、Cline、Goose、Letta、ADK）。已停服的 Gemini CLI 不在其中（附录 A）。本节三个生态不参与那些统计。LangGraph core 与 AutoGen 的内置 context classes 没有语义摘要器；LangChain v1 agent layer 虽有可选的 `SummarizationMiddleware`，但它不是 LangGraph core 的默认行为，也没有配置 trigger 就不运行。把这三种不同责任边界硬塞进十家的比例分母，反而会失真。
 
-### 13.1 LangGraph core / LangChain agent layer —— 原语之上已有可选内建策略
+### 14.1 LangGraph core / LangChain agent layer —— 原语之上已有可选内建策略
 
 仓库：`langchain-ai/langgraph` @ `b2926a0f`；`langchain-ai/langchain` @ `dd608197`。
 
@@ -2486,7 +2486,7 @@ Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱�
 
 但它有一个值得单列的失败语义：`_create_summary()` 捕获异常后返回 `"Error generating summary: ..."`，调用方仍会用这条错误文本替换旧历史，再拼回 recent tail；它不像 OpenClaw/Hermes 那样 abort 或做确定性 fallback。这说明「框架提供内建策略」不等于已经给出最保守的生产默认值。
 
-### 13.2 AutoGen —— 确定性请求视图，不做语义摘要
+### 14.2 AutoGen —— 确定性请求视图，不做语义摘要
 
 仓库：`microsoft/autogen` @ `027ecf0a`，核心在 `python/packages/autogen-core/src/autogen_core/model_context/`。
 
@@ -2539,7 +2539,7 @@ while token_count > self._token_limit and len(messages) > 0:
 
 **范式定位**：默认 unbounded，压缩全部是**确定性的请求视图变换**，无 LLM 调用、无信息重组。优点是零成本、完全可预测、**没有 LLM 引入的失真**；但它**不是无损的**——`HeadAndTail` 整段丢弃中间、`TokenLimited` 逐条挖掉正中间，都是确定性的信息丢失，只是丢得可预测而已。与摘要路线的真正区别是「丢掉 vs 转述」，不是「无损 vs 有损」。
 
-### 13.3 CrewAI —— 只在 provider 报错之后才反应
+### 14.3 CrewAI —— 只在 provider 报错之后才反应
 
 仓库：`crewAIInc/crewAI` @ `c8f441cf`，核心在 `lib/crewai/src/crewai/utilities/agent_utils.py`。
 
@@ -2592,7 +2592,7 @@ merged_summary = "\n\n".join(content["content"] for content in summarized_conten
 - **不保留 recent raw tail**，最近的工作状态也会被摘要，模型失去所有原文近邻
 - 关掉 `respect_context_window` 就是进程退出，没有降级路径
 
-### 13.4 三种范式与十个开源平台、闭源 Antigravity 的关系
+### 14.4 三种范式与十个开源平台、闭源 Antigravity 的关系
 
 ```mermaid
 flowchart TD
@@ -2625,7 +2625,7 @@ flowchart TD
 
 > Antigravity 因闭源且官方未公开机制，仅在有确证信息的行出现，其余留空并标注 `n/a（未公开）`。
 
-### 14.1 L2 触发
+### 15.1 L2 触发
 
 | 平台 | 触发口径 | 默认值 | 压到多少 | 备注 |
 |---|---|---|---|---|
@@ -2647,7 +2647,7 @@ flowchart TD
 
 > 斜体三行是 §14 的框架，责任划分不同，不参与 §16 / §17 的比例统计。
 
-### 14.2 L1 测量
+### 15.2 L1 测量
 
 | 平台 | 真实 tokenizer | provider usage | 字符估算 | 特殊之处 |
 |---|:-:|:-:|:-:|---|
@@ -2661,7 +2661,7 @@ flowchart TD
 | Letta | ✓ `count_tokens_with_tools` | — | — | — |
 | Google ADK | — | ✓ 「most recently observed prompt token count」 | ✓ `_estimate_prompt_token_count` 镜像真实组装路径 | 估算刻意复用 contents processor 的组装逻辑，避免估算与实际发送不一致 |
 
-### 14.3 L3 保护策略
+### 15.3 L3 保护策略
 
 | 平台 | 头部保护 | 尾部保护 | tool 组原子性 | 用户消息特殊待遇 |
 |---|---|---|---|---|
@@ -2675,7 +2675,7 @@ flowchart TD
 | Letta | system message | `sliding_window_percentage` 30% | — | 摘要里 `user_messages` 独立字段 |
 | **Google ADK** | — | `event_retention_size` 条原始事件 | ✓✓ **最严**：function call + **待确认工具** + **待鉴权请求**都算未闭合义务；另有切点前移与被压 call 重注入 | — |
 
-### 14.4 L4 摘要形态
+### 15.4 L4 摘要形态
 
 | 平台 | 输出格式 | 迭代更新 | 摘要模型 | 质量保障 |
 |---|---|---|---|---|
@@ -2691,7 +2691,7 @@ flowchart TD
 | Letta | Markdown 5 sections | ✓ | **per-provider 便宜模型默认值** | `clip_chars` 50000 + ack |
 | **Google ADK** | 自由格式 + 两条硬指令（**声明用户语言** / **列出用过的工具名**） | ✓ **分路径**：token-threshold 用上轮摘要作 seed；sliding-window 用 `overlap_size` 重看原始事件，并非单次同时使用两者 | `BaseEventsSummarizer` 可换，模型独立 | 上轮摘要的 thought 不进下一轮；tool 内容截断至 2000 字符 |
 
-### 14.5 L6 持久化
+### 15.5 L6 持久化
 
 | 平台 | 模型 | 全量历史是否保留 | 能否检索回捞 |
 |---|---|:-:|---|
@@ -2727,7 +2727,7 @@ flowchart LR
     E --> N["丢了就是丢了"]
 ```
 
-### 14.6 可插拔性
+### 15.6 可插拔性
 
 | 平台 | 扩展点 |
 |---|---|
@@ -2753,32 +2753,34 @@ flowchart LR
 > 不含闭源且未公开机制的 Antigravity，也不含 §14 三个框架生态。LangGraph core 与 AutoGen 内置 context classes 没有语义摘要器；LangChain v1 虽有可选 middleware，但不是默认启用的平台级行为，计入同一分母仍会让统计失去意义。
 > 涉及「有几条摘要路径」的统计另按**路径**而非平台计数，具体见各条。
 
-### 15.1 结构化摘要模板，而非「summarize this」
+### 16.1 结构化摘要模板，而非「summarize this」
 
 这里必须**按路径而不是按平台**统计，否则会把一条路径的行为泛化成整个平台。开源十家里会生成语义摘要的路径共 10 条（Codex 的 token-budget 路径和 Cline 的 `basic` 路径根本不调 summarizer，不在此列），按约束强度分三档：
 
 | 档位 | 平台 | 形态 |
 |---|---|---|
-| **固定 section，强约束** | OpenClaw、Hermes、Cline（agentic）、Letta、OpenHands | Markdown `##` 小节，缺 section 可被程序检出 |
-| **固定 schema，最强约束** | Goose（JSON schema）、Gemini CLI（XML `<state_snapshot>`） | 可解析、可校验 |
+| **固定 section，强约束** | OpenClaw、Hermes、Cline（agentic）、Letta、OpenHands、**opencode** | Markdown `##` 小节，缺 section 可被程序检出 |
+| **固定 schema，最强约束** | Goose（JSON schema） | 可解析、可校验 |
 | **只列必含要点，不强制结构** | Codex、ADK | 自由格式，但规定「必须包含什么」 |
+| **显式拒绝固定结构** | **kimi-code** | 约束改在视角（第一人称）、时态（现在时）与六类必含内容上（§8.5） |
+| *（附录 A）* | *Gemini CLI（XML `<state_snapshot>`，属固定 schema 一档）* | *已停服，不计入 7/10* |
 
 准确的说法是：**没有任何一条路径用「summarize this conversation」了事**——但「固定 section」只覆盖 7/10，Codex 与 ADK 给的是要点清单，kimi-code 则是**明确拒绝**固定 section 的第三种形态（§8.5）。下面这张对照表因此只统计前两档：
 
-| 通用语义 | OpenClaw | Hermes | OpenHands | Gemini CLI | Cline | Goose | Letta |
+| 通用语义 | OpenClaw | Hermes | OpenHands | opencode | Cline | Goose | Letta |
 |---|---|---|---|---|---|---|---|
-| 目标 | `## Goal` | `## Goal` | `USER_CONTEXT` | `<overall_goal>` | `## Goal` | `user_intent` | High level goals |
-| 约束/偏好 | `## Constraints & Preferences` | 同 | — | `<active_constraints>` | — | — | — |
-| 进度 | `## Progress` (Done/InProgress/Blocked) | 同 | `COMPLETED`/`PENDING` | `<task_state>` | `## State` | `pending_tasks`/`current_work` | What happened |
-| 决策 | `## Key Decisions` | 同 | — | `<key_knowledge>` | `## Highlights` | `problem_solving` | — |
-| 文件 | 代码注入 | `## Relevant Files` | `CODE_STATE` | `<artifact_trail>`/`<file_system_state>` | 代码注入 | `files[]` | Important details |
-| 下一步 | `## Next Steps` | 同 | `PENDING` | `<task_state>` | `## Next` | `next_step` | — |
-| 关键数据 | `## Critical Context` | 同 | `CURRENT_STATE` | `<key_knowledge>` | — | `technical_concepts` | — |
+| 目标 | `## Goal` | `## Goal` | `USER_CONTEXT` | `## Objective` | `## Goal` | `user_intent` | High level goals |
+| 约束/偏好 | `## Constraints & Preferences` | 同 | — | `## Important Details` | — | — | — |
+| 进度 | `## Progress` (Done/InProgress/Blocked) | 同 | `COMPLETED`/`PENDING` | `## Work State`（Completed/Active/Blocked） | `## State` | `pending_tasks`/`current_work` | What happened |
+| 决策 | `## Key Decisions` | 同 | — | `## Important Details` | `## Highlights` | `problem_solving` | — |
+| 文件 | 代码注入 | `## Relevant Files` | `CODE_STATE` | `## Relevant Files`（路径: 为什么重要） | 代码注入 | `files[]` | Important details |
+| 下一步 | `## Next Steps` | 同 | `PENDING` | `## Next Move`（1. / 2.） | `## Next` | `next_step` | — |
+| 关键数据 | `## Critical Context` | 同 | `CURRENT_STATE` | `## Important Details` | — | `technical_concepts` | — |
 | 错误 | (safeguard 单列) | — | `TESTS` | — | — | `errors_and_fixes` | Errors and fixes |
 
 ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补了两条别人没有的**硬指令**：声明用户语言、列出用过的工具名（见 §12.5）。
 
-### 15.2 「保留精确标识符」是共同焦虑
+### 16.2 「保留精确标识符」是共同焦虑
 
 - OpenClaw：正则提取 + strict 模式**校验后重试**
 - Hermes：`identifierPolicy` 概念 + `_PATH_MENTION_RE` 在 fallback 里抓路径
@@ -2790,7 +2792,7 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 
 大家都发现了同一个失败模式：**LLM 摘要会把 `abc123f` 写成「the commit」，把 `src/foo/bar.ts:42` 写成「the config file」**。
 
-### 15.3 旧摘要如何参与下一轮：三类做法，不是一条共识
+### 16.3 旧摘要如何参与下一轮：三类做法，不是一条共识
 
 同样要按路径统计。重复压缩时，旧摘要参与下一轮的方式至少分成「显式更新」「仅作为普通历史再次入模」「用原始事件 overlap 替代摘要传递」三类，不能合并成一个 10/10 共识：
 
@@ -2799,7 +2801,7 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 - **只是把旧摘要一并喂进去，无更新指令**：**Codex**——它的 prompt（§6.4）只说「create a handoff summary」，没有任何 preserve/copy/edit 要求；上一份摘要只是恰好在历史里。严格说这就是 summary-of-summary，是本节警告的那种级联，不该算作「迭代更新」。
 - **ADK 两条路径手段不同**（§12.3 已区分）：token-threshold 路径把上一份 compaction content 作为 seed event 放进待压缩列表最前（「so the next summary can supersede it」）；sliding-window 路径不用 seed，而是靠 `overlap_size` 让相邻摘要在**原始事件层面**重叠、重看 raw invocations。
 
-### 15.4 tool call / result 配对不可破坏
+### 16.4 tool call / result 配对不可破坏
 
 8/10 显式处理。两个例外的理由完全不同：**Codex** 把 assistant/tool 消息全丢，无所谓配对；**opencode** 把历史压平成文本，配对这个概念不再存在（§7.3）。四种实现：
 - 分组扫描（OpenClaw `pendingToolCallIds`、Goose tool pair）
@@ -2809,7 +2811,7 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 
 事后修复也很普遍：Hermes `_sanitize_tool_pairs()`（孤儿 result 删除、孤儿 call 补 stub）、OpenClaw `repairToolUseResultPairing()`、ADK `_recover_compacted_function_calls()`（专治长时工具调用跨越压缩边界导致 response 变孤儿）。
 
-### 15.5 tool result 是第一压缩目标（且与对话摘要分开处理）
+### 16.5 tool result 是第一压缩目标（且与对话摘要分开处理）
 
 **tool 输出是 token 大头**，十家里确认七家为它单独设了一层处理（下表）。opencode 的 `TOOL_OUTPUT_MAX_CHARS = 2_000` 属于最简形态；OpenHands 走通用事件截断、Codex 直接全丢；**kimi-code 未见独立的 tool-result 层**（`compactionOps.ts` 未通读，存疑）。
 
@@ -2820,24 +2822,25 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 | OpenClaw | `contextPruning` 独立配置（cache-ttl 模式）+ 预检路由可选「只裁 tool result」 |
 | Hermes | Phase 1 免费预处理（降级 + 去重 + 参数截断 + 压力 pass） |
 | Goose | 后台增量 tool-pair 摘要（batch 10）+ `filter_tool_responses(percent)` |
-| Gemini CLI *(附录 A)* | `COMPRESSION_FUNCTION_RESPONSE_TOKEN_BUDGET = 50_000` |
 | Letta | `TOOL_RETURN_TRUNCATION_CHARS` |
 | Cline | `summarizeToolResults()` 统计 + budget projection |
 | ADK | `_MAX_TOOL_CONTENT_CHARS = 2000`，注释直言「so compaction does not **inflate the very context it exists to shrink**」 |
+| **opencode** | `TOOL_OUTPUT_MAX_CHARS = 2_000`，在 `serialize()` 压平成文本时截断——全场最简形态 |
+| *Gemini CLI（附录 A）* | *`COMPRESSION_FUNCTION_RESPONSE_TOKEN_BUDGET = 50_000`，已停服，不计入 7/10* |
 
-### 15.6 用便宜的独立模型做摘要
+### 16.6 用便宜的独立模型做摘要
 
 7/10 明确支持（Codex 用主模型或服务端、**opencode 直接用主模型**、kimi-code 未核实）。Letta 做得最彻底（per-provider 默认值）；ADK 的 `BaseEventsSummarizer` 把摘要器整体抽象成可替换组件。
 
-### 15.7 压缩不销毁数据
+### 16.7 压缩不销毁数据
 
 9/10 保留全量历史（kimi-code 的持久化层未核实；此前唯一直接替换内存数组的 Gemini CLI 已移入附录 A）。六种解法：append-only entry（OpenClaw / OpenHands）、soft archive（Hermes）、可见性标志（Goose）、**区间遮蔽**（ADK —— 原始事件仍在，只是落在某个存活 compaction 区间内就不进 prompt）、压缩标记保留（Cline）、新窗口链 / 独立消息表（Codex、Letta）。完整分类见 §15.5 的图。
 
-### 15.8 压缩+检索的组合拳
+### 16.8 压缩+检索的组合拳
 
 OpenClaw（postIndexSync）、Hermes（session_search）、Letta（recall memory + lookup hints）都承认：**摘要一定会丢东西，所以要留一条回捞的路**。
 
-### 15.9 手动 compaction 语义与自动不同
+### 16.9 手动 compaction 语义与自动不同
 
 - OpenClaw：`/compact <guidance>` 自定义关注点
 - Hermes：`/compress` 带 `force=True`，**清掉 cooldown 立即重试**
@@ -2850,7 +2853,7 @@ OpenClaw（postIndexSync）、Hermes（session_search）、Letta（recall memory
 
 ## 17. 分歧点：同一问题的不同答案
 
-### 16.1 触发哲学：早压 vs 晚压
+### 17.1 触发哲学：早压 vs 晚压
 
 ```
 Gemini 0.50 ── Hermes 0.75* ── Goose 0.80 ── Cline 0.90 ── OpenClaw 0.90(200K) ── Letta 1.00
@@ -2888,7 +2891,7 @@ flowchart TD
     L3 --> L4["对冲：分块 map-reduce · 头尾保留<br/>递减重试 · 源头限流"]
 ```
 
-### 16.2 「谁的话最不能丢」：三种答案
+### 17.2 「谁的话最不能丢」：三种答案
 
 | 答案 | 代表 | 机制 |
 |---|---|---|
@@ -2899,7 +2902,7 @@ flowchart TD
 
 Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的大多是它做了什么的记账，摘要能存活；用户的话是一切的推导起点，不可重建。而且用户 prompt 通常只占一个 tool result 的零头。」**
 
-### 16.3 「摘要器装不下历史」：四种解法
+### 17.3 「摘要器装不下历史」：四种解法
 
 | 解法 | 代表 | 做法 |
 |---|---|---|
@@ -2909,7 +2912,7 @@ Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的�
 | **先截断再判断用不用原文** | Gemini CLI | `truncateHistoryToBudget()` 后，原文塞得下就用原文 |
 | **源头限流** | ADK | 不做输入分块，而是在渲染阶段把每个 tool args/response 截到 2000 字符 |
 
-### 16.4 「摘要质量怎么保证」：确定性校验 vs 模型自省
+### 17.4 「摘要质量怎么保证」：确定性校验 vs 模型自省
 
 | | OpenClaw | Gemini CLI |
 |---|---|---|
@@ -2922,7 +2925,7 @@ Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的�
 
 ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约束**（声明语言、列工具名），并在数据侧保证输入不被污染（上轮摘要的 thought 不进下一轮）。成本最低，但没有失败检测。
 
-### 16.5 「压缩期间怎么保护 prompt cache」：三种态度
+### 17.5 「压缩期间怎么保护 prompt cache」：三种态度
 
 | 态度 | 代表 | 做法 |
 |---|---|---|
@@ -2942,7 +2945,7 @@ ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约
 
 Hermes 还把 caching 与 compaction 写进同一篇文档，明确列出「模型身份是 cache key 的一部分，`/model` 切换 / fallback / credential 轮换都会导致零命中」，并给出结论：**「Don't add features that silently swap the model or credentials mid-session.」**
 
-### 16.6 「压缩失败了怎么办」：容错谱系
+### 17.6 「压缩失败了怎么办」：容错谱系
 
 | 平台 | 失败处理 |
 |---|---|
@@ -2956,7 +2959,7 @@ Hermes 那句 docstring 值得所有人抄：
 
 > "callers should surface a warning so the user knows the model may silently stop answering (the context keeps growing until it hits the hard provider limit). **Without this signal an over-threshold session fails opaquely.**"
 
-### 16.7 「谁来做摘要」：aux model vs 主模型 vs agent 自己 vs 服务端
+### 17.7 「谁来做摘要」：aux model vs 主模型 vs agent 自己 vs 服务端
 
 | 路线 | 代表 |
 |---|---|
@@ -2965,7 +2968,7 @@ Hermes 那句 docstring 值得所有人抄：
 | **agent 自己（in-band）** | **Letta `self_compact_*`** —— 摘要请求作为 user 消息追加，带上 tools 保持 cache 前缀 |
 | **服务端** | **Codex remote compaction**、Hermes 的 codex app-server 委派（`thread/compact/start`） |
 
-### 16.8 「压完之后 agent 该被告知什么」
+### 17.8 「压完之后 agent 该被告知什么」
 
 | 平台 | 做法 |
 |---|---|
@@ -2979,7 +2982,7 @@ Hermes 那句 docstring 值得所有人抄：
 
 OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作规范最容易在摘要中被稀释掉。
 
-### 16.9 中间层压缩：micro-compaction 只有两家有
+### 17.9 中间层压缩：micro-compaction 只有两家有
 
 | | Hermes micro-compaction | Goose tool-pair 摘要 |
 |---|---|---|
@@ -3006,7 +3009,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 用户特别关心这两家，单列一节。
 
-### 17.1 相同的地方
+### 18.1 相同的地方
 
 | 维度 | 共同做法 |
 |---|---|
@@ -3022,7 +3025,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 | **手动压缩带 guidance** | `/compact Focus on X` ↔ `/compress`（force 清 cooldown） |
 | **压缩前后 hook** | `before_compaction`/`after_compaction` ↔ 引擎生命周期钩子 |
 
-### 17.2 不同的地方
+### 18.2 不同的地方
 
 | 维度 | OpenClaw | Hermes |
 |---|---|---|
@@ -3045,7 +3048,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 | **注入防御** | `wrapUntrustedInstructionBlock()` 包裹待摘要内容 | 无 |
 | **代码组织** | 分散在 `packages/agent-core` + `src/agents/*` 多个模块，TypeScript | **单文件 6769 行** `context_compressor.py`，注释里带大量 issue 编号和历史教训 |
 
-### 17.3 两家最值得互相借鉴的三点
+### 18.3 两家最值得互相借鉴的三点
 
 **Hermes 该从 OpenClaw 学：**
 1. **分块 map-reduce 摘要** —— 比「头尾保留 + 省略中间」信息损失小得多
@@ -3097,7 +3100,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 各家自己也基本不答：十家里只有 Hermes 建了独立评测仓库（`hermes-compression-eval`，§4），其余要么只有单元测试，要么把质量保障做成在线机制（OpenClaw 的确定性审计、Gemini CLI 的二次 probe）而不是离线基线。**但 2026 年的公开研究已经把这件事量化了**，而且结论直接改写本报告若干条建议的优先级。
 
-### 19.1 摘要器是性能变量，不是预处理步骤
+### 20.1 摘要器是性能变量，不是预处理步骤
 
 **CompactionRL**（清华，[arXiv:2607.05378](https://arxiv.org/abs/2607.05378)，2026-07）把压缩纳入 PPO 训练：压缩点生成的摘要段与执行段**共享同一条 trajectory reward**，让模型学会「写出对未来的自己有用的摘要」，而不是写出人类觉得好看的摘要。
 
@@ -3118,7 +3121,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 > **对本报告的意义**：§2 整节「设计理念」此前只有源码证据与机制论证支撑——各家都这么做，所以大概是对的。这是第一个把「摘要器设计差异」直接换算成端到端任务成功率的工作。6.5 分的区间意味着：摘要 prompt 不是文案问题，它和换模型是同一量级的决策。
 
-### 19.2 压缩会静默删掉安全约束
+### 20.2 压缩会静默删掉安全约束
 
 **Governance Decay**（[arXiv:2606.22528](https://arxiv.org/abs/2606.22528)，2026-06）提出 **ConstraintRot** 基准：把治理约束与违禁请求配对，**确定性判定**违规（检测工具调用里的违禁效果，例如外部邮件收件人），不用 LLM judge。7 个模型家族（DeepSeek / GLM / Qwen / Kimi / Claude / GPT / Gemini）× 9 类约束。
 
@@ -3138,7 +3141,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 > 按 §15.5 的口径，十家里只有 **OpenClaw**（`postCompactionSections` 重注入 `AGENTS.md` 章节）和 **kimi-code**（TODO 列表由系统从活数据源重新挂载，并禁止摘要器转抄）两家做了压缩后的重注入，且两家注入的东西不同——前者是项目约定，后者是任务状态。**没有一家重注入的是治理约束本身**。这是本报告里「几乎无人做但所有人都该做」最强的一条——现在有数字了。
 
-### 19.3 摘要保真度怎么验
+### 20.3 摘要保真度怎么验
 
 **Slipstream**（[arXiv:2605.08580](https://arxiv.org/abs/2605.08580)，2026-05）提出 **trajectory-grounded** 判定：不问「摘要读起来像不像原文」，而问「**照着这份摘要，还能不能复现出该有的动作序列**」。判定锚在轨迹上而不是文本相似度上。
 
@@ -3150,7 +3153,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 | **确定性规则校验** | OpenClaw 质量审计（section 齐全性 / 标识符正则 / 诉求覆盖） | 可预测、可解释、成本可控，但只能查形式 |
 | **轨迹重放** | Slipstream | 唯一直接测「还能不能干成活」，代价是要有可重放的轨迹 |
 
-### 19.4 其他相关方向
+### 20.4 其他相关方向
 
 | 工作 | 关注点 | 与本报告的接点 |
 |---|---|---|
@@ -3158,7 +3161,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 | **Addressable Recall Compaction**（[arXiv:2607.25066](https://arxiv.org/abs/2607.25066)） | 压缩后仍可寻址回捞被压掉的内容 | 与 Letta 摘要里的 **Lookup hints**（§11）是同一思路的学术版 |
 | **Factory《Evaluating Compression》**（2025-12） | 探针式压缩评测方法论 | Hermes 的 `hermes-compression-eval` 明说方法论改编自它（§4） |
 
-### 19.5 这些结论怎么改写本报告的建议
+### 20.5 这些结论怎么改写本报告的建议
 
 | 实证结论 | 对应的设计动作 | 在 §19 清单里的位置 |
 |---|---|---|
