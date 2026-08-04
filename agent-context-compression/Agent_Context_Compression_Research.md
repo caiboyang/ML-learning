@@ -2160,7 +2160,7 @@ Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱�
 
 ### 12.2 (B) 第三方描述（未经官方证实，仅供参考）
 
-多篇第三方分析（见 §19 来源）描述了以下机制。**这些说法我在官方文档中未能找到对应表述，请以「社区观察」而非「事实」对待**：
+多篇第三方分析（见 §20 来源）描述了以下机制。**这些说法我在官方文档中未能找到对应表述，请以「社区观察」而非「事实」对待**：
 
 - 会话结束时由一个**独立的 Knowledge Subagent** 分析对话并抽取 KI
 - 每个 KI 包含 `metadata.json`（摘要、时间戳、指回原对话的引用）和 `artifacts/`（相关文件与文档）
@@ -2844,7 +2844,87 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 ---
 
-## 19. 参考来源
+## 19. 效果评测：压缩质量是怎么被量化的
+
+到这里为止，本报告的全部结论都来自源码阅读，回答的是「**谁怎么做的**」。「**做得好不好**」是另一个问题，源码答不了。
+
+各家自己也基本不答：九家里只有 Hermes 建了独立评测仓库（`hermes-compression-eval`，§4），其余要么只有单元测试，要么把质量保障做成在线机制（OpenClaw 的确定性审计、Gemini CLI 的二次 probe）而不是离线基线。**但 2026 年的公开研究已经把这件事量化了**，而且结论直接改写本报告若干条建议的优先级。
+
+### 19.1 摘要器是性能变量，不是预处理步骤
+
+**CompactionRL**（清华，[arXiv:2607.05378](https://arxiv.org/abs/2607.05378)，2026-07）把压缩纳入 PPO 训练：压缩点生成的摘要段与执行段**共享同一条 trajectory reward**，让模型学会「写出对未来的自己有用的摘要」，而不是写出人类觉得好看的摘要。
+
+真正值得所有做 agent 的人看的是它的消融——**其他一切固定，只换 summarizer**：
+
+| 变量 | SWE-bench Verified Pass@1 |
+|---|---|
+| 只更换摘要器（同一 agent、同一模型、同一任务集） | **49.0% → 55.5%**（6.5 分区间） |
+
+原文的定性是：compaction is a *performance-critical decision process* rather than a passive preprocessing step。
+
+端到端收益（vs 未训练的压缩基线）：
+
+| 模型 | SWE-bench Verified | Terminal-Bench 2.0 |
+|---|---|---|
+| GLM-4.7-Flash (30B) | 50.5% → **56.0%**（+5.5） | 13.4% → **20.2%**（+6.8） |
+| GLM-4.5-Air (106B) | 59.8% → **66.8%**（+7.0） | 21.4% → **24.5%**（+3.1） |
+
+> **对本报告的意义**：§2 整节「设计理念」此前只有源码证据与机制论证支撑——各家都这么做，所以大概是对的。这是第一个把「摘要器设计差异」直接换算成端到端任务成功率的工作。6.5 分的区间意味着：摘要 prompt 不是文案问题，它和换模型是同一量级的决策。
+
+### 19.2 压缩会静默删掉安全约束
+
+**Governance Decay**（[arXiv:2606.22528](https://arxiv.org/abs/2606.22528)，2026-06）提出 **ConstraintRot** 基准：把治理约束与违禁请求配对，**确定性判定**违规（检测工具调用里的违禁效果，例如外部邮件收件人），不用 LLM judge。7 个模型家族（DeepSeek / GLM / Qwen / Kimi / Claude / GPT / Gemini）× 9 类约束。
+
+| 测量 | 结果 |
+|---|---|
+| 被动压缩前后的违规率 | **0% → 30%**（pooled），单模型最高 **59%** |
+| 软性组织策略（邮件域限制、支出上限） | 衰减 **+50 个百分点** |
+| 硬性安全规范（生产库操作、密钥外泄） | 衰减 **+6 个百分点**（小 8.3 倍） |
+| 按约束存活度切分 | 约束**存活**时违规 **0%**；被丢弃时违规 **38%** |
+| 真实框架验证（LangGraph / LangMem） | 违规率 **65–100%** |
+
+这条比前一条更该被重视，原因有三：
+
+1. **它是本报告「摘要器是信任降级点」那节的反向补充**。那节讲的是攻击者把指令注入摘要器；这里不需要任何攻击者——**压缩自己就会把约束弄丢**。
+2. **它给 §16.8「压缩后重新注入」提供了实证依据**。OpenClaw 的 `postCompactionSections`（从 `AGENTS.md` 重注入章节）和 Antigravity 的 Rules 常驻，此前在本报告里被归为「工程洁癖」类的好习惯；ConstraintRot 说明它们是在堵一个 30–59% 量级的失效。
+3. **软硬约束 8.3 倍的差距解释了该重注入什么**。硬性安全规范有模型自身的先验兜底，掉了也还剩一层；「本组织不得向外部域发邮件」这类没有先验的约定，一旦不在上下文里就等于不存在。**越是项目特有的约定，越不能指望摘要转述，必须原样重注入。**
+
+> 按 §14.5 的口径，九家里只有 OpenClaw 一家做了压缩后的约定重注入。这是本报告里「一家独有但所有人都该抄」最强的一条——现在有数字了。
+
+### 19.3 摘要保真度怎么验
+
+**Slipstream**（[arXiv:2605.08580](https://arxiv.org/abs/2605.08580)，2026-05）提出 **trajectory-grounded** 判定：不问「摘要读起来像不像原文」，而问「**照着这份摘要，还能不能复现出该有的动作序列**」。判定锚在轨迹上而不是文本相似度上。
+
+放回本报告的坐标系，验证摘要质量至此有三条互不重叠的路线：
+
+| 路线 | 代表 | 特点 |
+|---|---|---|
+| **模型自评** | Gemini CLI 二次 probe 自我批判 | 覆盖面广，但不可验证——让摘要器审自己 |
+| **确定性规则校验** | OpenClaw 质量审计（section 齐全性 / 标识符正则 / 诉求覆盖） | 可预测、可解释、成本可控，但只能查形式 |
+| **轨迹重放** | Slipstream | 唯一直接测「还能不能干成活」，代价是要有可重放的轨迹 |
+
+### 19.4 其他相关方向
+
+| 工作 | 关注点 | 与本报告的接点 |
+|---|---|---|
+| **Parallel Context Compaction**（[arXiv:2605.23296](https://arxiv.org/abs/2605.23296)） | 把压缩从串行阻塞变成并行，4 个 backbone（8B–120B），HotpotQA + LoCoMo | 本报告各家的压缩全是**同步阻塞**在关键路径上（Hermes micro-compaction 的 post-turn 空闲是唯一例外） |
+| **Addressable Recall Compaction**（[arXiv:2607.25066](https://arxiv.org/abs/2607.25066)） | 压缩后仍可寻址回捞被压掉的内容 | 与 Letta 摘要里的 **Lookup hints**（§10）是同一思路的学术版 |
+| **Factory《Evaluating Compression》**（2025-12） | 探针式压缩评测方法论 | Hermes 的 `hermes-compression-eval` 明说方法论改编自它（§4） |
+
+### 19.5 这些结论怎么改写本报告的建议
+
+| 实证结论 | 对应的设计动作 | 在 §18 清单里的位置 |
+|---|---|---|
+| 只换摘要器就有 6.5 分区间 | 摘要 prompt 与模板值得当作一等工程问题投入，而不是「先跑起来再说」 | 抬高第 1、2 条的权重 |
+| 压缩使违规率 0% → 30%（最高 59%） | **压缩后必须重注入项目约定**，尤其是没有模型先验兜底的组织策略 | 第 16 条应上移至前五 |
+| 约束存活则违规 0%，丢弃则 38% | 约束不该混在普通历史里等摘要转述，应作为独立、不可压缩的通道 | 新增：把「不可压缩区」做成显式配置 |
+| 保真度应按轨迹而非文本判定 | 自建评测时，判据选「能否复现动作序列」而非「摘要像不像」 | 补充第 20 条的评测方法 |
+
+> **口径说明**：本节所有数字来自公开论文，**不是本报告自己跑的评测**。各论文的 agent harness、模型、任务集互不相同，**跨论文的数字不可直接比较**；引用它们是为了确立「压缩设计有多大影响」的量级，不是为各家排名。
+
+---
+
+## 20. 参考来源
 
 **源码（本研究直接克隆并逐文件阅读）**
 
@@ -2901,6 +2981,14 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 - [Context Management Strategies for Google Antigravity](https://datalakehousehub.com/blog/2026-03-context-management-google-antigravity/)
 - [同上（Alex Merced 版本）](https://iceberglakehouse.com/posts/2026-03-context-google-antigravity/)
+
+**效果评测文献（§19 引用）**
+
+- [CompactionRL: Reinforcement Learning with Context Compaction for Long-Horizon Agents](https://arxiv.org/abs/2607.05378) — 清华，2026-07。只换摘要器的 6.5 分消融；SWE-bench Verified + Terminal-Bench 2.0
+- [Governance Decay: How Context Compaction Silently Erases Safety Constraints in Long-Horizon LLM Agents](https://arxiv.org/abs/2606.22528) — 2026-06。ConstraintRot 基准，7 个模型家族 × 9 类约束，确定性判定
+- [Slipstream: Trajectory-Grounded Compaction Validation for Long-Horizon Agents](https://arxiv.org/abs/2605.08580) — 2026-05。轨迹重放式保真度判定
+- [Parallel Context Compaction for Long-Horizon LLM Agent Serving](https://arxiv.org/abs/2605.23296) — 压缩并行化，HotpotQA + LoCoMo
+- [Addressable Recall Compaction for Long Context-Window Control in AI Agents](https://arxiv.org/abs/2607.25066) — 压缩后可寻址回捞
 
 ---
 
