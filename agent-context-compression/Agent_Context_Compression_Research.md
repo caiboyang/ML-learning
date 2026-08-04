@@ -2707,11 +2707,13 @@ flowchart TD
 | **Hermes** | in-place 重写 + soft archive（`active=0, compacted=1`） | ✓ 行还在 | ✓ `session_search` |
 | **OpenHands** | 事件流 + `Condensation` 事件，View 由重放推导 | ✓ 事件不可变 | 事件流可回放 |
 | **Codex** | 新 context window（window id 链） | ✓ rollout trace | — |
-| **Gemini CLI** *(附录 A)* | 直接替换 history 数组 | ✗（内存） | — |
 | **Cline** | `markPreservedByCompaction` 标记 | ✓ | — |
 | **Goose** | **双可见性标志**，不删除 | ✓ UI 看到全量 | — |
 | **Letta** | 消息表 + recall memory | ✓ | ✓ archival/recall search，**摘要里写 lookup hints** |
 | **Google ADK** | **区间式 compaction 事件**（可重叠共存，subsumption 消解），View 由事件流推导 | ✓ 事件不可变，原始事件只是被区间遮蔽 | 事件流可回放；旧 compaction 保留 |
+| **opencode** | compaction 作为 `type: "compaction"` 消息进入会话（带 `summary` + `recent`），配 `Started`/`Ended` 事件 | ✓ 消息条目仍在，且有 `revert-compact` | — |
+| **kimi-code** | **未核实**（`compactionOps.ts` 未通读） | **未核实** | — |
+| *Gemini CLI（附录 A）* | *直接替换 history 数组* | *✗（内存）* | *—* |
 | **Antigravity** | 未公开 | **n/a（未公开）** —— KI 与 Artifacts 落盘是官方确证的，但那是**抽取出来的知识**，不能据此推断原始 transcript 在压缩后仍完整保留 | 官方确证 agent 可访问 `~/.gemini/antigravity/` |
 
 同一个问题「压缩后原始数据怎么办」，开源十家里可核实的有六类答案：
@@ -2913,7 +2915,7 @@ flowchart TD
 
 Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的大多是它做了什么的记账，摘要能存活；用户的话是一切的推导起点，不可重建。而且用户 prompt 通常只占一个 tool result 的零头。」**
 
-### 17.3 「摘要器装不下历史」：四种解法
+### 17.3 「摘要器装不下历史」：七种解法
 
 | 解法 | 代表 | 做法 |
 |---|---|---|
@@ -2935,7 +2937,7 @@ Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的�
 | 可解释 | ✓ 失败原因是 `missing_identifiers:abc123f,...` | ✗ 黑盒 |
 | 覆盖面 | 只覆盖能被正则/规则捕获的 | 理论上任意维度 |
 
-十家里其余八家都没有在线的摘要质量校验（Gemini CLI 的二次 probe 随其停服一并移入附录 A，所以现役十家中只剩 OpenClaw 一家还有）。**这两条路线是正交的，可以叠加。**
+十家里其余九家都没有在线的摘要质量校验（Gemini CLI 的二次 probe 随其停服一并移入附录 A，所以现役十家中只剩 OpenClaw 一家还有）。**这两条路线是正交的，可以叠加。**
 
 ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约束**（声明语言、列工具名），并在数据侧保证输入不被污染（上轮摘要的 thought 不进下一轮）。成本最低，但没有失败检测。
 
@@ -3082,7 +3084,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 2. **结构化摘要约束** —— 无一条路径用「summarize this」了事；其中固定 section 7/10，Codex 与 ADK 只列必含要点，kimi-code 反其道用第一人称视角+必含内容清单替代标题约束。Progress 分 Done/In-Progress/Blocked 是最小可用集
 3. **压缩后重新注入项目约定**（OpenClaw `postCompactionSections`）—— ConstraintRot 实测：压缩把违规率从 0% 抬到 30%（单模型最高 59%），且软性组织策略的衰减是硬性安全规范的 **8.3 倍**。没有模型先验兜底的项目约定，一旦不在上下文里就等于不存在（§20.2）
 4. **把「不可压缩区」做成显式配置** —— 治理约束、安全策略不该混在普通历史里等摘要转述。ConstraintRot：约束**存活**时违规 0%，被丢弃时 **38%**——存不存活几乎就是全部（§20.2）
-5. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。十家里七家这么做；OpenHands 走通用事件截断、Codex 直接全丢，kimi-code 未见独立层，是两个例外
+5. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。十家里七家这么做；OpenHands 走通用事件截断、Codex 直接全丢，kimi-code 未见独立层，是三个例外
 6. **tool call/result 配对不可破坏 + 事后修复** —— 不做就是 provider 400 错误
 7. **阈值触发时压到限额的一半而非刚好达标** —— OpenHands 的迟滞设计，一行代码消除抖动（注意其显式请求路径基数是当前 view，不是限额）
 8. **保护用户原话**（Hermes 的理由最有说服力：不可重建且极便宜）
