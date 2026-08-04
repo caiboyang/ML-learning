@@ -261,7 +261,7 @@ OpenClaw 走结构层：`wrapUntrustedInstructionBlock()` 把待摘要内容包�
 
 Cline 更进一步，摘要时**强制关掉 thinking**（`thinking: false`）——推理预算对抽取式任务的边际收益低。有意思的是 Goose / Gemini CLI / ADK 走的是另一条路：允许模型先想（`<analysis>` / `<scratchpad>`），但**明确丢弃思考过程**，只保留结论。两种做法对应了对「摘要需不需要推理」的不同判断。
 
-但有一条**不能省的边界**——摘要模型必须装得下要摘要的内容。Hermes 是唯一把这条做成显式机制的：
+但有一条**不能省的边界**——摘要模型必须装得下要摘要的内容。至少三家把它做成了显式机制（Hermes 改触发、Goose 改输入、kimi-code 改范围，对照表见 §9.7）。Hermes 这条最早也最完整：
 
 > 【实现明说】首次 compression attempt 的 lazy 硬门槛：aux 模型窗口低于 `MINIMUM_CONTEXT_LENGTH`（64K）时才报错；窗口够 64K 但小于当前 `threshold_tokens` 时，**自动把本 session 的阈值降到 aux 窗口大小**。检查刻意不放在 session startup，以免给大多数短会话增加冷启动成本（§4.3）。
 
@@ -1668,7 +1668,7 @@ apps/cli/src/utils/compaction-mode.ts
 ### 9.1 触发
 
 ```rust
-pub const DEFAULT_COMPACTION_THRESHOLD: f64 = 0.8;   // GOOSE_AUTO_COMPACT_THRESHOLD，0.0 关闭
+pub const DEFAULT_COMPACTION_THRESHOLD: f64 = 0.8;   // GOOSE_AUTO_COMPACT_THRESHOLD
 
 pub async fn check_if_compaction_needed(...) -> Result<bool> {
     if provider.manages_own_context() { return Ok(false); }   // provider 自管就不插手
@@ -1677,7 +1677,13 @@ pub async fn check_if_compaction_needed(...) -> Result<bool> {
         None => { /* 本地 token_counter，只数 agent_visible 的消息 */ }
     };
     let usage_ratio = current_tokens as f64 / context_limit as f64;
+
+    let needs_compaction = if threshold <= 0.0 || threshold >= 1.0 {
+        false          // 注意：>= 1.0 是「关掉自动压缩」，不是「压到满才压」
+    } else { usage_ratio > threshold };
 ```
+
+> **同一个 `1.0` 在两家是相反的意思**：Letta 的默认阈值就是 `1.0`，含义是「用满整个窗口再压」（§10.2 的「最激进的晚压」）；Goose 的 `>= 1.0` 落进的是 disable 分支，含义是「别自动压了」。照搬配置值会得到完全相反的行为。
 
 `provider.manages_own_context()` 这个开关很有意思 —— 承认某些 provider（如 Codex app-server 这类持有服务端 thread 的）应该自己管上下文，goose 不该重复干。**Hermes 的 `codex_app_server_auto: native` 是同一个判断**。
 
@@ -1730,6 +1736,23 @@ key_code is wrapped via the code_fence filter so embedded fences cannot break ou
 `stringify_lenient()` 把 String / Null / Object / Array 一律强制降解成字符串：模型该给数组却给了单个字符串，包成单元素数组；给了对象，拍平成 `k: v; k: v`。**没有一条路径会因为格式不合而让整次压缩失败。**
 
 > 这是「结构化输出」这条建议真正可用的形态，也是本报告其他家没有的一层：**要求上严格，接收上宽容**。schema 的价值不在于强制模型守约（它不会），而在于给出一个即使被违反也能安全降级的解析目标。对比之下，OpenClaw 的确定性审计走的是另一条路——发现不合格就重试，而不是把不合格的内容捞回来。两者可以叠加。
+
+宽容还不止在字段层。`apply_structured_summary()` 是一条**三级降级**链：
+
+```rust
+fn apply_structured_summary(response: &mut Message) {
+    let Some(summary) = StructuredSummary::parse(&response.as_concat_text()) else {
+        return;                         // ① 解析失败 → 原样保留模型输出
+    };
+    match summary.render() {
+        Ok(rendered) if !rendered.trim().is_empty() => { /* ② 正常：用渲染结果 */ }
+        Ok(_) => warn!("...rendered empty (broken template override?), keeping raw output"),
+        Err(e) => warn!("Failed to render..., keeping raw output: {}", e),   // ③ 渲染失败 → 原样保留
+    }
+}
+```
+
+源码注释点名了两种触发场景：**schema-ignoring models** 和 **user-customized prompts**。加上字段级的宽容反序列化，一共四层：字段容错 → 解析失败兜底 → 渲染失败兜底 → 原始文本永远可用。**没有任何一条路径会让压缩因为格式问题而失败。**
 
 另有一处契约细节：注释写明 **每个列表都按「最重要的在前」排序**，因为渲染层可能只取前 N 条（`user_intent[:3]`）。排序本身是 schema 契约的一部分，不是巧合。
 
@@ -1787,7 +1810,72 @@ fn tool_pair_summarization_enabled() -> bool {  // GOOSE_TOOL_PAIR_SUMMARIZATION
 
 > 这在概念上与 **Hermes 的 micro-compaction** 是同一类东西：不等阈值，持续在后台做增量压缩。区别是 Hermes 吞的是「一个完整 exchange」，Goose 吞的是「一批 tool pair」。
 
-还有一条渐进式兜底：`filter_tool_responses(&messages, remove_percent)` —— 按百分比逐步驱逐 tool response。
+三个实现细节值得单挑出来：
+
+```rust
+pub fn compute_tool_call_cutoff(context_limit: usize, compaction_threshold: f64) -> usize {
+    let effective_limit = (context_limit as f64 * threshold) as usize;
+    (3 * effective_limit / 20_000).clamp(10, 500)      // 每 20K 有效窗口允许 3 个 tool call
+}
+// tool_ids_to_summarize()：
+let eligible = tool_call_ids.len().saturating_sub(protect_last_n);   // 当前回合的不碰
+if eligible <= cutoff + TOOLCALL_SUMMARIZATION_BATCH_SIZE { return Vec::new(); }   // 迟滞
+```
+
+1. **cutoff 随窗口大小缩放**，不是固定常数：200K 窗口 × 0.8 → 有效 160K → 允许 24 个 tool call 后才开始回收，1M 窗口则是 120 个（上限 500）。本报告其余各家的 tool 侧阈值都是写死的常数——**只有 Goose 让它跟着窗口走**。
+2. **迟滞**：必须超出 `cutoff + 10`（正好一个批次）才动手，避免在临界点上反复触发。这与 OpenHands「压到限额一半」是同一类防抖思路（§18 第 7 条）。
+3. **真的在后台**：`maybe_summarize_tool_pairs()` 返回的是 `tokio::spawn` 出来的 `JoinHandle`，不阻塞当前回合；单个 tool pair 摘要失败只 `warn!` 跳过，不影响其余。
+
+> §19.4 提到「本报告各家的压缩几乎全是同步阻塞在关键路径上」——Goose 的 tool-pair 这条路径和 Hermes 的 micro-compaction 一样是例外，且 Goose 用的是真正的异步任务。
+
+### 9.7 摘要器自己装不下时：逐级剥离 tool response 后重试
+
+这是初版报告漏掉的一条，也是 Goose 最该被抄的机制。`do_compact()` 并不假设「待摘要的内容一定塞得进摘要模型」：
+
+```rust
+// Try progressively removing more tool response messages from the middle
+let removal_percentages = [0, 10, 20, 50, 100];
+
+for (attempt, &remove_percent) in removal_percentages.iter().enumerate() {
+    let filtered_messages = filter_tool_responses(&agent_visible_messages, remove_percent);
+    // ...render compaction.md，调摘要模型...
+    match complete_fast(...).await {
+        Ok((mut response, mut usage)) => { /* 成功即返回 */ }
+        Err(e) => {
+            if matches!(e, ProviderError::ContextLengthExceeded(_)) {
+                if attempt < removal_percentages.len() - 1 { continue; }   // 再剥一层重试
+                else { return Err(anyhow!("...even after removing all tool responses")); }
+            }
+            return Err(e.into());   // 非长度错误：立刻上抛，不做无谓重试
+        }
+    }
+}
+```
+
+**只对 `ContextLengthExceeded` 重试，其他错误立即上抛**——这正是 §18 第 11 条「失败时区分错误类型」的正确形态。而 tool response 从**中段**开始剥，也和 §2.6「tool result 优先压缩」的排序框架一致：先牺牲可再生性最高、信息密度最低的那部分。
+
+> **这条推翻了 §4.3 的一处判断。** 初版说「摘要模型必须装得下要摘要的内容」这条边界**只有 Hermes 做成了显式机制**。实际上至少三家都处理了，而且解法互不相同：
+>
+> | 平台 | 装不下时怎么办 |
+> |---|---|
+> | **Hermes** | 降低本 session 的触发阈值去适配 aux 模型窗口（改**触发**） |
+> | **Goose** | 逐级剥离 tool response 后重试，最多剥光（改**输入**） |
+> | **kimi-code** | `fitCompactCountToWindow()` 把待压缩前缀向前收缩到合法切点（改**范围**） |
+>
+> 三种解法分别动的是触发点、输入内容、压缩范围——正交，可叠加。
+
+### 9.8 计费口径与保留口径分开
+
+`CompactionResult` 同时给出两个数，注释解释得很清楚：
+
+```rust
+pub usage: ProviderUsage,          // 计费：按模型原始输出算
+pub retained_context_tokens: i32,  // 保留：结构化渲染之后真正留在上下文里的
+```
+
+`ensure_usage_tokens()` 刻意在 `apply_structured_summary()` **之前**调用——因为原始 JSON 输出比渲染后的 Markdown 摘要大，计费该按前者，而占用上下文的是后者。
+
+> 这批项目里**只有 Goose 把「花了多少」和「留下多少」当成两个数**。其余各家要么只报 usage，要么只报压缩后长度。做可观测性时这个区分很实际：压缩成本和压缩收益本来就不是同一个量。
 
 ---
 
