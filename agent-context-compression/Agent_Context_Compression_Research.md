@@ -265,7 +265,7 @@ OpenClaw 走结构层：`wrapUntrustedInstructionBlock()` 把待摘要内容包�
 
 Cline 更进一步，摘要时**强制关掉 thinking**（`thinking: false`）——推理预算对抽取式任务的边际收益低。有意思的是 Goose / Gemini CLI / ADK 走的是另一条路：允许模型先想（`<analysis>` / `<scratchpad>`），但**明确丢弃思考过程**，只保留结论。两种做法对应了对「摘要需不需要推理」的不同判断。
 
-但有一条**不能省的边界**——摘要模型必须装得下要摘要的内容。至少三家把它做成了显式机制（Hermes 改触发、Goose 改输入、kimi-code 改范围，对照表见 §10.7）。Hermes 这条最早也最完整：
+但有一条**不能省的边界**——摘要模型必须装得下要摘要的内容。至少三家把它做成了显式机制（Hermes 改触发、Goose 改输入、kimi-code 改比例，对照表见 §10.7）。Hermes 这条最早也最完整：
 
 > 【实现明说】首次 compression attempt 的 lazy 硬门槛：aux 模型窗口低于 `MINIMUM_CONTEXT_LENGTH`（64K）时才报错；窗口够 64K 但小于当前 `threshold_tokens` 时，**自动把本 session 的阈值降到 aux 窗口大小**。检查刻意不放在 session startup，以免给大多数短会话增加冷启动成本（§4.3）。
 
@@ -2002,7 +2002,7 @@ for (attempt, &remove_percent) in removal_percentages.iter().enumerate() {
 > |---|---|
 > | **Hermes** | 降低本 session 的触发阈值去适配 aux 模型窗口（改**触发**） |
 > | **Goose** | 逐级剥离 tool response 后重试，最多剥光（改**输入**） |
-> | **kimi-code** | `fitCompactCountToWindow()` 把待压缩前缀向前收缩到合法切点（改**范围**） |
+> | **kimi-code** | 按 `COMPACTION_OVERFLOW_SHRINK_RATIOS = [0.7, 0.5, 0.35]` 逐档缩小压缩请求后重试（改**比例**）。⚠️ 它另有一条按合法切点收缩的 `fitCompactCountToWindow()`，但在 v2 路径上不可达，见 §8.2 |
 >
 > 三种解法分别动的是触发点、输入内容、压缩范围——正交，可叠加。
 
@@ -2921,7 +2921,7 @@ Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的�
 | **头尾保留 + 省略标记** | Hermes | `_SUMMARY_INPUT_MAX_CHARS 160_000`，`_bound_summary_input()` |
 | **递减重试** | OpenHands | 每条事件字符串上限 ×0.8，最多 5 次 |
 | **逐级剥离后重试** | Goose | `removal_percentages = [0,10,20,50,100]`，只对 `ContextLengthExceeded` 重试（§10.7） |
-| **收缩待压缩范围** | kimi-code | `fitCompactCountToWindow()` 从后往前收，且每步须落在合法切点（§8.4） |
+| **按比例逐档缩小后重试** | kimi-code | `COMPACTION_OVERFLOW_SHRINK_RATIOS = [0.7, 0.5, 0.35]`，最多三档（§8.3） |
 | **源头限流** | ADK | 不做输入分块，而是在渲染阶段把每个 tool args/response 截到 2000 字符 |
 | **直接放弃** | opencode | 前置检查装不下就 `return false`，不压不报错（§7.5） |
 | *先截断再判断用不用原文（附录 A）* | *Gemini CLI* | *`truncateHistoryToBudget()` 后，原文塞得下就用原文* |
