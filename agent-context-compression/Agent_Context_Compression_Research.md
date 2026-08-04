@@ -1627,9 +1627,17 @@ private shouldUseReservedContext(usedSize) {
 }
 ```
 
-> **这一条直接改写 §17.1 的触发哲学分类。** 本报告此前把触发口径讲成一道二选一：OpenClaw 一派是绝对余量、Hermes/Letta/Goose 一派是百分比，并论证过两者在不同窗口尺寸下的取舍差异。kimi-code 用 `||` 把两者接在一起：**小窗口由 85% 主导，大窗口由「剩余 50K」主导**——因为 1M 窗口的 85% 还剩 150K，远比 50K 宽松，此时绝对余量那一支先触发。
+> **这一条直接改写 §17.1 的触发哲学分类。** 本报告此前把触发口径讲成一道二选一：OpenClaw 一派是绝对余量、Hermes/Letta/Goose 一派是百分比，并论证过两者在不同窗口尺寸下的取舍差异。kimi-code 用 `||` 把两者接在一起——而 `||` 的语义是**取更早触发的那一支**，也就是二者中更保守的那个：
 >
-> 这其实是对本报告 §3.2 那段分析的最优解：绝对余量在大窗口上更合理，百分比在小窗口上更合理，那就两个都要。取二者中**更早触发**的那个。
+> | 窗口 | 百分比支（0.85W） | 余量支（W − 50K） | 实际由谁触发 |
+> |---|---|---|---|
+> | 200K | 170,000 | **150,000** | **余量支**（等效 75%） |
+> | 333,333 | 283,333 | 283,333 | 两支重合（**交叉点**） |
+> | 1M | **850,000** | 950,000 | **百分比支**（等效 85%） |
+>
+> 交叉点解 `0.85W = W − 50,000` 得 **W ≈ 333K**：**窗口小于 333K 时由绝对余量主导，大于 333K 时由百分比主导。**
+>
+> 值得注意的是这个组合的方向。§3.2 论证过绝对余量在大窗口上更"划算"（百分比会白白空出 150K），但 kimi-code 的 `||` 在大窗口上恰恰选中了更早触发的百分比支——**它要的不是把窗口用尽，而是两个信号里谁先喊满就听谁的**。这是一个安全优先的组合，不是效率优先的组合；想要「大窗口上尽量用满」的人应当用 `&&` 而不是 `||`。
 
 还有一个别家没有的 `shouldBlock`：与 `shouldCompact` 分离的**阻塞阈值**。`checkAfterStep` 仅在 `triggerRatio !== blockRatio` 时为真——即两个阈值拉开时才需要在每步之后额外检查。默认二者都是 0.85，等于关掉了这条额外检查，但机制留着。
 
@@ -2787,18 +2795,20 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 - OpenHands：「**PRESERVE TASK IDs**」写进 prompt，且 `TASK_TRACKING` 条件必需
 - Letta：「**Preserve identifiers verbatim** (plan filename/path, exact URL, issue/PR number, ticket ID)」
 - Goose：「Quote error messages... **exact strings including numbers, identifiers, and paths, not paraphrases**」
-- Gemini CLI：probe 步骤明确问「Did you omit any specific technical details, **file paths**...?」
+- **opencode**：「Preserve exact file paths, symbols, commands, error strings, URLs, and identifiers when known.」
+- *Gemini CLI（附录 A）*：probe 步骤明确问「Did you omit any specific technical details, **file paths**...?」
 - **ADK**：「accurately list the **exact tool names** used to maintain tool grounding」（关注的是工具名而非文件/ID，角度不同但同源）
 
 大家都发现了同一个失败模式：**LLM 摘要会把 `abc123f` 写成「the commit」，把 `src/foo/bar.ts:42` 写成「the config file」**。
 
 ### 16.3 旧摘要如何参与下一轮：三类做法，不是一条共识
 
-同样要按路径统计。重复压缩时，旧摘要参与下一轮的方式至少分成「显式更新」「仅作为普通历史再次入模」「用原始事件 overlap 替代摘要传递」三类，不能合并成一个 10/10 共识：
+同样要按路径统计。重复压缩时，旧摘要参与下一轮的方式至少分成「显式更新」「仅作为普通历史再次入模」「用原始事件 overlap 替代摘要传递」三类，不能合并成一个 10/10 共识（Gemini CLI 的 anchor instruction 属"显式更新"一类，随其停服移入附录 A，不计入）：
 
 - **不适用**：Codex 的 token-budget 路径（完全不调 summarizer）、Cline 的 `basic` 路径（deterministic，不产生摘要）
-- **有显式更新语义**（prompt 明确要求 preserve / copy / edit，而不是重新概括）：OpenClaw（`UPDATE_SUMMARIZATION_PROMPT` 的 "PRESERVE all existing information"）、Hermes（`_previous_summary` 迭代更新）、Gemini CLI（anchor instruction 要求 "integrate all still-relevant information from that snapshot"）、Letta（prompt 要求把已有摘要纳入考虑）、Cline（agentic 路径传 `previousSummary`）、OpenHands（摘要本身作为事件进入下一轮 forgotten events）、Goose（schema 中 `user_intent` 等字段跨轮累积）
+- **有显式更新语义**（prompt 明确要求 preserve / copy / edit，而不是重新概括）：OpenClaw（`UPDATE_SUMMARIZATION_PROMPT` 的 "PRESERVE all existing information"）、Hermes（`_previous_summary` 迭代更新）、**opencode**（`<previous-summary>` + "Preserve still-true details, remove stale details, and merge in the new facts"——**独有显式的「删除已过期内容」**）、Letta（prompt 要求把已有摘要纳入考虑）、Cline（agentic 路径传 `previousSummary`）、OpenHands（摘要本身作为事件进入下一轮 forgotten events）、Goose（schema 中 `user_intent` 等字段跨轮累积）
 - **只是把旧摘要一并喂进去，无更新指令**：**Codex**——它的 prompt（§6.4）只说「create a handoff summary」，没有任何 preserve/copy/edit 要求；上一份摘要只是恰好在历史里。严格说这就是 summary-of-summary，是本节警告的那种级联，不该算作「迭代更新」。
+- **交接笔记即下一轮起点**：**kimi-code** 不把旧摘要当"要被更新的文档"，而是要求写一份第一人称交接笔记，下一轮直接从这份笔记继续思考（§8.5）。它没有 preserve/merge 指令，但也不是 Codex 那种"旧摘要恰好在历史里"——笔记本身就是被设计来当作起点的。
 - **ADK 两条路径手段不同**（§12.3 已区分）：token-threshold 路径把上一份 compaction content 作为 seed event 放进待压缩列表最前（「so the next summary can supersede it」）；sliding-window 路径不用 seed，而是靠 `overlap_size` 让相邻摘要在**原始事件层面**重叠、重看 raw invocations。
 
 ### 16.4 tool call / result 配对不可破坏
@@ -2856,14 +2866,15 @@ OpenClaw（postIndexSync）、Hermes（session_search）、Letta（recall memory
 ### 17.1 触发哲学：早压 vs 晚压
 
 ```
-Gemini 0.50 ── Hermes 0.75* ── Goose 0.80 ── Cline 0.90 ── OpenClaw 0.90(200K) ── Letta 1.00
-   早压                                                                              晚压
+Hermes 0.75* ── Goose 0.80 ── kimi-code 0.75~0.85** ── Cline 0.90 ── OpenClaw/opencode 0.90(200K) ── Letta 1.00
+   早压                                                                                              晚压
 
 * Hermes 的 0.50 是配置默认值，但 512K 以下的模型被小窗口下限抬到 **0.75**（见 §4.2）。
+** kimi-code 是混合式：200K 窗口由余量支主导（等效 75%），1M 窗口由百分比支主导（85%），交叉点 ≈333K（见 §8.1）。
   主流模型（Claude 200K、GPT 128K/272K）全部落在这一档；只有 512K+ 的大窗口才真跑 0.50。
 ```
 
-- **早压**（Gemini CLI 全程 50%；Hermes 仅在 512K+ 大窗口模型上跑 50%）：每次处理的历史少、摘要质量高、单次成本低；代价是压缩次数多、cache 反复失效、信息经多轮摘要**累积失真**。Hermes 用 `_previous_summary` 迭代更新来对冲。
+- **早压**（Hermes 仅在 512K+ 大窗口模型上跑 50%）：每次处理的历史少、摘要质量高、单次成本低；代价是压缩次数多、cache 反复失效、信息经多轮摘要**累积失真**。Hermes 用 `_previous_summary` 迭代更新来对冲。
 - **晚压**（Goose 80%、OpenClaw 90%、Letta 100%；Hermes 在主流的 <512K 模型上因下限落到 75%，实际也在这一侧）：最大化上下文利用，压缩次数最少；代价是单次要处理巨量历史 —— OpenClaw 因此必须做分块 map-reduce，Letta 因此几乎必然遇到「摘要器装不下」。
 
 > 值得注意的是 **Hermes 横跨两侧**：同一份配置（`threshold: 0.50`）在 512K+ 模型上是早压，在 200K 模型上被下限抬成 0.75 变晚压。它的实际位置取决于挂的是哪个模型，这也是本报告初版误判它「默认 50% = 早压」的原因。
@@ -2879,7 +2890,7 @@ Gemini 0.50 ── Hermes 0.75* ── Goose 0.80 ── Cline 0.90 ── OpenC
 ```mermaid
 flowchart TD
     T{"触发时机选在哪"}
-    T -->|"早压 · Gemini 50% · Hermes 512K+ 模型 50%"| E1["每次处理的历史少"]
+    T -->|"早压 · Hermes 512K+ 模型 50%"| E1["每次处理的历史少"]
     E1 --> E2["摘要质量高<br/>单次成本低"]
     E1 --> E3["压缩次数多<br/>cache 反复失效"]
     E3 --> E4["信息经多轮摘要累积失真"]
@@ -2896,7 +2907,7 @@ flowchart TD
 | 答案 | 代表 | 机制 |
 |---|---|---|
 | **用户原话不可再生** | Codex / Hermes / Goose / Letta | Codex：20K token 预算原文保留，assistant/tool 全丢<br>Hermes：`min_tail_user_messages` 保证**优先于 token 预算**；micro-compaction **结构上就不吸收 user turn**<br>Goose：自动压缩保留最近一条纯文本用户消息<br>Letta：摘要 schema 里 `user_messages` 独立字段 |
-| **最近的东西最重要** | OpenClaw / Cline / Gemini CLI | 纯 token/字符预算的尾部保护，不区分角色 |
+| **最近的东西最重要** | OpenClaw / Cline / opencode | 纯 token/字符预算的尾部保护，不区分角色（opencode 更进一步，允许把边界上那条消息按字符劈成两半，§7.2） |
 | **头部（系统提示+首次交互）最重要** | OpenHands / Hermes | `keep_first=2` / `protect_first_n=3` |
 | **无角色偏好，只保证结构完整** | ADK | 只按 `event_retention_size` 计数，但把「未闭合义务」的完整性做到了最严 |
 
@@ -2909,19 +2920,22 @@ Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的�
 | **Map-reduce 分块** | OpenClaw | `BASE_CHUNK_RATIO 0.4`（自适应到 0.15），分块摘要再合并，超大单条消息变占位符 |
 | **头尾保留 + 省略标记** | Hermes | `_SUMMARY_INPUT_MAX_CHARS 160_000`，`_bound_summary_input()` |
 | **递减重试** | OpenHands | 每条事件字符串上限 ×0.8，最多 5 次 |
-| **先截断再判断用不用原文** | Gemini CLI | `truncateHistoryToBudget()` 后，原文塞得下就用原文 |
+| **逐级剥离后重试** | Goose | `removal_percentages = [0,10,20,50,100]`，只对 `ContextLengthExceeded` 重试（§10.7） |
+| **收缩待压缩范围** | kimi-code | `fitCompactCountToWindow()` 从后往前收，且每步须落在合法切点（§8.4） |
 | **源头限流** | ADK | 不做输入分块，而是在渲染阶段把每个 tool args/response 截到 2000 字符 |
+| **直接放弃** | opencode | 前置检查装不下就 `return false`，不压不报错（§7.5） |
+| *先截断再判断用不用原文（附录 A）* | *Gemini CLI* | *`truncateHistoryToBudget()` 后，原文塞得下就用原文* |
 
 ### 17.4 「摘要质量怎么保证」：确定性校验 vs 模型自省
 
-| | OpenClaw | Gemini CLI |
+| | OpenClaw | Gemini CLI *(附录 A)* |
 |---|---|---|
 | 手段 | 代码审计：必需 section 齐全 + 不透明标识符原样存在 + 与最近用户诉求有词汇重叠 | 二次 LLM 调用自我批判并重写 |
 | 成本 | 只在**失败时**才重跑摘要（默认重试 1 次） | **每次**都多一次 LLM 调用 |
 | 可解释 | ✓ 失败原因是 `missing_identifiers:abc123f,...` | ✗ 黑盒 |
 | 覆盖面 | 只覆盖能被正则/规则捕获的 | 理论上任意维度 |
 
-其余七家都没有摘要质量校验。**这两条路线是正交的，可以叠加。**
+十家里其余八家都没有在线的摘要质量校验（Gemini CLI 的二次 probe 随其停服一并移入附录 A，所以现役十家中只剩 OpenClaw 一家还有）。**这两条路线是正交的，可以叠加。**
 
 ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约束**（声明语言、列工具名），并在数据侧保证输入不被污染（上轮摘要的 thought 不进下一轮）。成本最低，但没有失败检测。
 
@@ -2931,7 +2945,7 @@ ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约
 |---|---|---|
 | **等 cache 自己过期再动手** | OpenClaw | `contextPruning.mode: "cache-ttl"`，只裁超过 TTL 的 tool result |
 | **控制打断频率** | Hermes | `micro_compact.every_n_turns` 明确是「多久付一次 cache break」的旋钮；micro-compaction 默认关就是因为它每回合都打断 |
-| **不处理** | OpenHands、Codex、Gemini CLI、Cline、Goose | — |
+| **不处理** | OpenHands、Codex、Cline、Goose、opencode、kimi-code | — |
 
 不过「不处理」要拆成两件事——**压缩/裁剪时是否主动保护 cache 前缀**，与**平台是否提供 context cache 机制**：
 
