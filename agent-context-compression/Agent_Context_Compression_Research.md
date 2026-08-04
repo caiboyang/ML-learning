@@ -23,7 +23,7 @@
 | openai/codex | ⚠️ 同上 | `bb5054fe` |
 | google-gemini/gemini-cli | ⚠️ 同上 | `f47d6c6f` |
 | cline/cline | ⚠️ 同上 | `53a52662` |
-| block/goose | ⚠️ 同上（且未克隆成功，经 GitHub API 取单文件） | `5ab0e6df` |
+| aaif-goose/goose（原 `block/goose`） | ✅ 已按此 SHA 复核目录树与 `context_mgmt/`；初版结论来自 `5ab0e6df` 的单文件抓取 | `2db0e31f` |
 | letta-ai/letta | ⚠️ 同上 | `ff19ffea` |
 | langchain-ai/langgraph | ✅ 已按此 SHA 阅读 | `b2926a0f` |
 | langchain-ai/langchain | ✅ 已按此 SHA 阅读（v1 agent middleware） | `dd608197` |
@@ -1723,6 +1723,16 @@ key_code is wrapped via the code_fence filter so embedded fences cannot break ou
 
 **结构化中间表示 + 可覆盖渲染层** = 用户可以调「压完保留什么」而不用改代码，也不用改 prompt。这是把 L4（减法）拆成了「抽取」和「呈现」两步。（`code_fence` 过滤器还顺手挡了代码块逃逸。）
 
+**但真正的工程要点在反面：schema 约束不等于模型会守约。** `context_mgmt/structured.rs` 里 `StructuredSummary` 的每一个字段都配了自定义的宽容反序列化器（`lenient_string_list` / `lenient_file_list` / `lenient_string_opt`），全部字段 `#[serde(default)]`，并且用 `#[serde(flatten)] extra` 兜住任何计划外的键。源码注释把理由写得很直白：
+
+> …rather than failing — because models **routinely enrich the schema**（例如凭空多给一个 `{"error": ..}` 字段）
+
+`stringify_lenient()` 把 String / Null / Object / Array 一律强制降解成字符串：模型该给数组却给了单个字符串，包成单元素数组；给了对象，拍平成 `k: v; k: v`。**没有一条路径会因为格式不合而让整次压缩失败。**
+
+> 这是「结构化输出」这条建议真正可用的形态，也是本报告其他家没有的一层：**要求上严格，接收上宽容**。schema 的价值不在于强制模型守约（它不会），而在于给出一个即使被违反也能安全降级的解析目标。对比之下，OpenClaw 的确定性审计走的是另一条路——发现不合格就重试，而不是把不合格的内容捞回来。两者可以叠加。
+
+另有一处契约细节：注释写明 **每个列表都按「最重要的在前」排序**，因为渲染层可能只取前 N 条（`user_intent[:3]`）。排序本身是 schema 契约的一部分，不是巧合。
+
 ### 9.3 双可见性：模型视图 ≠ UI 视图
 
 ```rust
@@ -2360,11 +2370,10 @@ flowchart TD
     Q -->|"core 给原语<br/>上层可装策略"| A["LangGraph core<br/>pre_model_hook + RemoveMessage"]
     A --> A1["LangChain v1 agent layer<br/>可选 SummarizationMiddleware<br/>不配 trigger 仍不运行"]
     Q -->|"框架给确定性视图<br/>不做语义重组"| B["AutoGen<br/>Unbounded 默认 / Buffered<br/>HeadAndTail / TokenLimited"]
-    Q -->|"产品 / SDK 内建策略"| C["前九个开源平台"]
+    Q -->|"框架内建策略<br/>但只在溢出后补救"| D["CrewAI<br/>overflow-only<br/>撞墙才动手"]
+    Q -->|"产品 / SDK 内建策略<br/>主动按阈值 / cadence"| C["前九个开源平台"]
     Q -->|"闭源，策略未公开"| E["Antigravity<br/>只能核实分区 / 渐进加载"]
-    C --> C1{"什么时候触发"}
-    C1 -->|"主动，按阈值/cadence"| C2["OpenClaw · Hermes · OpenHands<br/>Codex · Gemini · Cline · Goose · Letta · ADK"]
-    C1 -->|"被动，撞墙才补救"| D["CrewAI<br/>overflow-only"]
+    C --> C2["OpenClaw · Hermes · OpenHands · Codex<br/>Gemini · Cline · Goose · Letta · ADK"]
 ```
 
 补上这三家之后，「什么时候压」这个问题的答案谱系才完整：
@@ -2818,29 +2827,31 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 1. **让旧摘要以显式 preserve / integrate 语义参与下一轮**，而不是对摘要重新摘要 —— 代价只是 prompt 里的一句话，换掉的是级联失真，投入产出比最高。但它不是无例外的事实：Codex 只把旧摘要当普通历史再次入模，ADK sliding-window 则改用原始事件 overlap（§15.3）
 2. **结构化摘要约束** —— 无一条路径用「summarize this」了事；其中固定 section 7/9，Codex 与 ADK 只列必含要点。Progress 分 Done/In-Progress/Blocked 是最小可用集
-3. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。九家里七家这么做；OpenHands 走通用事件截断、Codex 直接全丢，是两个例外
-4. **tool call/result 配对不可破坏 + 事后修复** —— 不做就是 provider 400 错误
-5. **阈值触发时压到限额的一半而非刚好达标** —— OpenHands 的迟滞设计，一行代码消除抖动（注意其显式请求路径基数是当前 view，不是限额）
-6. **保护用户原话**（Hermes 的理由最有说服力：不可重建且极便宜）
-7. **摘要用便宜的独立模型**（Letta 的 per-provider 默认值最省心）
-8. **压缩不销毁数据 + 留一条检索回捞的路**
-9. **失败时区分错误类型**：auth/network 应 ABORT 保持现状，而不是丢历史换一个占位符
-10. **anti-thrash 防抖**：连续压缩收益 <10% 就停手，并**告知用户**
-11. **摘要质量的确定性校验**（标识符正则最划算）
-12. **摘要器里的 prompt-injection 防御** —— 摘要会成为 agent 唯一的记忆，是高价值攻击面
-13. **压完 token 变多就回滚**（Gemini CLI）—— 几行代码的护栏
-14. **压缩前让 agent 自己把要紧的写盘**（OpenClaw memory flush）—— 比让摘要器猜更可靠
-15. **结构化中间表示 + 可覆盖渲染层**（Goose）—— 让用户能调「保留什么」而不改代码
-16. **别告诉模型「上下文快满了」**（Hermes 的教训：会让模型在复杂任务上提前放弃）
-17. **让摘要自报对话语言**（ADK）—— 一句 prompt 解决「压缩后 agent 从中文切回英文」，对非英语用户价值极高
-18. **让摘要列出用过的工具名**（ADK）—— 维持 tool grounding，避免压缩后重复调用或幻觉工具名
-19. **把「未闭合义务」而不只是 tool pair 作为切点约束**（ADK）—— 待确认工具、待鉴权请求同样不能被切开
-20. **相邻摘要在原始事件层面重叠**（ADK `overlap_size`）—— 比「摘要传递摘要」更能抑制多轮累积失真
-21. **把状态外置而不是压缩**（Antigravity 的架构取向 + OpenClaw memory flush + Letta sleeptime agent）—— 最好的压缩是不需要压缩
-22. **把产生大宗 tool 输出的子任务整体挪出主上下文**（Antigravity subagent 不继承父历史，官方明说是为防 context pollution）—— 上下文分区，比压缩更彻底。耗时本地命令（编译、大范围检索）走后台异步任务是同一手段的延伸：官方定位是不阻塞终端，但输出落在子上下文里，主上下文顺带被保护
-23. **能力/技能渐进披露**（Antigravity skills：先只给 name + description，匹配上才读全文）—— 从源头避免「加载了又被压掉」的浪费，正好与 Hermes 的 ghost-skill 防御互为上下游
-24. **把「改写持久状态」与「只改本次请求投影」做成两个显式出口**（LangGraph core 的 `messages` / `llm_input_messages`；OpenClaw 的 compaction / pruning 之分）—— 两者的失效代价完全不同，混在一起迟早出事
-25. **把 trigger 与 keep 正交配置，并允许 AND/OR 组合触发**（LangChain `SummarizationMiddleware`）——「何时压」和「压完留多少」是两个参数；token、消息数、窗口比例也不必只能三选一
+3. **压缩后重新注入项目约定**（OpenClaw `postCompactionSections`）—— ConstraintRot 实测：压缩把违规率从 0% 抬到 30%（单模型最高 59%），且软性组织策略的衰减是硬性安全规范的 **8.3 倍**。没有模型先验兜底的项目约定，一旦不在上下文里就等于不存在（§19.2）
+4. **把「不可压缩区」做成显式配置** —— 治理约束、安全策略不该混在普通历史里等摘要转述。ConstraintRot：约束**存活**时违规 0%，被丢弃时 **38%**——存不存活几乎就是全部（§19.2）
+5. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。九家里七家这么做；OpenHands 走通用事件截断、Codex 直接全丢，是两个例外
+6. **tool call/result 配对不可破坏 + 事后修复** —— 不做就是 provider 400 错误
+7. **阈值触发时压到限额的一半而非刚好达标** —— OpenHands 的迟滞设计，一行代码消除抖动（注意其显式请求路径基数是当前 view，不是限额）
+8. **保护用户原话**（Hermes 的理由最有说服力：不可重建且极便宜）
+9. **摘要用独立模型**（Letta 的 per-provider 默认值最省心）—— ⚠️ 但「独立」不等于「越便宜越好」：CompactionRL 的消融显示，其他一切不变、只换摘要器，SWE-bench Verified 相差 **6.5 分**（§19.1）。省摘要器的钱可能比省下的更贵
+10. **压缩不销毁数据 + 留一条检索回捞的路**
+11. **失败时区分错误类型**：auth/network 应 ABORT 保持现状，而不是丢历史换一个占位符
+12. **anti-thrash 防抖**：连续压缩收益 <10% 就停手，并**告知用户**
+13. **摘要质量的确定性校验**（标识符正则最划算）
+14. **摘要器里的 prompt-injection 防御** —— 摘要会成为 agent 唯一的记忆，是高价值攻击面
+15. **压完 token 变多就回滚**（Gemini CLI）—— 几行代码的护栏
+16. **压缩前让 agent 自己把要紧的写盘**（OpenClaw memory flush）—— 比让摘要器猜更可靠
+17. **结构化中间表示 + 可覆盖渲染层**（Goose）—— 让用户能调「保留什么」而不改代码
+18. **别告诉模型「上下文快满了」**（Hermes 的教训：会让模型在复杂任务上提前放弃）
+19. **让摘要自报对话语言**（ADK）—— 一句 prompt 解决「压缩后 agent 从中文切回英文」，对非英语用户价值极高
+20. **让摘要列出用过的工具名**（ADK）—— 维持 tool grounding，避免压缩后重复调用或幻觉工具名
+21. **把「未闭合义务」而不只是 tool pair 作为切点约束**（ADK）—— 待确认工具、待鉴权请求同样不能被切开
+22. **相邻摘要在原始事件层面重叠**（ADK `overlap_size`）—— 比「摘要传递摘要」更能抑制多轮累积失真
+23. **把状态外置而不是压缩**（Antigravity 的架构取向 + OpenClaw memory flush + Letta sleeptime agent）—— 最好的压缩是不需要压缩
+24. **把产生大宗 tool 输出的子任务整体挪出主上下文**（Antigravity subagent 不继承父历史，官方明说是为防 context pollution）—— 上下文分区，比压缩更彻底。耗时本地命令（编译、大范围检索）走后台异步任务是同一手段的延伸：官方定位是不阻塞终端，但输出落在子上下文里，主上下文顺带被保护
+25. **能力/技能渐进披露**（Antigravity skills：先只给 name + description，匹配上才读全文）—— 从源头避免「加载了又被压掉」的浪费，正好与 Hermes 的 ghost-skill 防御互为上下游
+26. **把「改写持久状态」与「只改本次请求投影」做成两个显式出口**（LangGraph core 的 `messages` / `llm_input_messages`；OpenClaw 的 compaction / pruning 之分）—— 两者的失效代价完全不同，混在一起迟早出事
+27. **把 trigger 与 keep 正交配置，并允许 AND/OR 组合触发**（LangChain `SummarizationMiddleware`）——「何时压」和「压完留多少」是两个参数；token、消息数、窗口比例也不必只能三选一
 
 ---
 
@@ -2916,9 +2927,10 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 | 实证结论 | 对应的设计动作 | 在 §18 清单里的位置 |
 |---|---|---|
 | 只换摘要器就有 6.5 分区间 | 摘要 prompt 与模板值得当作一等工程问题投入，而不是「先跑起来再说」 | 抬高第 1、2 条的权重 |
-| 压缩使违规率 0% → 30%（最高 59%） | **压缩后必须重注入项目约定**，尤其是没有模型先验兜底的组织策略 | 第 16 条应上移至前五 |
-| 约束存活则违规 0%，丢弃则 38% | 约束不该混在普通历史里等摘要转述，应作为独立、不可压缩的通道 | 新增：把「不可压缩区」做成显式配置 |
-| 保真度应按轨迹而非文本判定 | 自建评测时，判据选「能否复现动作序列」而非「摘要像不像」 | 补充第 20 条的评测方法 |
+| 压缩使违规率 0% → 30%（最高 59%） | **压缩后必须重注入项目约定**，尤其是没有模型先验兜底的组织策略 | 已补为**第 3 条**（此前清单里没有这条） |
+| 约束存活则违规 0%，丢弃则 38% | 约束不该混在普通历史里等摘要转述，应作为独立、不可压缩的通道 | 已补为**第 4 条**（此前清单里没有这条） |
+| 保真度应按轨迹而非文本判定 | 自建评测时，判据选「能否复现动作序列」而非「摘要像不像」 | 补充第 13 条的校验手段 |
+| 只换摘要器就有 6.5 分区间 | 反过来看：**把摘要器降级成便宜模型是有代价的** | 第 9 条需加限定 |
 
 > **口径说明**：本节所有数字来自公开论文，**不是本报告自己跑的评测**。各论文的 agent harness、模型、任务集互不相同，**跨论文的数字不可直接比较**；引用它们是为了确立「压缩设计有多大影响」的量级，不是为各家排名。
 
@@ -2935,7 +2947,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 - [openai/codex](https://github.com/openai/codex) — `codex-rs/core/src/compact*.rs`、`codex-rs/core/src/state/auto_compact_window.rs`、`codex-rs/prompts/templates/compact/`
 - [google-gemini/gemini-cli](https://github.com/google-gemini/gemini-cli) — `packages/core/src/context/chatCompressionService.ts`、`packages/core/src/prompts/snippets.ts`
 - [cline/cline](https://github.com/cline/cline) — `sdk/packages/core/src/extensions/context/`
-- [block/goose](https://github.com/block/goose) — `crates/goose/src/context_mgmt/mod.rs`、`crates/goose/src/prompts/compaction{,_summary}.md`
+- [aaif-goose/goose @ `2db0e31f`](https://github.com/aaif-goose/goose/tree/2db0e31f) — `crates/goose/src/context_mgmt/mod.rs`、`context_mgmt/structured.rs`、`crates/goose/src/prompts/compaction{,_summary}.md`、`crates/goose/tests/compaction.rs`（**仓库已从 `block/goose` 迁出**，旧地址仍 302 重定向）
 - [letta-ai/letta](https://github.com/letta-ai/letta) — `letta/services/summarizer/`、`letta/prompts/summarizer_prompt.py`
 - [google/adk-python @ `f4e72334`](https://github.com/google/adk-python/tree/f4e72334) — `src/google/adk/apps/compaction.py`、`apps/_configs.py`、`apps/llm_event_summarizer.py`、`flows/llm_flows/contents.py`、`agents/context_cache_config.py`
 - [langchain-ai/langgraph @ `b2926a0f`](https://github.com/langchain-ai/langgraph/tree/b2926a0f) — `libs/prebuilt/langgraph/prebuilt/chat_agent_executor.py`（`pre_model_hook`）、`libs/langgraph/langgraph/graph/message.py`（`RemoveMessage` / `REMOVE_ALL_MESSAGES`）
@@ -3006,6 +3018,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 - **OpenClaw 的 `compaction.mode` 默认值**：pinned SHA 的 `resolveEffectiveCompactionMode()` 在未配置 mode/provider 时返回 `"default"`；只有显式 `mode: "safeguard"` 或配置 compaction `provider` 才进入 safeguard。初版把 safeguard 写成全局默认，已按 runtime resolver 修正（§3.9）。
 - **Hermes 的 200K 计算示例**：官方文档给 `200,000 × 0.50 = 100,000`，但 `_effective_threshold_percent()` 对 `< 512K` 的窗口**无条件**应用 0.75 下限，实际为 150,000 / tail 30,000（§4.2）。**官方文档在此处有误**，以源码为准；这也意味着「Hermes 默认 50%」只对 512K 以上的模型成立。
 - **Hermes 的「摘要模型窗口必须 ≥ 主模型」**：官方文档的这条警告已过时。当前 `main` 的 `check_compression_model_feasibility()` 在**第一次 compression attempt** 才 lazy 执行（不是 session startup），会硬拒 <64K 的 aux 模型，并在 `aux_context < threshold` 时**自动下调本 session 阈值**，而非静默丢中段（§4.3）。
+- **Goose 的仓库已迁出 Block**：现址 `aaif-goose/goose`，`block/goose` 仍 302 重定向（GitHub API 对两个地址返回同一 `full_name`）。初版报告因克隆失败只经 API 取了三个文件，**漏掉了 `context_mgmt/structured.rs`**——而 Goose 最值得学的宽容反序列化设计正在该文件里（§9.2）。本次已按 `2db0e31f` 复核目录树补上；`platform_extensions/summarize.rs` 仍未通读。
 - **Hermes 仓库内部对这条检查的自述也已落后于实现**：`conversation_compression.py` 的模块 docstring 仍称它是 `startup probe`，`check_compression_model_feasibility()` 里 `except ValueError: raise` 的注释也仍写「so the session refuses to start」；但调用点早已改成首次压缩时才跑（注释：「Saves ~400ms cold off every short session that never reaches the threshold」）。**以调用点为准**（§4.3）。
 - **Hermes 的 `protect_first_n`**：仅在**首次**压缩生效。`_effective_protect_first_n()` 在 `compression_count >= 1` 或已有 previous summary 时返回 0，此后只保护 system prompt（§4.3）。初版报告的示意图未标注这一点。
 - **ADK 的 `EventsCompactionConfig`** 在 v2.6.1 仍带 `@experimental`，其配置 schema 不是稳定 API，且不可由 Python 实现外推其他语言 SDK（§11.2）。
