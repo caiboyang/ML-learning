@@ -153,11 +153,11 @@ _MAX_TAIL_MESSAGE_FLOOR = 8
 
 固定结构意味着可预测的位置，下一轮的模型知道去哪里找什么。这是**为机器读者优化的信息架构**，与「给人看的摘要要精炼」的直觉正好相反。
 
-### 2.4 迭代更新而非重新摘要 —— 规避级联失真
+### 2.4 旧摘要如何参与下一轮 —— 规避级联失真
 
 【机制解释】摘要是有损压缩。对摘要再摘要，等于有损压缩的级联，误差会累积放大——就像复印件的复印件。一个压过 10 次的会话，如果每次都是「对上一份摘要重新摘要」，最初的信息几乎必然面目全非。
 
-不少成熟实现会把重复压缩改成**「保留旧摘要 + 增补新事实」**，但这不是所有摘要路径的共同不变量。OpenClaw、Hermes、Gemini CLI、Cline agentic 等路径在 prompt 中有明确的 preserve / integrate / update 语义；Codex 只是把旧摘要连同历史再次交给摘要器，没有复制或增补指令；ADK 则按路径分成 previous-summary seed 与原始事件 overlap 两种机制。完整口径见 §15.3。
+多数成熟实现因此把重复压缩从「再摘要」改成**「保留旧摘要 + 增补新事实」**——但这不是所有摘要路径共有的不变量。OpenClaw、Hermes、Gemini CLI、Cline agentic 路径的 prompt 里有明确的 preserve / integrate / update 语义；Codex 只是把旧摘要连同历史一并再交给摘要器，没有任何复制或增补指令；ADK 则分成 previous-summary seed 与原始事件 overlap 两条路径。完整口径见 §15.3。
 
 > OpenClaw `UPDATE_SUMMARIZATION_PROMPT`：
 > - PRESERVE all existing information from the previous summary
@@ -196,7 +196,9 @@ Codex 把这个逻辑推到极致：压缩后 **assistant 和 tool 消息一条�
 
 ### 2.6 tool result 优先压缩 —— 按「信息密度 ÷ 可再生性」排序
 
-**单独、优先处理 tool result 是高频设计，但不是普遍不变量。** 前九个开源平台中，本报告确认七家存在 tool-specific 层；OpenHands 的默认 condenser 做通用事件区间压缩，Codex 则在 compacted context 中直接丢掉全部 assistant/tool 消息。§13 的 AutoGen/CrewAI 也主要做通用 history view/summary，而不是先跑一层 tool-result pruning。【机制解释】用一个简单的排序框架就能看清这种设计为什么常见：
+**单独、优先处理 tool result 是高频设计，但不是普遍不变量。** 前九个开源平台里，本报告确认七家有独立的 tool-specific 层；OpenHands 的默认 condenser 做的是通用事件区间压缩，Codex 则在 compacted context 里直接丢掉全部 assistant/tool 消息；§13 的 AutoGen、CrewAI 也只做通用的 history view / summary，不先跑一层 tool-result pruning。
+
+【机制解释】它之所以是高频设计，用一个简单的排序框架就能看清：
 
 | 内容类型 | token 占比 | 信息密度 | 可否重新获取 | 该不该先压 |
 |---|---|---|---|---|
@@ -391,7 +393,7 @@ flowchart TD
 
 ### 3.2 L2 触发：绝对余量，不是百分比
 
-这是 OpenClaw 与前面其他可核实 agent 最本质的区别之一：
+这是 OpenClaw 与其余可核实实现最本质的区别之一：
 
 ```ts
 // packages/agent-core/src/harness/compaction/compaction.ts:154
@@ -1145,7 +1147,7 @@ _ACTIVE_TASK_MAX_CHARS               = 1400
 
 `in_place: false` 回到旧的轮换路径（每次压缩开新 session，用 `parent_session_id` 链接）。
 
-### 4.8 Prompt Caching（与 compaction 并列文档化）
+### 4.8 Prompt Caching（官方把 caching 与 compaction 写进同一篇文档）
 
 Anthropic 最多 4 个 `cache_control` 断点，Hermes 用 `system_and_3`：
 
@@ -1987,7 +1989,7 @@ session: [E(1), E(1), E(2), E(2), C[1,2], E(3), E(3), E(4), E(4), C[2,4]]
 
 配置注释写得很直白：「This creates an overlap between consecutive compacted summaries, **maintaining context**.」
 
-> **这是这批项目里唯一显式设计「摘要之间要有交叠」的**。其他家靠「把上一轮摘要喂给下一轮」（iterative update）来保持连续性，ADK 是**让原始事件本身被两个摘要重复覆盖** —— 前者靠摘要传递摘要（会累积失真），后者每次都回到原始事件重新看一遍那段重叠区。
+> **这是这批项目里唯一显式设计「摘要之间要有交叠」的**。其他家保持连续性靠的是把上一轮摘要喂进下一轮（其中 Codex 只是让旧摘要随历史再次入模，并无更新指令，见 §15.3），ADK 则是**让原始事件本身被两个摘要重复覆盖** —— 前者靠摘要传递摘要（会累积失真），后者每次都回到原始事件重新看一遍那段重叠区。
 >
 > 顺带一提，ADK 的 token 阈值路径**两种手段都用**：`_events_to_compact_for_token_threshold()` 会把上一个 compaction 的 `compacted_content` 作为 **seed event 放在待压缩列表最前面**，注释「so the next summary can supersede it」。
 
@@ -2099,7 +2101,7 @@ docstring 说明了硬性前提：
 
 ### 12.1 (A) 官方文档确证：外部持久化 + 上下文分区，而非公开的压缩算法
 
-Antigravity 公开的架构先有三根持久化/上下文构造柱子。它们**都不是压缩算法**，但也不能一概称为「把状态搬到上下文之外」：Artifacts 与 KI 主要是外部持久化，Rules 则恰恰会作为稳定、可复用的 prompt context 注入。
+Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱子上。它们**都不是压缩算法**，但也不能一概归结为「把状态搬到上下文之外」：Artifacts 与 KI 确实是外部持久化，Rules 恰恰相反——它是被当作稳定、可复用的 prompt context 注入进来的。
 
 | 支柱 | 官方定位 | 与上下文的关系 |
 |---|---|---|
@@ -2188,7 +2190,7 @@ Antigravity 公开的架构先有三根持久化/上下文构造柱子。它们*
 
 ---
 
-## 13. 三种被忽略的范式：LangGraph / LangChain、AutoGen、CrewAI
+## 13. 三种被忽略的范式：LangGraph/LangChain 生态、AutoGen、CrewAI
 
 前面九个开源平台都是「**自带一套可核实压缩策略的成品 agent / SDK**」，Antigravity 则是闭源对照。还有三个被广泛使用的开源框架生态，代表了三种**完全不同的责任划分**——把它们排除在外，会让人误以为「agent 平台必然内建 compaction」。
 
@@ -2326,16 +2328,19 @@ def handle_context_length(respect_context_window: bool, printer, messages, llm, 
 5. 附加在 user 消息上的 files 会被收集合并、重新挂到摘要消息上
 
 ```python
+# 源码节选（`agent_utils.py`，略去进度回调与嵌套事件循环的兼容分支）
 system_messages     = [m for m in messages if m.get("role") == "system"]
 non_system_messages = [m for m in messages if m.get("role") != "system"]
 ...
-chunks = _split_messages_into_chunks(non_system_messages, max_tokens)
-if len(chunks) > 1:
-    summarized_contents = asyncio.run(
-        _asummarize_chunks(chunks=chunks, llm=llm, callbacks=callbacks)
-    )
+chunks       = _split_messages_into_chunks(non_system_messages, max_tokens)
+total_chunks = len(chunks)
+
+if total_chunks <= 1:
+    ...                       # 单块：同步 llm.call，逐块摘要
 else:
-    summarized_contents = [summarize_one(chunks[0])]  # 正文简写；源码在此走同步 llm.call
+    coro = _asummarize_chunks(chunks=chunks, llm=llm, callbacks=callbacks)
+    summarized_contents = asyncio.run(coro)   # 内部 asyncio.gather，各块并发
+
 merged_summary = "\n\n".join(content["content"] for content in summarized_contents)
 ```
 
@@ -2347,7 +2352,7 @@ merged_summary = "\n\n".join(content["content"] for content in summarized_conten
 - **不保留 recent raw tail**，最近的工作状态也会被摘要，模型失去所有原文近邻
 - 关掉 `respect_context_window` 就是进程退出，没有降级路径
 
-### 13.4 三种范式与前九个开源平台、闭源对照的关系
+### 13.4 三种范式与九个开源平台、闭源 Antigravity 的关系
 
 ```mermaid
 flowchart TD
@@ -2431,7 +2436,7 @@ flowchart TD
 
 | 平台 | 输出格式 | 迭代更新 | 摘要模型 | 质量保障 |
 |---|---|---|---|---|
-| OpenClaw | Markdown 7 sections | ✓ `<previous-summary>` | 可配（含本地模型） | **确定性审计 + 重试**（section/标识符/诉求） |
+| OpenClaw | Markdown 7 sections | ✓ `<previous-summary>` | 可配（含本地模型） | **确定性审计 + 重试**（section/标识符/诉求）——**仅 safeguard 模式**，见 §3.9 |
 | Hermes | Markdown 8 sections | ✓ `_previous_summary` | `auxiliary.compression.model` | 独立评测仓库；确定性 fallback |
 | OpenHands | 结构化文本 + few-shot | ✓ 摘要进 forgotten events | 独立 LLM 实例（强制非流式） | `minimum_progress` 0.1 |
 | Codex | **自由格式** | △ 旧摘要只因在 history 中而再次入模，**无 preserve/update 指令** | 主模型 / 服务端 | — |
@@ -2540,9 +2545,9 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 
 大家都发现了同一个失败模式：**LLM 摘要会把 `abc123f` 写成「the commit」，把 `src/foo/bar.ts:42` 写成「the config file」**。
 
-### 15.3 迭代更新而非重新摘要
+### 15.3 旧摘要如何参与下一轮：三类做法，不是一条共识
 
-同样要按路径统计。重复压缩时，旧摘要参与下一轮的方式至少分为「显式更新」「仅作为普通历史再次入模」「用原始事件 overlap 替代摘要传递」三类，不能合并成一个 9/9 共识：
+同样要按路径统计。重复压缩时，旧摘要参与下一轮的方式至少分成「显式更新」「仅作为普通历史再次入模」「用原始事件 overlap 替代摘要传递」三类，不能合并成一个 9/9 共识：
 
 - **不适用**：Codex 的 token-budget 路径（完全不调 summarizer）、Cline 的 `basic` 路径（deterministic，不产生摘要）
 - **有显式更新语义**（prompt 明确要求 preserve / copy / edit，而不是重新概括）：OpenClaw（`UPDATE_SUMMARIZATION_PROMPT` 的 "PRESERVE all existing information"）、Hermes（`_previous_summary` 迭代更新）、Gemini CLI（anchor instruction 要求 "integrate all still-relevant information from that snapshot"）、Letta（prompt 要求把已有摘要纳入考虑）、Cline（agentic 路径传 `previousSummary`）、OpenHands（摘要本身作为事件进入下一轮 forgotten events）、Goose（schema 中 `user_intent` 等字段跨轮累积）
@@ -2740,7 +2745,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 | 摘要自身膨胀 | **defrag**（2000 tok 阈值，就地重写 marker） | — |
 | 恢复 | 从 transcript marker rehydrate 游标 | — |
 
-除 Hermes、Goose，以及下段单列的 ADK 之外，其余七家（含机制未公开的 Antigravity）没有可确认的会话内持续增量压缩路径。
+除 Hermes、Goose，以及下段单列的 ADK 之外，九家里其余六家都没有可确认的会话内持续增量压缩路径；Antigravity 因机制未公开，无从判断。
 
 不过 **ADK 的滑动窗口触发是第三种「不等阈值」的形态**：它按 invocation 数量定期压，与 Hermes/Goose 的区别在于——Hermes/Goose 是在批量压缩**之外**额外做增量回收（两套机制并存），ADK 的 cadence 压缩**就是**主机制（token 阈值只是兜底）。
 
@@ -2811,7 +2816,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 ## 18. 可借鉴的设计清单（按投入产出比排序）
 
-1. **优先采用带显式 preserve / integrate 语义的迭代摘要** —— 这是高收益模式，但不是无例外事实：Codex 只是把旧摘要当普通历史再次入模，ADK sliding-window 则靠原始事件 overlap
+1. **让旧摘要以显式 preserve / integrate 语义参与下一轮**，而不是对摘要重新摘要 —— 代价只是 prompt 里的一句话，换掉的是级联失真，投入产出比最高。但它不是无例外的事实：Codex 只把旧摘要当普通历史再次入模，ADK sliding-window 则改用原始事件 overlap（§15.3）
 2. **结构化摘要约束** —— 无一条路径用「summarize this」了事；其中固定 section 7/9，Codex 与 ADK 只列必含要点。Progress 分 Done/In-Progress/Blocked 是最小可用集
 3. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。九家里七家这么做；OpenHands 走通用事件截断、Codex 直接全丢，是两个例外
 4. **tool call/result 配对不可破坏 + 事后修复** —— 不做就是 provider 400 错误
@@ -2913,8 +2918,9 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 - **OpenClaw 的 `compaction.mode` 默认值**：pinned SHA 的 `resolveEffectiveCompactionMode()` 在未配置 mode/provider 时返回 `"default"`；只有显式 `mode: "safeguard"` 或配置 compaction `provider` 才进入 safeguard。初版把 safeguard 写成全局默认，已按 runtime resolver 修正（§3.9）。
 - **Hermes 的 200K 计算示例**：官方文档给 `200,000 × 0.50 = 100,000`，但 `_effective_threshold_percent()` 对 `< 512K` 的窗口**无条件**应用 0.75 下限，实际为 150,000 / tail 30,000（§4.2）。**官方文档在此处有误**，以源码为准；这也意味着「Hermes 默认 50%」只对 512K 以上的模型成立。
 - **Hermes 的「摘要模型窗口必须 ≥ 主模型」**：官方文档的这条警告已过时。当前 `main` 的 `check_compression_model_feasibility()` 在**第一次 compression attempt** 才 lazy 执行（不是 session startup），会硬拒 <64K 的 aux 模型，并在 `aux_context < threshold` 时**自动下调本 session 阈值**，而非静默丢中段（§4.3）。
+- **Hermes 仓库内部对这条检查的自述也已落后于实现**：`conversation_compression.py` 的模块 docstring 仍称它是 `startup probe`，`check_compression_model_feasibility()` 里 `except ValueError: raise` 的注释也仍写「so the session refuses to start」；但调用点早已改成首次压缩时才跑（注释：「Saves ~400ms cold off every short session that never reaches the threshold」）。**以调用点为准**（§4.3）。
 - **Hermes 的 `protect_first_n`**：仅在**首次**压缩生效。`_effective_protect_first_n()` 在 `compression_count >= 1` 或已有 previous summary 时返回 0，此后只保护 system prompt（§4.3）。初版报告的示意图未标注这一点。
 - **ADK 的 `EventsCompactionConfig`** 在 v2.6.1 仍带 `@experimental`，其配置 schema 不是稳定 API，且不可由 Python 实现外推其他语言 SDK（§11.2）。
 
 <!-- GitHub Pages/Jekyll emits Mermaid fences as code blocks; render them client-side. -->
-<script type="module" src="{{ '/assets/js/mermaid-render.js' | relative_url }}"></script>
+<script type="module" src="../assets/js/util/mermaid-render.js"></script>
