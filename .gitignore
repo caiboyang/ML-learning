@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Jekyll / GitHub Pages local builds
+_site/
+.jekyll-cache/
+.jekyll-metadata
+Gemfile.lock
