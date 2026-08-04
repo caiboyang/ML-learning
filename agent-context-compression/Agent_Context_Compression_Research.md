@@ -3154,7 +3154,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 | 工作 | 关注点 | 与本报告的接点 |
 |---|---|---|
-| **Parallel Context Compaction**（[arXiv:2605.23296](https://arxiv.org/abs/2605.23296)） | 把压缩从串行阻塞变成并行，4 个 backbone（8B–120B），HotpotQA + LoCoMo | 本报告各家的压缩全是**同步阻塞**在关键路径上（Hermes micro-compaction 的 post-turn 空闲是唯一例外） |
+| **Parallel Context Compaction**（[arXiv:2605.23296](https://arxiv.org/abs/2605.23296)） | 把压缩从串行阻塞变成并行，4 个 backbone（8B–120B），HotpotQA + LoCoMo | 本报告各家的**阈值触发型全量压缩**无一例外是**同步阻塞**在关键路径上；脱离关键路径的只有两条**增量**路径——Hermes micro-compaction 的 post-turn 空闲、Goose tool-pair 的 `tokio::spawn` 后台任务（§10.6） |
 | **Addressable Recall Compaction**（[arXiv:2607.25066](https://arxiv.org/abs/2607.25066)） | 压缩后仍可寻址回捞被压掉的内容 | 与 Letta 摘要里的 **Lookup hints**（§11）是同一思路的学术版 |
 | **Factory《Evaluating Compression》**（2025-12） | 探针式压缩评测方法论 | Hermes 的 `hermes-compression-eval` 明说方法论改编自它（§4） |
 
