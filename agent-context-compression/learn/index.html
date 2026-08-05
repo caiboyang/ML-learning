@@ -200,7 +200,7 @@ layout: null
     <div class="meta-grid">
       <div><div class="label">读者假设</div><div class="value">知道 LLM 有上下文窗口即可</div></div>
       <div><div class="label">读完能做到</div><div class="value">设计并评估一套压缩策略</div></div>
-      <div><div class="label">配套知识库</div><div class="value"><a href="../Agent_Context_Compression_Research.html">十四平台源码研究</a></div></div>
+      <div><div class="label">配套知识库</div><div class="value"><a href="../Agent_Context_Compression_Research.html">十四平台横向对照</a>（含这十家）</div></div>
       <div><div class="label">章节</div><div class="value">10 步</div></div>
     </div>
   </div>
@@ -260,14 +260,30 @@ provider: <span class="s">400 Bad Request — context_length_exceeded</span></co
 
   <p>要设计对策，先得准确理解这个约束。它有三个反直觉的性质。</p>
 
-  <h3 class="sub">性质一：每一轮都要重发全部历史</h3>
+  <h3 class="sub">性质一：每一轮都要重发全部历史（但没你想的那么贵）</h3>
   <p>
     LLM 是无状态的。第 13 轮请求不是「接着第 12 轮说」，而是把<strong>前 12 轮的全部内容重新发一遍</strong>，
-    再加上新的一句。所以历史不只占空间，它还在<strong>每一轮重复收费</strong>。
+    再加上新的一句。历史不只占空间，它每一轮都要重新过一遍模型。
   </p>
   <p>
-    这意味着一段 100K token 的历史，如果 agent 还要跑 20 轮，你就要为它付 20 次钱。
-    压缩省的不是一次的钱，是<strong>剩余所有轮次的钱</strong>。
+    直觉会说：一段 100K 的历史还要跑 20 轮，那就是付 20 次钱。<strong>但这个算法是错的</strong> ——
+    provider 的 <em>prompt cache</em> 会缓存请求的<strong>前缀</strong>，命中的部分按<strong>约 0.1 倍</strong>计价。
+    历史正是最稳定的前缀，所以那 20 轮里真正按全价算的，只有每轮新增的那一点。
+  </p>
+
+  <div class="call pit">
+    <span class="tag">这条反过来咬压缩</span>
+    缓存按<b>前缀</b>匹配 —— 而压缩恰恰要<b>重写历史开头</b>。压一次，缓存前缀就变了，
+    下一次请求得重新写入缓存：<b>5 分钟 TTL 收 1.25 倍，1 小时 TTL 收 2 倍</b>。
+    <br><br>
+    所以「压缩是为了省钱」这个说法要打很大折扣：<b>你省下的是本来就只花 0.1 倍的部分，
+    付出的是一次全价重写。</b>压得越频繁，越可能倒亏。
+  </div>
+
+  <p>
+    这不是说成本不重要，而是说<strong>成本不是压缩的主要理由</strong>。真正非压不可的理由是下面两条：
+    <strong>撞墙</strong>（性质二之前的硬失败）和<strong>质量</strong>（性质二）。
+    省钱是副产品，而且是个要算清楚才成立的副产品。
   </p>
 
   <h3 class="sub">性质二：装得下 ≠ 用得好</h3>
@@ -290,7 +306,7 @@ provider: <span class="s">400 Bad Request — context_length_exceeded</span></co
   <div class="stat-row">
     <div class="stat"><div class="num">×700</div><div class="note">单条消息大小的跨度<br>用户 prompt vs 文件读取</div></div>
     <div class="stat"><div class="num">U 形</div><div class="note">长上下文的检索准确率<br>中间段最容易被忽略</div></div>
-    <div class="stat"><div class="num">N 次</div><div class="note">同一段历史被收费的次数<br>N = 剩余轮数</div></div>
+    <div class="stat"><div class="num">0.1×</div><div class="note">缓存命中的历史按此计价<br>而压缩会打掉这个折扣</div></div>
   </div>
 </section>
 
@@ -304,7 +320,7 @@ provider: <span class="s">400 Bad Request — context_length_exceeded</span></co
   <h3 class="sub">不压缩的三种死法</h3>
   <div class="tiles">
     <div class="tile"><div class="lbl">硬失败</div><div class="body"><b>provider 报 400</b>。会话直接中断，且这一轮的钱已经花了。最干脆也最难看的一种。</div></div>
-    <div class="tile"><div class="lbl">软失败</div><div class="body"><b>成本失控</b>。历史每轮重发，长会话的账单是二次增长的，而不是线性。</div></div>
+    <div class="tile"><div class="lbl">软失败</div><div class="body"><b>成本上升</b>。缓存把重发历史的单价压到 0.1 倍，但历史越长这 0.1 倍的基数越大，且缓存一旦失效就要全价重来。</div></div>
     <div class="tile"><div class="lbl">静默失败</div><div class="body"><b>质量下滑</b>。没报错，但模型开始忘记早先的决定、重复已做过的工作。最危险，因为你看不见。</div></div>
   </div>
 
@@ -466,8 +482,9 @@ if (window - used &lt; reserve) compact()</code></pre>
 
   <div class="call pit">
     <span class="tag">坑 3 · prompt cache 被打穿</span>
-    provider 的 prompt cache 按<b>前缀</b>命中。压缩会重写历史开头 —— 那正是缓存前缀所在的位置。
-    压一次，后续所有请求的 cache 全部失效，成本反而飙升。<br><br>
+    这条在 Step 02 已经埋过伏笔，这里是它的工程形态。provider 的 prompt cache 按<b>前缀</b>命中，
+    而压缩必然重写历史开头 —— 那正是缓存前缀所在的位置。压一次，缓存就得重建：
+    <b>5 分钟 TTL 收 1.25 倍全价，1 小时 TTL 收 2 倍</b>。<br><br>
     <b>修法</b>：这是压缩与缓存的<b>根本张力</b>，消不掉，只能管理。
     一种做法是只裁剪已经超过 cache TTL 的部分（反正也要过期了）；另一种是把压缩频率当成显式旋钮，
     承认「每压一次要付一次 cache break」，然后决定多久付一次。
