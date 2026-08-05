@@ -23,7 +23,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *与下面的知识库配套：**这篇给取舍和顺序，那篇给源码和常量**。建议先读这篇建立坐标系，再拿那篇当参考手册查。*
 
 * 📚 [开源 Agent 平台的 Context Compression 机制研究](https://caiboyang.github.io/ML-learning/agent-context-compression/Agent_Context_Compression_Research.html)（含 18 张 Mermaid 图；[Markdown 原文](agent-context-compression/Agent_Context_Compression_Research.md)）
-  * *十四个平台的横向对照。十个开源平台有可核实的内建压缩策略：OpenClaw、Hermes Agent、OpenHands SDK、Codex CLI、opencode、kimi-code、Cline、Goose、Letta、Google ADK；另纳入压缩算法未公开的闭源 Antigravity，以及代表三种责任划分的框架生态：LangGraph core / LangChain agent middleware（原语 + 可选内建策略）、AutoGen（确定性视图）、CrewAI（overflow-only）。已停服的 Gemini CLI 移入附录保留设计分析，不计入统计。逐文件读源码 + 官方文档交叉验证，附版本快照矩阵；冲突处以源码为准，结尾单列一致性说明。*
+  * *十四个平台的横向对照。十个开源平台有可核实的内建压缩策略：OpenClaw、Hermes Agent、OpenHands SDK、Codex CLI、opencode、kimi-code、Cline、Goose、Letta、Google ADK；另纳入压缩算法未公开的闭源 Antigravity，以及代表三种责任划分的框架生态：LangGraph core / LangChain agent middleware（原语 + 可选内建策略）、AutoGen（确定性视图）、CrewAI（overflow-only）。已弃用的 Gemini CLI 移入附录保留设计分析，不计入统计（个人账户 2026-06-18 停服，企业与付费 API key 路径仍可用）。逐文件读源码 + 官方文档交叉验证，附版本快照矩阵；冲突处以源码为准，结尾单列一致性说明。*
   * *另设一节**效果评测**，梳理 2026 年的实证工作：CompactionRL（只换摘要器就有 6.5 分区间）、ConstraintRot（压缩把治理约束违规率从 0% 抬到 30%，最高 59%）、Slipstream（按轨迹而非文本判定保真度），并逐条对应回设计清单。*
   * *先建立统一的六层参照模型（测量/触发/选点/减法/重组/持久化）解决各家术语打架的问题；再用一整节讲**设计理念**——头尾保留中间压缩在利用长上下文检索的 U 形曲线（Lost in the Middle）、迭代更新在规避有损压缩的级联失真、保留用户原话背后的信息论不对称、为什么不能告诉模型"上下文快满了"、摘要器为何是一个信任降级点、压缩与 prompt cache 的根本张力；然后逐家深挖，最后横向对比触发哲学（绝对余量 vs 百分比 vs cadence）、减法哲学、持久化模型，以及 OpenClaw × Hermes 逐项对照与可借鉴设计清单。*
 

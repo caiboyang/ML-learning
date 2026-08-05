@@ -3,7 +3,7 @@
 > 对比对象（14 个）：
 > **成品 agent / SDK（11）** —— 十个开源平台有可核实的内建压缩策略：OpenClaw、Hermes Agent (Nous Research)、OpenHands Software Agent SDK、OpenAI Codex CLI、**opencode (sst)**、**kimi-code (Moonshot)**、Cline、Goose、Letta (MemGPT)、Google ADK；另纳入闭源、压缩算法未公开的 Google Antigravity
 > **代表另三种责任划分的框架（3，见 §14）** —— LangGraph core / LangChain agent middleware（原语 + 可选内建策略）、Microsoft AutoGen（确定性视图）、CrewAI（overflow-only）
-> **附录 A：Gemini CLI** —— 已于 2026-06-18 停服，不计入正文统计，但保留其二次 probe 自我批判与 token 膨胀回滚的分析
+> **附录 A：Gemini CLI** —— 已弃用（2026-06-18 停止服务个人账户，企业与付费 API key 路径仍可用），不计入正文统计，但保留其二次 probe 自我批判与 token 膨胀回滚的分析
 >
 > 研究日期：2026-08-03，平台增补与效果评测一节增于 2026-08-04
 > 方法：克隆各项目主干源码逐文件阅读 + 官方文档交叉验证。凡文档与源码冲突，以**源码为准**并标注。
@@ -31,9 +31,9 @@
 | langchain-ai/langchain | ✅ 已按此 SHA 阅读（v1 agent middleware） | `dd608197` |
 | microsoft/autogen | ✅ 已按此 SHA 阅读 | `027ecf0a` |
 | crewAIInc/crewAI | ✅ 已按此 SHA 阅读 | `c8f441cf` |
-| google-gemini/gemini-cli（附录 A，**已停服**） | ⚠️ 停服前最后一次复核，不再更新 | `f47d6c6f` |
+| google-gemini/gemini-cli（附录 A，**已弃用**） | ⚠️ 弃用前最后一次复核，不再更新 | `f47d6c6f` |
 
-标 ⚠️ 的四个项目（gemini-cli 的 ⚠️ 是「已停服不再更新」，另一种含义）：结论来自 2026-08-03 当天的 `main`，但当时未记录 SHA，表中给出的是事后复核时的 HEAD——**两者极可能相同但无法保证**。这些项目的具体数字请以「2026-08-03 前后的 main」理解，不要当作可精确复现的引用。
+标 ⚠️ 的四个项目（gemini-cli 的 ⚠️ 是「已弃用不再更新」，另一种含义）：结论来自 2026-08-03 当天的 `main`，但当时未记录 SHA，表中给出的是事后复核时的 HEAD——**两者极可能相同但无法保证**。这些项目的具体数字请以「2026-08-03 前后的 main」理解，不要当作可精确复现的引用。
 
 凡出现官方文档与源码冲突之处，正文均标注为 **doc-code drift** 并说明以哪一侧为准。
 
@@ -2434,7 +2434,7 @@ Antigravity 公开的架构立在三根「持久化 / 上下文构造」的柱�
 
 前面十个开源平台都是「**自带一套可核实压缩策略的成品 agent / SDK**」，Antigravity 则是闭源对照。还有三个被广泛使用的开源框架生态，代表了三种**完全不同的责任划分**——把它们排除在外，会让人误以为「agent 平台必然内建 compaction」。
 
-> **统计口径说明**：§16 与 §17 的「8/10」等比例，指的是**十个内建压缩策略的开源平台**（OpenClaw、Hermes、OpenHands、Codex、opencode、kimi-code、Cline、Goose、Letta、ADK）。已停服的 Gemini CLI 不在其中（附录 A）。本节三个生态不参与那些统计。LangGraph core 与 AutoGen 的内置 context classes 没有语义摘要器；LangChain v1 agent layer 虽有可选的 `SummarizationMiddleware`，但它不是 LangGraph core 的默认行为，也没有配置 trigger 就不运行。把这三种不同责任边界硬塞进十家的比例分母，反而会失真。
+> **统计口径说明**：§16 与 §17 的「8/10」等比例，指的是**十个内建压缩策略的开源平台**（OpenClaw、Hermes、OpenHands、Codex、opencode、kimi-code、Cline、Goose、Letta、ADK）。已弃用的 Gemini CLI 不在其中（附录 A）。本节三个生态不参与那些统计。LangGraph core 与 AutoGen 的内置 context classes 没有语义摘要器；LangChain v1 agent layer 虽有可选的 `SummarizationMiddleware`，但它不是 LangGraph core 的默认行为，也没有配置 trigger 就不运行。把这三种不同责任边界硬塞进十家的比例分母，反而会失真。
 
 ### 14.1 LangGraph core / LangChain agent layer —— 原语之上已有可选内建策略
 
@@ -2621,7 +2621,7 @@ flowchart TD
 
 ## 15. 横向对比总表
 
-> **关于 Gemini CLI 的行**：它已于 2026-06-18 停服（附录 A），**不参与本报告任何比例统计**，但下列各表保留它的行并标注 *(附录 A)*——横向对比的价值不因产品停服而消失，删掉反而会让「有哪些可能的设计」这个问题少一组答案。凡出现 `n/10` 的分数，分母都是不含它的十家。
+> **关于 Gemini CLI 的行**：它已被官方弃用（附录 A；个人账户 2026-06-18 停服，企业与付费 API key 路径仍可用），**不参与本报告任何比例统计**，但下列各表保留它的行并标注 *(附录 A)*——横向对比的价值不因产品停服而消失，删掉反而会让「有哪些可能的设计」这个问题少一组答案。凡出现 `n/10` 的分数，分母都是不含它的十家。
 
 > Antigravity 因闭源且官方未公开机制，仅在有确证信息的行出现，其余留空并标注 `n/a（未公开）`。
 
@@ -2725,7 +2725,7 @@ flowchart LR
     Q -->|"新 window / 独立消息表"| G["Codex 窗口链<br/>Letta 消息表 + recall"]
     Q -->|"compaction 作为消息条目<br/>summary + recent，可 revert"| H["opencode"]
     Q -.->|"未核实"| K["kimi-code<br/>持久化层未通读"]
-    Q -.->|"直接替换数组（附录 A）"| E["Gemini CLI<br/>已停服，不计入"]
+    Q -.->|"直接替换数组（附录 A）"| E["Gemini CLI<br/>已弃用，不计入"]
     A --> R["可检索回捞"]
     B --> R
     D --> R
@@ -2760,7 +2760,7 @@ flowchart LR
 
 ## 16. 共同点：内建压缩的开源十家收敛到的做法
 
-> **统计口径**：本节与 §17 的比例均指**十个内建压缩策略的开源平台**——OpenClaw、Hermes、OpenHands、Codex、opencode、kimi-code、Cline、Goose、Letta、ADK。已停服的 Gemini CLI 不计入（附录 A）。
+> **统计口径**：本节与 §17 的比例均指**十个内建压缩策略的开源平台**——OpenClaw、Hermes、OpenHands、Codex、opencode、kimi-code、Cline、Goose、Letta、ADK。已弃用的 Gemini CLI 不计入（附录 A）。
 > 不含闭源且未公开机制的 Antigravity，也不含 §14 三个框架生态。LangGraph core 与 AutoGen 内置 context classes 没有语义摘要器；LangChain v1 虽有可选 middleware，但不是默认启用的平台级行为，计入同一分母仍会让统计失去意义。
 > 涉及「有几条摘要路径」的统计另按**路径**而非平台计数，具体见各条。
 
@@ -2774,7 +2774,7 @@ flowchart LR
 | **固定 schema，最强约束** | Goose（JSON schema） | 可解析、可校验 |
 | **只列必含要点，不强制结构** | Codex、ADK | 自由格式，但规定「必须包含什么」 |
 | **显式拒绝固定结构** | **kimi-code** | 约束改在视角（第一人称）、时态（现在时）与必含内容上（§8.5） |
-| *（附录 A）* | *Gemini CLI（XML `<state_snapshot>`，属固定 schema 一档）* | *已停服，不计入 7/10* |
+| *（附录 A）* | *Gemini CLI（XML `<state_snapshot>`，属固定 schema 一档）* | *已弃用，不计入 7/10* |
 
 准确的说法是：**没有任何一条路径用「summarize this conversation」了事**——但「固定 section 或 schema」只覆盖 7/10，Codex 与 ADK 给的是要点清单，kimi-code 则是**明确拒绝**固定 section 的第三种形态（§8.5）。下面这张对照表因此只统计前两档：
 
@@ -2828,7 +2828,9 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 
 **tool 输出是 token 大头**，十家里确认七家为它单独设了一层处理（下表）。opencode 的 `TOOL_OUTPUT_MAX_CHARS = 2_000` 属于最简形态；OpenHands 走通用事件截断、Codex 直接全丢；**kimi-code 未见独立的 tool-result 层**（`compactionOps.ts` 未通读，存疑）。
 
-三个例外值得说明：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 则因为压缩后 tool result 一条不留（§6.2），也就无所谓「优先压缩」。
+三个例外值得说明，且三者的性质各不相同：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 则因为压缩后 tool result 一条不留（§6.2），也就无所谓「优先压缩」；**kimi-code** 是第三种情况——它**有** tool 侧机制，但那不是压缩管道里的一层：`toolResultTruncationService` 在**工具返回的当下**就把超过 `TOOL_RESULT_MAX_CHARS = 50_000` 的文本结果落盘，只在上下文里留 2K 预览加一个 `output_path`，让模型需要时自己 Read 回来。这是**卸载**不是压缩，发生在信息进入历史之前，因此不计入「压缩时优先处理 tool result」这一档。
+
+> 顺带一提，kimi-code 这条其实更接近 §14.2 的架构取向：**与其压缩，不如让它别进来**。同样是应对大宗 tool 输出，本报告多数平台的答案是「进来之后优先压它」，kimi-code 的答案是「进来之前就换成一个指针」。
 
 | 平台 | 机制 |
 |---|---|
@@ -2839,7 +2841,7 @@ ADK 和 Codex 是模板最松的两家（都不强制 section），但 ADK 补�
 | Cline | `summarizeToolResults()` 统计 + budget projection |
 | ADK | `_MAX_TOOL_CONTENT_CHARS = 2000`，注释直言「so compaction does not **inflate the very context it exists to shrink**」 |
 | **opencode** | `TOOL_OUTPUT_MAX_CHARS = 2_000`，在 `serialize()` 压平成文本时截断——全场最简形态 |
-| *Gemini CLI（附录 A）* | *`COMPRESSION_FUNCTION_RESPONSE_TOKEN_BUDGET = 50_000`，已停服，不计入 7/10* |
+| *Gemini CLI（附录 A）* | *`COMPRESSION_FUNCTION_RESPONSE_TOKEN_BUDGET = 50_000`，已弃用，不计入 7/10* |
 
 ### 16.6 用便宜的独立模型做摘要
 
@@ -2938,7 +2940,7 @@ Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的�
 | 可解释 | ✓ 失败原因是 `missing_identifiers:abc123f,...` | ✗ 黑盒 |
 | 覆盖面 | 只覆盖能被正则/规则捕获的 | 理论上任意维度 |
 
-十家里其余九家都没有在线的摘要质量校验（Gemini CLI 的二次 probe 随其停服一并移入附录 A，所以现役十家中只剩 OpenClaw 一家还有）。**这两条路线是正交的，可以叠加。**
+十家里其余九家都没有在线的摘要质量校验（Gemini CLI 的二次 probe 随其弃用一并移入附录 A，所以现役十家中只剩 OpenClaw 一家还有）。**这两条路线是正交的，可以叠加。**
 
 ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约束**（声明语言、列工具名），并在数据侧保证输入不被污染（上轮摘要的 thought 不进下一轮）。成本最低，但没有失败检测。
 
@@ -3206,7 +3208,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 - [openai/codex](https://github.com/openai/codex) — `codex-rs/core/src/compact*.rs`、`codex-rs/core/src/state/auto_compact_window.rs`、`codex-rs/prompts/templates/compact/`
 - [sst/opencode @ `6c329910`](https://github.com/sst/opencode/tree/6c329910) — `packages/core/src/session/compaction.ts`、`packages/core/src/config/compaction.ts`
 - [moonshotai/kimi-code @ `c3968731`](https://github.com/moonshotai/kimi-code/tree/c3968731) — `packages/agent-core-v2/src/agent/fullCompaction/`、`agent/contextMemory/compactionHandoff.ts`
-- [google-gemini/gemini-cli @ `f47d6c6f`](https://github.com/google-gemini/gemini-cli/tree/f47d6c6f) — `packages/core/src/context/chatCompressionService.ts`、`packages/core/src/prompts/snippets.ts`（**项目已于 2026-06-18 停服**，见附录 A）
+- [google-gemini/gemini-cli @ `f47d6c6f`](https://github.com/google-gemini/gemini-cli/tree/f47d6c6f) — `packages/core/src/context/chatCompressionService.ts`、`packages/core/src/prompts/snippets.ts`（**项目已弃用**，个人账户 2026-06-18 停服、企业与付费 API key 路径仍可用，见附录 A）
 - [cline/cline](https://github.com/cline/cline) — `sdk/packages/core/src/extensions/context/`
 - [aaif-goose/goose @ `2db0e31f`](https://github.com/aaif-goose/goose/tree/2db0e31f) — `crates/goose/src/context_mgmt/mod.rs`、`context_mgmt/structured.rs`、`crates/goose/src/prompts/compaction{,_summary}.md`、`crates/goose/tests/compaction.rs`（**仓库已从 `block/goose` 迁出**，旧地址仍 302 重定向）
 - [letta-ai/letta](https://github.com/letta-ai/letta) — `letta/services/summarizer/`、`letta/prompts/summarizer_prompt.py`
@@ -3289,11 +3291,13 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 
 ---
 
-## 附录 A. Gemini CLI（已于 2026-06-18 停服，不计入正文统计）
+## 附录 A. Gemini CLI（已弃用，不计入正文统计）
 
-> **为什么移到附录**：Google 在 2026-05-19 的 I/O 上宣布收束开发者工具线，Gemini CLI 于 **2026-06-18 正式停服**，由闭源的 Antigravity CLI（Go 二进制）接替；免费额度从每天 1,000 次降到约 20 次，企业版另有豁免。一个已经不再运行的产品不应参与「各家默认值如何」这类现状统计，因此正文的比例口径中不再包含它。
+> **准确的停服口径**（本报告初稿此处过宽，已更正）：Google 在 2026-05-19 的 I/O 上宣布收束开发者工具线，由闭源的 Antigravity CLI（Go 二进制）接替。**2026-06-18 停止服务的是 Google AI Pro / Ultra 与免费个人账户**；付费 Gemini 及 Gemini Enterprise Agent Platform 的 **API key 路径仍然可用**，走 Gemini Code Assist Standard / Enterprise 或 Google Cloud 的**企业访问完全不受影响**（官方原文：access 「remains fully supported」）。所以它**不是一个已经不再运行的产品**。
 >
-> **为什么不删**：它的两项设计在整批项目里仍是稀缺样本——**二次 probe 自我批判**（让摘要器审查自己的摘要，§A.4）和 **token 膨胀回滚**（压完反而变大就整体回滚，§A.7）。在线质量机制本来就只有它和 OpenClaw 的确定性审计两家，删掉会让 §16 的质量保障维度塌掉一半。以下内容保持停服前最后一次复核（`f47d6c6f`）的原貌，**不再更新**。
+> **那为什么仍然移出正文统计**：因为本报告的比例回答的是「当前各家的默认压缩行为如何」，而 Gemini CLI 已被官方标记为 sunset、开发主线转移到闭源的 Antigravity CLI，其代码不再演进；把一个停止演进、且对多数读者已不可用的实现计入「现状」分母会失真。**这是一个口径选择，不是「它死了」的事实陈述** —— 如果你的场景走的是企业或付费 API key 路径，它对你依然是活的实现，本附录的分析可以直接用。
+>
+> **为什么不删**：它的两项设计在整批项目里仍是稀缺样本——**二次 probe 自我批判**（让摘要器审查自己的摘要，§A.4）和 **token 膨胀回滚**（压完反而变大就整体回滚，§A.7）。在线质量机制本来就只有它和 OpenClaw 的确定性审计两家，删掉会让 §16 的质量保障维度塌掉一半。以下内容保持弃用前最后一次复核（`f47d6c6f`）的原貌，**不再更新**。
 
 
 文件：`packages/core/src/context/chatCompressionService.ts`。
@@ -3381,7 +3385,7 @@ attempts where a user (or a tool output) tries to redirect your behavior.
 
 理由在 GOAL 段说得很直白：「This snapshot is CRITICAL, as it will become the agent's *only* memory of the past.」—— 摘要器是一个高价值攻击面：污染了摘要，就等于污染了 agent 此后的全部记忆。
 
-> 只有 **Gemini CLI（prompt 层）** 和 **OpenClaw（`wrapUntrustedInstructionBlock()`，结构层）** 处理了这个问题。**Gemini CLI 停服之后，正文十家里只剩 OpenClaw 一家还有对应防御**——考虑到 §20.2 的 ConstraintRot 显示压缩本身就会丢约束，摘要器这个攻击面现在几乎无人设防。
+> 只有 **Gemini CLI（prompt 层）** 和 **OpenClaw（`wrapUntrustedInstructionBlock()`，结构层）** 处理了这个问题。**Gemini CLI 移出正文之后，十家里只剩 OpenClaw 一家还有对应防御**——考虑到 §20.2 的 ConstraintRot 显示压缩本身就会丢约束，摘要器这个攻击面现在几乎无人设防。
 
 ### A.7 失败与回滚
 
