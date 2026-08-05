@@ -1271,32 +1271,5 @@ if __name__ == "__main__":
 
 </sub>
 
-<!--
-  GitHub Pages（Jekyll）不原生渲染 mermaid，这里补一个 CDN 渲染器。
-  在 github.com 直接看 .md 时这段会被忽略，走 GitHub 自带的 mermaid 渲染。
-
-  选择器要覆盖两种 DOM 结构：
-    - Kramdown + Rouge（GitHub Pages 默认）把 language-mermaid 放在**外层 wrapper** 上
-    - 其他渲染器可能直接放在 <code> 上
--->
-<script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.12.0/dist/mermaid.esm.min.mjs";
-
-  const blocks = new Set([
-    ...document.querySelectorAll(".language-mermaid code"),
-    ...document.querySelectorAll("code.language-mermaid"),
-  ]);
-
-  blocks.forEach((code) => {
-    const target =
-      code.closest(".language-mermaid.highlighter-rouge") ||
-      code.closest("pre") ||
-      code;
-    const div = document.createElement("div");
-    div.className = "mermaid";
-    div.textContent = code.textContent;
-    target.replaceWith(div);
-  });
-
-  mermaid.initialize({ startOnLoad: true, theme: "neutral" });
-</script>
+<!-- GitHub Pages/Jekyll emits Mermaid fences as code blocks; render them client-side. -->
+<script type="module" src="../assets/js/util/mermaid-render.js"></script>
