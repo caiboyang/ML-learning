@@ -2635,7 +2635,7 @@ flowchart TD
 | **Codex** | token 限额（Total / BodyAfterPrefix） | `model_auto_compact_token_limit` | 20K 用户消息 + 摘要 | 切换到小窗口模型也触发 |
 | **Gemini CLI** *(附录 A)* | 百分比 | 0.5 | 保留最后 30%（按字符） | `model.compressionThreshold` 可配 |
 | **opencode** | **绝对余量** | 剩余 < **20000** tok（`DEFAULT_BUFFER`，与 OpenClaw 生效值同数） | `DEFAULT_KEEP_TOKENS` 8000 | 计入 system + tools schema；另有 `compactAfterOverflow` 溢出补救入口 |
-| **kimi-code** | **百分比 ‖ 绝对余量**（唯一两者并用） | `triggerRatio` 0.85 **或** 剩余 < `reservedContextSize` 50000 | 三上限取先到：最近 4 条 / 窗口 20% / 合法切点 | 另有独立的 `shouldBlock` 阈值；溢出重试最多 3 次且每次须腾出 ≥5% |
+| **kimi-code** | **百分比 ‖ 绝对余量**（唯一两者并用） | `triggerRatio` 0.85 **或** 剩余 < `reservedContextSize` 50000（且 W 会被 413 反馈下调，§8.4） | **整段全压**，压后由 `compactionHandoff` 只留真实用户消息（头 2K + 尾，上限 20K）(§8.2) | 另有独立 `shouldBlock` 阈值；溢出按 `[0.7, 0.5, 0.35]` 逐档缩小重试，最多 3 次 |
 | **Cline** | 百分比 | 0.9 | target 0.7（长会话 0.5） | preserve recent 20000 tok |
 | **Goose** | 百分比 | 0.8 | 摘要替换 | `provider.manages_own_context()` 则跳过 |
 | **Letta** | 百分比 | **1.0**（GPT-5 家族 0.9） | sliding window 保留 30% | 最激进的「晚压」 |
@@ -2723,13 +2723,16 @@ flowchart LR
     Q -->|"落在存活区间内<br/>就不进 prompt"| D["ADK<br/>区间遮蔽"]
     Q -->|"打标记但保留<br/>markPreservedByCompaction"| F["Cline"]
     Q -->|"新 window / 独立消息表"| G["Codex 窗口链<br/>Letta 消息表 + recall"]
-    Q -->|"直接替换数组"| E["Gemini CLI<br/>不保留"]
+    Q -->|"compaction 作为消息条目<br/>summary + recent，可 revert"| H["opencode"]
+    Q -.->|"未核实"| K["kimi-code<br/>持久化层未通读"]
+    Q -.->|"直接替换数组（附录 A）"| E["Gemini CLI<br/>已停服，不计入"]
     A --> R["可检索回捞"]
     B --> R
     D --> R
     G --> R
     C --> U["UI 看得到全量<br/>但无检索"]
     F --> U
+    H --> U
     E --> N["丢了就是丢了"]
 ```
 
@@ -2906,7 +2909,7 @@ flowchart TD
 
 | 答案 | 代表 | 机制 |
 |---|---|---|
-| **用户原话不可再生** | Codex / Hermes / Goose / Letta | Codex：20K token 预算原文保留，assistant/tool 全丢<br>Hermes：`min_tail_user_messages` 保证**优先于 token 预算**；micro-compaction **结构上就不吸收 user turn**<br>Goose：自动压缩保留最近一条纯文本用户消息<br>Letta：摘要 schema 里 `user_messages` 独立字段 |
+| **用户原话不可再生** | Codex / **kimi-code** / Hermes / Goose / Letta | Codex：20K token 预算原文保留，assistant/tool 全丢<br>**kimi-code：同为 20K 预算，且是十家里最极端的一家——压后只剩用户消息 + 摘要，并用 `compactionUserMessageDisposition` 按来源白名单剔除注入/hook/shell/cron，只认真实用户输入（§8.2）**<br>Hermes：`min_tail_user_messages` 保证**优先于 token 预算**；micro-compaction **结构上就不吸收 user turn**<br>Goose：自动压缩保留最近一条纯文本用户消息<br>Letta：摘要 schema 里 `user_messages` 独立字段 |
 | **最近的东西最重要** | OpenClaw / Cline / opencode | 纯 token/字符预算的尾部保护，不区分角色（opencode 更进一步，允许把边界上那条消息按字符劈成两半，§7.2） |
 | **头部（系统提示+首次交互）最重要** | OpenHands / Hermes | `keep_first=2` / `protect_first_n=3` |
 | **无角色偏好，只保证结构完整** | ADK | 只按 `event_retention_size` 计数，但把「未闭合义务」的完整性做到了最严 |
