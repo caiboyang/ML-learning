@@ -299,7 +299,7 @@ flowchart TD
     Q{"怎么处理压缩与 cache 的冲突"}
     Q -->|"等 cache 自己过期再动手"| A["OpenClaw<br/>contextPruning mode = cache-ttl<br/>只裁超过 TTL 的 tool result"]
     Q -->|"控制打断频率"| B["Hermes<br/>micro_compact.every_n_turns<br/>= 多久付一次 cache break"]
-    Q -->|"不处理"| C["OpenHands · Codex · Gemini CLI<br/>Cline · Goose"]
+    Q -->|"不处理"| C["OpenHands · Codex · Cline · Goose<br/>opencode · kimi-code"]
     Q -->|"不在压缩时处理<br/>但提供 cache 机制"| D["Letta · ADK"]
 ```
 
