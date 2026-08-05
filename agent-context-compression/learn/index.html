@@ -385,6 +385,13 @@ provider: <span class="s">400 Bad Request — context_length_exceeded</span></co
         问题变成「还装不装得下下一次响应」，这个问题的答案跟窗口多大无关。
         <br><br><b>20,000 这个数字有交叉验证</b>：OpenClaw 和 opencode 两个独立项目、不同语言、不同作者，
         都收敛到了同一个常数。
+        <br><br>
+        <b>但别把它当成裸常数抄</b> —— 它必须配一个小窗口保护：
+        <pre style="margin:14px 0 12px"><code>reserve = min(20000, window * 0.15)   <span class="c">// 小窗口时按比例退让</span>
+if (window - used &lt; reserve) compact()</code></pre>
+        没有这个 cap 的话，一个 16K 窗口的本地模型会出事：<b>20,000 的余量要求超过了整个窗口</b>，
+        于是连空 prompt 都被判为「余量不足」，每一轮都触发压缩，压完还是不足 —— <b>无限压缩循环</b>。
+        这不是假想，OpenClaw 的源码里就为此专门加了 cap 并写了注释说明。
       </div>
     </div>
 
