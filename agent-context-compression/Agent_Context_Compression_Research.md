@@ -139,7 +139,7 @@ _MAX_TAIL_MESSAGE_FLOOR = 8
 
 【机制解释】根源是**消息大小的方差跨三个数量级**：一条用户 prompt 几十 token，一条文件读取的 tool result 可能几万。按条数保护，保护区的实际大小完全不可控——同样是「保护最近 20 条」，可能是 2K token，也可能是 200K。按 token 预算保护，才是在控制真正稀缺的那个资源。
 
-条数仍然有用，但只作为**下限兜底**（防止极端情况下尾部空掉），不作为主口径。十家内建策略的开源平台里，OpenHands 是唯一默认以条数为主的（`max_size=240`）；kimi-code 的 `maxRecentMessages: 4` 是三个并行上限之一，与 `maxRecentSizeRatio: 0.2` 同时生效，不算纯条数口径，但它同时提供 token 阈值那一族——官方文档称之为 "absolute safety net"。§14 的 LangChain middleware 也支持 message-count trigger，不过它是可选组件且 `trigger=None` 时不运行。
+条数仍然有用，但只作为**下限兜底**（防止极端情况下尾部空掉），不作为主口径。十家内建策略的开源平台里，OpenHands 是唯一默认以条数为主的（`max_size=240`）。kimi-code 的配置里虽有 `maxRecentMessages: 4`，但那条路径在 v2 上不可达（§8.2）——它实际的保留口径是压缩后由 `compactionHandoff` 按 **20K token 预算**留真实用户消息，同样不是条数口径，但它同时提供 token 阈值那一族——官方文档称之为 "absolute safety net"。§14 的 LangChain middleware 也支持 message-count trigger，不过它是可选组件且 `trigger=None` 时不运行。
 
 ### 2.3 结构化摘要模板 —— 四重收益
 
