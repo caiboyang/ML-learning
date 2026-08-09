@@ -1,3 +1,9 @@
+---
+layout: default
+title: "MCP 2.0 学习手册：从 API、RPC 到无状态 AI 集成协议"
+description: "从 MCP 1.0 的有状态会话出发，理解 MCP 2.0 的无状态请求、MRTR、迁移与安全边界。"
+---
+
 # MCP 2.0 学习手册：从 API、RPC 到无状态 AI 集成协议
 
 > 从零建立 MCP 的底层心智模型：
