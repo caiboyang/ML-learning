@@ -27,5 +27,12 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *另设一节**效果评测**，梳理 2026 年的实证工作：CompactionRL（只换摘要器就有 6.5 分区间）、ConstraintRot（压缩把治理约束违规率从 0% 抬到 30%，最高 59%）、Slipstream（按轨迹而非文本判定保真度），并逐条对应回设计清单。*
   * *先建立统一的六层参照模型（测量/触发/选点/减法/重组/持久化）解决各家术语打架的问题；再用一整节讲**设计理念**——头尾保留中间压缩在利用长上下文检索的 U 形曲线（Lost in the Middle）、迭代更新在规避有损压缩的级联失真、保留用户原话背后的信息论不对称、为什么不能告诉模型"上下文快满了"、摘要器为何是一个信任降级点、压缩与 prompt cache 的根本张力；然后逐家深挖，最后横向对比触发哲学（绝对余量 vs 百分比 vs cadence）、减法哲学、持久化模型，以及 OpenClaw × Hermes 逐项对照与可借鉴设计清单。*
 
+* 🎓 [从 API 到 MCP 2.0 — 零基础十步学习路径](https://caiboyang.github.io/ML-learning/mcp-2.0/learn/)
+  * *从普通 API、RPC 与 JSON-RPC 的底层差异讲起，还原 MCP 1.0 的 Host / Client / Server、生命周期与 primitives，再解释 MCP 2.0 为什么走向 stateless、MRTR、显式状态 handle 与缓存，并串起 extensions、auth 和迁移。本专题正文统一使用 **MCP 1.0 → MCP 2.0** 的教学分代，分别对应官方 **2025-11-25 及以前 → 2026-07-28 及以后**；wire 报文与兼容声明仍使用日期版本。*
+  * *与下面的参考手册配套：建议先读学习页建立问题意识和协议心智模型，再用手册核对规范、线级报文与迁移细节。*
+
+* 📚 [从 MCP 1.0 到 MCP 2.0：协议模型与迁移参考手册](https://caiboyang.github.io/ML-learning/mcp-2.0/MCP_2_0_Research.html)（[Markdown 原文](mcp-2.0/MCP_2_0_Research.md)）
+  * *从 API / RPC / JSON-RPC 与 MCP 1.0 的协议基础，逐层深挖 MCP 2.0 的 stateless 请求、MRTR、显式状态 handle、缓存、extensions、auth 和兼容迁移；配套时序图、状态机、线级示例与官方日期版本来源，适合作为查阅手册。*
+
 ---
 *More notes will be added here soon...*

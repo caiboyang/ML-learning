@@ -1,0 +1,1272 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="从普通 API 的接入困境出发，十步理解 MCP 1.0 如何演进到 MCP 2.0。" />
+<title>从 API 到 MCP 2.0｜零基础十步学习路径</title>
+<style>
+:root{color-scheme:dark;--ink:#f1eee7;--ink-soft:#c5c0b5;--ink-dim:#8f8b83;--void:#090b10;--night:#0e121a;--panel:#141a24;--panel-2:#192130;--line:#293244;--line-soft:#1e2634;--cyan:#74ddd1;--cyan-soft:#a6eee6;--violet:#b69cf7;--violet-soft:#d7c9ff;--amber:#f3b875;--rose:#ed8da0;--green:#91d39b;--content:850px;--wide:1060px;--radius:12px;}
+*,*::before,*::after{box-sizing:border-box;}
+html{margin:0;padding:0;overflow-x:clip;scroll-behavior:smooth;}
+body{margin:0;padding:0;overflow-x:clip;background:radial-gradient(900px 420px at 82% -4%,rgba(116,221,209,.08),transparent 62%),radial-gradient(760px 440px at 5% 8%,rgba(182,156,247,.07),transparent 60%),var(--void);color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;font-size:17px;line-height:1.78;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+a{color:var(--cyan);text-decoration-thickness:1px;text-underline-offset:3px;}
+a:hover{color:var(--cyan-soft);}
+img,svg{display:block;max-width:100%;}
+code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;}
+code{overflow-wrap:anywhere;color:var(--cyan-soft);background:rgba(116,221,209,.07);border-radius:4px;padding:.08em .34em;font-size:.87em;}
+pre{width:100%;max-width:100%;margin:22px 0;padding:18px;overflow:auto;background:#0b1018;border:1px solid var(--line);border-radius:10px;color:var(--ink-soft);font-size:13px;line-height:1.65;tab-size:2;}
+pre code{padding:0;background:none;color:inherit;overflow-wrap:normal;}
+.tok-key{color:var(--violet-soft);}
+.tok-string{color:var(--amber);}
+.tok-comment{color:var(--ink-dim);}
+.mono{font-size:11px;letter-spacing:.12em;text-transform:uppercase;}
+.hero{position:relative;border-bottom:1px solid var(--line);padding:72px 24px 52px;overflow:hidden;}
+.hero::after{content:"";position:absolute;inset:auto 0 0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.45;}
+.hero-inner{position:relative;z-index:1;width:min(100%,var(--wide));margin:0 auto;}
+.crumbs{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--ink-dim);}
+.crumbs .dot{width:3px;height:3px;border-radius:50%;background:var(--ink-dim);}
+h1{max-width:900px;margin:20px 0 20px;font-size:clamp(39px,7vw,76px);line-height:1.04;letter-spacing:-.04em;font-weight:750;}
+h1 .accent{color:var(--violet-soft);}
+.lede{max-width:790px;margin:0;color:var(--ink-soft);font-size:clamp(18px,2.2vw,22px);line-height:1.7;}
+.lede strong{color:var(--ink);}
+.hero-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:42px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.hero-meta > div{min-width:0;padding:17px 16px 17px 0;}
+.hero-meta > div + div{padding-left:16px;border-left:1px solid var(--line);}
+.hero-meta .label{color:var(--ink-dim);}
+.hero-meta .value{margin-top:5px;color:var(--ink-soft);font-size:14px;line-height:1.5;}
+.route{width:min(100%,var(--content));margin:34px auto 0;padding:0 24px;}
+.route-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;list-style:none;margin:0;padding:0;}
+.route-list a{display:block;min-height:100%;padding:10px;border:1px solid var(--line-soft);border-radius:8px;background:rgba(20,26,36,.62);color:var(--ink-soft);font-size:12px;line-height:1.45;text-decoration:none;}
+.route-list a:hover{border-color:var(--cyan);color:var(--ink);}
+.route-list b{display:block;margin-bottom:2px;color:var(--cyan);font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.08em;}
+article{width:min(100%,var(--content));margin:0 auto;padding:36px 24px 20px;}
+.lesson{margin:88px 0;scroll-margin-top:28px;}
+.lesson:first-child{margin-top:34px;}
+.lesson-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:13px 18px;align-items:baseline;padding-top:23px;border-top:1px solid var(--line);}
+.step-no{grid-row:1 / span 2;color:var(--cyan);white-space:nowrap;}
+h2{margin:0;font-size:clamp(27px,4vw,36px);line-height:1.2;letter-spacing:-.025em;}
+.lesson-sub{color:var(--ink-dim);font-size:12px;letter-spacing:.08em;}
+.deck{margin:24px 0;padding-left:15px;border-left:2px solid var(--violet);color:var(--violet-soft);font-size:19px;line-height:1.65;}
+p{margin:0 0 18px;color:var(--ink-soft);}
+p strong,li strong{color:var(--ink);font-weight:650;}
+h3{margin:35px 0 13px;color:var(--ink);font-size:20px;line-height:1.35;}
+ul.clean,ol.clean{margin:20px 0;padding-left:1.3em;color:var(--ink-soft);}
+ul.clean li,ol.clean li{margin:9px 0;padding-left:.25em;}
+.callout{margin:26px 0;padding:17px 19px;border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:9px;background:var(--panel);color:var(--ink-soft);font-size:15px;line-height:1.68;}
+.callout .tag{display:block;margin-bottom:7px;color:var(--amber);}
+.callout.key{border-left-color:var(--cyan);}
+.callout.key .tag{color:var(--cyan);}
+.callout.risk{border-left-color:var(--rose);}
+.callout.risk .tag{color:var(--rose);}
+.callout strong{color:var(--ink);}
+.source-line{margin-top:22px;padding-top:12px;border-top:1px solid var(--line-soft);color:var(--ink-dim);font-size:12px;line-height:1.65;}
+.source-line a{color:var(--ink-soft);}
+figure.explain{width:100%;max-width:100%;margin:30px 0 34px;padding:20px;overflow:hidden;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(145deg,rgba(182,156,247,.035),transparent 48%),var(--night);}
+figure.explain figcaption{margin-top:16px;padding-top:12px;border-top:1px solid var(--line-soft);color:var(--ink-dim);font-size:12px;line-height:1.55;}
+.figure-title{margin-bottom:17px;color:var(--ink);font-size:14px;font-weight:650;}
+.box{min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink-soft);font-size:13px;line-height:1.45;overflow-wrap:anywhere;}
+.box b{display:block;margin-bottom:3px;color:var(--ink);font-weight:650;}
+.box.cyan{border-color:rgba(116,221,209,.5);background:rgba(116,221,209,.07);}
+.box.violet{border-color:rgba(182,156,247,.5);background:rgba(182,156,247,.07);}
+.box.amber{border-color:rgba(243,184,117,.48);background:rgba(243,184,117,.06);}
+.box.rose{border-color:rgba(237,141,160,.48);background:rgba(237,141,160,.06);}
+.arrow-line{color:var(--ink-dim);font-family:ui-monospace,monospace;font-size:12px;text-align:center;}
+.split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;}
+.triple{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.integration-matrix{display:grid;grid-template-columns:minmax(108px,1.05fr) repeat(3,minmax(105px,1fr));gap:6px;}
+.matrix-row{display:contents;}
+.matrix-cell{min-width:0;padding:9px 8px;border:1px solid var(--line-soft);border-radius:6px;background:var(--panel);color:var(--ink-soft);font-size:11px;line-height:1.38;overflow-wrap:anywhere;}
+.matrix-cell.head{display:grid;place-items:center;background:rgba(182,156,247,.07);border-color:rgba(182,156,247,.35);color:var(--violet-soft);font-weight:650;text-align:center;}
+.matrix-cell.host{display:grid;align-content:center;color:var(--ink);font-weight:650;}
+.matrix-cell.adapter{border-color:rgba(237,141,160,.28);background:rgba(237,141,160,.045);}
+.matrix-cell.adapter b{display:block;margin-bottom:2px;color:var(--rose);font-family:ui-monospace,monospace;font-size:9px;letter-spacing:.04em;text-transform:uppercase;}
+.matrix-total{margin-top:12px;color:var(--amber);font-family:ui-monospace,monospace;font-size:11px;text-align:center;}
+.standard-map{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(110px,.65fr) auto minmax(0,1fr);gap:10px;align-items:center;margin-top:20px;}
+.layer-stack{display:grid;gap:7px;}
+.layer-row{display:grid;grid-template-columns:85px minmax(0,1fr);gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink-soft);font-size:13px;}
+.layer-row b{color:var(--cyan);font-family:ui-monospace,monospace;font-size:12px;}
+.layer-row.current{border-color:var(--violet);background:rgba(182,156,247,.08);}
+.packet{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,.65fr);gap:15px;}
+.packet-code{margin:0;}
+.packet-notes{display:grid;gap:8px;align-content:start;}
+.packet-notes .note{padding:9px 10px;border-left:2px solid var(--violet);color:var(--ink-soft);font-size:12px;line-height:1.5;}
+.flow-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;align-items:center;}
+.flow-row .box{padding:9px 7px;text-align:center;font-size:11px;}
+.flow-row .arrow-line{min-width:14px;}
+.bridge-legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:13px;}
+.host-map{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:15px;}
+.host-core{display:grid;gap:8px;align-content:start;}
+.client-fan{display:grid;gap:10px;}
+.client-link{display:grid;grid-template-columns:minmax(0,.8fr) auto minmax(0,1fr);gap:8px;align-items:center;}
+.primitive-scale{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;}
+.primitive{min-width:0;padding:15px;border-top:3px solid var(--cyan);background:var(--panel);color:var(--ink-soft);font-size:13px;}
+.primitive:nth-child(2){border-top-color:var(--violet);}
+.primitive:nth-child(3){border-top-color:var(--amber);}
+.primitive b{display:block;margin-bottom:6px;color:var(--ink);}
+.sequence{display:grid;gap:7px;}
+.sequence-head,.message{display:grid;grid-template-columns:minmax(74px,.8fr) minmax(0,2fr) minmax(74px,.8fr);gap:8px;align-items:center;}
+.sequence-head span{color:var(--ink-dim);font-size:10px;text-align:center;}
+.message .who{color:var(--ink-soft);font-size:11px;text-align:center;}
+.message .wire{position:relative;min-width:0;padding:6px 25px 6px 9px;border-bottom:1px solid var(--cyan);color:var(--ink-soft);font-family:ui-monospace,monospace;font-size:11px;line-height:1.35;overflow-wrap:anywhere;}
+.message .wire::after{content:"";position:absolute;right:0;bottom:-4px;border-left:7px solid var(--cyan);border-top:4px solid transparent;border-bottom:4px solid transparent;}
+.message.back .wire{padding:6px 9px 6px 25px;border-bottom-color:var(--violet);}
+.message.back .wire::after{display:none;}
+.message.back .wire::before{content:"";position:absolute;left:0;bottom:-4px;border-right:7px solid var(--violet);border-top:4px solid transparent;border-bottom:4px solid transparent;}
+.transport{display:grid;gap:12px;}
+.mini-flow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;margin:12px 0;}
+.transport small{color:var(--ink-dim);font-size:11px;line-height:1.45;}
+.death-scene{display:grid;grid-template-columns:minmax(0,.85fr) auto minmax(0,.85fr) auto minmax(0,1.1fr);gap:9px;align-items:center;}
+.replicas{display:grid;gap:8px;}
+.dead-end{padding:12px;border:1px dashed var(--rose);border-radius:8px;color:var(--rose);font-size:12px;line-height:1.5;}
+.compare-state{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;}
+.state-path{display:grid;gap:8px;}
+.state-path .mini-flow{grid-template-columns:1fr auto 1fr;}
+.replica-map{display:grid;grid-template-columns:minmax(0,.8fr) auto minmax(0,1fr) auto minmax(0,.9fr);gap:9px;align-items:center;}
+.mrtr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;}
+.mrtr-step{position:relative;min-width:0;padding:13px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink-soft);font-size:12px;line-height:1.5;}
+.mrtr-step:not(:last-child)::after{content:"→";position:absolute;right:-9px;top:50%;z-index:2;color:var(--cyan);transform:translate(50%,-50%);}
+.mrtr-step b{display:block;margin-bottom:4px;color:var(--ink);}
+.gateway-map{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1.2fr);gap:12px;align-items:center;}
+.headers{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#0b1018;color:var(--ink-soft);font-family:ui-monospace,monospace;font-size:11px;overflow-wrap:anywhere;}
+.change-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.change{min-width:0;padding:13px;border-left:2px solid var(--cyan);background:var(--panel);color:var(--ink-soft);font-size:12px;line-height:1.52;}
+.change.deprecated{border-left-color:var(--rose);}
+.change b{display:block;margin-bottom:3px;color:var(--ink);}
+.decision-tree{display:grid;gap:9px;}
+.decision-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:9px;align-items:center;}
+.decision-row .answer{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.trust-map{display:grid;grid-template-columns:minmax(0,.9fr) auto minmax(0,1.25fr);gap:12px;align-items:stretch;}
+.trust-flow{display:grid;gap:8px;}
+.trust-gate{display:grid;place-items:center;padding:10px;border:1px solid var(--amber);border-radius:8px;color:var(--amber);font-size:11px;text-align:center;}
+.lab-road{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;}
+.lab{position:relative;min-width:0;padding:13px 10px;border-top:2px solid var(--cyan);background:var(--panel);color:var(--ink-soft);font-size:11px;line-height:1.48;}
+.lab:not(:last-child)::after{content:"→";position:absolute;right:-8px;top:18px;z-index:2;color:var(--cyan);}
+.lab b{display:block;margin-bottom:4px;color:var(--ink);font-size:12px;}
+.checklist{display:grid;gap:9px;margin:22px 0;}
+details{border-top:1px solid var(--line);padding:12px 0;}
+details:last-child{border-bottom:1px solid var(--line);}
+summary{cursor:pointer;color:var(--ink);font-weight:600;}
+details p{margin:10px 0 0;padding-left:20px;color:var(--ink-soft);font-size:15px;}
+.table-wrap{width:100%;max-width:100%;overflow-x:auto;margin:24px 0;}
+table{width:100%;min-width:620px;border-collapse:collapse;color:var(--ink-soft);font-size:13px;line-height:1.55;}
+th,td{padding:11px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top;}
+th{color:var(--cyan);font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;}
+td strong{color:var(--ink);}
+footer{margin-top:72px;padding:36px 24px 66px;border-top:1px solid var(--line);}
+.footer-inner{width:min(100%,var(--content));margin:0 auto;color:var(--ink-dim);font-size:13px;line-height:1.65;}
+.footer-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;}
+@media (max-width:780px){body{font-size:16px;}
+.hero{padding:52px 19px 42px;}
+.hero-meta{grid-template-columns:repeat(2,minmax(0,1fr));}
+.hero-meta > div:nth-child(3){padding-left:0;border-left:0;border-top:1px solid var(--line);}
+.hero-meta > div:nth-child(4){border-top:1px solid var(--line);}
+.route{padding:0 19px;}
+.route-list{grid-template-columns:repeat(2,minmax(0,1fr));}
+article{padding-inline:19px;}
+.split,.triple,.packet,.host-map,.compare-state,.trust-map{grid-template-columns:1fr;}
+.flow-row{grid-template-columns:1fr;}
+.flow-row .arrow-line{transform:rotate(90deg);}
+.client-link{grid-template-columns:minmax(0,.8fr) auto minmax(0,1fr);}
+.death-scene,.replica-map,.gateway-map{grid-template-columns:1fr;}
+.death-scene > .arrow-line,.replica-map > .arrow-line,.gateway-map > .arrow-line{transform:rotate(90deg);}
+.mrtr{grid-template-columns:1fr;}
+.mrtr-step:not(:last-child)::after{right:50%;top:auto;bottom:-16px;transform:translate(50%,0) rotate(90deg);}
+.lab-road{grid-template-columns:1fr;}
+.lab:not(:last-child)::after{right:50%;top:auto;bottom:-15px;transform:translateX(50%) rotate(90deg);}
+}
+@media (max-width:540px){
+.hero-meta{grid-template-columns:1fr;}
+.hero-meta > div,.hero-meta > div + div,.hero-meta > div:nth-child(3){padding:13px 0;border-left:0;border-top:1px solid var(--line);}
+.hero-meta > div:first-child{border-top:0;}
+.route-list{grid-template-columns:1fr;}
+.lesson{margin:72px 0;}
+.lesson-head{grid-template-columns:1fr;gap:5px;}
+.step-no{grid-row:auto;}
+figure.explain{padding:15px;}
+.integration-matrix{grid-template-columns:68px repeat(3,minmax(0,1fr));gap:4px;}
+.matrix-cell{padding:7px 4px;font-size:9.5px;line-height:1.32;}
+.matrix-cell.adapter b{font-size:8px;}
+.standard-map{grid-template-columns:1fr;}
+.standard-map > .arrow-line{transform:rotate(90deg);}
+.layer-row{grid-template-columns:1fr;gap:3px;}
+.primitive-scale,.change-board{grid-template-columns:1fr;}
+.sequence-head,.message{grid-template-columns:57px minmax(0,1fr) 57px;gap:5px;}
+.message .wire{padding-inline:8px 17px;font-size:10px;}
+.message.back .wire{padding-inline:17px 8px;}
+.decision-row{grid-template-columns:1fr;}
+.decision-row > .arrow-line{transform:rotate(90deg);}
+.decision-row .answer{grid-template-columns:1fr;}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="crumbs mono">
+      <a href="../../">ML Learning Notes</a>
+      <span class="dot" aria-hidden="true"></span>
+      <span>Agent Engineering</span>
+      <span class="dot" aria-hidden="true"></span>
+      <span>10-step learning path</span>
+    </div>
+
+    <h1>从一团 API 接线，<br />走到 <span class="accent">MCP 2.0</span></h1>
+
+    <p class="lede">
+      你不需要先懂 MCP 1.0。我们从一个已经有普通 API、却被三个 AI Host 接入到崩溃的团队开始，
+      一路拆到 JSON-RPC 报文、MCP 1.0 会话、负载均衡故障，以及 MCP 2.0 为什么要换一套请求模型。
+    </p>
+
+    <div class="hero-meta">
+      <div>
+        <div class="label mono">读者假设</div>
+        <div class="value">知道「API 能让程序互相调用」即可</div>
+      </div>
+      <div>
+        <div class="label mono">学习主线</div>
+        <div class="value">MCP 1.0 → MCP 2.0</div>
+      </div>
+      <div>
+        <div class="label mono">配套手册</div>
+        <div class="value"><a href="../MCP_2_0_Research.html">规范、报文与来源索引</a></div>
+      </div>
+      <div>
+        <div class="label mono">读完能做到</div>
+        <div class="value">解释协议、判断迁移、完成 5 个实验</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="route" aria-label="十步目录">
+  <ol class="route-list">
+    <li><a href="#step-1"><b>01</b>API 接线困境</a></li>
+    <li><a href="#step-2"><b>02</b>四层协议地图</a></li>
+    <li><a href="#step-3"><b>03</b>工具调用 ≠ MCP</a></li>
+    <li><a href="#step-4"><b>04</b>Host / Client / Server</a></li>
+    <li><a href="#step-5"><b>05</b>还原 MCP 1.0</a></li>
+    <li><a href="#step-6"><b>06</b>负载均衡死亡现场</a></li>
+    <li><a href="#step-7"><b>07</b>Stateless 与 handle</a></li>
+    <li><a href="#step-8"><b>08</b>MCP 2.0 全景</a></li>
+    <li><a href="#step-9"><b>09</b>迁移与安全边界</a></li>
+    <li><a href="#step-10"><b>10</b>动手与自测</a></li>
+  </ol>
+</nav>
+
+<article>
+
+<!-- ============ STEP 01 ============ -->
+<section class="lesson" id="step-1">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 01</span>
+    <h2>先看 API 接线为什么失控</h2>
+    <div class="lesson-sub mono">A concrete integration problem</div>
+  </div>
+
+  <p class="deck">问题不是「没有 API」，恰恰是 API 已经很好用了，却仍要为每个 AI 产品重做一遍接入。</p>
+
+  <p>
+    假设团队已经有一个成熟的 NoteBox API：<code>GET /notes/:id</code> 读笔记，
+    <code>POST /notes</code> 新建笔记，OAuth 控制权限，OpenAPI 文档也齐全。现在三个团队同时来接：
+    聊天桌面端想让模型整理笔记，IDE 想引用项目笔记，客服 Agent 只想读取客户授权的那几篇。
+  </p>
+
+  <p>
+    普通程序员看见的是「三次 HTTP 接入」。AI Host 真正需要补的却更多：把接口翻译成模型能选的工具 schema、
+    告诉模型何时可读何时可写、展示调用前确认、把错误变成模型能继续处理的结果、控制哪些工具进入上下文。
+    下一个日历 API、工单 API 加进来时，这套翻译还要再做三遍。
+  </p>
+
+  <figure class="explain" data-visual="1" aria-labelledby="fig-1-title">
+    <div class="figure-title" id="fig-1-title">图 1 · 没有共同协议时，最坏会长成 Host × 数据源 条适配边</div>
+    <div class="integration-matrix" role="table" aria-label="三个 AI Host 分别接入三个业务 API，需要九套定制适配">
+      <div class="matrix-row" role="row">
+        <div class="matrix-cell head" role="columnheader">Host \ API</div>
+        <div class="matrix-cell head" role="columnheader">NoteBox</div>
+        <div class="matrix-cell head" role="columnheader">Calendar</div>
+        <div class="matrix-cell head" role="columnheader">Ticket</div>
+      </div>
+      <div class="matrix-row" role="row">
+        <div class="matrix-cell host" role="rowheader">聊天桌面端</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 1</b>schema + 写入确认</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 2</b>scope + 时间解析</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 3</b>错误映射 + 审批</div>
+      </div>
+      <div class="matrix-row" role="row">
+        <div class="matrix-cell host" role="rowheader">IDE Host</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 4</b>项目上下文 + 引用</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 5</b>时区 + 冲突恢复</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 6</b>仓库映射 + RBAC</div>
+      </div>
+      <div class="matrix-row" role="row">
+        <div class="matrix-cell host" role="rowheader">客服 Agent</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 7</b>只读过滤 + 审计</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 8</b>客户授权 + 限流</div>
+        <div class="matrix-cell adapter" role="cell"><b>适配 9</b>工单权限 + 脱敏</div>
+      </div>
+    </div>
+    <div class="matrix-total">3 个 Host × 3 个 API = 9 条独立 AI 适配关系</div>
+    <figcaption>每一个格子都代表真实工作：schema 翻译、授权、审批、错误恢复与审计。API 仍是事实来源；重复的是 AI 接入层。</figcaption>
+  </figure>
+
+  <p>
+    MCP 的出发点不是发明另一种业务 API，而是把这层重复胶水变成共同协议：数据源一侧实现 MCP Server，
+    Host 一侧实现 MCP Client。它把最坏情况下的每对定制，改成每一边各实现一次公共边界。
+  </p>
+
+  <figure class="explain" data-visual="2" aria-labelledby="fig-2-title">
+    <div class="figure-title" id="fig-2-title">图 2 · MCP 缩短的是 AI 适配层，不是把原来的 API 扔掉</div>
+    <div class="standard-map">
+      <div class="box violet"><b>多个 AI Host</b>聊天、IDE、Agent</div>
+      <div class="arrow-line">→</div>
+      <div class="box cyan"><b>MCP Client / Server</b>共同语义与报文</div>
+      <div class="arrow-line">→</div>
+      <div class="box"><b>既有系统</b>REST · GraphQL · DB · 文件</div>
+    </div>
+    <figcaption>Server 可以包住原有 API；MCP 解决可发现、可描述、可调用和可治理，不替代业务系统。</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <span class="tag mono">第一条心智模型</span>
+    <strong>MCP 是 AI 集成协议，不是 API 的竞争对手。</strong>
+    一个 MCP Server 最常见的实现，就是在里面继续调用你已有的 REST、GraphQL、数据库或本地文件接口。
+  </div>
+
+  <div class="source-line">
+    起点来源：<a href="https://www.anthropic.com/news/model-context-protocol">Anthropic 2024 原始发布说明</a> ·
+    <a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture">当前官方架构</a>
+  </div>
+</section>
+
+<!-- ============ STEP 02 ============ -->
+<section class="lesson" id="step-2">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 02</span>
+    <h2>把 API、RPC、JSON-RPC、MCP 放回各自层</h2>
+    <div class="lesson-sub mono">Four layers, four different questions</div>
+  </div>
+
+  <p class="deck">它们不是四个互斥选项，而是从「能做什么」到「线上怎样表达」的一组嵌套答案。</p>
+
+  <figure class="explain" data-visual="3" aria-labelledby="fig-3-title">
+    <div class="figure-title" id="fig-3-title">图 3 · 四层各回答一个不同问题</div>
+    <div class="layer-stack">
+      <div class="layer-row current"><b>MCP</b><span>AI Host 怎样发现工具、资源和提示？怎样协商能力、取得同意、处理输入与结果？</span></div>
+      <div class="layer-row"><b>JSON-RPC</b><span>一次方法调用怎样用 JSON 表成 request、result、error 或 notification？</span></div>
+      <div class="layer-row"><b>RPC</b><span>交互是否长得像「调用远端函数」：method + params → result？</span></div>
+      <div class="layer-row"><b>API</b><span>两个组件之间总体允许怎样交互？它是最宽泛的契约概念。</span></div>
+    </div>
+    <figcaption>HTTP、stdio 在更下面负责搬运字节；REST 则是另一种围绕资源组织 API 的风格。</figcaption>
+  </figure>
+
+  <p>同一个「读取笔记」需求，用 REST 常写成资源地址与 HTTP 动词：</p>
+
+  <pre><code><span class="tok-comment"># REST：HTTP 方法和 URL 共同表达操作</span>
+GET /notes/n-42 HTTP/1.1
+Authorization: Bearer …</code></pre>
+
+  <p>RPC 则更像在远处调用函数；JSON-RPC 2.0 给这个调用套上标准信封：</p>
+
+  <pre><code>{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>,
+  <span class="tok-key">"id"</span>: 7,
+  <span class="tok-key">"method"</span>: <span class="tok-string">"notes/read"</span>,
+  <span class="tok-key">"params"</span>: { <span class="tok-key">"id"</span>: <span class="tok-string">"n-42"</span> }
+}</code></pre>
+
+  <p>
+    JSON-RPC 只知道 <code>method</code>、<code>params</code>、<code>id</code> 和结果/错误；它不知道「工具是什么」、
+    什么时候应让用户确认，也不知道怎样列出服务器能力。MCP 在这个信封之上规定方法名、对象 schema、
+    discovery、能力、transport 和安全边界。
+  </p>
+
+  <figure class="explain" data-visual="4" aria-labelledby="fig-4-title">
+    <div class="figure-title" id="fig-4-title">图 4 · 一封 JSON-RPC request 的四个承重点</div>
+    <div class="packet">
+      <pre class="packet-code"><code>{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "read_note",
+    "arguments": {"id":"n-42"}
+  }
+}</code></pre>
+      <div class="packet-notes">
+        <div class="note"><strong>jsonrpc</strong><br />信封规则采用 2.0。</div>
+        <div class="note"><strong>id</strong><br />把异步返回和本次请求配对。</div>
+        <div class="note"><strong>method</strong><br />MCP 赋予 <code>tools/call</code> 共同语义。</div>
+        <div class="note"><strong>params</strong><br />具体工具名与经 schema 约束的参数。</div>
+      </div>
+    </div>
+    <figcaption>这里的 JSON-RPC 2.0 是底层信封版本；它和本文所说的 MCP 2.0 是两个独立概念。</figcaption>
+  </figure>
+
+  <p>
+    MCP 2.0 又给成功结果加了一条不能漏的规则：正常完成时，JSON-RPC 的 <code>result</code>
+    <strong>必须</strong>包含 <code>resultType: "complete"</code>。下面是一条完整的工具成功响应：
+  </p>
+
+  <pre data-json-example="complete-tool-response"><code>{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>,
+  <span class="tok-key">"id"</span>: 7,
+  <span class="tok-key">"result"</span>: {
+    <span class="tok-key">"resultType"</span>: <span class="tok-string">"complete"</span>,
+    <span class="tok-key">"content"</span>: [
+      { <span class="tok-key">"type"</span>: <span class="tok-string">"text"</span>, <span class="tok-key">"text"</span>: <span class="tok-string">"n-42: 项目上线清单"</span> }
+    ],
+    <span class="tok-key">"isError"</span>: false
+  }
+}</code></pre>
+
+  <div class="callout key">
+    <span class="tag mono">Complete 不是可选装饰</span>
+    <code>server/discover</code>、list 方法和 <code>tools/call</code> 的正常成功响应都要带
+    <code>resultType: "complete"</code>。只有走 JSON-RPC <code>error</code> 时，才没有这个成功结果字段。
+  </div>
+
+  <div class="callout risk">
+    <span class="tag mono">常见误读</span>
+    远程 MCP 即使使用 HTTP，也通常是在一个 endpoint 上 POST JSON-RPC；
+    <strong>「用了 HTTP」不等于「它是 REST」</strong>。
+  </div>
+
+  <div class="source-line">
+    规范依据：<a href="https://www.jsonrpc.org/specification">JSON-RPC 2.0 Specification</a> ·
+    <a href="https://modelcontextprotocol.io/specification/2026-07-28/basic">MCP Base Protocol</a>
+  </div>
+</section>
+
+<!-- ============ STEP 03 ============ -->
+<section class="lesson" id="step-3">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 03</span>
+    <h2>模型工具调用不等于 MCP</h2>
+    <div class="lesson-sub mono">Decision format vs integration protocol</div>
+  </div>
+
+  <p class="deck">Tool calling 解决「模型怎样表达我要调用」，MCP 解决「Host 怎样找到并执行那个能力」。</p>
+
+  <p>
+    模型供应商的 tool/function calling 通常做两件事：Host 把工具 schema 放进模型请求；模型不执行代码，
+    只返回一个结构化选择，例如「调用 <code>read_note</code>，参数是 <code>n-42</code>」。
+    真正执行工具的一直是 Host 及其外部系统。
+  </p>
+
+  <figure class="explain" data-visual="5" aria-labelledby="fig-5-title">
+    <div class="figure-title" id="fig-5-title">图 5 · 一次调用跨过两套边界</div>
+    <div class="flow-row">
+      <div class="box"><b>用户</b>读 n-42</div>
+      <div class="arrow-line">→</div>
+      <div class="box violet"><b>Host + 模型</b>选 read_note</div>
+      <div class="arrow-line">→</div>
+      <div class="box cyan"><b>MCP Client</b>tools/call</div>
+      <div class="arrow-line">→</div>
+      <div class="box"><b>MCP Server</b>调用 NoteBox API</div>
+    </div>
+    <div class="bridge-legend">
+      <div class="box violet"><b>模型供应商边界</b>tool schema → tool call；格式可能因供应商不同。</div>
+      <div class="box cyan"><b>MCP 边界</b>tools/list → tools/call → result；面向 Server 保持一致。</div>
+    </div>
+    <figcaption>Host 是翻译与治理者：把 MCP 工具转成模型 schema，再把模型的选择路由回 MCP。</figcaption>
+  </figure>
+
+  <p>
+    因此，<strong>模型通常不直接“说 MCP”</strong>。模型看到的是 Host 挑选后放进上下文的工具描述，
+    返回的也是供应商定义的 tool call。MCP Client 在 Host 里面负责协议通信；没有模型参与时，
+    测试程序也完全可以直接发送 <code>tools/list</code> 和 <code>tools/call</code>。
+  </p>
+
+  <div class="callout key">
+    <span class="tag mono">为什么这个区别重要</span>
+    模型选错工具，要改描述、选择策略或允许列表；MCP 连不上 Server，要查 transport、版本和认证。
+    把两层混成一层，会让排障永远打错靶。
+  </div>
+
+  <p>
+    工具也不是越多越好。每个 schema 都消耗上下文，名字相近会增加误选；生产 Host 通常需要 allowlist、
+    缓存或按需加载，而不是把 Server 的所有工具一次性塞给模型。
+  </p>
+
+  <div class="source-line">
+    真实 Host 示例：<a href="https://developers.openai.com/api/docs/guides/tools-connectors-mcp">OpenAI Remote MCP / Connectors 官方指南</a>
+  </div>
+</section>
+
+<!-- ============ STEP 04 ============ -->
+<section class="lesson" id="step-4">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 04</span>
+    <h2>分清 Host、Client、Server</h2>
+    <div class="lesson-sub mono">Roles are trust boundaries, not machines</div>
+  </div>
+
+  <p class="deck">“Client/Server”描述协议角色；“本地/远程”描述部署位置。两组概念不要绑死。</p>
+
+  <figure class="explain" data-visual="6" aria-labelledby="fig-6-title">
+    <div class="figure-title" id="fig-6-title">图 6 · Host 持有全局视野，每个 Client 只守一条 Server 连接</div>
+    <div class="host-map">
+      <div class="host-core">
+        <div class="box violet"><b>Host</b>UI · LLM · 完整对话 · 权限策略 · 用户同意 · 多 Server 编排</div>
+        <div class="box"><b>模型</b>在 Host 提供的上下文里选择下一步，通常不知道 transport 细节。</div>
+      </div>
+      <div class="client-fan">
+        <div class="client-link">
+          <div class="box cyan"><b>Client A</b>一条协议关系</div>
+          <div class="arrow-line">→</div>
+          <div class="box"><b>本地文件 Server</b>stdio 子进程</div>
+        </div>
+        <div class="client-link">
+          <div class="box cyan"><b>Client B</b>一条协议关系</div>
+          <div class="arrow-line">→</div>
+          <div class="box"><b>NoteBox Server</b>远程 HTTP</div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Server 原则上只得到完成本次请求需要的上下文，不应自动看到整段对话或其他 Server 的数据。</figcaption>
+  </figure>
+
+  <ul class="clean">
+    <li><strong>Host</strong>：最终产品。它掌握用户、模型、UI、全局上下文和安全策略。</li>
+    <li><strong>MCP Client</strong>：Host 内的协议适配器，通常与一个 Server 建立一对一协议关系。</li>
+    <li><strong>MCP Server</strong>：暴露能力的一方。它可以是本地子进程，也可以是互联网服务。</li>
+  </ul>
+
+  <h3>Server 暴露的三个经典 primitive</h3>
+
+  <figure class="explain" data-visual="7" aria-labelledby="fig-7-title">
+    <div class="figure-title" id="fig-7-title">图 7 · 三种 primitive 的差别首先是「谁决定使用」</div>
+    <div class="primitive-scale">
+      <div class="primitive"><b>Resources · 应用控制</b>文件、记录、文档等可读取上下文；Host/应用决定怎样选择和呈现。</div>
+      <div class="primitive"><b>Prompts · 用户控制</b>可复用的提示模板或工作流入口；通常由用户显式选择。</div>
+      <div class="primitive"><b>Tools · 模型控制</b>有 schema 的动作；模型可建议调用，但 Host 仍负责审批与执行。</div>
+    </div>
+    <figcaption>“模型控制”不等于模型拥有权限；Host 必须保留最后执行权。</figcaption>
+  </figure>
+
+  <div class="callout risk">
+    <span class="tag mono">不要被单词骗了</span>
+    “Server”可以只是你电脑里被启动的一个命令；“Client”也不是用户看到的 App。
+    如果把 Server 默认理解成云机器，就会误判 stdio 的安全和生命周期。
+  </div>
+
+  <div class="source-line">
+    架构依据：<a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture">MCP 2026-07-28 Architecture</a>
+  </div>
+</section>
+
+<!-- ============ STEP 05 ============ -->
+<section class="lesson" id="step-5">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 05</span>
+    <h2>还原 MCP 1.0 的完整一天</h2>
+    <div class="lesson-sub mono">Why the stateful design once made sense</div>
+  </div>
+
+  <p class="deck">
+    本文后面统一这样称呼：<strong>MCP 1.0</strong> = 官方 Legacy era，以 2025-11-25 为代表；
+    <strong>MCP 2.0</strong> = 官方 Modern era，指 2026-07-28 及以后版本。
+    这是学习用的分代名；代码里的 <code>protocolVersion</code> 仍必须填写官方日期版本。
+  </p>
+
+  <p>
+    MCP 1.0 Client 连接 Server 后，第一件事不是列工具，而是发 <code>initialize</code>：双方选择协议版本、交换身份和能力。
+    Server 返回结果后，Client 发 <code>initialized</code> 通知，进入 operation 阶段。之后 list、call、通知和 Server 主动请求
+    都发生在这次已协商好的会话里。
+  </p>
+
+  <figure class="explain" data-visual="8" aria-labelledby="fig-8-title">
+    <div class="figure-title" id="fig-8-title">图 8 · MCP 1.0 从握手到工具执行的完整主干</div>
+    <div class="sequence">
+      <div class="sequence-head"><span>CLIENT / HOST</span><span>JSON-RPC ON SESSION</span><span>SERVER</span></div>
+      <div class="message"><span class="who">Client</span><span class="wire">initialize(version, capabilities, clientInfo)</span><span class="who">Server</span></div>
+      <div class="message back"><span class="who">Client</span><span class="wire">result(version, capabilities, serverInfo)</span><span class="who">Server</span></div>
+      <div class="message"><span class="who">Client</span><span class="wire">initialized notification</span><span class="who">Server</span></div>
+      <div class="message"><span class="who">Client</span><span class="wire">tools/list</span><span class="who">Server</span></div>
+      <div class="message back"><span class="who">Client</span><span class="wire">tools + JSON Schemas</span><span class="who">Server</span></div>
+      <div class="message"><span class="who">Client</span><span class="wire">tools/call(name, arguments)</span><span class="who">Server</span></div>
+      <div class="message back"><span class="who">Client</span><span class="wire">tool result / error</span><span class="who">Server</span></div>
+      <div class="message back"><span class="who">Client</span><span class="wire">可选：sampling / elicitation 等 Server→Client 请求</span><span class="who">Server</span></div>
+      <div class="message"><span class="who">Client</span><span class="wire">shutdown / transport close</span><span class="who">Server</span></div>
+    </div>
+    <figcaption>能力只在初始化交换一次，之后双方从 session 推断版本、能力和上下文。</figcaption>
+  </figure>
+
+  <h3>同一协议可以走两类 transport</h3>
+
+  <figure class="explain" data-visual="9" aria-labelledby="fig-9-title">
+    <div class="figure-title" id="fig-9-title">图 9 · stdio 与 MCP 1.0 HTTP 搬的是同一类 JSON-RPC，生命周期却不同</div>
+    <div class="split">
+      <div class="transport box">
+        <b>stdio · 本地子进程</b>
+        <div class="mini-flow">
+          <span>Host / Client</span><span class="arrow-line">⇄</span><span>Server process</span>
+        </div>
+        <small>stdin/stdout 传一行一条 JSON-RPC；stdout 只能写协议，日志必须去 stderr。进程本身天然提供连接生命周期。</small>
+      </div>
+      <div class="transport box">
+        <b>MCP 1.0 Streamable HTTP</b>
+        <div class="mini-flow">
+          <span>HTTP POST / GET</span><span class="arrow-line">⇄</span><span>SSE streams</span>
+        </div>
+        <small>可由 <code>Mcp-Session-Id</code> 关联请求；GET/SSE、断线恢复和 Server→Client 请求让远程连接更像持续会话。</small>
+      </div>
+    </div>
+    <figcaption>stdio 从来不是“玩具 transport”；本地 IDE、CLI、文件工具恰好很适合它。</figcaption>
+  </figure>
+
+  <h3>为什么当年这样设计很合理</h3>
+
+  <ul class="clean">
+    <li>本地 stdio 里，一个 Client 对一个子进程；把能力和状态绑在连接上最直接。</li>
+    <li>能力协商一次，后续报文短；Server 还能主动请求模型采样、用户输入或 roots 信息。</li>
+    <li>远程 SSE 能持续推送，session 与 resumability 看起来能延续这套双向体验。</li>
+  </ul>
+
+  <div class="callout key">
+    <span class="tag mono">评价设计要看约束</span>
+    MCP 1.0 不是“错协议”。它优化的是<strong>有连接、有会话、双向交互</strong>的世界；
+    真正的转折发生在远程 MCP 要穿过负载均衡器、代理和多副本平台之后。
+  </div>
+
+  <div class="source-line">
+    MCP 1.0 代表版本依据：<a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle">Lifecycle</a> ·
+    <a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/transports">Transports</a> ·
+    <a href="https://modelcontextprotocol.io/specification/2025-11-25/architecture">Architecture</a>
+  </div>
+</section>
+
+<!-- ============ STEP 06 ============ -->
+<section class="lesson" id="step-6">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 06</span>
+    <h2>负载均衡死亡现场</h2>
+    <div class="lesson-sub mono">The remote scaling pressure</div>
+  </div>
+
+  <p class="deck">只要第二个请求可能落到另一个副本，“连接里记得什么”就从方便变成部署约束。</p>
+
+  <p>
+    NoteBox MCP Server 上云后跑三个副本。第一次 <code>initialize</code> 落到 A，A 为会话 <code>S-42</code>
+    记住版本、能力和进行中的状态。下一次 <code>tools/call</code> 被负载均衡器送到 B；B 收到了 session id，
+    却没有 A 的内存。协议本身没坏，部署路径已经断了。
+  </p>
+
+  <figure class="explain" data-visual="10" aria-labelledby="fig-10-title">
+    <div class="figure-title" id="fig-10-title">图 10 · MCP 1.0 session 遇见多副本</div>
+    <div class="death-scene">
+      <div class="box violet"><b>Client</b>① initialize<br />② tools/call<br /><code>S-42</code></div>
+      <div class="arrow-line">→</div>
+      <div class="box amber"><b>Load balancer</b>请求可以轮询</div>
+      <div class="arrow-line">→</div>
+      <div class="replicas">
+        <div class="box cyan"><b>Replica A</b>记得 S-42 ✓</div>
+        <div class="box rose"><b>Replica B</b>不认识 S-42 ✕</div>
+        <div class="box"><b>Replica C</b>也没有会话</div>
+      </div>
+    </div>
+    <div class="dead-end">第二次调用落到 B → 找不到握手能力、订阅或进行中状态 → session error / 无法继续。</div>
+    <figcaption>问题不是负载均衡器“随机”，而是请求不自足：正确解释它需要另一个副本里的隐含历史。</figcaption>
+  </figure>
+
+  <h3>MCP 1.0 不是不能扩，只是每条路都要付复杂度</h3>
+
+  <div class="triple">
+    <div class="box"><b>粘性路由</b>同一 session 永远送回 A；A 重启、扩缩容、热点倾斜仍要解决。</div>
+    <div class="box"><b>共享 session store</b>所有副本读写集中状态；一致性、过期、清理和网络延迟进入关键路径。</div>
+    <div class="box"><b>连接代理</b>保持长 SSE/双向通道；断线恢复、背压、取消和重放都要跨层协调。</div>
+  </div>
+
+  <p>
+    网关还有一个更朴素的问题：要按「哪个方法、哪个工具」做路由、限流、计费或可观测性，
+    MCP 1.0 代理通常必须解析 JSON body。能力又只在握手里出现一次，后续请求本身并不能完整说明自己是谁、能做什么。
+  </p>
+
+  <div class="callout risk">
+    <span class="tag mono">别过度归因</span>
+    这不等于“session 永远不好”，也不等于新协议自动无限扩展。
+    数据库、限流、幂等和长任务仍然需要应用设计；MCP 2.0 只是不再让<strong>协议正确性</strong>依赖连接记忆。
+  </div>
+
+  <div class="source-line">
+    变化依据：<a href="https://blog.modelcontextprotocol.io/posts/2026-07-28/">2026-07-28 Release</a> ·
+    <a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog">官方 Changelog</a>
+  </div>
+</section>
+
+<!-- ============ STEP 07 ============ -->
+<section class="lesson" id="step-7">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 07</span>
+    <h2>Stateless、sessionless 与显式 handle</h2>
+    <div class="lesson-sub mono">Move hidden protocol state into the request</div>
+  </div>
+
+  <p class="deck">MCP 2.0 不是把状态消灭，而是要求：影响请求解释的协议信息随请求来，跨请求业务状态用显式名字指向。</p>
+
+  <p>
+    2026-07-28 删除了 <code>initialize</code> / <code>initialized</code> 和 <code>Mcp-Session-Id</code>。
+    Client 的协议版本、身份与能力放进每次请求的 <code>_meta</code>。MCP 2.0 Server 必须实现
+    <code>server/discover</code>，Client 可以选择先调用它查看 Server 身份和能力；
+    discovery 不会创造一个后续必须依赖的协议 session。
+  </p>
+
+  <figure class="explain" data-visual="11" aria-labelledby="fig-11-title">
+    <div class="figure-title" id="fig-11-title">图 11 · 隐含会话与自描述请求的差别</div>
+    <div class="compare-state">
+      <div class="state-path box rose">
+        <b>MCP 1.0 · 从连接推断</b>
+        <div class="mini-flow"><span>initialize</span><span class="arrow-line">→</span><span>A 内存记住能力</span></div>
+        <div class="mini-flow"><span>后续 request + S-42</span><span class="arrow-line">→</span><span>必须找到那份状态</span></div>
+      </div>
+      <div class="state-path box cyan">
+        <b>MCP 2.0 · 请求自描述</b>
+        <div class="mini-flow"><span>request + _meta</span><span class="arrow-line">→</span><span>任一副本可解释</span></div>
+        <div class="mini-flow"><span>业务 handle</span><span class="arrow-line">→</span><span>显式查应用存储</span></div>
+      </div>
+    </div>
+    <figcaption>“显式”让依赖可见、可路由、可审计；它没有承诺业务逻辑本身无状态。</figcaption>
+  </figure>
+
+  <pre><code><span class="tok-comment">// 简化示意：每个 MCP 2.0 request 自带协议解释所需 metadata</span>
+{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>,
+  <span class="tok-key">"id"</span>: 21,
+  <span class="tok-key">"method"</span>: <span class="tok-string">"tools/call"</span>,
+  <span class="tok-key">"params"</span>: {
+    <span class="tok-key">"name"</span>: <span class="tok-string">"commit_note_import"</span>,
+    <span class="tok-key">"arguments"</span>: { <span class="tok-key">"workflowHandle"</span>: <span class="tok-string">"wf_9K2"</span> },
+    <span class="tok-key">"_meta"</span>: {
+      <span class="tok-key">"io.modelcontextprotocol/protocolVersion"</span>: <span class="tok-string">"2026-07-28"</span>,
+      <span class="tok-key">"io.modelcontextprotocol/clientInfo"</span>: { <span class="tok-key">"name"</span>: <span class="tok-string">"notes-host"</span>, <span class="tok-key">"version"</span>: <span class="tok-string">"1.4"</span> },
+      <span class="tok-key">"io.modelcontextprotocol/clientCapabilities"</span>: {}
+    }
+  }
+}</code></pre>
+
+  <h3>版本不匹配：读支持列表，协商共同 revision</h3>
+
+  <p>
+    如果 Client 填入 Server 不支持的日期版本，Server 返回 JSON-RPC 错误码 <code>-32022</code>，
+    在 <code>data.requested</code> 回显被拒绝的版本，并用 <code>data.supported</code> 列出自己支持的 revision。
+    Client 应该（SHOULD）与自己的支持列表求交集，并选择共同 revision 重试原方法。若决定重试，
+    本教程建议分配<strong>新的 JSON-RPC id</strong>，让两次请求的追踪和关联保持清楚；这是重试实现建议，
+    不是 versioning 规范额外规定的 MUST。没有共同版本时应向用户报告不兼容错误；既然已经识别出
+    MCP 2.0 的 <code>-32022</code>，就不能静默 fallback 到 MCP 1.0。
+  </p>
+
+  <pre><code><span class="tok-comment">// 原请求 id=30 的版本不被支持</span>
+{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>,
+  <span class="tok-key">"id"</span>: 30,
+  <span class="tok-key">"error"</span>: {
+    <span class="tok-key">"code"</span>: -32022,
+    <span class="tok-key">"message"</span>: <span class="tok-string">"Unsupported protocol version"</span>,
+    <span class="tok-key">"data"</span>: {
+      <span class="tok-key">"requested"</span>: <span class="tok-string">"2026-08-01"</span>,
+      <span class="tok-key">"supported"</span>: [<span class="tok-string">"2026-07-28"</span>]
+    }
+  }
+}
+
+<span class="tok-comment">// 选择共同版本后，用新 id=31 重试原工具与参数</span>
+{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>,
+  <span class="tok-key">"id"</span>: 31,
+  <span class="tok-key">"method"</span>: <span class="tok-string">"tools/call"</span>,
+  <span class="tok-key">"params"</span>: {
+    <span class="tok-key">"name"</span>: <span class="tok-string">"commit_note_import"</span>,
+    <span class="tok-key">"arguments"</span>: { <span class="tok-key">"workflowHandle"</span>: <span class="tok-string">"wf_9K2"</span> },
+    <span class="tok-key">"_meta"</span>: {
+      <span class="tok-key">"io.modelcontextprotocol/protocolVersion"</span>: <span class="tok-string">"2026-07-28"</span>,
+      <span class="tok-key">"io.modelcontextprotocol/clientCapabilities"</span>: {}
+    }
+  }
+}</code></pre>
+
+  <h3>显式 handle 怎样承载真正的跨请求状态</h3>
+
+  <p>
+    导入一万条笔记显然不可能每次从零开始。第一次请求可以创建业务工作流并返回
+    <code>wf_9K2</code>；后续请求把 handle 明写在参数里，任意副本用它查询共享数据库。
+    Server 重启并不会使协议语义失效，业务状态的所有权、过期和权限也有了明确落点。
+  </p>
+
+  <figure class="explain" data-visual="12" aria-labelledby="fig-12-title">
+    <div class="figure-title" id="fig-12-title">图 12 · MCP 2.0 多副本：请求可换副本，业务状态靠 handle 定位</div>
+    <div class="replica-map">
+      <div class="box violet"><b>自描述请求</b><code>workflowHandle=wf_9K2</code></div>
+      <div class="arrow-line">→</div>
+      <div class="replicas">
+        <div class="box cyan"><b>Replica A</b>可处理</div>
+        <div class="box cyan"><b>Replica B</b>可处理</div>
+        <div class="box cyan"><b>Replica C</b>可处理</div>
+      </div>
+      <div class="arrow-line">→</div>
+      <div class="box"><b>应用状态库</b>wf_9K2 → user 17 的导入进度</div>
+    </div>
+    <figcaption>协议不再要求 sticky session；应用仍可选择数据库、队列或 Durable Object 保存状态。</figcaption>
+  </figure>
+
+  <div class="callout risk">
+    <span class="tag mono">Handle 不是认证</span>
+    知道 <code>wf_9K2</code> 不应等于拥有它。Handle 应高熵、过期，并在服务端绑定已验证的用户与权限；
+    每次使用都重新授权，不能把“难猜”当访问控制。
+  </div>
+
+  <div class="source-line">
+    规范依据：<a href="https://modelcontextprotocol.io/specification/2026-07-28/basic">Base Protocol · Statelessness</a> ·
+    <a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices">Security Best Practices · State Handles</a>
+  </div>
+</section>
+
+<!-- ============ STEP 08 ============ -->
+<section class="lesson" id="step-8">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 08</span>
+    <h2>MCP 2.0 不只是“删 session”</h2>
+    <div class="lesson-sub mono">MRTR, routing, cache, extensions, tasks, auth</div>
+  </div>
+
+  <p class="deck">它把原来的双向会话改造成可重试的请求循环，同时让代理、缓存和扩展有明确接口。</p>
+
+  <h3>MRTR：Server 不再突然反向调用 Client</h3>
+
+  <p>
+    MCP 1.0 Server 可以主动发 elicitation 或 sampling 请求。MCP 2.0 移除独立的 Server→Client JSON-RPC request，
+    改用 Multi Round-Trip Requests（MRTR）：Server 正常返回 <code>resultType: "input_required"</code>，
+    Host 按 <code>inputRequests</code> 取得用户/模型输入，再由 Client 用新的 JSON-RPC id 与同 key 的
+    <code>inputResponses</code> 重试原方法。只有 Server 返回了 <code>requestState</code> 时，Client 才
+    MUST 原样回传；若 Server 没有返回，Client MUST NOT 自行添加。
+  </p>
+
+  <figure class="explain" data-visual="13" aria-labelledby="fig-13-title">
+    <div class="figure-title" id="fig-13-title">图 13 · “提交笔记导入”怎样在单向请求里完成确认</div>
+    <div class="mrtr">
+      <div class="mrtr-step"><b>1 · Client 请求</b><code>commit_note_import(wf_9K2)</code></div>
+      <div class="mrtr-step"><b>2 · Server 返回</b><code>input_required</code><br /><code>inputRequests.confirm_commit</code></div>
+      <div class="mrtr-step"><b>3 · Host 取得输入</b>展示完整参数；用户确认或拒绝</div>
+      <div class="mrtr-step"><b>4 · Client 重试（本例）</b>新 id + 原 <code>requestState</code> + 同 key response</div>
+    </div>
+    <figcaption>每一段都是普通 request/response；中断时没有一条必须恢复的反向连接。</figcaption>
+  </figure>
+
+  <pre><code><span class="tok-comment">// id=21 的结果：inputRequests 是 key → ElicitRequest map</span>
+{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>, <span class="tok-key">"id"</span>: 21,
+  <span class="tok-key">"result"</span>: {
+    <span class="tok-key">"resultType"</span>: <span class="tok-string">"input_required"</span>,
+    <span class="tok-key">"inputRequests"</span>: {
+      <span class="tok-key">"confirm_commit"</span>: {
+        <span class="tok-key">"method"</span>: <span class="tok-string">"elicitation/create"</span>,
+        <span class="tok-key">"params"</span>: {
+          <span class="tok-key">"mode"</span>: <span class="tok-string">"form"</span>, <span class="tok-key">"message"</span>: <span class="tok-string">"确认提交 wf_9K2 的笔记导入？"</span>,
+          <span class="tok-key">"requestedSchema"</span>: {
+            <span class="tok-key">"type"</span>: <span class="tok-string">"object"</span>,
+            <span class="tok-key">"properties"</span>: { <span class="tok-key">"approved"</span>: { <span class="tok-key">"type"</span>: <span class="tok-string">"boolean"</span> } },
+            <span class="tok-key">"required"</span>: [<span class="tok-string">"approved"</span>]
+          }
+        }
+      }
+    },
+    <span class="tok-key">"requestState"</span>: <span class="tok-string">"opaque-state-from-server"</span>
+  }
+}
+
+<span class="tok-comment">// 新 id=22；同 key → ElicitResult map；本例 Server 返回了 requestState，所以必须原样带回</span>
+{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>, <span class="tok-key">"id"</span>: 22,
+  <span class="tok-key">"method"</span>: <span class="tok-string">"tools/call"</span>,
+  <span class="tok-key">"params"</span>: {
+    <span class="tok-key">"name"</span>: <span class="tok-string">"commit_note_import"</span>,
+    <span class="tok-key">"arguments"</span>: { <span class="tok-key">"workflowHandle"</span>: <span class="tok-string">"wf_9K2"</span> },
+    <span class="tok-key">"inputResponses"</span>: {
+      <span class="tok-key">"confirm_commit"</span>: {
+        <span class="tok-key">"action"</span>: <span class="tok-string">"accept"</span>,
+        <span class="tok-key">"content"</span>: { <span class="tok-key">"approved"</span>: true }
+      }
+    },
+    <span class="tok-key">"requestState"</span>: <span class="tok-string">"opaque-state-from-server"</span>,
+    <span class="tok-key">"_meta"</span>: {
+      <span class="tok-key">"io.modelcontextprotocol/protocolVersion"</span>: <span class="tok-string">"2026-07-28"</span>,
+      <span class="tok-key">"io.modelcontextprotocol/clientCapabilities"</span>: {}
+    }
+  }
+}</code></pre>
+
+  <h3>Headers：让网关不用先拆 JSON</h3>
+
+  <figure class="explain" data-visual="14" aria-labelledby="fig-14-title">
+    <div class="figure-title" id="fig-14-title">图 14 · 方法与对象名被提升到 HTTP header</div>
+    <div class="gateway-map">
+      <div class="headers">
+        <span>MCP-Protocol-Version: 2026-07-28</span>
+        <span>Mcp-Method: tools/call</span>
+        <span>Mcp-Name: commit_note_import</span>
+        <span>Content-Type: application/json</span>
+        <span>Accept: application/json, text/event-stream</span>
+      </div>
+      <div class="arrow-line">→</div>
+      <div class="box amber"><b>Gateway 可直接判断</b>路由到工具集群 · 为写操作限流 · 按工具计量 · 记录 trace；无需解析完整 JSON body。</div>
+    </div>
+    <figcaption>Body 仍是权威 JSON-RPC；header 是给基础设施的可见索引，不是另一套协议。</figcaption>
+  </figure>
+
+  <h3>同一次修订里的其他变化</h3>
+
+  <figure class="explain" data-visual="15" aria-labelledby="fig-15-title">
+    <div class="figure-title" id="fig-15-title">图 15 · 2026-07-28 变化地图：核心变小，部署接口变清楚</div>
+    <div class="change-board">
+      <div class="change"><b>Required cache metadata</b>在规范标记为适用的结果上，<code>ttlMs</code> 与 <code>cacheScope</code> 都是 MUST；不是可省略的 hints。</div>
+      <div class="change"><b>Extensions</b>可选能力不必全部挤进 core；双方显式协商扩展。</div>
+      <div class="change"><b>Tasks extension</b>当前 Tasks 是 opt-in extension；双方显式协商后，长时间、可追踪工作流才获得独立扩展空间。</div>
+      <div class="change"><b>Auth hardening</b>校验 issuer/audience；CIMD 优先，DCR 进入弃用。</div>
+      <div class="change deprecated"><b>Feature deprecated</b>roots、sampling、logging、旧 HTTP+SSE 与 DCR 进入弃用窗口；实现迁移期仍可能兼容。</div>
+      <div class="change deprecated"><b>Lifecycle / session removed</b><code>initialize</code>、<code>initialized</code>、<code>Mcp-Session-Id</code>、独立 Server→Client requests 与 SSE resume 不在 MCP 2.0 core。</div>
+      <div class="change deprecated"><b>RPC removed · 通用/日志/roots</b><code>ping</code>、<code>logging/setLevel</code>、<code>notifications/roots/list_changed</code> 不再是 MCP 2.0 RPC。</div>
+      <div class="change deprecated"><b>RPC removed · resource/elicitation</b><code>resources/subscribe</code>、<code>resources/unsubscribe</code>、<code>notifications/elicitation/complete</code> 以及 <code>elicitationId</code> 被移除。</div>
+      <div class="change deprecated"><b>RPC removed · 旧 Tasks</b>2025-11-25 的 <code>tasks/result</code> 改为轮询 <code>tasks/get</code> + <code>tasks/update</code>；<code>tasks/list</code> 被移除。</div>
+    </div>
+    <figcaption>官方采用至少 12 个月的弃用政策；feature deprecated 描述迁移生命周期，RPC removed 描述 MCP 2.0 wire 上已经不存在的方法或字段。</figcaption>
+  </figure>
+
+  <div class="callout risk">
+    <span class="tag mono">Deprecated 与 Removed 不能混写</span>
+    logging 这个<strong>功能</strong>处于弃用期，不代表 MCP 2.0 仍定义 <code>logging/setLevel</code>；
+    roots 功能同理，<code>notifications/roots/list_changed</code> 已从新 RPC 面移除。
+    迁移时既要决定功能替代方案，也要删除不能再发送的旧方法与 <code>elicitationId</code> 字段。
+    旧 Tasks 也不能原样搬运：用 <code>tasks/get</code> + <code>tasks/update</code> 轮询替代
+    <code>tasks/result</code>，删除 <code>tasks/list</code>，并且只在双方协商 opt-in Tasks extension 后启用。
+  </div>
+
+  <div class="callout key">
+    <span class="tag mono">SSE 没有完全消失</span>
+    MCP 2.0 Streamable HTTP 仍允许一个 POST 请求以<strong>该请求范围内的 SSE</strong>流式返回。
+    被移除/弃用的是旧的独立 GET stream、协议 session 与 SSE resumability；所以“MCP 2.0 删除 SSE”是错误总结。
+  </div>
+
+  <p>
+    Auth 也要分层看：MCP Server 在 HTTP OAuth 中是 resource server，Client 是 OAuth client，授权服务器可以独立部署。
+    Token 必须绑定正确 issuer 和 audience/resource，逐请求发送，禁止 token passthrough；stdio 不套这条 HTTP OAuth 流程，
+    本地凭据通常由进程环境或 Host 注入。
+  </p>
+
+  <div class="source-line">
+    当前依据：<a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog">Changelog</a> ·
+    <a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http">Streamable HTTP</a> ·
+    <a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization">Authorization</a>
+  </div>
+</section>
+
+<!-- ============ STEP 09 ============ -->
+<section class="lesson" id="step-9">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 09</span>
+    <h2>迁移不是“改一个版本号”</h2>
+    <div class="lesson-sub mono">Choose compatibility, then redraw trust boundaries</div>
+  </div>
+
+  <p class="deck">先盘点你依赖了哪些 MCP 1.0 语义，再决定仅支持 MCP 2.0、双版本兼容还是暂时不动。</p>
+
+  <figure class="explain" data-visual="16" aria-labelledby="fig-16-title">
+    <div class="figure-title" id="fig-16-title">图 16 · 一棵最小迁移决策树</div>
+    <div class="decision-tree">
+      <div class="decision-row">
+        <div class="box violet"><b>所有 Client 都支持 2026-07-28？</b>先用实际 Host/SDK 验证，不靠包名猜。</div>
+        <div class="arrow-line">→</div>
+        <div class="answer"><div class="box cyan"><b>是</b>可仅支持 MCP 2.0</div><div class="box amber"><b>否/未知</b>先双版本兼容</div></div>
+      </div>
+      <div class="decision-row">
+        <div class="box"><b>依赖 Server→Client 主动请求？</b>sampling、elicitation 或持续双向流。</div>
+        <div class="arrow-line">→</div>
+        <div class="answer"><div class="box cyan"><b>是</b>重写成 MRTR / extension</div><div class="box"><b>否</b>删除反向状态机</div></div>
+      </div>
+      <div class="decision-row">
+        <div class="box"><b>把业务状态存在 session？</b>分页、任务、授权中间态、订阅。</div>
+        <div class="arrow-line">→</div>
+        <div class="answer"><div class="box cyan"><b>是</b>显式 handle + 绑定用户</div><div class="box"><b>否</b>保持请求自足</div></div>
+      </div>
+    </div>
+    <figcaption>兼容模式是产品决策：SDK v2 不自动证明所有调用方都已经进入 MCP 2.0 wire mode。</figcaption>
+  </figure>
+
+  <ol class="clean">
+    <li><strong>冻结基线</strong>：记录现有 Client/Server 支持的协议日期、SDK 主版本与 transport。</li>
+    <li><strong>找隐含状态</strong>：搜索 initialize、initialized、Mcp-Session-Id、GET/SSE resume、Server→Client requests。</li>
+    <li><strong>改请求模型</strong>：每次带完整 <code>_meta</code>；跨请求工作流改用显式 handle。</li>
+    <li><strong>改交互</strong>：把 elicitation/sampling 路径重画成 <code>input_required → retry</code>。</li>
+    <li><strong>双向互测</strong>：MCP 2.0 Client→Server、MCP 1.0 Client→兼容 Server、断线重试、多副本轮询都要测。</li>
+    <li><strong>最后去 MCP 1.0</strong>：先观察真实调用方，再在弃用窗口内移除旧 transport 和 lifecycle。</li>
+  </ol>
+
+  <h3>迁移时顺手重画安全边界</h3>
+
+  <figure class="explain" data-visual="17" aria-labelledby="fig-17-title">
+    <div class="figure-title" id="fig-17-title">图 17 · OAuth、用户确认和内容信任是三道不同的门</div>
+    <div class="trust-map">
+      <div class="trust-flow">
+        <div class="box rose"><b>不可信输入</b>工具描述 · 资源内容 · 工具结果 · 用户提供的 handle</div>
+        <div class="box"><b>外部 Server</b>可能合法登录，却仍返回恶意提示或越权内容</div>
+      </div>
+      <div class="trust-gate">Host trust gates<br />认证 → 授权 → 参数审批 → 输出隔离</div>
+      <div class="trust-flow">
+        <div class="box cyan"><b>允许执行</b>token audience 正确 · 当前用户拥有对象 · 高风险参数被确认</div>
+        <div class="box violet"><b>允许进入模型上下文</b>结果仍按不可信数据处理，不把其中指令当系统命令</div>
+      </div>
+    </div>
+    <figcaption>OAuth 证明“谁拿到什么权限”；它不会自动消除 prompt injection、tool poisoning 或 confused deputy。</figcaption>
+  </figure>
+
+  <ul class="clean">
+    <li><strong>描述也不可信</strong>：工具名和 description 会进入模型上下文，恶意 Server 可把指令藏进去。</li>
+    <li><strong>确认要看完整参数</strong>：不能只问“允许调用 delete 吗”，要展示对象、范围与不可逆后果。</li>
+    <li><strong>Token 不转发</strong>：Server 只接受为自己签发、issuer/audience 正确的 token。</li>
+    <li><strong>Handle 每次授权</strong>：随机且过期，服务端绑定用户；错误用户即使拿到 handle 也应失败。</li>
+    <li><strong>本地 Server 是代码执行</strong>：Host 启动的命令拥有本地进程权限；展示完整命令、优先 stdio、尽量沙箱。</li>
+    <li><strong>HTTP 查 Origin</strong>：本地 HTTP 默认只绑定 localhost；远程 endpoint 配合认证与最小 scopes。</li>
+    <li><strong>写操作要幂等</strong>：MCP 2.0 请求断线后没有 SSE resume；重试不可逆工具时使用业务幂等键。</li>
+  </ul>
+
+  <div class="callout risk">
+    <span class="tag mono">两类“安全”不要混</span>
+    JSON Schema 能拒绝缺字段或类型错误，却不能判断调用者是否拥有 <code>n-42</code>；
+    OAuth 能认证调用者，却不能判断工具返回的一段文字是不是 prompt injection。
+  </div>
+
+  <div class="source-line">
+    迁移参考：<a href="https://ts.sdk.modelcontextprotocol.io/v2/protocol-versions">TypeScript SDK Protocol Versions</a> ·
+    <a href="https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices">官方安全最佳实践</a> ·
+    <a href="https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html">OWASP MCP Security Cheat Sheet</a>
+  </div>
+</section>
+
+<!-- ============ STEP 10 ============ -->
+<section class="lesson" id="step-10">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 10</span>
+    <h2>从手写报文走到真实 MRTR</h2>
+    <div class="lesson-sub mono">Five labs and a self-check</div>
+  </div>
+
+  <p class="deck">不要一上来就让模型参与。先证明协议，再证明 Server，再证明 transport，最后才证明模型集成。</p>
+
+  <figure class="explain" data-visual="18" aria-labelledby="fig-18-title">
+    <div class="figure-title" id="fig-18-title">图 18 · 五个实验逐层增加变量</div>
+    <div class="lab-road">
+      <div class="lab"><b>Lab 1 · Raw</b>手写 JSON-RPC，理解 id/method/result</div>
+      <div class="lab"><b>Lab 2 · Inspector</b>看工具 schema，手动调用边界输入</div>
+      <div class="lab"><b>Lab 3 · SDK</b>加 NoteBox 导入 workflow + 内存测试</div>
+      <div class="lab"><b>Lab 4 · HTTP</b>两副本复现失败，再迁移显式 handle</div>
+      <div class="lab"><b>Lab 5 · MRTR</b>同一 commit 工具加确认与授权</div>
+    </div>
+    <figcaption>每一关只增加一个新变量；失败时能准确知道是报文、SDK、transport 还是模型层。</figcaption>
+  </figure>
+
+  <h3>Lab 1 · 手写一个 calculator stdio Server</h3>
+
+  <p>
+    不用 SDK，只读 stdin 的逐行 JSON，按 <code>id</code> 返回 JSON-RPC。至少实现
+    <code>server/discover</code>、<code>tools/list</code> 和 <code>tools/call</code>；工具只有
+    <code>add(a, b)</code>。日志只写 stderr。用一个小 Client 连续发三条请求并断言结果。
+    三个方法的正常响应都必须在 <code>result</code> 中带 <code>resultType: "complete"</code>；
+    不能只给 <code>tools/call</code> 加，遗漏 discover 或 list。由于 discover 与 list 的结果适用缓存规则，
+    id 1 的 <code>server/discover</code> 和 id 2 的 <code>tools/list</code> 还必须同时返回
+    <code>ttlMs &gt;= 0</code> 与 <code>cacheScope</code>。
+  </p>
+
+  <pre><code><span class="tok-comment">// MCP 2.0 raw request：三条都必须携自描述 _meta</span>
+{"jsonrpc":"2.0","id":1,"method":"server/discover",
+ "params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28",
+ "io.modelcontextprotocol/clientCapabilities":{},
+ "io.modelcontextprotocol/clientInfo":{"name":"raw-lab","version":"0.1"}}}}
+
+{"jsonrpc":"2.0","id":2,"method":"tools/list",
+ "params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28",
+ "io.modelcontextprotocol/clientCapabilities":{},
+ "io.modelcontextprotocol/clientInfo":{"name":"raw-lab","version":"0.1"}}}}
+
+{"jsonrpc":"2.0","id":3,"method":"tools/call",
+ "params":{"name":"add","arguments":{"a":2,"b":3},
+ "_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28",
+ "io.modelcontextprotocol/clientCapabilities":{},
+ "io.modelcontextprotocol/clientInfo":{"name":"raw-lab","version":"0.1"}}}}</code></pre>
+
+  <p>第三条请求对应的完整成功响应应当是：</p>
+
+  <pre data-json-example="lab1-complete-response"><code>{
+  <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>,
+  <span class="tok-key">"id"</span>: 3,
+  <span class="tok-key">"result"</span>: {
+    <span class="tok-key">"resultType"</span>: <span class="tok-string">"complete"</span>,
+    <span class="tok-key">"content"</span>: [
+      { <span class="tok-key">"type"</span>: <span class="tok-string">"text"</span>, <span class="tok-key">"text"</span>: <span class="tok-string">"5"</span> }
+    ],
+    <span class="tok-key">"isError"</span>: false
+  }
+}</code></pre>
+
+  <div class="callout key">
+    <span class="tag mono">Lab 1 断言</span>
+    对 id 1、2、3 分别断言 <code>response.result.resultType === "complete"</code>，
+    对 id 1、2 额外断言 <code>result.ttlMs &gt;= 0</code> 且 <code>cacheScope</code> 字段存在，
+    再断言 id 3 的文本内容为 <code>5</code>。缺少这些必需字段时，即使 payload 看起来正确也不算 MCP 2.0 合格成功响应。
+  </div>
+
+  <h3>Lab 2 · 用 Inspector 找协议错误</h3>
+
+  <p>
+    运行 <code>npx @modelcontextprotocol/inspector</code> 连接本地命令，检查工具清单、输入表单和结果。
+    故意发送缺少 <code>b</code>、字符串类型的 <code>a</code>、不存在的工具名，并观察错误落在哪一层：
+    JSON-RPC envelope 或 <code>CallToolRequest</code> 这一层的 schema 畸形，以及未知工具名，属于 JSON-RPC
+    protocol error；已经通过合法 <code>CallToolRequest</code>，但对具体工具的 <code>inputSchema</code> 校验发现
+    缺少 <code>b</code>、<code>a</code> 类型错误或数值越界，则仍返回成功 envelope，其结果是
+    <code>resultType: "complete"</code> 与 <code>isError: true</code>。边界取决于失败发生在哪个 schema 层。
+    Inspector proxy 能启动本地进程，不要暴露到公网。
+  </p>
+
+  <h3>Lab 3 · 用官方 SDK 重写，但保留协议测试</h3>
+
+  <p>
+    选择支持 2026-07-28 的官方 Python 或 TypeScript SDK。实现同一个 <code>add</code>，再加一个只读 resource 和一个 prompt；
+    用 SDK 的内存 Client 测 <code>list → call</code>，不要让测试依赖模型 API key。锁定依赖版本，
+    并显式确认 Client 使用 MCP 2.0 或 auto negotiation，而不是从“SDK v2”推断 wire mode。
+  </p>
+
+  <p>
+    进入 HTTP 前，再沿用 NoteBox 故事做一个<strong>故意带隐式状态</strong>的两步 workflow：
+    <code>start_note_import(noteIds)</code> 校验笔记并把导入计划存进当前 Server 进程的
+    <code>currentImport</code>；<code>commit_note_import()</code> 从同一内存变量取计划并提交。
+    单进程测试会通过，这正是 Lab 4 要打破的假安全感。两个工具正常成功时同样返回 <code>resultType: "complete"</code>。
+  </p>
+
+  <pre><code><span class="tok-comment"># Python 官方文档当前的起步方式；具体 API 以锁定版本为准</span>
+uv add "mcp[cli]"
+uv run mcp dev server.py</code></pre>
+
+  <h3>Lab 4 · 切到 Streamable HTTP</h3>
+
+  <p>
+    先保持隐式状态实现不变，只替换 transport 并启动 A/B 两个 Server 副本。每一个 JSON-RPC POST
+    都必须发送 <code>Accept: application/json, text/event-stream</code>，同时携协议 metadata；抓包观察
+    <code>MCP-Protocol-Version</code>、<code>Mcp-Method</code>、<code>Mcp-Name</code>，并确认没有 <code>Mcp-Session-Id</code>。
+  </p>
+
+  <p>
+    让负载均衡器把 <code>start_note_import</code> 发到 A，再把 <code>commit_note_import()</code> 发到 B。
+    B 没有 A 的 <code>currentImport</code>，应稳定复现 “no active import”——这是本实验必须先看到的红灯，
+    不是靠 sticky routing 藏起来的偶发错误。
+  </p>
+
+  <p>
+    然后迁移：<code>start_note_import</code> 把计划写入共享应用存储，并在完整成功结果中返回
+    <code>workflowHandle=wf_9K2</code>；<code>commit_note_import(workflowHandle)</code> 显式接收 handle，
+    B 用它读取同一计划。重跑 A→B 路径应变绿。最后让一个响应使用请求范围内的 SSE，断开后用新 request id
+    与业务幂等键重试，证明 SSE 仍可用、但旧流不会恢复。
+  </p>
+
+  <h3>Lab 5 · 给同一个 commit_note_import 加 MRTR</h3>
+
+  <p>
+    不换工具、不换故事：第一次调用 <code>commit_note_import(wf_9K2)</code> 不产生副作用，
+    而是返回 <code>input_required</code>，让 Host 展示导入条数、目标 notebook 与影响；批准后用新 id、
+    同 key <code>inputResponses</code> 重试。若结果带 <code>requestState</code> 就 MUST 原样回传；若未带则
+    MUST NOT 添加。重试成功后才真正提交。
+  </p>
+
+  <p>
+    测试接受、拒绝、超时、重复重试与跨用户 handle 五条路径。用户 B 拿用户 A 的 <code>wf_9K2</code>
+    必须在产生 elicitation 之前就被拒绝，避免泄露计划内容；相同幂等键的重复批准只能提交一次。
+    最后才可选接入真实模型 Host，并保留 mutation 每次审批与 allowed tools。
+  </p>
+
+  <div class="callout key">
+    <span class="tag mono">完成标准</span>
+    不是“Chat UI 里成功了一次”，而是：raw 报文能解释、Inspector 能复现、SDK 测试无模型依赖、
+    A→B 隐式状态测试先红后因 handle 变绿、MRTR 的拒绝/授权/幂等重试路径有自动化测试。
+  </div>
+
+  <h3>十问自测</h3>
+
+  <div class="checklist">
+    <details>
+      <summary>1. NoteBox REST API 已经稳定，三个 AI Host 都要接入。第一步应选哪种架构？</summary>
+      <p>保留现有 REST API，在它前面实现一个 MCP Server；各 Host 复用 MCP Client。业务 API 继续做事实来源，MCP 统一 AI 接入边界。</p>
+    </details>
+    <details>
+      <summary>2. id=3 返回了正确的数字 5，但 result 里没有 resultType。能判成功吗？</summary>
+      <p>不能。MCP 2.0 的正常成功结果必须包含 <code>resultType: "complete"</code>；先检查它，再检查具体 payload。</p>
+    </details>
+    <details>
+      <summary>3. 模型返回了 read_note(n-42)。下一步谁负责发送 tools/call？</summary>
+      <p>Host 把模型的选择交给对应 MCP Client，由 Client 向 Server 发送 <code>tools/call</code>；模型通常不直接说 MCP。</p>
+    </details>
+    <details>
+      <summary>4. 一个只访问本地仓库的开发工具，应优先选 stdio 还是公网 HTTP？</summary>
+      <p>优先 stdio：Host 启动本地子进程，协议走 stdin/stdout，日志走 stderr。只有出现跨机器访问等需求时再引入 HTTP 与认证边界。</p>
+    </details>
+    <details>
+      <summary>5. start_note_import 落到 A，commit 落到 B 后找不到状态。正确修复顺序是什么？</summary>
+      <p>先保留这个失败作为回归测试，再让 start 返回显式 handle、把计划写入共享应用存储，最后让 commit 携 handle 读取；不要只用 sticky routing 隐藏问题。</p>
+    </details>
+    <details>
+      <summary>6. Server 返回 -32022、data.requested 与 data.supported。Client 应怎样继续？</summary>
+      <p>把 <code>data.supported</code> 与自己的版本列表求交集：有共同 revision 时 SHOULD 选择它并重试；没有时向用户报告不兼容。重试使用新 id 是本教程的关联与追踪建议，不是 versioning 的额外 MUST。不能把已识别的 MCP 2.0 错误静默 fallback 成 MCP 1.0。</p>
+    </details>
+    <details>
+      <summary>7. 一个规范标记为适用的结果只带 ttlMs、没带 cacheScope，可以把后者当可选优化吗？</summary>
+      <p>不可以。适用结果上的 <code>ttlMs</code> 与 <code>cacheScope</code> 都是 MUST 字段，不是可省略的 hints。</p>
+    </details>
+    <details>
+      <summary>8. 发送 Streamable HTTP JSON-RPC POST 时，Accept 应填什么？还能用 SSE 吗？</summary>
+      <p>每次发送 <code>Accept: application/json, text/event-stream</code>。响应仍可在本次请求范围内使用 SSE，但旧 GET stream、session 与 resume 不再属于 MCP 2.0 core。</p>
+    </details>
+    <details>
+      <summary>9. 用户 B 拿用户 A 的 workflowHandle 调 commit。先发确认表单还是先拒绝？</summary>
+      <p>先鉴权并拒绝。Handle 不是认证；若先返回 <code>input_required</code>，确认内容本身就可能泄露 A 的导入计划。</p>
+    </details>
+    <details>
+      <summary>10. “logging deprecated”与“logging/setLevel removed”是否矛盾？</summary>
+      <p>不矛盾。前者描述功能的迁移生命周期；后者说明该 RPC 已不在 MCP 2.0 wire。<code>ping</code>、roots list-changed、resource subscribe/unsubscribe 和旧 elicitation completion 也要按 removed RPC 清理。</p>
+    </details>
+  </div>
+
+  <div class="callout">
+    <span class="tag mono">继续查阅</span>
+    学习页负责顺序和取舍；字段定义、兼容矩阵、完整来源与更多线级报文，进入
+    <a href="../MCP_2_0_Research.html">MCP 1.0 → MCP 2.0 配套研究手册</a>。
+    回到 <a href="../../">ML Learning Notes 首页</a> 可查看同系列 Agent Engineering 学习资料。
+  </div>
+
+  <div class="source-line">
+    动手资料：<a href="https://py.sdk.modelcontextprotocol.io/get-started/">Python SDK Get Started</a> ·
+    <a href="https://ts.sdk.modelcontextprotocol.io/v2/">TypeScript SDK v2</a> ·
+    <a href="https://modelcontextprotocol.io/docs/tools/inspector">MCP Inspector</a> ·
+    <a href="https://github.com/modelcontextprotocol/conformance">MCP Conformance</a>
+  </div>
+</section>
+
+</article>
+
+<footer>
+  <div class="footer-inner">
+    <p>
+      本页沿着 MCP 1.0 → MCP 2.0 建立问题意识和协议心智模型；
+      线级版本号、兼容矩阵和规范细节请在配套手册中按官方日期版本核对。
+    </p>
+    <div class="footer-links">
+      <a href="../../">← 返回仓库首页</a>
+      <a href="../MCP_2_0_Research.html">打开 MCP 1.0 → MCP 2.0 配套手册</a>
+      <a href="https://modelcontextprotocol.io/specification/2026-07-28">MCP 2026-07-28 官方规范</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
