@@ -591,8 +591,8 @@ Authorization: Bearer …</code></pre>
       <div class="message"><span class="who">Client</span><span class="wire">initialized notification</span><span class="who">Server</span></div>
       <div class="message"><span class="who">Client</span><span class="wire">tools/list</span><span class="who">Server</span></div>
       <div class="message back"><span class="who">Client</span><span class="wire">tools + JSON Schemas</span><span class="who">Server</span></div>
-      <div class="message"><span class="who">Host/model</span><span class="wire">tools/call(name, arguments)</span><span class="who">Server</span></div>
-      <div class="message back"><span class="who">Host/model</span><span class="wire">tool result / error</span><span class="who">Server</span></div>
+      <div class="message"><span class="who">Client</span><span class="wire">tools/call(name, arguments)</span><span class="who">Server</span></div>
+      <div class="message back"><span class="who">Client</span><span class="wire">tool result / error</span><span class="who">Server</span></div>
       <div class="message back"><span class="who">Client</span><span class="wire">可选：sampling / elicitation 等 Server→Client 请求</span><span class="who">Server</span></div>
       <div class="message"><span class="who">Client</span><span class="wire">shutdown / transport close</span><span class="who">Server</span></div>
     </div>
@@ -741,8 +741,8 @@ Authorization: Bearer …</code></pre>
   <span class="tok-key">"id"</span>: 21,
   <span class="tok-key">"method"</span>: <span class="tok-string">"tools/call"</span>,
   <span class="tok-key">"params"</span>: {
-    <span class="tok-key">"name"</span>: <span class="tok-string">"continue_import"</span>,
-    <span class="tok-key">"arguments"</span>: { <span class="tok-key">"workflowHandle"</span>: <span class="tok-string">"wf_9K2…"</span> },
+    <span class="tok-key">"name"</span>: <span class="tok-string">"commit_note_import"</span>,
+    <span class="tok-key">"arguments"</span>: { <span class="tok-key">"workflowHandle"</span>: <span class="tok-string">"wf_9K2"</span> },
     <span class="tok-key">"_meta"</span>: {
       <span class="tok-key">"io.modelcontextprotocol/protocolVersion"</span>: <span class="tok-string">"2026-07-28"</span>,
       <span class="tok-key">"io.modelcontextprotocol/clientInfo"</span>: { <span class="tok-key">"name"</span>: <span class="tok-string">"notes-host"</span>, <span class="tok-key">"version"</span>: <span class="tok-string">"1.4"</span> },
@@ -751,13 +751,14 @@ Authorization: Bearer …</code></pre>
   }
 }</code></pre>
 
-  <h3>版本不匹配：读支持列表，用新 id 重试</h3>
+  <h3>版本不匹配：读支持列表，协商共同 revision</h3>
 
   <p>
     如果 Client 填入 Server 不支持的日期版本，Server 返回 JSON-RPC 错误码 <code>-32022</code>，
     在 <code>data.requested</code> 回显被拒绝的版本，并用 <code>data.supported</code> 列出自己支持的 revision。
-    Client 应该（SHOULD）与自己的支持列表求交集；找到共同 revision 后，用<strong>新的 JSON-RPC id</strong>
-    重试原方法，不能把旧 id 当作同一次请求继续。没有共同版本时应向用户报告不兼容错误；既然已经识别出
+    Client 应该（SHOULD）与自己的支持列表求交集，并选择共同 revision 重试原方法。若决定重试，
+    本教程建议分配<strong>新的 JSON-RPC id</strong>，让两次请求的追踪和关联保持清楚；这是重试实现建议，
+    不是 versioning 规范额外规定的 MUST。没有共同版本时应向用户报告不兼容错误；既然已经识别出
     MCP 2.0 的 <code>-32022</code>，就不能静默 fallback 到 MCP 1.0。
   </p>
 
@@ -781,8 +782,8 @@ Authorization: Bearer …</code></pre>
   <span class="tok-key">"id"</span>: 31,
   <span class="tok-key">"method"</span>: <span class="tok-string">"tools/call"</span>,
   <span class="tok-key">"params"</span>: {
-    <span class="tok-key">"name"</span>: <span class="tok-string">"continue_import"</span>,
-    <span class="tok-key">"arguments"</span>: { <span class="tok-key">"workflowHandle"</span>: <span class="tok-string">"wf_9K2…"</span> },
+    <span class="tok-key">"name"</span>: <span class="tok-string">"commit_note_import"</span>,
+    <span class="tok-key">"arguments"</span>: { <span class="tok-key">"workflowHandle"</span>: <span class="tok-string">"wf_9K2"</span> },
     <span class="tok-key">"_meta"</span>: {
       <span class="tok-key">"io.modelcontextprotocol/protocolVersion"</span>: <span class="tok-string">"2026-07-28"</span>,
       <span class="tok-key">"io.modelcontextprotocol/clientCapabilities"</span>: {}
@@ -794,7 +795,7 @@ Authorization: Bearer …</code></pre>
 
   <p>
     导入一万条笔记显然不可能每次从零开始。第一次请求可以创建业务工作流并返回
-    <code>wf_9K2…</code>；后续请求把 handle 明写在参数里，任意副本用它查询共享数据库。
+    <code>wf_9K2</code>；后续请求把 handle 明写在参数里，任意副本用它查询共享数据库。
     Server 重启并不会使协议语义失效，业务状态的所有权、过期和权限也有了明确落点。
   </p>
 
@@ -841,17 +842,18 @@ Authorization: Bearer …</code></pre>
   <p>
     MCP 1.0 Server 可以主动发 elicitation 或 sampling 请求。MCP 2.0 移除独立的 Server→Client JSON-RPC request，
     改用 Multi Round-Trip Requests（MRTR）：Server 正常返回 <code>resultType: "input_required"</code>，
-    Host 按 <code>inputRequests</code> 取得用户/模型输入，再用新的 JSON-RPC id、原样的 <code>requestState</code>
-    与同 key 的 <code>inputResponses</code> 重试原方法。
+    Host 按 <code>inputRequests</code> 取得用户/模型输入，再由 Client 用新的 JSON-RPC id 与同 key 的
+    <code>inputResponses</code> 重试原方法。只有 Server 返回了 <code>requestState</code> 时，Client 才
+    MUST 原样回传；若 Server 没有返回，Client MUST NOT 自行添加。
   </p>
 
   <figure class="explain" data-visual="13" aria-labelledby="fig-13-title">
     <div class="figure-title" id="fig-13-title">图 13 · “提交笔记导入”怎样在单向请求里完成确认</div>
     <div class="mrtr">
       <div class="mrtr-step"><b>1 · Client 请求</b><code>commit_note_import(wf_9K2)</code></div>
-      <div class="mrtr-step"><b>2 · Server 返回</b><code>input_required</code><br /><code>inputRequests.confirm</code></div>
+      <div class="mrtr-step"><b>2 · Server 返回</b><code>input_required</code><br /><code>inputRequests.confirm_commit</code></div>
       <div class="mrtr-step"><b>3 · Host 取得输入</b>展示完整参数；用户确认或拒绝</div>
-      <div class="mrtr-step"><b>4 · Client 重试</b>新 id + 原 <code>requestState</code> + 同 key response</div>
+      <div class="mrtr-step"><b>4 · Client 重试（本例）</b>新 id + 原 <code>requestState</code> + 同 key response</div>
     </div>
     <figcaption>每一段都是普通 request/response；中断时没有一条必须恢复的反向连接。</figcaption>
   </figure>
@@ -878,7 +880,7 @@ Authorization: Bearer …</code></pre>
   }
 }
 
-<span class="tok-comment">// 新 id=22；同 key → ElicitResult map，requestState 必须原样带回</span>
+<span class="tok-comment">// 新 id=22；同 key → ElicitResult map；本例 Server 返回了 requestState，所以必须原样带回</span>
 {
   <span class="tok-key">"jsonrpc"</span>: <span class="tok-string">"2.0"</span>, <span class="tok-key">"id"</span>: 22,
   <span class="tok-key">"method"</span>: <span class="tok-string">"tools/call"</span>,
@@ -1122,9 +1124,11 @@ Authorization: Bearer …</code></pre>
   <p>
     运行 <code>npx @modelcontextprotocol/inspector</code> 连接本地命令，检查工具清单、输入表单和结果。
     故意发送缺少 <code>b</code>、字符串类型的 <code>a</code>、不存在的工具名，并观察错误落在哪一层：
-    未知工具名或畸形 <code>CallToolRequest</code> 属于 JSON-RPC protocol error；请求已经通过 JSON-RPC envelope，
-    但缺少 <code>b</code>、<code>a</code> 类型错误等 tool argument validation 失败，则仍返回成功 envelope，
-    其结果是 <code>resultType: "complete"</code> 与 <code>isError: true</code>。Inspector proxy 能启动本地进程，不要暴露到公网。
+    JSON-RPC envelope 或 <code>CallToolRequest</code> 这一层的 schema 畸形，以及未知工具名，属于 JSON-RPC
+    protocol error；已经通过合法 <code>CallToolRequest</code>，但对具体工具的 <code>inputSchema</code> 校验发现
+    缺少 <code>b</code>、<code>a</code> 类型错误或数值越界，则仍返回成功 envelope，其结果是
+    <code>resultType: "complete"</code> 与 <code>isError: true</code>。边界取决于失败发生在哪个 schema 层。
+    Inspector proxy 能启动本地进程，不要暴露到公网。
   </p>
 
   <h3>Lab 3 · 用官方 SDK 重写，但保留协议测试</h3>
@@ -1172,7 +1176,8 @@ uv run mcp dev server.py</code></pre>
   <p>
     不换工具、不换故事：第一次调用 <code>commit_note_import(wf_9K2)</code> 不产生副作用，
     而是返回 <code>input_required</code>，让 Host 展示导入条数、目标 notebook 与影响；批准后用新 id、
-    原样 <code>requestState</code> 和同 key <code>inputResponses</code> 重试，成功才真正提交。
+    同 key <code>inputResponses</code> 重试。若结果带 <code>requestState</code> 就 MUST 原样回传；若未带则
+    MUST NOT 添加。重试成功后才真正提交。
   </p>
 
   <p>
@@ -1212,7 +1217,7 @@ uv run mcp dev server.py</code></pre>
     </details>
     <details>
       <summary>6. Server 返回 -32022、data.requested 与 data.supported。Client 应怎样继续？</summary>
-      <p>把 <code>data.supported</code> 与自己的版本列表求交集：有共同 revision 时 SHOULD 用新的 JSON-RPC id 和完整 <code>_meta</code> 重试；没有时向用户报告不兼容。不能把已识别的 MCP 2.0 错误静默 fallback 成 MCP 1.0。</p>
+      <p>把 <code>data.supported</code> 与自己的版本列表求交集：有共同 revision 时 SHOULD 选择它并重试；没有时向用户报告不兼容。重试使用新 id 是本教程的关联与追踪建议，不是 versioning 的额外 MUST。不能把已识别的 MCP 2.0 错误静默 fallback 成 MCP 1.0。</p>
     </details>
     <details>
       <summary>7. 一个规范标记为适用的结果只带 ttlMs、没带 cacheScope，可以把后者当可选优化吗？</summary>

@@ -523,7 +523,7 @@ MCP 2.0 延续这一约束；
 [2025-06-18 Changelog](https://modelcontextprotocol.io/specification/2025-06-18/changelog)、
 [2026-07-28 schema](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/5f5440bb26a62e2cf3440b92da5a667efa03b267/schema/2026-07-28/schema.ts)
 与
-[Streamable HTTP / Sending Messages to the Server](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#sending-messages-to-the-server)。
+[Streamable HTTP / Sending Messages](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#sending-messages)。
 
 ### 4.3 `id` 是做什么的
 
@@ -1398,14 +1398,11 @@ MCP 1.0 Client 发现工具：
   "jsonrpc": "2.0",
   "id": 2,
   "method": "tools/list",
-  "params": {
-    "cursor": "page-1"
-  }
+  "params": {}
 }
 ```
 
-首次请求通常省略 `cursor`；
-这里显式写出它，是为了展示续页请求。
+首次请求省略 `cursor`。
 cursor 是 Server 生成的不透明值，
 Client **MUST NOT** 解析、修改或推断其格式。
 
@@ -1448,16 +1445,50 @@ Server 返回：
 }
 ```
 
-有 `nextCursor` 表示还有下一页，
-Client 将它原样放进下一次 `params.cursor`。
+有 `nextCursor` 表示 Client 可以继续请求下一页，
+Client 将它原样放进下一次 `params.cursor`：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/list",
+  "params": {
+    "cursor": "page-2"
+  }
+}
+```
+
+Client 把第二页 `tools` 追加到已经收集的第一页结果，
+而不是用第二页覆盖第一页；
+只要响应继续带 `nextCursor`，
+就重复“原样回传 cursor → 累积结果”。
+这里的“累积”是 Client 应用逻辑，
+不是 MCP 对结果容器的 MUST；
+协议也不保证跨页 snapshot consistency，
+底层数据同时变化时可能出现 gap 或 duplicate。
+
 没有 `nextCursor` 时，Client **SHOULD** 视为分页结束；
-空字符串仍是有效 cursor，**MUST NOT** 擅自当作结束。
 Page size 由 Server 决定，
 Client **MUST NOT** 假定固定大小。
 无效 cursor **SHOULD** 返回
 `-32602 Invalid params`。
+
+上面的 opaque cursor、`nextCursor` flow、
+Server 决定 page size、缺少 `nextCursor` 的结束判断
+与 invalid cursor 处理，
+是 MCP 1.0 和 MCP 2.0 共有的分页规则。
+
+下面这条是 `2026-07-28` 新增的明确规则，
+不能倒写成 MCP 1.0 当时已有的规范义务：
+
+> 空字符串仍是有效 cursor；
+> MCP 2.0 Client **MUST NOT** 把它当作分页结束。
+
 见
-[Pagination](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination)。
+[2025-11-25 Pagination](https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/pagination)
+与
+[2026-07-28 Pagination](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination)。
 
 ### 9.4 Host 把 Tool 交给模型
 
@@ -1992,9 +2023,13 @@ Server **MUST NOT** 把它们放到
     "content": [
       {
         "type": "text",
-        "text": "北京：24°C，多云"
+        "text": "{\"temperature\":24,\"conditions\":\"多云\"}"
       }
     ],
+    "structuredContent": {
+      "temperature": 24,
+      "conditions": "多云"
+    },
     "isError": false,
     "_meta": {
       "io.modelcontextprotocol/serverInfo": {
@@ -2005,6 +2040,11 @@ Server **MUST NOT** 把它们放到
   }
 }
 ```
+
+这个结果与第 7.5 节声明的 `outputSchema` 一致：
+`structuredContent` 提供机器可读对象，
+`content` 同时保留同一对象的 serialized JSON，
+供只读取内容块的 Client 使用。
 
 `serverInfo` 同样是自报展示信息，
 不是可信身份。
@@ -2050,11 +2090,22 @@ Client 可以：
 同时支持 MCP 1.0 与 MCP 2.0 的 stdio Client
 **SHOULD** 先发送 `server/discover` 作为探测，
 再决定留在 MCP 2.0 或回退 MCP 1.0。
-这不是所有 MCP 2.0 Client 的普遍前置握手；
-它只用于双栈 stdio 识别。
+这不是 MCP 2.0 的 protocol prerequisite；
+对双栈 stdio Client，
+它承担 era 识别作用。
+
+只支持 MCP 2.0 的 stdio Client
+不需要为 MCP 1.0 fallback 而 probe，
+但官方仍把先发 `server/discover` 标为 **RECOMMENDED**：
+某些 MCP 1.0 Server 可能不检查初始化顺序，
+并把 `tools/call` 这类 era-ambiguous method
+按 MCP 1.0 语义直接执行；
+probe 可以让失败变得确定且可诊断。
 
 见
-[Discovery / When to Call](https://modelcontextprotocol.io/specification/2026-07-28/server/discover#when-to-call)。
+[Discovery / When to Call](https://modelcontextprotocol.io/specification/2026-07-28/server/discover#when-to-call)
+与
+[stdio / Backward Compatibility](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio#backward-compatibility)。
 
 ### 13.2 完整 discovery request
 
@@ -2111,34 +2162,45 @@ Client 可以：
 ```json
 {
   "jsonrpc": "2.0",
-  "id": "call-42",
+  "id": 1,
   "error": {
     "code": -32022,
     "message": "Unsupported protocol version",
     "data": {
-      "requested": "2026-07-28",
       "supported": [
+        "2026-07-28",
         "2025-11-25"
-      ]
+      ],
+      "requested": "1900-01-01"
     }
   }
 }
 ```
 
 Client 应先求自己与 Server 支持 revision 的交集。
-若存在共同 revision，Client **SHOULD** 选择其中一个，
-并用新的 JSON-RPC `id`
-把原操作作为新 request 重试。
+若存在共同 revision，Client **SHOULD** 选择其中一个
+并重试原 request。
 
 若没有共同 revision，
 Client 应把版本不兼容错误
 surface 给用户或上层调用方，
 而不是继续猜测版本。
 
+**【实现建议，不是 versioning 规范义务】**
+实现可为版本协商后的 retry 分配新的 JSON-RPC `id`，
+便于避免与旧请求的追踪状态混淆；
+Versioning 章节本身没有要求这里必须换 `id`。
+不要把它和 MRTR 混淆：
+MRTR 初次 request 与 retry 使用不同 `id`
+是明确的 **MUST**。
+
 `UnsupportedProtocolVersionError`
 是可识别的 MCP 2.0 error，
 证明对端理解 MCP 2.0 wire；
 即使协商失败，也不能因此 fallback 到 MCP 1.0 `initialize`。
+
+精确规则与示例见
+[Protocol Version Negotiation](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning#protocol-version-negotiation)。
 
 ### 13.4 为什么 discover 不是新 initialize
 
@@ -2371,7 +2433,7 @@ sequenceDiagram
 3. 若响应含 `requestState`，Client **MUST** 原样回传，
    且 **MUST NOT** 检查、解析、修改或猜测其内容。
 4. 若响应不含 `requestState`，Client 重试时 **MUST NOT** 自己添加。
-5. 重试使用新的 JSON-RPC `id`。
+5. MRTR 重试 **MUST** 使用新的 JSON-RPC `id`。
 6. `inputRequests`、`inputResponses` 与 `requestState`
    只关联原 request 的这次重试，不能串到其他并行 request。
 7. Server **MUST NOT** 请求 Client capability 中未声明支持的 Client feature。
@@ -2768,6 +2830,38 @@ Request-scoped 的 `notifications/progress`
 HTTP 关闭 SSE response stream；
 stdio 发送引用 `subscriptions/listen` request ID 的
 `notifications/cancelled`。
+
+Server 主动结束订阅时，
+**SHOULD** 在关闭 stream 前
+向原 `subscriptions/listen` request
+返回一个 empty complete response：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "resultType": "complete",
+    "_meta": {
+      "io.modelcontextprotocol/subscriptionId": 1
+    }
+  }
+}
+```
+
+Client 收到它，
+就知道 Server graceful closure 已完成。
+如果不是 Client 主动取消，
+transport 关闭却没有这条 final response，
+则表示 unexpected disconnect；
+Client **MAY** 把它当作 reconnect 的触发条件，
+不能误记为一次正常完成。
+
+stdio connection 终止后若重新建立，
+Client **MUST** 重新发送 `subscriptions/listen`
+来恢复每项订阅；
+Server 不跨 connection 保留 subscription state。
+
 见
 [Subscriptions](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/subscriptions)
 和
@@ -3070,6 +3164,8 @@ MCP 标准化“接口和责任落点”，
 
 ## 22. 来源分级、漂移与一致性
 
+### 22.1 来源优先级
+
 来源优先级：
 
 1. 冻结 commit 的 TypeScript schema：wire shape 的 source of truth。
@@ -3077,6 +3173,8 @@ MCP 标准化“接口和责任落点”，
 3. Final SEP、官方 changelog、deprecated registry。
 4. 官方发布博客与 SDK 文档：解释动机和实现，但不覆盖 schema。
 5. 社区教程：只作延伸阅读，绝不反推当前规范。
+
+### 22.2 冲突处理与全局一致性
 
 一致性规则：
 
@@ -3088,7 +3186,7 @@ MCP 标准化“接口和责任落点”，
 - 所有 “MUST / SHOULD / MAY” 在改写前复核原文强度。
 - 所有 “deprecated / removed / optional extension” 分开检索，禁止互换。
 
-### 22.1 非规范延伸阅读
+### 22.3 非规范延伸阅读
 
 以下资料只帮助换一个角度理解，**不进入事实证据链**：
 
