@@ -1,22 +1,20 @@
-# MCP 2026-07-28：官方没有“MCP 2.0”
+# MCP 2.0 学习手册：从 API、RPC 到无状态 AI 集成协议
 
-> **本文约定**
+> 从零建立 MCP 的底层心智模型：
+> API、REST、RPC、JSON-RPC，
+> Host / Client / Server，
+> Prompt / Resource / Tool，
+> 再从 **MCP 1.0 的有状态会话**
+> 走到 **MCP 2.0 的无状态请求**。
 >
-> 官方协议从未发布名为 “MCP 2.0” 的版本。
->
-> 为了回应社区习惯，
-> 本文只在教学意义上，
-> 用 **“MCP 2.0”**
-> 指代官方称为 **Modern era**
-> 的 `2026-07-28` 及以后协议。
->
-> 写代码、报 bug、声明兼容性时，
-> 请始终写精确协议修订号：
-> **`2026-07-28`**。
+> 本文既适合第一次学习 MCP，
+> 也可作为迁移与安全审计参考。
+> 教学称呼与官方精确版本的对应关系，
+> 在第 0 节一次讲清。
 
 ---
 
-## 0. 阅读合同：我们在讨论哪个 MCP
+## 0. 阅读合同：本文怎样称呼 MCP 1.0 与 MCP 2.0
 
 ### 0.1 冻结范围
 
@@ -30,9 +28,9 @@
   [`2026-07-28`](https://modelcontextprotocol.io/specification/2026-07-28)
 - 本文审计的当前规范 commit：
   [`5f5440bb26a62e2cf3440b92da5a667efa03b267`](https://github.com/modelcontextprotocol/modelcontextprotocol/tree/5f5440bb26a62e2cf3440b92da5a667efa03b267)
-- 本文审计的 Legacy 对照 commit：
+- 本文审计的 MCP 1.0 对照（官方 Legacy）commit：
   [`38c84e9f93ad191d9eb26d92b945d17bd0efcaf3`](https://github.com/modelcontextprotocol/modelcontextprotocol/tree/38c84e9f93ad191d9eb26d92b945d17bd0efcaf3)
-- Legacy 对照规范：
+- MCP 1.0 代表性对照规范：
   [`2025-11-25`](https://modelcontextprotocol.io/specification/2025-11-25)
 
 这里的“冻结”意味着：
@@ -58,7 +56,7 @@
 示例：
 
 > **【事实】**
-> Modern MCP 是无状态协议。
+> MCP 2.0 是无状态协议。
 >
 > **【解释】**
 > “无状态”不是业务系统不能存状态，
@@ -84,7 +82,7 @@ MCP 规范沿用 RFC 风格的规范词：
 本文会尽量保留强度，
 不会把 “SHOULD” 擅自升级为 “MUST”。
 
-### 0.4 一句话结论
+### 0.4 本文的教学口径
 
 **【事实】**
 官方当前规范使用日期版本，
@@ -96,20 +94,39 @@ MCP 规范沿用 RFC 风格的规范词：
 见冻结 commit 的
 [`schema/2026-07-28/schema.ts`](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/5f5440bb26a62e2cf3440b92da5a667efa03b267/schema/2026-07-28/schema.ts)。
 
-所以：
+官方规范本身使用日期 revision，
+并在兼容性文档中使用
+**Legacy / Modern** 两个 era 名称。
+
+本文为了让从零学习和前后对比更顺畅，
+统一使用：
+
+| 教学主称呼 | 对应的官方范围 | 本文代表版本 |
+|---|---|---|
+| **MCP 1.0** | 官方 **Legacy** era，即 `2025-11-25` 及以前 | `2025-11-25` |
+| **MCP 2.0** | 官方 **Modern** era，即 `2026-07-28` 及以后 | `2026-07-28` |
+
+因此本文说“MCP 1.0 哪里遇到问题”，
+是在讨论 Legacy era 的会话式架构，
+并不表示官方发布过一个语义版本号 `1.0`。
+
+本文说“MCP 2.0 怎样解决”，
+是在讨论 Modern era 的无状态架构，
+并不把 `2.0` 写入协议报文。
+
+最重要的区分是：
 
 ```text
-MCP 2026-07-28
+本文的 MCP 2.0 = protocol revision 2026-07-28 及以后
 ≠ JSON-RPC 2.0
 ≠ TypeScript SDK v2
-≠ 官方 MCP 2.0
 ```
 
 ### 0.5 三只独立的“版本时钟”
 
 ```mermaid
 flowchart LR
-    A["协议时钟<br/>MCP 2026-07-28<br/>决定 wire contract"]
+    A["协议时钟<br/>MCP 2.0 教学称呼<br/>wire revision 2026-07-28"]
     B["信封时钟<br/>JSON-RPC 2.0<br/>决定 request / response 形状"]
     C["实现时钟<br/>TS SDK v2 · Go SDK v1.7<br/>决定某个包的 API"]
     A -. "彼此独立" .- B
@@ -117,33 +134,28 @@ flowchart LR
     C -. "彼此独立" .- A
 ```
 
-不要写：
+学习和讲解架构时可以写：
 
 ```text
-我们的 Server 支持 MCP 2.0。
+MCP 2.0 采用无状态、每请求自描述的模型。
 ```
 
-应写：
+写代码、报 bug、发布兼容性声明时应写：
 
 ```text
 我们的 Server 支持 MCP protocol revision 2026-07-28。
 使用 TypeScript SDK v2.x 实现。
 ```
 
-官方也明确把
+官方把
 `2026-07-28` 及以后称作 **Modern**，
 把 `2025-11-25` 及以前称作 **Legacy**；
 见
 [Versioning and Compatibility](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)。
 
-本文因此使用：
-
-| 本文术语 | 精确定义 |
-|---|---|
-| Legacy MCP | `2025-11-25` 及以前的官方协议修订 |
-| Modern MCP | `2026-07-28` 及以后的官方协议修订 |
-| “MCP 1.0” | 只作为不精确的社区说法；本文尽量不用 |
-| “MCP 2.0” | 只作为 Modern era 的教学简称 |
+后文除引用官方术语、
+精确兼容性判断和来源审计外，
+统一称 **MCP 1.0 / MCP 2.0**。
 
 ---
 
@@ -287,7 +299,38 @@ sequenceDiagram
     HTTP-->>App: "{ temperature: 24 }"
 ```
 
-### 2.3 REST 擅长什么
+### 2.3 无状态与可缓存：有关联，但不是一回事
+
+REST 的无状态约束要求：
+
+> 每个请求都携带理解和处理它所需的信息，
+> Server 不依赖“上一条请求留下的会话上下文”。
+
+这让中间组件更容易独立观察、转发和重试请求，
+也让 Server 更容易横向扩容。
+代价是一些上下文可能要在每次请求中重复携带。
+
+缓存是 REST 的另一项约束。
+响应需要被标记为可缓存或不可缓存；
+可缓存响应可以被后续等价请求复用，
+但也引入返回陈旧数据的风险。
+
+两者的关系是：
+
+- 自包含请求让缓存层更容易判断两个请求是否等价；
+- 但“请求无状态”不等于“响应一定可缓存”；
+- cache key、有效期、私有数据隔离仍需单独定义。
+
+这也是理解 MCP 2.0 的一个铺垫：
+它吸收了“每个请求尽量自描述”的工程收益，
+但它仍是以命名方法为中心的 RPC 协议，
+不会因此变成 REST。
+
+上述两个约束及其取舍见 Fielding 对
+[REST Stateless 与 Cache 约束](https://ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm)
+的原始定义。
+
+### 2.4 REST 擅长什么
 
 - 浏览器和网关生态成熟；
 - HTTP cache 语义成熟；
@@ -295,7 +338,7 @@ sequenceDiagram
 - 资源 CRUD 容易理解；
 - 与 CDN、WAF、反向代理自然配合。
 
-### 2.4 REST 没有自动解决什么
+### 2.5 REST 没有自动解决什么
 
 仅有一个 OpenAPI 文档，
 并不会自动告诉 AI Host：
@@ -382,10 +425,17 @@ MCP 对消息又增加了自己的约束，
 见当前
 [Base Protocol](https://modelcontextprotocol.io/specification/2026-07-28/basic)。
 
+因此可以直接说：
+
+> **MCP 是一个建立在 JSON-RPC 2.0 信封之上的 RPC 应用协议。**
+
+HTTP 和 stdio 只是它可使用的 transport，
+不会把以 `method` 与 `params` 为核心的调用语义变成 REST。
+
 下面四段只演示 **JSON-RPC 2.0 信封**，
 方法名也是虚构的；它们故意省略 MCP 字段，
-不能直接当作 Modern MCP `2026-07-28` 报文发送。
-真正的 Modern request 还必须带完整 namespaced `_meta`，
+不能直接当作 MCP 2.0 的 `2026-07-28` 报文发送。
+真正的 MCP 2.0 request 还必须带完整 namespaced `_meta`，
 成功结果也必须带 `resultType`；第 12 节会给出完整示例。
 
 一个请求：
@@ -442,7 +492,34 @@ MCP 对消息又增加了自己的约束，
 通知没有 `id`，
 接收方不能发响应。
 
-### 4.2 `id` 是做什么的
+### 4.2 MCP 2.0 不支持 JSON-RPC batching
+
+原始 JSON-RPC 2.0 允许把多个消息放进一个数组批量发送。
+MCP 2.0 则把 wire message 收窄为单个：
+
+```text
+JSONRPCRequest | JSONRPCNotification | JSONRPCResponse
+```
+
+而不是这些消息的数组。
+MCP 已在 `2025-06-18` revision 移除 batching，
+MCP 2.0 延续这一约束；
+不能因为底层 JSON-RPC 规范支持 batch，
+就向 MCP endpoint 发送 batch array。
+
+在 Streamable HTTP 上，规则更具体：
+
+- Client 发出的每条 JSON-RPC message 都使用一次新的 HTTP `POST`；
+- POST body 必须是一条 JSON-RPC request 或 notification；
+- body 不能是 batch，也不能由 Client 发送 JSON-RPC response。
+
+可审计依据分别是冻结的
+[2025-06-18 Changelog](https://modelcontextprotocol.io/specification/2025-06-18/changelog)、
+[2026-07-28 schema](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/5f5440bb26a62e2cf3440b92da5a667efa03b267/schema/2026-07-28/schema.ts)
+与
+[Streamable HTTP / Sending Messages to the Server](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#sending-messages-to-the-server)。
+
+### 4.3 `id` 是做什么的
 
 同一连接中可能并发多个请求：
 
@@ -460,7 +537,7 @@ sequenceDiagram
 
 调用者靠 `id` 做关联。
 
-当前 MCP 进一步要求：
+MCP 2.0 进一步要求：
 
 - request `id` 必须是字符串或整数；
 - 不能为 `null`；
@@ -469,7 +546,7 @@ sequenceDiagram
 见当前
 [Base Protocol / Requests](https://modelcontextprotocol.io/specification/2026-07-28/basic#requests)。
 
-### 4.3 JSON-RPC 不管什么
+### 4.4 JSON-RPC 不管什么
 
 JSON-RPC 本身不知道：
 
@@ -486,9 +563,9 @@ JSON-RPC 本身不知道：
 所以 JSON-RPC 是信封，
 不是 MCP 的全部。
 
-### 4.4 MCP 对成功响应新增的关键要求
+### 4.5 MCP 对成功响应新增的关键要求
 
-当前 MCP 的成功结果必须有 `resultType`：
+MCP 2.0 的成功结果必须有 `resultType`：
 
 ```json
 {
@@ -507,13 +584,13 @@ JSON-RPC 本身不知道：
 - `input_required`：还需要 Client 提供输入；
 - extension 可以声明额外值，例如 Tasks 的 `task`。
 
-为兼容旧 Server，
-缺少 `resultType` 的旧响应
-由 Modern Client 当作 `complete`；
+为兼容 MCP 1.0 Server，
+缺少 `resultType` 的 MCP 1.0 响应
+由 MCP 2.0 Client 当作 `complete`；
 见
-[Base Protocol / ResultType](https://modelcontextprotocol.io/specification/2026-07-28/basic#resulttype)。
+[Base Protocol / Result responses](https://modelcontextprotocol.io/specification/2026-07-28/basic#result-responses)。
 
-### 4.5 分层不要混淆
+### 4.6 分层不要混淆
 
 ```mermaid
 flowchart TB
@@ -949,6 +1026,19 @@ tools/call
     },
     "required": ["city"],
     "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "temperature": {
+        "type": "number"
+      },
+      "conditions": {
+        "type": "string"
+      }
+    },
+    "required": ["temperature", "conditions"],
+    "additionalProperties": false
   }
 }
 ```
@@ -958,6 +1048,21 @@ tools/call
 实现必须至少支持该 dialect；
 见
 [Base Protocol / JSON Schema Usage](https://modelcontextprotocol.io/specification/2026-07-28/basic#json-schema-usage)。
+
+`inputSchema` 约束调用参数；
+可选的 `outputSchema` 约束结构化结果。
+`structuredContent` 本身也是 optional，
+可以是任意符合 schema 的 JSON value；
+当前 `CallToolResult.content` 仍是 required。
+如果 Tool 声明了 `outputSchema`，
+Server **MUST** 返回符合它的 `structuredContent`，
+Client **SHOULD** 在交给模型前验证结果。
+为了兼容只读取内容块的 Client，
+Server **SHOULD** 同时在 `content` 中放一份序列化 JSON。
+这里的 MCP `structuredContent`
+与模型供应商的 structured output 不是一回事。
+见
+[Tools / Structured Content](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#structured-content)。
 
 ### 7.6 为什么不把所有东西都做成 Tool
 
@@ -996,14 +1101,15 @@ tools/call
 
 ---
 
-## 8. Legacy MCP：所谓“MCP 1.0”究竟做了什么
+## 8. MCP 1.0 究竟做了什么
 
-### 8.1 先纠正名称
+### 8.1 先固定本文口径
 
 **【事实】**
-官方不把旧规范统称为 “MCP 1.0”。
+官方把这一时期称为 Legacy era；
+本文统一教学称呼为 **MCP 1.0**。
 
-Legacy 包括多个日期修订，
+MCP 1.0 包括多个官方日期修订，
 例如：
 
 - `2024-11-05`
@@ -1016,11 +1122,11 @@ Legacy 包括多个日期修订，
 审计。
 
 本文用 `2025-11-25`
-代表成熟的 Legacy 对照。
+代表成熟的 MCP 1.0 对照。
 
-### 8.2 Legacy 的核心心智模型
+### 8.2 MCP 1.0 的核心心智模型
 
-Legacy Client 与 Server
+MCP 1.0 Client 与 Server
 先建立并初始化一个带状态 session：
 
 ```text
@@ -1032,10 +1138,10 @@ Legacy Client 与 Server
   → shutdown
 ```
 
-官方 Legacy lifecycle 见
+官方 Legacy lifecycle 原文见
 [2025-11-25 Lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)。
 
-Legacy architecture 直接称其为
+官方 Legacy architecture 直接称其为
 “one stateful session per server”，
 见
 [2025-11-25 Architecture](https://modelcontextprotocol.io/specification/2025-11-25/architecture)。
@@ -1044,8 +1150,8 @@ Legacy architecture 直接称其为
 
 ```mermaid
 sequenceDiagram
-    participant H as "Host / Legacy Client"
-    participant S as "Legacy Server"
+    participant H as "Host / MCP 1.0 Client"
+    participant S as "MCP 1.0 Server"
     H->>S: "initialize(version, capabilities, clientInfo)"
     S-->>H: "InitializeResult(version, capabilities, serverInfo)"
     H->>S: "notifications/initialized"
@@ -1066,7 +1172,7 @@ sequenceDiagram
 5. Client 发 `notifications/initialized`。
 6. 此后只能使用已协商能力。
 
-### 8.4 Legacy initialize 示例
+### 8.4 MCP 1.0 initialize 示例
 
 简化后的教学示例：
 
@@ -1125,10 +1231,10 @@ Server 返回：
 
 这些是教学裁剪，
 精确字段应以冻结的
-[Legacy schema commit](https://github.com/modelcontextprotocol/modelcontextprotocol/tree/38c84e9f93ad191d9eb26d92b945d17bd0efcaf3)
+[MCP 1.0 对照 schema commit](https://github.com/modelcontextprotocol/modelcontextprotocol/tree/38c84e9f93ad191d9eb26d92b945d17bd0efcaf3)
 为准。
 
-### 8.5 Legacy capability 的意义
+### 8.5 MCP 1.0 capability 的意义
 
 能力协商避免一方盲目调用：
 
@@ -1141,10 +1247,10 @@ Server 返回：
 
 这个目标是合理的。
 
-Modern 没有取消 capability，
+MCP 2.0 没有取消 capability，
 而是改变 capability 的携带方式。
 
-### 8.6 Legacy transport 演进
+### 8.6 MCP 1.0 transport 演进
 
 早期 `2024-11-05`
 有两种标准 transport：
@@ -1157,7 +1263,7 @@ Modern 没有取消 capability，
 
 `2025-03-26`
 引入 Streamable HTTP，
-替代旧 HTTP+SSE。
+替代 MCP 1.0 早期的 HTTP+SSE。
 
 到 `2025-11-25`，
 Streamable HTTP 仍允许：
@@ -1168,12 +1274,12 @@ Streamable HTTP 仍允许：
 - SSE 事件恢复；
 - Server→Client 独立 JSON-RPC 请求。
 
-### 8.7 Legacy stdio
+### 8.7 MCP 1.0 stdio
 
 ```mermaid
 flowchart LR
     H["Host"]
-    C["Legacy MCP Client"]
+    C["MCP 1.0 Client"]
     P["Server 子进程"]
     IN["stdin<br/>Client → Server"]
     OUT["stdout<br/>Server → Client"]
@@ -1200,11 +1306,11 @@ flowchart LR
 - 子进程生命周期由 Host 管理；
 - 每个 Host 可能各自启动实例。
 
-### 8.8 Legacy Streamable HTTP
+### 8.8 MCP 1.0 Streamable HTTP
 
 ```mermaid
 sequenceDiagram
-    participant C as "Legacy Client"
+    participant C as "MCP 1.0 Client"
     participant LB as "Load Balancer"
     participant S as "Server Instance"
     C->>LB: "POST /mcp initialize"
@@ -1224,12 +1330,12 @@ sequenceDiagram
 但先不要急着批判。
 
 下一节先完整走一遍
-Legacy Tool 调用，
+MCP 1.0 Tool 调用，
 才能理解它带来的开发体验。
 
 ---
 
-## 9. Legacy 端到端 Tool call
+## 9. MCP 1.0 端到端 Tool call
 
 ### 9.1 场景
 
@@ -1241,7 +1347,7 @@ Legacy Tool 调用，
 
 - 一个聊天 Host；
 - 一个模型 API；
-- 一个 Legacy MCP Client；
+- 一个 MCP 1.0 Client；
 - 一个 weather MCP Server；
 - 一个实际天气 REST API。
 
@@ -1252,7 +1358,7 @@ sequenceDiagram
     actor U as "用户"
     participant H as "Host"
     participant M as "模型"
-    participant C as "Legacy MCP Client"
+    participant C as "MCP 1.0 Client"
     participant S as "Weather MCP Server"
     participant A as "Weather REST API"
     H->>C: "连接 Server"
@@ -1279,16 +1385,23 @@ sequenceDiagram
 
 ### 9.3 `tools/list`
 
-Legacy Client 发现工具：
+MCP 1.0 Client 发现工具：
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 2,
   "method": "tools/list",
-  "params": {}
+  "params": {
+    "cursor": "page-1"
+  }
 }
 ```
+
+首次请求通常省略 `cursor`；
+这里显式写出它，是为了展示续页请求。
+cursor 是 Server 生成的不透明值，
+Client **MUST NOT** 解析、修改或推断其格式。
 
 Server 返回：
 
@@ -1309,12 +1422,36 @@ Server 返回：
             }
           },
           "required": ["city"]
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "temperature": {
+              "type": "number"
+            },
+            "conditions": {
+              "type": "string"
+            }
+          },
+          "required": ["temperature", "conditions"]
         }
       }
-    ]
+    ],
+    "nextCursor": "page-2"
   }
 }
 ```
+
+有 `nextCursor` 表示还有下一页，
+Client 将它原样放进下一次 `params.cursor`。
+没有 `nextCursor` 时，Client **SHOULD** 视为分页结束；
+空字符串仍是有效 cursor，**MUST NOT** 擅自当作结束。
+Page size 由 Server 决定，
+Client **MUST NOT** 假定固定大小。
+无效 cursor **SHOULD** 返回
+`-32602 Invalid params`。
+见
+[Pagination](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination)。
 
 ### 9.4 Host 把 Tool 交给模型
 
@@ -1380,20 +1517,32 @@ Server 调用天气后端，
     "content": [
       {
         "type": "text",
-        "text": "北京：24°C，多云"
+        "text": "{\"temperature\":24,\"conditions\":\"多云\"}"
       }
     ],
+    "structuredContent": {
+      "temperature": 24,
+      "conditions": "多云"
+    },
     "isError": false
   }
 }
 ```
 
-Modern 响应还必须处理 `resultType`，
+端到端合同是：
+
+1. `tools/list` 中的 `outputSchema` 声明结构；
+2. `tools/call` 的 `structuredContent` 提供机器可读值；
+3. Server 在声明 `outputSchema` 后 **MUST** 让两者一致；
+4. Client **SHOULD** 验证；
+5. `content` 中保留序列化 JSON，兼容旧 Client。
+
+MCP 2.0 响应还必须处理 `resultType`，
 后文会给出当前版本的完整示例。
 
 ### 9.6 Tool 协议错误与 Tool 执行失败不同
 
-协议错误：
+协议错误示例：
 
 ```json
 {
@@ -1408,8 +1557,12 @@ Modern 响应还必须处理 `resultType`，
 
 表示：
 
-- 方法或参数层面无法正确执行；
+- Tool 名称未知、`CallToolRequest` 信封不符合 schema，
+  或 Server 本身发生协议级错误；
 - Client 应把它当 RPC 失败。
+
+这里的“信封不符合 schema”指 JSON-RPC/MCP 请求结构错误，
+不是 Tool 业务参数的值不合法。
 
 Tool 执行结果中的失败：
 
@@ -1432,12 +1585,22 @@ Tool 执行结果中的失败：
 表示：
 
 - `tools/call` 协议调用成功到达；
-- Tool 的业务执行失败；
+- Tool 的执行失败，例如上游 API 失败、
+  日期格式或范围等输入值校验失败、业务规则拒绝；
 - Host 可以把结果反馈给模型，
   让模型修正参数或向用户解释。
 
+规范给 Client 的模型反馈强度并不相同：
+
+- Client **MAY** 把 protocol error 提供给模型；
+- Client **SHOULD** 把 `isError: true` 的 execution error 提供给模型，
+  以便模型自我修正。
+
+因此，不能为了省事把参数值 validation、
+业务失败或后端 API 失败都塞进 JSON-RPC `error`。
+
 当前 Tool 行为以
-[2026-07-28 Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
+[2026-07-28 Tools / Error Handling](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#error-handling)
 为准。
 
 ### 9.7 这一链路最容易混淆的四份合同
@@ -1466,11 +1629,11 @@ Tool 执行结果中的失败：
 
 ---
 
-## 10. Early design 做对了什么，又付出了什么
+## 10. MCP 1.0 的早期设计做对了什么，又付出了什么
 
-### 10.1 不应从结论倒推“旧设计愚蠢”
+### 10.1 不应从结论倒推“MCP 1.0 设计愚蠢”
 
-Legacy MCP 的目标环境很大一部分是：
+MCP 1.0 的目标环境很大一部分是：
 
 - 桌面应用；
 - IDE；
@@ -1482,7 +1645,7 @@ Legacy MCP 的目标环境很大一部分是：
 在这个环境里，
 有状态 session 有真实收益。
 
-### 10.2 Early design 的收益
+### 10.2 MCP 1.0 设计的收益
 
 | 设计 | 当时的直接收益 |
 |---|---|
@@ -1493,7 +1656,7 @@ Legacy MCP 的目标环境很大一部分是：
 | `Mcp-Session-Id` | Server 能把多次 HTTP 调用关联到同一协议上下文 |
 | 连接生命周期 | 开始、运行、结束容易映射到进程或 UI 生命周期 |
 
-### 10.3 Early design 的隐含假设
+### 10.3 MCP 1.0 设计的隐含假设
 
 ```mermaid
 flowchart TD
@@ -1503,7 +1666,7 @@ flowchart TD
     D["能力在会话中不会改变"]
     E["Server 可长期保存 session state"]
     F["Client 能接收 Server 主动请求"]
-    A --> Good["Legacy 模型体验顺畅"]
+    A --> Good["MCP 1.0 模型体验顺畅"]
     B --> Good
     C --> Good
     D --> Good
@@ -1523,14 +1686,14 @@ flowchart TD
 
 ### 10.4 得失不是同一维度
 
-Legacy 优化的是：
+MCP 1.0 优化的是：
 
 - 交互连续性；
 - 双向调用自然度；
 - 单连接编程模型；
 - 初始化后消息简洁。
 
-Modern 优化的是：
+MCP 2.0 优化的是：
 
 - 横向扩容；
 - 故障恢复；
@@ -1546,7 +1709,7 @@ Modern 优化的是：
 
 ---
 
-## 11. 远端生产环境暴露了什么问题
+## 11. MCP 1.0 进入远端生产后暴露了什么问题
 
 官方动机最集中地记录在：
 
@@ -1557,7 +1720,7 @@ Modern 优化的是：
 
 ### 11.1 横向扩容
 
-Legacy 请求依赖 initialize 建立的状态时：
+MCP 1.0 请求依赖 initialize 建立的状态时：
 
 ```mermaid
 flowchart LR
@@ -1630,7 +1793,7 @@ SEP-2567 指出，
 
 ### 11.4 Server callback 与网络拓扑
 
-Legacy Server 可以向 Client 发独立 request。
+MCP 1.0 Server 可以向 Client 发独立 request。
 
 远端环境因此要保证：
 
@@ -1694,12 +1857,12 @@ POST /mcp
 
 ---
 
-## 12. Modern MCP 总览：从隐式 session 到自描述请求
+## 12. MCP 2.0 总览：从隐式 session 到自描述请求
 
 ### 12.1 官方定义
 
 **【事实】**
-当前 MCP 是无状态协议：
+MCP 2.0 是无状态协议：
 
 - 处理请求所需信息包含在请求中；
 - Server 不能从同一连接上的早先请求推断版本、capability 或身份；
@@ -1727,11 +1890,11 @@ POST /mcp
 > “你还在上次那条连接上”
 > 来隐式定位。
 
-### 12.3 Modern 主路径
+### 12.3 MCP 2.0 主路径
 
 ```mermaid
 sequenceDiagram
-    participant C as "Modern Client"
+    participant C as "MCP 2.0 Client"
     participant G as "Gateway"
     participant S as "任意 Server 实例"
     opt "Client 需要预先发现"
@@ -1760,7 +1923,7 @@ sequenceDiagram
 | `io.modelcontextprotocol/protocolVersion` | MUST | 当前请求采用的协议修订 |
 | `io.modelcontextprotocol/clientCapabilities` | MUST | 当前请求可用的 Client capabilities |
 | `io.modelcontextprotocol/clientInfo` | SHOULD include | 展示、日志、调试 |
-| `io.modelcontextprotocol/logLevel` | MAY | 该请求希望的最低日志级别 |
+| `io.modelcontextprotocol/logLevel` | MAY；**deprecated** | 该请求希望的最低日志级别 |
 
 精确要求见
 [Base Protocol / `_meta`](https://modelcontextprotocol.io/specification/2026-07-28/basic#_meta)。
@@ -1772,7 +1935,23 @@ sequenceDiagram
 - 它是自报信息；
 - 不能用作认证或安全决策。
 
-### 12.5 一个 Modern `tools/call`
+`io.modelcontextprotocol/logLevel` 所属的 Logging feature
+在 `2026-07-28` 已 deprecated，
+但字段仍可使用。
+如果一个 request **没有**携带该字段，
+Server **MUST NOT** 为这个 request 发送
+`notifications/message`；
+如果携带，Server **MAY** 在该 request 的 response stream 上、
+final response 之前，
+发送不低于所请求级别的日志通知。
+Server **MUST NOT** 把它们放到
+`subscriptions/listen` 或其他 request 的 stream。
+这里约束的是 MCP `notifications/message`，
+不禁止 stderr 或 OpenTelemetry 观测。
+见
+[Logging](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/logging)。
+
+### 12.5 一个 MCP 2.0 `tools/call`
 
 ```json
 {
@@ -1846,14 +2025,14 @@ sequenceDiagram
 
 ---
 
-## 13. 版本与 capability：没有初始化，如何协商
+## 13. MCP 2.0 的版本与 capability：没有初始化，如何协商
 
 ### 13.1 `server/discover`
 
 **【事实】**
-Modern Server **MUST** 实现 `server/discover`。
+MCP 2.0 Server **MUST** 实现 `server/discover`。
 
-Modern Client 调用它是 **optional**。
+MCP 2.0 Client 调用它是 **optional**。
 
 Client 可以：
 
@@ -1861,8 +2040,15 @@ Client 可以：
 2. 或直接调用任意 RPC，
    再处理版本错误。
 
+但有一个兼容性特例：
+同时支持 MCP 1.0 与 MCP 2.0 的 stdio Client
+**SHOULD** 先发送 `server/discover` 作为探测，
+再决定留在 MCP 2.0 或回退 MCP 1.0。
+这不是所有 MCP 2.0 Client 的普遍前置握手；
+它只用于双栈 stdio 识别。
+
 见
-[Discovery](https://modelcontextprotocol.io/specification/2026-07-28/server/discover)。
+[Discovery / When to Call](https://modelcontextprotocol.io/specification/2026-07-28/server/discover#when-to-call)。
 
 ### 13.2 完整 discovery request
 
@@ -1933,14 +2119,26 @@ Client 可以：
 }
 ```
 
-Client 从共同支持版本中选择，
-再用新请求重试。
+Client 应先求自己与 Server 支持 revision 的交集。
+若存在共同 revision，Client **SHOULD** 选择其中一个，
+并用新的 JSON-RPC `id`
+把原操作作为新 request 重试。
+
+若没有共同 revision，
+Client 应把版本不兼容错误
+surface 给用户或上层调用方，
+而不是继续猜测版本。
+
+`UnsupportedProtocolVersionError`
+是可识别的 MCP 2.0 error，
+证明对端理解 MCP 2.0 wire；
+即使协商失败，也不能因此 fallback 到 MCP 1.0 `initialize`。
 
 ### 13.4 为什么 discover 不是新 initialize
 
 | `initialize` | `server/discover` |
 |---|---|
-| Legacy 首次交互，必须调用 | Modern Client 可选调用 |
+| MCP 1.0 首次交互，必须调用 | MCP 2.0 Client 可选调用 |
 | 建立会话上下文 | 只查询 Server 声明 |
 | capability 供后续 session 隐式使用 | 每个请求仍携带 Client capability |
 | 有 `initialized` 通知 | 没有对应完成通知 |
@@ -1962,7 +2160,7 @@ capability 表示：
 
 ### 13.6 Extension negotiation
 
-Modern 正式提供 extension map。
+MCP 2.0 正式提供 extension map。
 
 官方 extension 使用：
 
@@ -1992,7 +2190,7 @@ Extension 自身 **SHOULD** 说明预期 fallback。
 
 ---
 
-## 14. 显式状态 handle：无状态不等于无连续性
+## 14. MCP 2.0 的显式状态 handle：无状态不等于无连续性
 
 ### 14.1 为什么需要 handle
 
@@ -2006,7 +2204,7 @@ Extension 自身 **SHOULD** 说明预期 fallback。
 - 外部工作流；
 - MRTR 中间状态。
 
-Modern 不禁止这些状态。
+MCP 2.0 不禁止这些状态。
 
 规范要求跨请求状态由 Client
 在每个相关请求中携带显式 identifier。
@@ -2096,7 +2294,7 @@ Server 需要 thread 状态时，
 
 ---
 
-## 15. MRTR：把 Server 回调改写成可重试结果
+## 15. MCP 2.0 的 MRTR：把 Server 回调改写成可重试结果
 
 MRTR 是 **Multi Round-Trip Requests**。
 
@@ -2115,13 +2313,13 @@ Tool 执行到一半可能需要：
 - Client 进行 sampling；
 - Client 提供 roots 信息。
 
-Legacy：
+MCP 1.0：
 
 ```text
 Server → Client 发一条独立 request
 ```
 
-Modern：
+MCP 2.0：
 
 ```text
 Server ← 返回 input_required
@@ -2139,19 +2337,40 @@ sequenceDiagram
     participant S2 as "Server B"
     C->>S1: "tools/call id=10"
     S1-->>C: "resultType=input_required"
-    Note over S1,C: "inputRequests + opaque requestState"
+    Note over S1,C: "inputRequests? / requestState?；至少一个"
     C->>U: "展示表单或执行 Client feature"
     U-->>C: "inputResponses"
     C->>S2: "重试 tools/call id=11"
-    Note over C,S2: "原样 requestState + inputResponses"
+    Note over C,S2: "inputResponses；仅在 Server 给出时回传 requestState"
     S2-->>C: "resultType=complete"
 ```
 
-### 15.3 三个关键不变量
+### 15.3 MRTR 的适用范围与关键不变量
 
-1. 重试使用新的 JSON-RPC `id`。
-2. `requestState` 对 Client opaque。
-3. Client 必须把 `requestState` 原样返回。
+`InputRequiredResult` 只允许出现在：
+
+| Client request | Server 可否返回 `input_required` |
+|---|---|
+| `tools/call` | MAY |
+| `resources/read` | MAY |
+| `prompts/get` | MAY |
+| 其他 Client request | **MUST NOT** |
+
+核心不变量是：
+
+1. `inputRequests` 与 `requestState` 都是 optional，
+   但每个 `InputRequiredResult` **MUST** 至少包含其中一个。
+2. 若响应含 `inputRequests`，Client 重试前 **MUST** 先构造所需输入；
+   若没有，Client **MAY** 立即重试。
+3. 若响应含 `requestState`，Client **MUST** 原样回传，
+   且 **MUST NOT** 检查、解析、修改或猜测其内容。
+4. 若响应不含 `requestState`，Client 重试时 **MUST NOT** 自己添加。
+5. 重试使用新的 JSON-RPC `id`。
+6. `inputRequests`、`inputResponses` 与 `requestState`
+   只关联原 request 的这次重试，不能串到其他并行 request。
+7. Server **MUST NOT** 请求 Client capability 中未声明支持的 Client feature。
+8. 每个 `inputRequests` value **MUST** 是
+   `ElicitRequest`、`CreateMessageRequest` 或 `ListRootsRequest`。
 
 不要：
 
@@ -2202,6 +2421,53 @@ sequenceDiagram
 必须放对应的 `ElicitResult`，
 并用新的 JSON-RPC `id`、原样带回 `requestState`。
 
+完整重试 request 如下：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "method": "tools/call",
+  "params": {
+    "name": "deploy",
+    "arguments": {
+      "service": "checkout"
+    },
+    "inputResponses": {
+      "approval": {
+        "action": "accept",
+        "content": {
+          "environment": "staging"
+        }
+      }
+    },
+    "requestState": "opaque-state-from-server",
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientInfo": {
+        "name": "example-host",
+        "version": "2.4.0"
+      },
+      "io.modelcontextprotocol/clientCapabilities": {
+        "elicitation": {
+          "form": {}
+        }
+      }
+    }
+  }
+}
+```
+
+注意 `inputResponses` 与 `requestState`
+都在 `params` 顶层，
+和 `name`、`arguments` 同级，
+不能塞进 `arguments` 或 `_meta`。
+本例因为 Server 返回了 `requestState` 才回传；
+若上一响应没有它，必须把这一行整个省略。
+
+上述约束见
+[MRTR / Supported Requests 与 Basic Workflow](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr#supported-requests)。
+
 ### 15.5 MRTR 的代价
 
 它带来：
@@ -2226,7 +2492,7 @@ MRTR 消除了协议对持久回调通道的依赖，
 
 ---
 
-## 16. Modern transports
+## 16. MCP 2.0 transports
 
 当前标准 binding 仍是：
 
@@ -2236,7 +2502,7 @@ MRTR 消除了协议对持久回调通道的依赖，
 见
 [Transports](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports)。
 
-### 16.1 Modern stdio
+### 16.1 MCP 2.0 stdio
 
 当前 stdio 仍然是：
 
@@ -2256,7 +2522,7 @@ MRTR 消除了协议对持久回调通道的依赖，
 - 需要输入时返回 MRTR；
 - 同一 process 可承载无关 conversation。
 
-### 16.2 Modern Streamable HTTP
+### 16.2 MCP 2.0 Streamable HTTP
 
 ```mermaid
 flowchart LR
@@ -2290,7 +2556,7 @@ subscriptions/listen
 
 ### 16.3 关键 HTTP headers
 
-Modern Streamable HTTP 的 Client 义务包括：
+MCP 2.0 Streamable HTTP 的 Client 义务包括：
 
 | Header | 强度与适用范围 | 作用 |
 |---|---|---|
@@ -2313,14 +2579,41 @@ Server **MUST** 验证收到的 Origin，
 Server **MAY** 在 Tool `inputSchema` 的 primitive 属性上声明
 `x-mcp-header`；一旦声明，Streamable HTTP Client **MUST**
 把对应参数镜像成 `Mcp-Param-{Name}`。
+若调用参数的值为 `null`，
+Client **MUST** 省略对应 header；
+参数路径缺失时同样 **MUST** 省略；
+这两种情况下 Server **MUST NOT** 期待该 header。
+
+`x-mcp-header` 本身还有严格的名称、唯一性、
+primitive 类型与静态可达性约束。
+只要某个 Tool 的任意 `x-mcp-header` 违反约束，
+Streamable HTTP Client **MUST** 拒绝该 Tool definition，
+并把这个 Tool 从 `tools/list` 结果中剔除；
+Client **SHOULD** 记录含 Tool 名和原因的 warning。
+其他 transport **MAY** 完全忽略该 annotation。
+
 `Mcp-Name` 或 `Mcp-Param-*` 的值不能安全表示为普通 ASCII 时，
 必须使用规范的 `=?base64?…?=` sentinel 编码；
 Server 比对 body 前必须先解码。
+
+Server 开发者 **SHOULD NOT**
+把 password、API key、token 或 PII 等敏感参数
+标为 `x-mcp-header`，
+因为中间网络组件通常可以看到 header。
+
+见
+[Tools / x-mcp-header](https://modelcontextprotocol.io/specification/2026-07-28/server/tools#x-mcp-header)
+与
+[Streamable HTTP / Custom Headers](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#custom-headers-from-tool-parameters)。
 
 Header 与 JSON body 不一致时：
 
 - `HeaderMismatch`
 - code `-32020`
+
+若 body 中存在非 `null` 参数值却缺少应有 header，
+Server **MUST** 返回 HTTP `400`
+和 JSON-RPC `-32020 HeaderMismatch`。
 
 ### 16.4 Header 为什么重要
 
@@ -2349,31 +2642,87 @@ Server 仍必须：
 - 验证 Tool 参数；
 - 执行业务权限。
 
-### 16.5 被移除的 HTTP 状态机制
+### 16.5 被移除的机制：不只发生在 HTTP
 
-在 Modern core 中已移除：
+下面这些机制已经从 MCP 2.0 的 `2026-07-28` wire protocol
+**removed**，不是“仍可采用、只是官方不推荐”。
+
+生命周期与通用 RPC：
+
+- `initialize` / `notifications/initialized` handshake；
+- protocol-level session；
+- 双向 `ping` RPC；
+- Server 在 transport 上主动发独立 Client request 的旧模式，
+  改为 MRTR 的 `input_required` + retry。
+
+JSON-RPC batching 也不在 MCP 2.0 中，
+但它早在 `2025-06-18` revision 就已移除，
+不是 `2026-07-28` 新发生的变化；见第 4.2 节。
+
+旧日志、Roots 与变更机制：
+
+- `logging/setLevel` 已移除，
+  日志级别改由每个 request 的
+  `_meta["io.modelcontextprotocol/logLevel"]` 携带；
+- 顶层 Server→Client `roots/list` 调用已移除，
+  同名 request object 只可嵌在 MRTR `inputRequests` 中；
+- `notifications/roots/list_changed` 已移除；
+- `resources/subscribe` 与 `resources/unsubscribe` 已移除，
+  Tool、Prompt、Resource list 变化和单个 Resource 更新
+  统一通过 `subscriptions/listen` opt in。
+
+旧 elicitation 关联机制：
+
+- `notifications/elicitation/complete` 已移除；
+- URL mode 的 `elicitationId` 已移除；
+- 跨 MRTR retry 的关联由 Server 编码进 `requestState`，
+  而不是再由 Server 主动发送完成通知。
+
+HTTP 状态与恢复机制：
 
 - `Mcp-Session-Id`；
-- standalone GET SSE；
-- `Last-Event-ID` resumability；
-- 基于 session 的消息路由。
+- HTTP `DELETE` session termination；
+- standalone HTTP GET SSE endpoint；
+- SSE event ID、`Last-Event-ID`、stream resumability 和消息重投；
+- 基于 session 的 sticky route / message route。
 
 **deprecated** 与 **removed** 不同：
 
-- 这些 session / Modern handshake 相关机制
-  已从 Modern core 移除；
-- Legacy Server 仍可能合法使用；
-- HTTP+SSE 作为 Legacy transport
-  在弃用登记中；
-- 兼容 Client 仍可能需要实现 fallback。
+- 上述具体机制已从 MCP 2.0 移除；
+- Roots、Sampling、Logging 这些 feature 则仍在规范中，
+  只是 deprecated；
+- MCP 1.0 Server 仍可能合法使用旧 wire mechanism，
+  所以双栈 Client 仍可能需要 fallback；
+- 旧 HTTP+SSE transport 是 deprecated，
+  不能和 MCP 2.0 已删除的 standalone GET 行为混为一谈。
+
+逐项变更见
+[2026-07-28 Changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog)。
 
 ### 16.6 订阅不是 session
+
+`subscriptions/listen.params.notifications`
+是 required object；
+它内部的四个 filter 都是 optional，
+Client 用它们显式选择自己要接收的变化：
+
+| filter | opt-in 的通知 |
+|---|---|
+| `toolsListChanged: true` | `notifications/tools/list_changed` |
+| `promptsListChanged: true` | `notifications/prompts/list_changed` |
+| `resourcesListChanged: true` | `notifications/resources/list_changed` |
+| `resourceSubscriptions: string[]` | 数组中指定 URI 的 `notifications/resources/updated` |
+
+每项都可省略；省略或未选择就是未订阅。
+Server **MUST NOT** 推送 Client 没有显式请求的通知类型，
+也不能对 `resourceSubscriptions` 之外的 URI
+发送 `notifications/resources/updated`。
 
 ```mermaid
 sequenceDiagram
     participant C as "Client"
     participant S as "Server"
-    C->>S: "subscriptions/listen"
+    C->>S: "subscriptions/listen(filters)"
     Note over C,S: "这是一个长时间未完成的 request"
     S-->>C: "notifications/subscriptions/acknowledged"
     Note over C,S: "必须是该 subscription 的第一条消息"
@@ -2400,7 +2749,15 @@ _meta["io.modelcontextprotocol/subscriptionId"]
 以便 Client 关联来源；
 首条消息必须是
 `notifications/subscriptions/acknowledged`，
-并携带同一 subscription ID。
+并携带同一 subscription ID；
+在 ack 之前 Server **MUST NOT** 推送订阅通知。
+Acknowledgement 返回 Server 实际接受的 filter 子集，
+Client 不能假定 Server 接受了全部请求项。
+
+Request-scoped 的 `notifications/progress`
+和 `notifications/message`
+仍只走原 request 的 response stream，
+不走 `subscriptions/listen`。
 取消方式依 transport 而异：
 HTTP 关闭 SSE response stream；
 stdio 发送引用 `subscriptions/listen` request ID 的
@@ -2412,23 +2769,67 @@ stdio 发送引用 `subscriptions/listen` request ID 的
 
 ---
 
-## 17. 缓存、Extension 与 Client features
+## 17. MCP 2.0 的缓存、Extension 与 Client features
 
-缓存不是泛泛建议。Server 对以下操作的 `resultType: "complete"` 结果 **MUST** 携带 `ttlMs` 与 `cacheScope`：
+### 17.1 Cacheable result 的硬性义务
+
+缓存不是泛泛建议。
+Server 对以下操作的 `resultType: "complete"` 结果
+**MUST** 携带 `ttlMs` 与 `cacheScope`：
 
 ```text
 server/discover · tools/list · prompts/list
 resources/list · resources/templates/list · resources/read
 ```
 
-`ttlMs` **MUST >= 0**；`private` 缓存 **MUST NOT** 跨 authorization context 共享。`input_required` 中间结果不可缓存，带 `inputResponses` 或 `requestState` 的 MRTR 重试结果也 **MUST NOT** 缓存，因为这些输入不在普通 cache key 内。详见当前 [Caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching)。
+`ttlMs` **MUST >= 0**。
+`private` 缓存 **MUST NOT**
+跨 authorization context 共享。
 
-TTL 是新鲜度 hint，不是数据不变保证，也不是后台轮询周期；通知会立即使相关 cache stale。Tool 列表另应保持确定性顺序，以利稳定缓存和模型 prompt cache。缓存不等于授权：调用时仍须重新鉴权。变更流使用 `subscriptions/listen`，不再把可变 catalog 藏在 session 内；完整变化见 [Changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog)。
+`input_required` 中间结果不可缓存；
+带 `inputResponses` 或 `requestState` 的 MRTR retry 结果
+也 **MUST NOT** 缓存，
+因为这些输入不在普通 cache key 内。
 
-正式 extension 通过 capabilities opt-in、可独立演进；一方不支持时，支持方必须选择回退 core 或明确拒绝，extension 自身应说明预期 fallback，不能把 extension 冒充 core。当前代表：
+详见当前
+[Caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching)。
+
+### 17.2 新鲜度、失效与授权
+
+TTL 是 freshness hint，
+不是数据永不变化的保证，
+也不是后台轮询周期。
+
+通知会立即使相关 cache stale。
+Tool 列表另应保持确定性顺序，
+以利稳定缓存和模型 prompt cache。
+
+缓存不等于授权：
+执行调用时仍须重新鉴权。
+变更流使用 `subscriptions/listen`，
+不再把可变 catalog 藏在 session 内；
+完整变化见
+[Changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog)。
+
+### 17.3 Extension：必须由双方 opt in
+
+正式 extension 通过 capabilities opt-in，
+可以独立于 core protocol 演进。
+
+一方不支持时，支持方必须选择：
+
+- 回退 core behavior；
+- 或明确拒绝。
+
+Extension 自身应说明预期 fallback，
+不能把 extension 冒充 core。
+
+当前代表：
 
 - [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview)：Tool 可关联 `ui://` 资源，在 Host 的 sandboxed iframe 中展示；支持情况由 Host 决定。
 - [Tasks](https://modelcontextprotocol.io/extensions/tasks/overview)：长任务可返回 `resultType: "task"` 与 durable `taskId`，Client 用 `tasks/get`、`tasks/update`、`tasks/cancel`；状态包括 `working`、`input_required`、`completed`、`failed`、`cancelled`。取消是 cooperative：`tasks/cancel` 只确认取消意图，Server 不保证停下，Task 仍可能 `completed` 或 `failed`。它是官方 extension，不是所有实现都必须支持；最终设计见 [SEP-2663](https://modelcontextprotocol.io/seps/2663-tasks-extension)。
+
+### 17.4 Tasks 是 extension，不是 core 自动能力
 
 ```mermaid
 stateDiagram-v2
@@ -2441,22 +2842,67 @@ stateDiagram-v2
     input_required --> cancelled: "tasks/cancel（若被采纳）"
 ```
 
-Client feature 状态必须精确区分：
+迁移时不能把 `2025-11-25` experimental Tasks wire
+当成当前 extension 的兼容子集：
+
+- 旧的 blocking `tasks/result`
+  被 polling `tasks/get` 与新的 `tasks/update` 替代；
+- 旧 `tasks/list` 已 removed；
+- 当前 Tasks 是必须通过 capability opt in 的官方 extension，
+  不是 MCP 2.0 core 的默认能力。
+
+Tasks 的状态机可以持久化长作业，
+但协议只定义交互合同；
+worker、保留期和实际取消语义仍由实现负责。
+
+### 17.5 Feature deprecated 与旧 RPC removed 必须分开
+
+Client feature 状态如下：
 
 | Feature | `2026-07-28` 状态 | 新实现应怎样做 |
 |---|---|---|
-| Elicitation | 当前 core feature | 在 MRTR 中向用户补问；form 不得索取密码、token、API key、支付凭据，敏感流程用 URL mode；见 [Elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
-| Sampling | **deprecated，尚未 removed** | 兼容实现仍可支持；新 Server 优先直接接模型 API；见 [Sampling](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling) |
-| Roots | **deprecated，尚未 removed** | 仅是信息提示，从来不是文件权限边界；新设计用 Tool 参数、Resource URI 或 Server 配置；见 [Roots](https://modelcontextprotocol.io/specification/2026-07-28/client/roots) |
-| Logging | **deprecated，尚未 removed** | stdio 用 stderr，服务端观测优先 OpenTelemetry |
+| Elicitation | 当前 core feature | 在 MRTR 中向用户补问；form 不得索取密码、token、API key、支付凭据，敏感流程用 URL mode；旧 `notifications/elicitation/complete` 和 `elicitationId` 已 removed；见 [Elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
+| Sampling | **deprecated，尚未 removed** | 兼容实现仍可通过 MRTR 支持；新 Server 优先直接接模型 API；见 [Sampling](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling) |
+| Roots | **deprecated，尚未 removed** | `roots/list` 仍可在 MRTR 内使用；旧 `notifications/roots/list_changed` 已 removed；Roots 从来不是文件权限边界；见 [Roots](https://modelcontextprotocol.io/specification/2026-07-28/client/roots) |
+| Logging | **deprecated，尚未 removed** | `notifications/message` 仍可按 request 的 `logLevel` 使用；旧 `logging/setLevel` 已 removed；新实现优先 stderr 或 OpenTelemetry；见 [Logging](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/logging) |
 
-官方[弃用登记](https://modelcontextprotocol.io/specification/2026-07-28/deprecated)规定 Roots、Sampling、Logging、DCR 最早只能在 `2027-07-28` 当日或之后的修订移除。教程不能把 deprecated 写成“已不能用”，也不能把 Modern 已移除的 session 机制写成“只是建议不用”。
+换句话说：
+
+- Roots feature 是 deprecated，
+  但具体 RPC `notifications/roots/list_changed` 已 removed；
+- Logging feature 是 deprecated，
+  但具体 RPC `logging/setLevel` 已 removed；
+- `notifications/message` 没有被移除，
+  只是改成由每个 request 的 deprecated `logLevel` 控制。
+
+官方
+[弃用登记](https://modelcontextprotocol.io/specification/2026-07-28/deprecated)
+规定 Roots、Sampling、Logging、DCR
+最早只能在 `2027-07-28` 当日或之后的修订移除。
+
+教程不能把 deprecated 写成“已不能用”，
+也不能把 MCP 2.0 已移除的机制写成“只是建议不用”。
 
 ---
 
-## 18. HTTP Authorization 与安全责任
+## 18. MCP 2.0 的 HTTP Authorization 与安全责任
 
-HTTP 授权是可选能力；启用时，MCP Server 是 OAuth protected resource，Client 是 OAuth client，Authorization Server 独立存在。stdio **SHOULD NOT** 套用这套 HTTP OAuth 流程，通常从环境取得凭据。规范见 [Authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)。
+### 18.1 适用范围与 OAuth 角色
+
+HTTP authorization 是 optional capability。
+启用时：
+
+- MCP Server 是 OAuth protected resource；
+- MCP Client 是 OAuth client；
+- Authorization Server 是独立角色。
+
+stdio **SHOULD NOT** 套用这套 HTTP OAuth 流程，
+通常从环境取得凭据。
+
+规范见
+[Authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)。
+
+### 18.2 Authorization Code 主路径
 
 ```mermaid
 sequenceDiagram
@@ -2479,6 +2925,8 @@ sequenceDiagram
     R-->>C: "MCP response"
 ```
 
+### 18.3 最低安全清单
+
 最低安全清单：
 
 - Authorization Code + PKCE S256；跳转前记录经验证的 expected issuer。若响应带 `iss`，Client **MUST** 与 expected issuer 做精确比较；若 AS 宣告支持 response `iss` 却漏发，Client **MUST** 拒绝。若既未宣告也未返回，最低规范允许继续；要求所有 AS 都必须返回 `iss` 属于更严格的本地策略。
@@ -2493,11 +2941,14 @@ sequenceDiagram
 - 每次按认证主体、tenant、scope 校验显式 handle；handle 不是授权。
 - Host 对副作用 Tool 保留可见性、确认、拒绝和审计；Server 间最小权限隔离。
 
-更完整的 OAuth 威胁说明见 [Authorization Security Considerations](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/security-considerations)。
+更完整的 OAuth 威胁说明见
+[Authorization Security Considerations](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/security-considerations)。
 
 ---
 
-## 19. 迁移与兼容：不要在一条连接里猜版本
+## 19. 从 MCP 1.0 迁移到 MCP 2.0：不要在一条连接里猜版本
+
+### 19.1 先识别 protocol era，再选择共同 revision
 
 ```mermaid
 flowchart TD
@@ -2505,17 +2956,19 @@ flowchart TD
     T{"Transport?"}
     Start --> T
     T -->|"stdio"| D["先发 server/discover probe"]
-    D -->|"DiscoverResult / recognized modern error"| M["留在 Modern；必要时换共同版本重试"]
-    D -->|"非 Modern error 或 timeout"| L["回退 initialize；同 process 也可双栈"]
-    T -->|"HTTP"| H["带 Modern headers 发第一个请求"]
-    H -->|"2xx / recognized modern JSON-RPC error"| M
-    H -->|"4xx 且无 recognized modern error body"| L
+    D -->|"DiscoverResult / recognized MCP 2.0 error"| M["留在 MCP 2.0；必要时换共同版本重试"]
+    D -->|"非 MCP 2.0 error 或 timeout"| L["回退 MCP 1.0 initialize；同 process 也可双栈"]
+    T -->|"HTTP"| H["带 MCP 2.0 headers 发第一个请求"]
+    H -->|"2xx / recognized MCP 2.0 JSON-RPC error"| M
+    H -->|"4xx 且无 recognized MCP 2.0 error body"| L
 ```
+
+### 19.2 迁移顺序
 
 迁移顺序：
 
-1. 先冻结当前 Legacy 行为和 conformance tests。
-2. Server 实现 `server/discover`，同时保留 Legacy `initialize` 处理路径；双栈可共用 endpoint/process。
+1. 先冻结当前 MCP 1.0 行为和 conformance tests。
+2. Server 实现 `server/discover`，同时保留 MCP 1.0 `initialize` 处理路径；双栈可共用 endpoint/process。
 3. 让核心 handler 不再读取 initialize/session 隐式状态。
 4. 为每个 request 校验版本与 Client capabilities。
 5. 跨请求业务状态改成显式 identifier；若采用 handle 设计模式，补授权、TTL、幂等和重放测试。
@@ -2523,20 +2976,35 @@ flowchart TD
 7. HTTP 移除 `Mcp-Session-Id` 依赖、standalone GET SSE 与 event resume；通知改 `subscriptions/listen`。
 8. 增加 `Accept`、`MCP-Protocol-Version`、`Mcp-Method`/`Mcp-Name` 等 required headers，并验证 header/body 一致。
 9. 增加 cache hints 与确定性 list 顺序。
-10. 观测双栈流量，再按官方 deprecation policy 退役 Legacy。
+10. 观测双栈流量，再按官方 deprecation policy 退役 MCP 1.0。
+
+### 19.3 兼容性与 wire 验证
 
 兼容性要点：
 
-- Modern Server 必须有 `server/discover`；Modern Client不必须预调用。
-- stdio 双栈 Client 应先 discovery；只有非 recognized-modern error 或 timeout 才 fallback。HTTP 只有 `4xx` 且没有 recognized modern JSON-RPC error body 才 fallback；`UnsupportedProtocolVersionError` 证明对端是 Modern，应选择共同版本重试。双栈 Server 可以在同一 process/endpoint 依据 opening shape 选择 era；见 [Discovery / When to Call](https://modelcontextprotocol.io/specification/2026-07-28/server/discover#when-to-call)。
-- Modern Client 收到旧响应缺少 `resultType` 时按 `complete`。
-- 旧 `resource not found` code `-32002` 仍应被兼容 Client 接受；Modern 改用 `-32602`。
-- Tasks 的旧实验 wire shape 与当前 extension 不兼容，必须显式迁移。
+- MCP 2.0 Server 必须有 `server/discover`；MCP 2.0 Client 不必须预调用。
+- stdio 双栈 Client **SHOULD** 先 discovery；
+  只有错误无法识别为 MCP 2.0 response，
+  或发生 timeout，才 fallback。
+- HTTP 只有 `4xx` 且 JSON-RPC error body
+  无法识别为 MCP 2.0 时才 fallback。
+- `UnsupportedProtocolVersionError`
+  证明对端支持官方 Modern era；
+  应选择共同日期 revision 后重试，不能回退 MCP 1.0。
+- 双栈 Server 可以在同一 process / endpoint
+  依据 opening shape 选择 era。
+- 精确探测规则见
+  [Discovery / When to Call](https://modelcontextprotocol.io/specification/2026-07-28/server/discover#when-to-call)。
+- MCP 2.0 Client 收到 MCP 1.0 响应缺少 `resultType` 时按 `complete`。
+- MCP 1.0 的 `resource not found` code `-32002` 仍应被兼容 Client 接受；MCP 2.0 改用 `-32602`。
+- MCP 1.0 的实验性 Tasks wire shape 与当前 extension 不兼容，必须显式迁移。
 - “SDK 能编译”不证明协议兼容；抓取实际 wire message 验证版本、metadata、headers、error 和 retry。
 
 ---
 
 ## 20. MCP 不解决的边界
+
+### 20.1 协议不会自动提供这些保证
 
 MCP 不自动保证：
 
@@ -2553,14 +3021,23 @@ MCP 不自动保证：
 - sandbox、数据驻留、审计与合规已经完成；
 - 同名 Tool 在不同 Server 上语义一致。
 
+### 20.2 责任只是被标出，没有消失
+
 **【评价】**
-MCP 标准化“接口和责任落点”，不是把责任消灭。越接近真实副作用，越要依赖 Host policy、Server authorization 和后端事务共同防护。
+MCP 标准化“接口和责任落点”，
+不是把责任消灭。
+
+越接近真实副作用，
+越要依赖 Host policy、Server authorization
+和后端事务共同防护。
 
 ---
 
-## 21. 问题 → 证据 → 变化 → 剩余责任总表
+## 21. MCP 1.0 问题 → 证据 → MCP 2.0 变化 → 剩余责任
 
-| 问题 | 官方证据 | Modern 变化 | 仍由谁负责 |
+### 21.1 可审计总表
+
+| 问题 | 官方证据 | MCP 2.0 变化 | 仍由谁负责 |
 |---|---|---|---|
 | session 阻碍扩容 | [SEP-2575](https://modelcontextprotocol.io/seps/2575-stateless-mcp) | 移除 initialize/session；每请求自描述 | Server 设计 durable state；平台部署 |
 | session scope 含糊 | [SEP-2567](https://modelcontextprotocol.io/seps/2567-sessionless-mcp) | 移除 session；跨请求状态显式引用，handle 只是普通 Tool 数据的设计模式 | 应用定义 scope、TTL、auth binding |
@@ -2572,6 +3049,16 @@ MCP 标准化“接口和责任落点”，不是把责任消灭。越接近真�
 | OAuth mix-up/token 误投 | [Authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) | `iss`、PKCE、resource audience | AS 配置、token storage、scope |
 | Tool 可造成副作用 | [Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) | schema、结果与安全指导 | Host consent；Server authorization |
 | schema 可触发 SSRF/DoS | [Base Protocol](https://modelcontextprotocol.io/specification/2026-07-28/basic#json-schema-usage) | 禁止默认远程 `$ref`、要求资源边界 | validator 配额、allowlist、监控 |
+
+### 21.2 这张表怎样使用
+
+不要只读“变化”一列。
+每次设计或 review 都依次问：
+
+1. 旧问题是否有官方证据；
+2. MCP 2.0 改的是 wire、feature 还是部署建议；
+3. 改动是否真的覆盖该问题；
+4. 未覆盖的责任最终落在 Host、Client、Server 还是后端。
 
 ---
 
@@ -2600,24 +3087,26 @@ MCP 标准化“接口和责任落点”，不是把责任消灭。越接近真�
 以下资料只帮助换一个角度理解，**不进入事实证据链**：
 
 - Microsoft 的 [MCP for Beginners：2026-07-28 Release Candidate](https://github.com/microsoft/mcp-for-beginners/blob/main/01-CoreConcepts/mcp-2026-07-28-release-candidate.md)：图解清楚，但标题和正文明确基于 RC，仓库 `main` 还会漂移；其简化请求示例不能替代 final schema。
-- [mcp-from-scratch](https://github.com/pguso/mcp-from-scratch)：零依赖手写 JSON-RPC/stdio，适合理解 Legacy 内部；README 明确针对 `2025-11-25`，生命周期和 sampling 不能照搬到 Modern。
+- [mcp-from-scratch](https://github.com/pguso/mcp-from-scratch)：零依赖手写 JSON-RPC/stdio，适合理解 MCP 1.0 内部；README 明确针对 `2025-11-25`，生命周期和 sampling 不能照搬到 MCP 2.0。
 - Postman，2026-07-29，[MCP goes stateless — and Postman's ready](https://blog.postman.com/mcp-goes-stateless-and-postmans-ready/)：适合理解双栈测试与 Inspector 工作流；产品自动探测行为不是 MCP Client 的普遍规范义务。
 - MCP Migration Studio，2026-06-09，[2026-07-28 migration guide](https://mcpmigrate.dev/blog/mcp-spec-2026-07-28-migration-guide)：迁移排查清单实用，但文章基于 RC；其中 `_meta` 示例使用未加命名空间的键且漏掉必需 `clientCapabilities`，不能复制到 final 实现。
-- [OWASP MCP Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html)：威胁分类实用；session-ID 等机械细节可能仍指向 Legacy，最终以日期规范为准。
+- [OWASP MCP Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html)：威胁分类实用；session-ID 等机械细节可能仍指向 MCP 1.0，最终以日期规范为准。
 - Microsoft Azure Architecture Blog 的 [API vs MCP decision matrix](https://techcommunity.microsoft.com/blog/azurearchitectureblog/decision-matrix-api-vs-mcp-tools-%E2%80%94-the-great-integration-showdown-%F0%9F%A5%8A/4499385)：适合作为“MCP 不取代 API”的工程反方视角，不是协议证据。
 
-阅读任何 “MCP 2.0 tutorial” 或 SDK v2 guide 时，先确认其目标 revision，再检查它是否把 JSON-RPC 2.0、SDK v2、Legacy Tasks 或 `initialize` 误当当前协议。
+阅读任何 “MCP 2.0 tutorial” 或 SDK v2 guide 时，先确认其目标 revision，再检查它是否把 JSON-RPC 2.0、SDK v2、MCP 1.0 Tasks 或 `initialize` 误当当前协议。
 
 ---
 
-## 23. 最终心智模型
+## 23. MCP 2.0 最终心智模型
+
+### 23.1 一张分层图
 
 ```mermaid
 flowchart TB
     U["用户意图与批准"]
     H["Host<br/>对话 · 模型 · 策略 · 隔离"]
     C["每 Server 一个 MCP Client"]
-    P["Modern MCP 2026-07-28<br/>无状态 JSON-RPC 应用协议"]
+    P["MCP 2.0<br/>wire revision 2026-07-28<br/>无状态 JSON-RPC 应用协议"]
     T["stdio / Streamable HTTP"]
     S["MCP Server<br/>Prompt · Resource · Tool"]
     B["后端 API / DB / Files"]
@@ -2626,11 +3115,13 @@ flowchart TB
     C -. "MRTR 新 id 重试" .-> S
 ```
 
+### 23.2 四句话带走
+
 记住四句话：
 
-1. 官方没有语义版本 “MCP 2.0”；本文只把它当 Modern era 教学简称。
+1. 本文统一把官方 Legacy era 教学称为 MCP 1.0，把 Modern era 教学称为 MCP 2.0。
 2. JSON-RPC 2.0 是信封，MCP `2026-07-28` 才是协议修订。
-3. Modern 的核心不是“功能更多”，而是每请求自描述、显式状态和可重试交互。
+3. MCP 2.0 的核心不是“功能更多”，而是每请求自描述、显式状态和可重试交互。
 4. 协议建立共同边界；授权、隔离、幂等、事务和用户控制仍需实现者完成。
 
 ---
