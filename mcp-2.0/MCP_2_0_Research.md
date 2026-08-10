@@ -1966,11 +1966,26 @@ Server 侧的 `instructions` 是自由文本，
 也正是 MCP 2.0 要求每个请求重新携带的，
 只有 **Client 侧**那几个字段。
 
-Server 侧不必每个请求都回一遍：
-`serverInfo` 只是可选的自报信息，
-`instructions` 与 capabilities 搬到了
-可缓存的 `server/discover`
-（带 `ttlMs` 与 `cacheScope`，见第 13、17 节）。
+Server 侧则不必每个请求都回一遍。
+
+注意这里有一个容易混淆的同名字段：
+
+| | MCP 1.0 | MCP 2.0 |
+|---|---|---|
+| 字段 | `InitializeResult.serverInfo` | `_meta` 的 `io.modelcontextprotocol/serverInfo` |
+| 强度 | **必填**（schema 无 `?`） | **可选**，规范说 Server **SHOULD** 在每个 result 里带 |
+| 位置 | 握手响应体的顶层 | 任意 result 的 `_meta` |
+
+也就是说：
+握手里的 `serverInfo` 是 MCP 1.0 的硬性要求，
+实现 legacy Server 时不能省；
+MCP 2.0 把它降级成了每响应的可选自报信息。
+
+至于 `instructions` 与 Server capabilities，
+它们搬到了可缓存的 `server/discover`
+（带 `ttlMs` 与 `cacheScope`，见第 13、17 节），
+所以体量大的那半边
+根本不进每请求成本。
 
 所以问题从来不是
 “这些数据太大，每个请求带不动”。
