@@ -990,6 +990,83 @@ resources/read
 Resource 以 URI 标识，
 可以返回文本或二进制 blob。
 
+#### “应用控制”到底控什么
+
+最常见的误解是把它读成
+“那模型就用不了 Resource 了”。
+
+**【事实】**
+规范给的三种 Host 实现方式里，
+第三种明确包含模型：
+
+> * Expose resources through UI elements for **explicit selection**
+> * Allow the user to **search through and filter** available resources
+> * Implement **automatic context inclusion**,
+>   based on heuristics or **the AI model's selection**
+
+所以模型完全可以是最终挑选者。
+
+区别在于**决定权的来源**：
+
+| | 谁做决定 | 来源 |
+|---|---|---|
+| Tool | 模型在对话里自己决定要调 | 协议赋予：列进 `tools/list`，模型就能建议 |
+| Resource | Host 决定（可下放给用户或模型） | Host 策略层，协议不规定 |
+
+**【解释】**
+一句话：
+Tool 的默认动作是**执行**，
+Resource 的默认动作是**取内容**。
+
+读一个文件读十遍没事，
+删一个文件删十遍就出事——
+这就是为什么 Resource 能被应用自由调度，
+而 Tool 每次都该有人把关。
+
+#### 支撑“应用控制”的三个机制
+
+**1. 先列后读。**
+`resources/list` 只返回元数据
+（`uri` / `name` / `title` / `description` / `mimeType` / `size`），
+Host 看完再决定读哪些。
+不读就不花 token。
+
+**2. `annotations`——这是“应用控制”最直白的证据。**
+
+```json
+{
+  "uri": "file:///project/README.md",
+  "name": "README.md",
+  "title": "Project Documentation",
+  "mimeType": "text/markdown",
+  "annotations": {
+    "audience": ["user"],
+    "priority": 0.8,
+    "lastModified": "2025-01-12T15:00:58Z"
+  }
+}
+```
+
+- `audience`：`"user"` / `"assistant"`，这份内容给谁看；
+- `priority`：0.0–1.0，1 表示“基本必需”，0 表示“完全可选”；
+- `lastModified`：ISO 8601 时间戳。
+
+规范说 Client 用它们来
+filter、prioritize which resources to include in context、sort。
+
+**【解释】**
+注意这个字段的性质：
+Server 只能标 `priority: 0.8` 表达“我觉得这个重要”，
+纳不纳、排第几，裁决权在 Host。
+
+**这个机制之所以存在，恰恰因为 Server 说了不算**——
+若 Server 能直接决定，就不需要“建议”这一层。
+
+**3. `subscribe`。**
+内容变了 Host 收到
+`notifications/resources/updated`，
+自己决定要不要重读。
+
 当前规范见
 [Resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources)。
 
@@ -1088,11 +1165,71 @@ Server **SHOULD** 同时在 `content` 中放一份序列化 JSON。
 - 不一定立即执行外部副作用。
 
 **【评价】**
-三个原语的价值不是技术上互不可替代，
-而是保留控制权与交互语义。
+三个原语在**技术上确实可以互相替代**。
+这不是争议，规范也没说它们不可替代。
 
-把所有东西都塞进 Tool，
-会丢失这层语义。
+但"只保留了语义"是个太软的说法。
+把只读内容塞进 Tool，
+有两处**可验证的**代价：
+
+#### 代价一：稀释审批预算
+
+**【事实】**
+规范对 Tool 的要求是：
+
+> there **SHOULD** always be a human in the loop
+> with the ability to **deny tool invocations**
+
+Tool 是模型控制，默认动作是执行。
+
+**【解释】**
+把"读文件"做成 Tool，
+200 次文件读取就是 200 次
+"模型决定要做某事"。
+
+结果只有两种：
+要么弹爆用户，
+要么用户开始无脑点同意——
+而后者会让 `delete_file` 那次审批**一起失效**。
+
+审批是有预算的，
+应该花在真正有副作用的操作上。
+
+#### 代价二：`tools/call` 不可缓存
+
+**【事实】**
+必须携带 `ttlMs` 与 `cacheScope` 的操作只有六个
+（见第 17.1 节）：
+
+```text
+server/discover · tools/list · prompts/list
+resources/list · resources/templates/list · resources/read
+```
+
+**`tools/call` 不在其中。**
+
+它可能有副作用，
+协议上本就不是可缓存操作。
+
+**【解释】**
+所以把 `read_file` 做成 Tool，
+等于永久放弃协议层缓存：
+同一份内容读五次就是五次真实调用。
+
+走 `resources/read`，
+Client 与网关可以按 `ttlMs` 复用。
+
+#### 但也不要教条
+
+**【评价】**
+如果目标 Host 只把 Tool 实现好，
+tool-only 就是正确的工程选择，不是妥协。
+
+常见兜底做法是：
+按语义正确地暴露 Resource 与 Prompt，
+同时给关键能力配一个 Tool 入口——
+支持好的 Host 走前者拿到缓存与调度，
+只认 Tool 的 Host 也不至于用不了。
 
 ### 7.7 原语选择表
 
@@ -1104,6 +1241,66 @@ Server **SHOULD** 同时在 `content` 中放一份序列化 JSON。
 | 是否执行计算或副作用？ | Tool |
 | 模型是否需要主动建议调用？ | Tool |
 | 是否只是用户可复用的消息骨架？ | Prompt |
+
+### 7.8 那 Skill 放在哪里
+
+读到这里很自然会问：
+Agent Skill 算第四个原语吗？
+
+**【事实】**
+截至本文冻结日期（`2026-08-09`），
+**Skills 不是 MCP 规范的一部分**。
+
+现状是：
+
+- 2026-02-01 成立兴趣组，
+  2026-04-16 才转为 Working Group；
+- 当前方向是
+  [SEP-2640 Skills Extension](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640)，
+  **Extensions Track，状态 In Review**——还是一个 PR；
+- 工作组章程把中期目标写成
+  “Clear recommendation
+  (**convention vs. protocol extension vs. both**)”，
+  也就是**要不要新原语这件事本身还没有结论**；
+- 当前方向是
+  “a formal extension using existing **Resources** primitives”——
+  建在 Resource 之上，不是建在 Prompt 之上。
+
+见
+[Skills Over MCP 工作组章程](https://modelcontextprotocol.io/community/working-groups/skills-over-mcp)。
+
+**【解释】**
+Skill 与 Prompt 最容易被混为一谈，
+但控制轴不同：
+
+| | Prompt | Skill |
+|---|---|---|
+| 状态 | core，已发布 | in-review 扩展 |
+| 谁触发 | **用户**显式选择（典型形态是 slash command） | **模型**判断相关性后自行取用 |
+| 返回什么 | `messages[]`（带 `role`） | 一篇结构化指令文档 |
+| 起什么作用 | **开启**一段对话 | **指导**正在进行的工作 |
+| 发现方式 | `prompts/list` 一次列全 | 渐进披露：先只给 name + description |
+
+一句话：
+**Prompt 是用户按的一个按钮，
+Skill 是模型自己决定要不要翻的一本手册。**
+
+按第 7.1 节那套三分法，
+Skill 落在“模型控制的上下文”这一格——
+这正是它被建在 Resource 而非 Prompt 之上的原因。
+
+**【评价】**
+Prompt 承担的“可复用工作流”这个角色，
+Skill 大概率做得更好：
+渐进披露、能捆附属文件、模型自行判断相关性。
+
+Prompt 是三个原语里最弱的一个，
+Skills 工作组存在本身就是证据
+（发起提案 SEP-2076 的标题就是
+“Agent Skills as a First-Class MCP **Primitive**”）。
+
+但 SEP-2640 尚未定案，
+**现在不要把架构压在它上面**。
 
 ---
 
@@ -2689,6 +2886,37 @@ Client 解决输入
 Client → 重试原 RPC
 ```
 
+**【解释】**
+换个说法：
+MRTR 把“Server 保持连接等你回话”
+改成了
+“Server 把话说完就挂断，你想好了再来一次”。
+
+因为重试是一次全新的、自描述的请求，
+它落到哪个副本都能继续——
+中间状态由 `requestState` 携带，
+不依赖回到原来那台机器。
+
+#### 什么时候**不**该用 MRTR
+
+**【评价】**
+MRTR 是用户交互通道，不是万能的异步机制。
+下面三种情况用错了会把设计带偏：
+
+| 需求 | 不要用 MRTR | 应该用 |
+|---|---|---|
+| 参数缺失 | 别 round-trip 一次去问 | 放进 `inputSchema`，让模型一次填好 |
+| 长耗时但不需要输入 | 不是 MRTR 的场景 | Tasks extension（`resultType: "task"` + `tasks/get` 轮询） |
+| 只想汇报进度 | 不是 MRTR 的场景 | `notifications/progress`，走本请求的响应流 |
+
+实践中还要记住第 17.5 节的状态：
+三个 Client feature 里
+**只有 elicitation 是活的**，
+sampling 与 roots 都已 deprecated。
+
+所以现在的 MRTR
+基本等同于**向用户补问的通道**。
+
 ### 15.2 时序
 
 ```mermaid
@@ -3188,6 +3416,61 @@ resources/list · resources/templates/list · resources/read
 详见当前
 [Caching](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching)。
 
+#### 这套缓存**不**解决什么
+
+这里必须把两层分开，
+否则很容易期待错收益。
+
+**【事实】**
+规范给自己的定位是 HTTP 式响应缓存：
+
+> Semantics are **analogous to HTTP `Cache-Control: max-age`**
+> This allows clients to cache responses
+> and **reduce unnecessary re-fetching**
+
+而且 Client 一侧全是 SHOULD / MAY——
+“how long the client **MAY** consider the result fresh”。
+**规范没有任何一句“Client MUST 缓存”**，
+它只提供判断依据。
+
+整份 Caching 文档
+**没有一句话提到模型上下文或 token 用量**。
+
+| | 谁负责 | 省什么 |
+|---|---|---|
+| 传输缓存 | MCP 规定（`ttlMs` / `cacheScope`） | 网络往返、延迟、Server 负载 |
+| 上下文管理 | **协议一字未提，完全是 Host 的事** | token |
+
+**【解释】**
+`resources/read` 命中缓存，
+意思是“不用再问 Server 要一遍”。
+
+但 Host 如果决定把这份内容塞进 prompt，
+**token 照花不误**。
+
+所以准确的说法是：
+
+> Resource 不会自动省 token，
+> 它让 Host **有可能**省。
+> Tool 结果连这个可能性都没有——
+> 它在对话里是一坨没有身份的 blob，
+> Host 想去重也无从下手。
+
+Resource 提供的是做上下文调度的**原料**：
+稳定 `uri` 用于判断“是不是同一份”、
+`annotations.priority` 用于决定挤爆时先丢谁、
+`subscribe` 用于知道何时失效。
+
+**用不用得起来，取决于 Host 实现，协议不保证。**
+
+**【评价】**
+MCP 层面确定能拿到的收益是三条，
+都与 context window 无关：
+
+- 少打请求（尤其 `tools/list` 这种每轮都可能要的）；
+- 网关能共享缓存（`cacheScope: "public"`，多用户复用同一份列表）；
+- 变更能主动失效（notification 立即让 cache stale，不必轮询）。
+
 ### 17.2 新鲜度、失效与授权
 
 TTL 是 freshness hint，
@@ -3256,7 +3539,7 @@ Client feature 状态如下：
 | Feature | `2026-07-28` 状态 | 新实现应怎样做 |
 |---|---|---|
 | Elicitation | 当前 core feature | 在 MRTR 中向用户补问；form 不得索取密码、token、API key、支付凭据，敏感流程用 URL mode；旧 `notifications/elicitation/complete` 和 `elicitationId` 已 removed；见 [Elicitation](https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation) |
-| Sampling | **deprecated，尚未 removed** | 兼容实现仍可通过 MRTR 支持；新 Server 优先直接接模型 API；见 [Sampling](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling) |
+| Sampling | **deprecated，尚未 removed** | 兼容实现仍可通过 MRTR 支持；新 Server 优先直接接模型 API（见下）；见 [Sampling](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling) |
 | Roots | **deprecated，尚未 removed** | `roots/list` 仍可在 MRTR 内使用；旧 `notifications/roots/list_changed` 已 removed；Roots 从来不是文件权限边界；见 [Roots](https://modelcontextprotocol.io/specification/2026-07-28/client/roots) |
 | Logging | **deprecated，尚未 removed** | `notifications/message` 仍可按 request 的 `logLevel` 使用；旧 `logging/setLevel` 已 removed；新实现优先 stderr 或 OpenTelemetry；见 [Logging](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/logging) |
 
@@ -3268,6 +3551,61 @@ Client feature 状态如下：
   但具体 RPC `logging/setLevel` 已 removed；
 - `notifications/message` 没有被移除，
   只是改成由每个 request 的 deprecated `logLevel` 控制。
+
+#### “新 Server 优先直接接模型 API”是什么意思
+
+字面意思就是：
+**Server 自己搞定模型访问**——
+自己的 API key、自己的供应商账号，
+或者自己跑一个本地模型，
+不再向 Host 借。
+
+规范原话：
+
+> existing implementations **SHOULD** migrate to
+> **integrating directly with LLM provider APIs**
+
+**【解释】**
+这确实是一次取舍反转，不是纯粹的改进：
+sampling 当年的卖点恰恰是规范自己写的
+“with **no server API keys necessary**”。
+
+**【评价】**
+我的判断是：
+问题出在 sampling 作为一条依赖，
+Server 端**根本无法依赖**。
+
+| Server 想要 | 实际结果 |
+|---|---|
+| 指定模型 | `modelPreferences` 只是 hints，Client **MAY** 换成别家等价模型 |
+| 指定 `systemPrompt` | Client **MAY** 修改或忽略，且不必告知 Server |
+| 带上下文 | `includeContext` Client **MAY** 忽略（规范明确举例：防止向 Server 泄露敏感信息） |
+| 调温度等参数 | `temperature` / `stopSequences` / `metadata` Client **MAY** 忽略 |
+| 稳定拿到结果 | 用户可随时拒绝，整个调用中断 |
+
+一条你无法控制模型、无法控制 prompt、
+无法控制参数、还随时可能被拒的依赖，
+写不出可靠的 Server 逻辑。
+
+代价落在谁身上也变了：
+
+| | Sampling（旧） | 自己接 API（新） |
+|---|---|---|
+| 谁付费 | 用户 | **Server 运营方** |
+| 谁配 key | 没人 | **Server 部署者** |
+| 模型确定性 | 不确定 | 确定 |
+| 用户可见可否决 | SHOULD 可见可改可拒 | 用户看不到也管不着 |
+
+**【评价】**
+对**远程 SaaS 型 Server**，这是净改进——
+本来就有后端和账号。
+
+对**本地桌面工具类 Server**
+（“装上就能用，用你自己的模型额度”），
+这是实打实的降级：
+从零配置变成“请先填 API key”。
+
+官方选了前者。
 
 官方
 [弃用登记](https://modelcontextprotocol.io/specification/2026-07-28/deprecated)
