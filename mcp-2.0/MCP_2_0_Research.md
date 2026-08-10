@@ -1369,15 +1369,29 @@ Streamable HTTP 的 `Mcp-Session-Id`
 所以 MCP 1.0 的 session 不是
 "连接还开着"，
 而是
-"某个 Server 实例的内存里还记得你"。
+"服务端还记得你"。
 
 连接断了可以重连，
-但"记忆"落在哪个副本上，
-协议没有规定，
-也没有任何机制让另一个副本接手。
+session 不会因此消失。
 
-第 11 节要讲的扩容问题，
-根子就在这一句上。
+**【事实】**
+但协议只规定"Server 记住这个 session"，
+不规定它**记在哪里**，
+也不提供任何让另一个副本接手的机制。
+
+这不等于"只能记在单个实例的内存里"。
+把 session 放进 Redis 之类的共享存储、
+让任意副本都能读到，
+是完全可行的部署方案。
+
+**【评价】**
+关键在于：
+这条路要由**运维自己搭**，
+协议不提供，也不保证。
+
+于是"跨副本连续性"就从协议责任
+变成了每个团队各自解决的基础设施问题——
+第 11 节要算的正是这笔账。
 
 但先不要急着批判。
 
@@ -1923,15 +1937,41 @@ MCP 2.0 优化的是：
 
 ### 11.1 先看清被“藏起来”的到底是什么
 
-`initialize` 一共只交换三样东西：
+握手是双向的，两侧要分开看。
+
+**Client 侧**（`initialize` params）：
 
 - `protocolVersion`；
+- `capabilities`；
 - `clientInfo`；
-- `capabilities`。
+- 可选 `_meta`。
 
+**Server 侧**（`InitializeResult`）：
+
+- `protocolVersion`；
+- `capabilities`；
+- `serverInfo`；
+- 可选 `instructions`。
+
+两侧体量完全不同。
+
+Client 侧就是几个短字段，
 序列化之后通常不到 1 KB。
 
+Server 侧的 `instructions` 是自由文本，
+可以很长，不受这个量级约束。
+
 **【解释】**
+而后续请求省掉的、
+也正是 MCP 2.0 要求每个请求重新携带的，
+只有 **Client 侧**那几个字段。
+
+Server 侧不必每个请求都回一遍：
+`serverInfo` 只是可选的自报信息，
+`instructions` 与 capabilities 搬到了
+可缓存的 `server/discover`
+（带 `ttlMs` 与 `cacheScope`，见第 13、17 节）。
+
 所以问题从来不是
 “这些数据太大，每个请求带不动”。
 

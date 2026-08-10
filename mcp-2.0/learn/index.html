@@ -708,8 +708,11 @@ Authorization: Bearer …</code></pre>
 
   <div class="callout key">
     <span class="tag mono">先看清被藏起来的是什么</span>
-    <code>initialize</code> 一共只交换三样东西：<code>protocolVersion</code>、<code>clientInfo</code>、
-    <code>capabilities</code>，序列化后通常不到 1 KB。所以问题从来不是「这些数据太大、每个请求带不动」，
+    握手是双向的，但后续请求省掉的只有 <strong>Client 侧</strong>那几个短字段：<code>protocolVersion</code>、
+    <code>capabilities</code>、<code>clientInfo</code>，序列化后通常不到 1 KB。
+    （Server 侧的 <code>InitializeResult</code> 还带 <code>serverInfo</code> 和可选的 <code>instructions</code>，
+    后者是自由文本、可以很长——但它不需要每个请求回一遍，MCP 2.0 把它搬去了可缓存的 <code>server/discover</code>。）
+    所以问题从来不是「这些数据太大、每个请求带不动」，
     而是 MCP 1.0 <strong>允许</strong>后续请求把它们全部省掉，于是每条 <code>tools/call</code>
     都成了一句只有听过开头才听得懂的话。丢的不是数据量，是<strong>自描述能力</strong>。
     记住方向和直觉相反：MCP 2.0 不是让报文更省，而是让每个请求<strong>多</strong>带几百字节，
