@@ -1274,7 +1274,7 @@ MCP 2.0 没有取消 capability，
 到 `2025-11-25`，
 Streamable HTTP 仍允许：
 
-- `Mcp-Session-Id`；
+- `MCP-Session-Id`；
 - POST 请求；
 - GET 打开 Server→Client SSE；
 - SSE 事件恢复；
@@ -1321,7 +1321,7 @@ sequenceDiagram
     participant S as "Server Instance"
     C->>LB: "POST /mcp initialize"
     LB->>S: "route"
-    S-->>C: "Mcp-Session-Id: abc"
+    S-->>C: "MCP-Session-Id: abc"
     C->>LB: "POST /mcp + session abc"
     LB->>S: "sticky route / shared state"
     C->>LB: "GET /mcp + session abc"
@@ -1341,18 +1341,51 @@ sequenceDiagram
 
 在 MCP 1.0 里不用。
 
-`initialize` 在整个会话里只发一次，
-之后的请求都省略版本、身份和能力。
+`initialize` 在整个会话里只发一次。
+
+但"之后的请求省掉了什么"
+在两种 transport 上并不一样：
+
+| | stdio | Streamable HTTP |
+|---|---|---|
+| 协议版本 | 省略，靠握手记忆 | **不省**：Client **MUST** 在后续每个请求带 `MCP-Protocol-Version` header |
+| Client 身份 | 省略 | 省略 |
+| Client capabilities | 省略 | 省略 |
+
+**【事实】**
+`MCP-Protocol-Version` 是 MCP 1.0 已有的要求，
+见
+[2025-11-25 Transports / Protocol Version Header](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header)。
+
+**【解释】**
+所以"每请求自描述"并不是 MCP 2.0 凭空发明的。
+MCP 1.0 在 HTTP 上已经走了一小步——
+把版本放进 header，让中间层不解 body 也能读到。
+
+MCP 2.0 做的是**把这一步走完**：
+连 capabilities 和身份一起，
+统一搬进每个请求。
 
 具体"挂多久"取决于 transport：
 
 | Transport | 会话生命周期等于什么 | 什么时候结束 |
 |---|---|---|
 | stdio | Client 启动的那个 Server 子进程的存活时间 | 进程退出、崩溃，或被 Host 关闭 |
-| Streamable HTTP | `Mcp-Session-Id` 在 Server 端的有效期 | Server 判定过期、Client 发 `DELETE` 显式终止，或持有该 session 的实例丢失它 |
+| Streamable HTTP（Server 分配了 session） | `MCP-Session-Id` 在 Server 端的有效期 | Server 判定过期并对该 id 返回 404、Client 发 `DELETE` 显式终止，或持有该 session 的实例丢失它 |
+| Streamable HTTP（Server 未分配 session） | 没有会话可言，每个 POST 各自独立 | 不适用 |
 
 **【事实】**
-Streamable HTTP 的 `Mcp-Session-Id`
+Streamable HTTP 的 session 是**可选**的：
+规范说 Server **MAY** 在初始化时分配 session ID。
+
+不分配就没有 session 可过期、可删除；
+分配了，Client 才 **MUST** 在后续每个请求带上
+`MCP-Session-Id` header。
+见
+[2025-11-25 Transports / Session Management](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management)。
+
+**【事实】**
+一旦分配，`MCP-Session-Id`
 由 Server 在 **`initialize` 的 POST 响应头**里返回。
 
 这一点容易被讲错，
@@ -1870,7 +1903,7 @@ MCP 1.0 的目标环境很大一部分是：
 | session capability | 后续消息不必重复声明 |
 | Server→Client request | sampling、elicitation 等像普通 RPC 一样自然 |
 | 长连接 SSE | Server 可随时推送请求和通知 |
-| `Mcp-Session-Id` | Server 能把多次 HTTP 调用关联到同一协议上下文 |
+| `MCP-Session-Id` | Server 能把多次 HTTP 调用关联到同一协议上下文 |
 | 连接生命周期 | 开始、运行、结束容易映射到进程或 UI 生命周期 |
 
 ### 10.3 MCP 1.0 设计的隐含假设
@@ -1990,7 +2023,9 @@ MCP 2.0 把它降级成了每响应的可选自报信息。
 所以问题从来不是
 “这些数据太大，每个请求带不动”。
 
-问题是 MCP 1.0 **允许**后续请求把它们全部省掉，
+问题是 MCP 1.0 **允许**后续请求把它们省掉
+（HTTP 上只有协议版本靠 `MCP-Protocol-Version` header 保留，
+capabilities 和身份照样省，见第 8.9 节），
 于是每一条 `tools/call` 都变成了
 一句只有听过开头才能听懂的话。
 
@@ -2207,7 +2242,7 @@ sequenceDiagram
 
 - `initialize`；
 - `notifications/initialized`；
-- `Mcp-Session-Id`；
+- `MCP-Session-Id`；
 - “这条连接属于哪个 conversation”的隐式假设。
 
 ### 12.4 每个请求的必需 metadata
@@ -3007,7 +3042,7 @@ JSON-RPC batching 也不在 MCP 2.0 中，
 
 HTTP 状态与恢复机制：
 
-- `Mcp-Session-Id`；
+- `MCP-Session-Id`；
 - HTTP `DELETE` session termination；
 - standalone HTTP GET SSE endpoint；
 - SSE event ID、`Last-Event-ID`、stream resumability 和消息重投；
@@ -3332,7 +3367,7 @@ flowchart TD
 4. 为每个 request 校验版本与 Client capabilities。
 5. 跨请求业务状态改成显式 identifier；若采用 handle 设计模式，补授权、TTL、幂等和重放测试。
 6. Server→Client request 改成 MRTR；长任务评估 Tasks extension。
-7. HTTP 移除 `Mcp-Session-Id` 依赖、standalone GET SSE 与 event resume；通知改 `subscriptions/listen`。
+7. HTTP 移除 `MCP-Session-Id` 依赖、standalone GET SSE 与 event resume；通知改 `subscriptions/listen`。
 8. 增加 `Accept`、`MCP-Protocol-Version`、`Mcp-Method`/`Mcp-Name` 等 required headers，并验证 header/body 一致。
 9. 增加 cache hints 与确定性 list 顺序。
 10. 观测双栈流量，再按官方 deprecation policy 退役 MCP 1.0。

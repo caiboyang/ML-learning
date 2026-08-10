@@ -616,7 +616,7 @@ Authorization: Bearer …</code></pre>
         <div class="mini-flow">
           <span>HTTP POST / GET</span><span class="arrow-line">⇄</span><span>SSE streams</span>
         </div>
-        <small>可由 <code>Mcp-Session-Id</code> 关联请求；GET/SSE、断线恢复和 Server→Client 请求让远程连接更像持续会话。</small>
+        <small>可由 <code>MCP-Session-Id</code> 关联请求；GET/SSE、断线恢复和 Server→Client 请求让远程连接更像持续会话。</small>
       </div>
     </div>
     <figcaption>stdio 从来不是“玩具 transport”；本地 IDE、CLI、文件工具恰好很适合它。</figcaption>
@@ -713,7 +713,8 @@ Authorization: Bearer …</code></pre>
     （Server 侧的 <code>InitializeResult</code> 还带 <code>serverInfo</code> 和可选的 <code>instructions</code>，
     后者是自由文本、可以很长——但它不需要每个请求回一遍，MCP 2.0 把它搬去了可缓存的 <code>server/discover</code>。）
     所以问题从来不是「这些数据太大、每个请求带不动」，
-    而是 MCP 1.0 <strong>允许</strong>后续请求把它们全部省掉，于是每条 <code>tools/call</code>
+    而是 MCP 1.0 <strong>允许</strong>后续请求把它们省掉——HTTP 上只有协议版本靠
+    <code>MCP-Protocol-Version</code> header 保留，capabilities 和身份照样省——于是每条 <code>tools/call</code>
     都成了一句只有听过开头才听得懂的话。丢的不是数据量，是<strong>自描述能力</strong>。
     记住方向和直觉相反：MCP 2.0 不是让报文更省，而是让每个请求<strong>多</strong>带几百字节，
     换回「任意副本都能独立读懂」。下面的扩容问题不要误读成「无状态是为了性能」。
@@ -778,7 +779,7 @@ Authorization: Bearer …</code></pre>
   <p class="deck">MCP 2.0 不是把状态消灭，而是要求：影响请求解释的协议信息随请求来，跨请求业务状态用显式名字指向。</p>
 
   <p>
-    2026-07-28 删除了 <code>initialize</code> / <code>initialized</code> 和 <code>Mcp-Session-Id</code>。
+    2026-07-28 删除了 <code>initialize</code> / <code>initialized</code> 和 <code>MCP-Session-Id</code>。
     Client 的协议版本、身份与能力放进每次请求的 <code>_meta</code>。MCP 2.0 Server 必须实现
     <code>server/discover</code>，Client 可以选择先调用它查看 Server 身份和能力；
     discovery 不会创造一个后续必须依赖的协议 session。
@@ -995,7 +996,7 @@ Authorization: Bearer …</code></pre>
       <div class="change"><b>Tasks extension</b>当前 Tasks 是 opt-in extension；双方显式协商后，长时间、可追踪工作流才获得独立扩展空间。</div>
       <div class="change"><b>Auth hardening</b>校验 issuer/audience；CIMD 优先，DCR 进入弃用。</div>
       <div class="change deprecated"><b>Feature deprecated</b>roots、sampling、logging、旧 HTTP+SSE 与 DCR 进入弃用窗口；实现迁移期仍可能兼容。</div>
-      <div class="change deprecated"><b>Lifecycle / session removed</b><code>initialize</code>、<code>initialized</code>、<code>Mcp-Session-Id</code>、独立 Server→Client requests 与 SSE resume 不在 MCP 2.0 core。</div>
+      <div class="change deprecated"><b>Lifecycle / session removed</b><code>initialize</code>、<code>initialized</code>、<code>MCP-Session-Id</code>、独立 Server→Client requests 与 SSE resume 不在 MCP 2.0 core。</div>
       <div class="change deprecated"><b>RPC removed · 通用/日志/roots</b><code>ping</code>、<code>logging/setLevel</code>、<code>notifications/roots/list_changed</code> 不再是 MCP 2.0 RPC。</div>
       <div class="change deprecated"><b>RPC removed · resource/elicitation</b><code>resources/subscribe</code>、<code>resources/unsubscribe</code>、<code>notifications/elicitation/complete</code> 以及 <code>elicitationId</code> 被移除。</div>
       <div class="change deprecated"><b>RPC removed · 旧 Tasks</b>2025-11-25 的 <code>tasks/result</code> 改为轮询 <code>tasks/get</code> + <code>tasks/update</code>；<code>tasks/list</code> 被移除。</div>
@@ -1065,7 +1066,7 @@ Authorization: Bearer …</code></pre>
 
   <ol class="clean">
     <li><strong>冻结基线</strong>：记录现有 Client/Server 支持的协议日期、SDK 主版本与 transport。</li>
-    <li><strong>找隐含状态</strong>：搜索 initialize、initialized、Mcp-Session-Id、GET/SSE resume、Server→Client requests。</li>
+    <li><strong>找隐含状态</strong>：搜索 initialize、initialized、MCP-Session-Id、GET/SSE resume、Server→Client requests。</li>
     <li><strong>改请求模型</strong>：每次带完整 <code>_meta</code>；跨请求工作流改用显式 handle。</li>
     <li><strong>改交互</strong>：把 elicitation/sampling 路径重画成 <code>input_required → retry</code>。</li>
     <li><strong>双向互测</strong>：MCP 2.0 Client→Server、MCP 1.0 Client→兼容 Server、断线重试、多副本轮询都要测。</li>
@@ -1221,7 +1222,7 @@ uv run mcp dev server.py</code></pre>
   <p>
     先保持隐式状态实现不变，只替换 transport 并启动 A/B 两个 Server 副本。每一个 JSON-RPC POST
     都必须发送 <code>Accept: application/json, text/event-stream</code>，同时携协议 metadata；抓包观察
-    <code>MCP-Protocol-Version</code>、<code>Mcp-Method</code>、<code>Mcp-Name</code>，并确认没有 <code>Mcp-Session-Id</code>。
+    <code>MCP-Protocol-Version</code>、<code>Mcp-Method</code>、<code>Mcp-Name</code>，并确认没有 <code>MCP-Session-Id</code>。
   </p>
 
   <p>
