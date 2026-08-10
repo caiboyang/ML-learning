@@ -1274,7 +1274,7 @@ MCP 2.0 没有取消 capability，
 到 `2025-11-25`，
 Streamable HTTP 仍允许：
 
-- `Mcp-Session-Id`；
+- `MCP-Session-Id`；
 - POST 请求；
 - GET 打开 Server→Client SSE；
 - SSE 事件恢复；
@@ -1321,7 +1321,7 @@ sequenceDiagram
     participant S as "Server Instance"
     C->>LB: "POST /mcp initialize"
     LB->>S: "route"
-    S-->>C: "Mcp-Session-Id: abc"
+    S-->>C: "MCP-Session-Id: abc"
     C->>LB: "POST /mcp + session abc"
     LB->>S: "sticky route / shared state"
     C->>LB: "GET /mcp + session abc"
@@ -1332,6 +1332,99 @@ sequenceDiagram
 这里已经能看到：
 
 协议 session 与基础设施路由开始耦合。
+
+### 8.9 连接到底挂多久
+
+学到这里最常见的疑问是：
+
+> 每次 `tools/call` 都要重新握手一次吗？
+
+在 MCP 1.0 里不用。
+
+`initialize` 在整个会话里只发一次。
+
+但"之后的请求省掉了什么"
+在两种 transport 上并不一样：
+
+| | stdio | Streamable HTTP |
+|---|---|---|
+| 协议版本 | 省略，靠握手记忆 | **不省**：Client **MUST** 在后续每个请求带 `MCP-Protocol-Version` header |
+| Client 身份 | 省略 | 省略 |
+| Client capabilities | 省略 | 省略 |
+
+**【事实】**
+`MCP-Protocol-Version` 是 MCP 1.0 已有的要求，
+见
+[2025-11-25 Transports / Protocol Version Header](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header)。
+
+**【解释】**
+所以"每请求自描述"并不是 MCP 2.0 凭空发明的。
+MCP 1.0 在 HTTP 上已经走了一小步——
+把版本放进 header，让中间层不解 body 也能读到。
+
+MCP 2.0 做的是**把这一步走完**：
+连 capabilities 和身份一起，
+统一搬进每个请求。
+
+具体"挂多久"取决于 transport：
+
+| Transport | 会话生命周期等于什么 | 什么时候结束 |
+|---|---|---|
+| stdio | Client 启动的那个 Server 子进程的存活时间 | 进程退出、崩溃，或被 Host 关闭 |
+| Streamable HTTP（Server 分配了 session） | `MCP-Session-Id` 在 Server 端的有效期 | Server 判定过期并对该 id 返回 404、Client 发 `DELETE` 显式终止，或持有该 session 的实例丢失它 |
+| Streamable HTTP（Server 未分配 session） | 没有会话可言，每个 POST 各自独立 | 不适用 |
+
+**【事实】**
+Streamable HTTP 的 session 是**可选**的：
+规范说 Server **MAY** 在初始化时分配 session ID。
+
+不分配就没有 session 可过期、可删除；
+分配了，Client 才 **MUST** 在后续每个请求带上
+`MCP-Session-Id` header。
+见
+[2025-11-25 Transports / Session Management](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management)。
+
+**【事实】**
+一旦分配，`MCP-Session-Id`
+由 Server 在 **`initialize` 的 POST 响应头**里返回。
+
+这一点容易被讲错，
+而且错法会直接毁掉后面的理解：
+
+- session **不是**由"打开 SSE 流"产生的；
+- session **不**绑定在某一条长连接上；
+- 它能跨多次彼此独立的 POST 存活；
+- standalone GET SSE 是**可选且独立**的通道，
+  只用于接收 Server 主动发来的消息，
+  不开它也能正常调用工具。
+
+**【解释】**
+所以 MCP 1.0 的 session 不是
+"连接还开着"，
+而是
+"服务端还记得你"。
+
+连接断了可以重连，
+session 不会因此消失。
+
+**【事实】**
+但协议只规定"Server 记住这个 session"，
+不规定它**记在哪里**，
+也不提供任何让另一个副本接手的机制。
+
+这不等于"只能记在单个实例的内存里"。
+把 session 放进 Redis 之类的共享存储、
+让任意副本都能读到，
+是完全可行的部署方案。
+
+**【评价】**
+关键在于：
+这条路要由**运维自己搭**，
+协议不提供，也不保证。
+
+于是"跨副本连续性"就从协议责任
+变成了每个团队各自解决的基础设施问题——
+第 11 节要算的正是这笔账。
 
 但先不要急着批判。
 
@@ -1664,6 +1757,126 @@ Tool 执行结果中的失败：
 
 > “MCP 不工作。”
 
+### 9.8 反方向：Server 也可以调用 Client
+
+前面七小节都是 Client 发、Server 回。
+
+MCP 1.0 还有一条反方向的通道：
+Server 在处理某个请求的过程中，
+可以主动向 Client 发一条独立的 JSON-RPC request。
+
+**【事实】**
+这条通道服务于三个 Client feature：
+elicitation、sampling、roots。
+
+三个具体场景：
+
+| Client feature | Server 想要什么 | 场景 |
+|---|---|---|
+| **Elicitation** | 让用户补一个字段或确认一次动作 | 模型要求删掉整个项目。Server 不直接执行，先反向要求 Client 弹出确认表单；用户点同意后才落地 |
+| **Sampling** | 借用 Client 手里的模型 | Server 是本地代码检索工具，命中 50 个文件。它自己没有模型也没有 API key，于是请 Client 用模型把这些文件压成一段摘要 |
+| **Roots** | 问清当前的工作区边界 | IDE 场景里 Server 想读文件，先问 Client“用户现在打开的项目根目录有哪些”，据此限定搜索范围 |
+
+#### 为什么 sampling 的结果要绕回 Server
+
+这一步最容易卡住：
+
+> Client 都已经把摘要生成出来了，
+> 为什么不直接用，
+> 还要还给 Server，再由 Server 返回给 Client？
+
+两个原因。
+
+**一、这次调用的业务逻辑属于 Server。**
+
+摘要通常只是 Server 多步流程里的一个中间产物。
+Server 可能还要拿它去匹配 Git 记录、
+查内部索引、再组装成最终报告。
+
+Client 半路截胡，
+Server 剩下的逻辑就断了。
+
+**二、外层请求还没有闭环。**
+
+```mermaid
+sequenceDiagram
+    participant C as "Client"
+    participant S as "Server"
+    participant M as "模型 API"
+    C->>S: "① tools/call（外层请求，开始挂起）"
+    Note over S: "执行到一半，需要模型"
+    S->>C: "② sampling/createMessage（内层请求）"
+    C->>M: "③ Client 用自己的 key 调模型"
+    M-->>C: "④ 生成结果"
+    C-->>S: "⑤ 内层响应：摘要交回 Server"
+    Note over S: "拿到摘要，跑完剩余逻辑"
+    S-->>C: "⑥ 外层响应：tools/call 到此才完成"
+```
+
+第 ① 步的 `tools/call` 全程都在等待响应。
+
+只有 Server 发出第 ⑥ 步，
+这次工具调用才算结束。
+
+**【解释】**
+可以这样记：
+Server 借用了 Client 的模型，
+但没有交出这次工具调用的所有权。
+
+#### 三条必须同时记住的限定
+
+**【事实】**
+sampling 请求里的 `messages` 与 `systemPrompt`
+由 **Server** 构造。
+
+Server 最清楚自己要什么，
+但它没有 API key；
+Client 握着 key 与模型选择权。
+
+**【事实】**
+sampling **不是**用户看不见的后台调用。
+
+规范要求 **SHOULD** 始终有 human in the loop，
+且应用 **SHOULD**：
+
+- 提供便于审阅 sampling 请求的 UI；
+- 允许用户在发送前查看并编辑 prompt；
+- 在交回 Server 前把生成结果呈现给用户审阅。
+
+用户可以随时拒绝。
+见
+[Sampling / User Interaction Model](https://modelcontextprotocol.io/specification/2026-07-28/client/sampling)。
+
+**【事实】**
+Server 想让自己的上下文进入这次采样，
+用的是 `includeContext`
+（`none` / `thisServer` / `allServers`，默认 `none`）。
+
+Client **MAY** 修改或忽略这个字段，
+且不必告知 Server；
+规范明确举例说，
+Client 可以判断照办会向 Server 泄露敏感信息，
+从而自行收紧。
+
+`thisServer` 与 `allServers` 已 deprecated。
+
+> **读这一节的前提**
+>
+> Sampling 特性本身自 `2026-07-28` 起已 **deprecated**：
+> 新实现 **SHOULD NOT** 采用，
+> 现有实现 **SHOULD** 迁移到直接对接模型供应商 API。
+>
+> 这里讲它，
+> 是为了让你看懂 MCP 1.0 为什么需要反向通道，
+> 以及第 15 节的 MRTR 究竟替换掉了什么，
+> 不是建议你在新 Server 里使用 sampling。
+>
+> 它也**没有**被移除：
+> 兼容实现仍可把 `sampling/createMessage`
+> 放进 MRTR 的 `inputRequests` 继续工作。
+> 被移除的是"Server 主动发起独立 request"这个**机制**，
+> 不是这三个 feature 本身。
+
 ---
 
 ## 10. MCP 1.0 的早期设计做对了什么，又付出了什么
@@ -1690,7 +1903,7 @@ MCP 1.0 的目标环境很大一部分是：
 | session capability | 后续消息不必重复声明 |
 | Server→Client request | sampling、elicitation 等像普通 RPC 一样自然 |
 | 长连接 SSE | Server 可随时推送请求和通知 |
-| `Mcp-Session-Id` | Server 能把多次 HTTP 调用关联到同一协议上下文 |
+| `MCP-Session-Id` | Server 能把多次 HTTP 调用关联到同一协议上下文 |
 | 连接生命周期 | 开始、运行、结束容易映射到进程或 UI 生命周期 |
 
 ### 10.3 MCP 1.0 设计的隐含假设
@@ -1755,7 +1968,88 @@ MCP 2.0 优化的是：
 - [2026-07-28 Changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog)
 - [2026-07-28 官方发布说明](https://blog.modelcontextprotocol.io/posts/2026-07-28/)
 
-### 11.1 横向扩容
+### 11.1 先看清被“藏起来”的到底是什么
+
+握手是双向的，两侧要分开看。
+
+**Client 侧**（`initialize` params）：
+
+- `protocolVersion`；
+- `capabilities`；
+- `clientInfo`；
+- 可选 `_meta`。
+
+**Server 侧**（`InitializeResult`）：
+
+- `protocolVersion`；
+- `capabilities`；
+- `serverInfo`；
+- 可选 `instructions`。
+
+两侧体量完全不同。
+
+Client 侧就是几个短字段，
+序列化之后通常不到 1 KB。
+
+Server 侧的 `instructions` 是自由文本，
+可以很长，不受这个量级约束。
+
+**【解释】**
+而后续请求省掉的、
+也正是 MCP 2.0 要求每个请求重新携带的，
+只有 **Client 侧**那几个字段。
+
+Server 侧则不必每个请求都回一遍。
+
+注意这里有一个容易混淆的同名字段：
+
+| | MCP 1.0 | MCP 2.0 |
+|---|---|---|
+| 字段 | `InitializeResult.serverInfo` | `_meta` 的 `io.modelcontextprotocol/serverInfo` |
+| 强度 | **必填**（schema 无 `?`） | **可选**，规范说 Server **SHOULD** 在每个 result 里带 |
+| 位置 | 握手响应体的顶层 | 任意 result 的 `_meta` |
+
+也就是说：
+握手里的 `serverInfo` 是 MCP 1.0 的硬性要求，
+实现 legacy Server 时不能省；
+MCP 2.0 把它降级成了每响应的可选自报信息。
+
+至于 `instructions` 与 Server capabilities，
+它们搬到了可缓存的 `server/discover`
+（带 `ttlMs` 与 `cacheScope`，见第 13、17 节），
+所以体量大的那半边
+根本不进每请求成本。
+
+所以问题从来不是
+“这些数据太大，每个请求带不动”。
+
+问题是 MCP 1.0 **允许**后续请求把它们省掉
+（HTTP 上只有协议版本靠 `MCP-Protocol-Version` header 保留，
+capabilities 和身份照样省，见第 8.9 节），
+于是每一条 `tools/call` 都变成了
+一句只有听过开头才能听懂的话。
+
+真正丢失的不是数据量，
+是**自描述能力**。
+
+由此可以先记住一个反直觉的方向：
+
+```text
+MCP 2.0 不是让报文更省，
+而是让每个请求多带几百字节，
+换回“任意副本都能独立读懂这条请求”。
+```
+
+**【评价】**
+把这一点放在最前面，
+是为了避免把后面的扩容问题
+误读成“无状态是为了性能”。
+
+恰恰相反：
+MCP 2.0 用一点带宽冗余，
+买回了可路由性和可恢复性。
+
+### 11.2 横向扩容
 
 MCP 1.0 请求依赖 initialize 建立的状态时：
 
@@ -1789,7 +2083,7 @@ flowchart LR
 - 回收和过期逻辑；
 - 灰度升级难度。
 
-### 11.2 故障恢复
+### 11.3 故障恢复
 
 若保存 session 的实例崩溃：
 
@@ -1804,7 +2098,7 @@ flowchart LR
 而是以最难观测的方式
 散落在连接、内存和重连逻辑中。
 
-### 11.3 session 的语义没有收敛
+### 11.4 session 的语义没有收敛
 
 SEP-2567 指出，
 不同 Client 把 session 理解为：
@@ -1828,7 +2122,7 @@ SEP-2567 指出，
 单个模糊 session scope
 无法同时表达两者。
 
-### 11.4 Server callback 与网络拓扑
+### 11.5 Server callback 与网络拓扑
 
 MCP 1.0 Server 可以向 Client 发独立 request。
 
@@ -1840,7 +2134,7 @@ MCP 1.0 Server 可以向 Client 发独立 request。
 - 请求与重连状态能恢复；
 - callback 的授权语境没有丢失。
 
-### 11.5 网关深度解析
+### 11.6 网关深度解析
 
 若所有 HTTP 请求都是：
 
@@ -1866,7 +2160,7 @@ POST /mcp
 
 就必须解析 JSON body。
 
-### 11.6 缓存困难
+### 11.7 缓存困难
 
 如果 Tool 列表可以隐式依赖 session，
 网关和 Client 难以回答：
@@ -1876,7 +2170,7 @@ POST /mcp
 - 列表顺序是否稳定；
 - 何时失效。
 
-### 11.7 为什么这些是协议问题
+### 11.8 为什么这些是协议问题
 
 可以在 SDK 内打补丁，
 但当每个 SDK 都独立约定：
@@ -1948,7 +2242,7 @@ sequenceDiagram
 
 - `initialize`；
 - `notifications/initialized`；
-- `Mcp-Session-Id`；
+- `MCP-Session-Id`；
 - “这条连接属于哪个 conversation”的隐式假设。
 
 ### 12.4 每个请求的必需 metadata
@@ -2748,7 +3042,7 @@ JSON-RPC batching 也不在 MCP 2.0 中，
 
 HTTP 状态与恢复机制：
 
-- `Mcp-Session-Id`；
+- `MCP-Session-Id`；
 - HTTP `DELETE` session termination；
 - standalone HTTP GET SSE endpoint；
 - SSE event ID、`Last-Event-ID`、stream resumability 和消息重投；
@@ -3073,7 +3367,7 @@ flowchart TD
 4. 为每个 request 校验版本与 Client capabilities。
 5. 跨请求业务状态改成显式 identifier；若采用 handle 设计模式，补授权、TTL、幂等和重放测试。
 6. Server→Client request 改成 MRTR；长任务评估 Tasks extension。
-7. HTTP 移除 `Mcp-Session-Id` 依赖、standalone GET SSE 与 event resume；通知改 `subscriptions/listen`。
+7. HTTP 移除 `MCP-Session-Id` 依赖、standalone GET SSE 与 event resume；通知改 `subscriptions/listen`。
 8. 增加 `Accept`、`MCP-Protocol-Version`、`Mcp-Method`/`Mcp-Name` 等 required headers，并验证 header/body 一致。
 9. 增加 cache hints 与确定性 list 顺序。
 10. 观测双栈流量，再按官方 deprecation policy 退役 MCP 1.0。

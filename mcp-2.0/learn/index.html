@@ -616,11 +616,64 @@ Authorization: Bearer …</code></pre>
         <div class="mini-flow">
           <span>HTTP POST / GET</span><span class="arrow-line">⇄</span><span>SSE streams</span>
         </div>
-        <small>可由 <code>Mcp-Session-Id</code> 关联请求；GET/SSE、断线恢复和 Server→Client 请求让远程连接更像持续会话。</small>
+        <small>可由 <code>MCP-Session-Id</code> 关联请求；GET/SSE、断线恢复和 Server→Client 请求让远程连接更像持续会话。</small>
       </div>
     </div>
     <figcaption>stdio 从来不是“玩具 transport”；本地 IDE、CLI、文件工具恰好很适合它。</figcaption>
   </figure>
+
+  <h3>反方向：Server 也可以调用 Client</h3>
+
+  <p>
+    上面全是 Client 发、Server 回。MCP 1.0 还有一条反方向的通道：Server 处理请求处理到一半，
+    可以主动向 Client 发一条独立的 JSON-RPC request。它服务于三个 Client feature——
+    看懂这三个场景，才看得懂 STEP 08 的 MRTR 究竟替换掉了什么。
+  </p>
+
+  <div class="triple">
+    <div class="box violet"><b>Elicitation</b>要用户补字段或确认动作。模型要求删掉整个项目，Server 不直接执行，先反向让 Client 弹确认表单，用户同意后才落地。</div>
+    <div class="box cyan"><b>Sampling</b>借用 Client 的模型。Server 是本地检索工具，命中 50 个文件，自己没有模型也没有 API key，于是请 Client 把它们压成一段摘要。</div>
+    <div class="box amber"><b>Roots</b>问清工作区边界。IDE 里 Server 想读文件，先问 Client「用户现在打开了哪些项目根目录」，据此限定搜索范围。</div>
+  </div>
+
+  <p>
+    最容易卡住的是 sampling：<strong>Client 都已经生成摘要了，为什么还要还给 Server，再由 Server 返回给 Client？</strong>
+    两个原因。其一，这次调用的业务逻辑属于 Server——摘要往往只是中间产物，Server 还要拿它去匹配 Git 记录、
+    组装最终报告；Client 半路截胡，Server 剩下的逻辑就断了。其二，外层那个 <code>tools/call</code> 全程都在挂起等待，
+    只有 Server 发出最终响应，这次调用才算闭环。
+  </p>
+
+  <figure class="explain" data-visual="9b" aria-labelledby="fig-9b-title">
+    <div class="figure-title" id="fig-9b-title">图 9b · 内层 sampling 借模型，外层 tools/call 才闭环</div>
+    <div class="transport">
+      <div class="box"><b>① tools/call</b>Client → Server<br /><small>外层请求开始挂起</small></div>
+      <div class="box cyan"><b>② sampling/createMessage</b>Server → Client<br /><small>Server 把自己写的 prompt 递过去</small></div>
+      <div class="box amber"><b>③④ 调模型</b>Client → 模型 API<br /><small>Client 用自己的 key 结账</small></div>
+      <div class="box cyan"><b>⑤ 摘要交回</b>Client → Server<br /><small>内层闭环</small></div>
+      <div class="box violet"><b>⑥ 最终结果</b>Server → Client<br /><small>外层到此才完成</small></div>
+    </div>
+    <figcaption>Server 借用了 Client 的模型，但没有交出这次工具调用的所有权。</figcaption>
+  </figure>
+
+  <div class="callout risk">
+    <span class="tag mono">三条别记反</span>
+    <strong>prompt 是 Server 写的</strong>——<code>messages</code> 与 <code>systemPrompt</code> 由 Server 构造，
+    Client 只是握着 key 和模型选择权。
+    <strong>sampling 不是用户看不见的后台调用</strong>——规范要求 SHOULD 始终有 human in the loop，
+    应用 SHOULD 让用户在发送前查看并编辑 prompt、在交回 Server 前审阅生成结果，用户随时可拒绝。
+    <strong>要不要把上下文带进去由 Client 说了算</strong>——那是 <code>includeContext</code> 参数
+    （<code>none</code>／<code>thisServer</code>／<code>allServers</code>，默认 <code>none</code>，后两个已弃用），
+    而 Client MAY 修改或忽略它且不必告知 Server。
+  </div>
+
+  <div class="callout key">
+    <span class="tag mono">读这段的前提</span>
+    Sampling 特性自 <code>2026-07-28</code> 起已 <strong>deprecated</strong>：新实现 SHOULD NOT 采用，
+    现有实现 SHOULD 改为直接对接模型供应商 API。这里讲它是为了理解 MCP 1.0 为什么需要反向通道，
+    不是建议你在新 Server 里用。它也<strong>没有被移除</strong>——兼容实现仍可把
+    <code>sampling/createMessage</code> 放进 MRTR 的 <code>inputRequests</code>。
+    被移除的是「Server 主动发起独立 request」这个机制，不是这三个 feature 本身。
+  </div>
 
   <h3>为什么当年这样设计很合理</h3>
 
@@ -652,6 +705,20 @@ Authorization: Bearer …</code></pre>
   </div>
 
   <p class="deck">只要第二个请求可能落到另一个副本，“连接里记得什么”就从方便变成部署约束。</p>
+
+  <div class="callout key">
+    <span class="tag mono">先看清被藏起来的是什么</span>
+    握手是双向的，但后续请求省掉的只有 <strong>Client 侧</strong>那几个短字段：<code>protocolVersion</code>、
+    <code>capabilities</code>、<code>clientInfo</code>，序列化后通常不到 1 KB。
+    （Server 侧的 <code>InitializeResult</code> 还带 <code>serverInfo</code> 和可选的 <code>instructions</code>，
+    后者是自由文本、可以很长——但它不需要每个请求回一遍，MCP 2.0 把它搬去了可缓存的 <code>server/discover</code>。）
+    所以问题从来不是「这些数据太大、每个请求带不动」，
+    而是 MCP 1.0 <strong>允许</strong>后续请求把它们省掉——HTTP 上只有协议版本靠
+    <code>MCP-Protocol-Version</code> header 保留，capabilities 和身份照样省——于是每条 <code>tools/call</code>
+    都成了一句只有听过开头才听得懂的话。丢的不是数据量，是<strong>自描述能力</strong>。
+    记住方向和直觉相反：MCP 2.0 不是让报文更省，而是让每个请求<strong>多</strong>带几百字节，
+    换回「任意副本都能独立读懂」。下面的扩容问题不要误读成「无状态是为了性能」。
+  </div>
 
   <p>
     NoteBox MCP Server 上云后跑三个副本。第一次 <code>initialize</code> 落到 A，A 为会话 <code>S-42</code>
@@ -712,7 +779,7 @@ Authorization: Bearer …</code></pre>
   <p class="deck">MCP 2.0 不是把状态消灭，而是要求：影响请求解释的协议信息随请求来，跨请求业务状态用显式名字指向。</p>
 
   <p>
-    2026-07-28 删除了 <code>initialize</code> / <code>initialized</code> 和 <code>Mcp-Session-Id</code>。
+    2026-07-28 删除了 <code>initialize</code> / <code>initialized</code> 和 <code>MCP-Session-Id</code>。
     Client 的协议版本、身份与能力放进每次请求的 <code>_meta</code>。MCP 2.0 Server 必须实现
     <code>server/discover</code>，Client 可以选择先调用它查看 Server 身份和能力；
     discovery 不会创造一个后续必须依赖的协议 session。
@@ -929,7 +996,7 @@ Authorization: Bearer …</code></pre>
       <div class="change"><b>Tasks extension</b>当前 Tasks 是 opt-in extension；双方显式协商后，长时间、可追踪工作流才获得独立扩展空间。</div>
       <div class="change"><b>Auth hardening</b>校验 issuer/audience；CIMD 优先，DCR 进入弃用。</div>
       <div class="change deprecated"><b>Feature deprecated</b>roots、sampling、logging、旧 HTTP+SSE 与 DCR 进入弃用窗口；实现迁移期仍可能兼容。</div>
-      <div class="change deprecated"><b>Lifecycle / session removed</b><code>initialize</code>、<code>initialized</code>、<code>Mcp-Session-Id</code>、独立 Server→Client requests 与 SSE resume 不在 MCP 2.0 core。</div>
+      <div class="change deprecated"><b>Lifecycle / session removed</b><code>initialize</code>、<code>initialized</code>、<code>MCP-Session-Id</code>、独立 Server→Client requests 与 SSE resume 不在 MCP 2.0 core。</div>
       <div class="change deprecated"><b>RPC removed · 通用/日志/roots</b><code>ping</code>、<code>logging/setLevel</code>、<code>notifications/roots/list_changed</code> 不再是 MCP 2.0 RPC。</div>
       <div class="change deprecated"><b>RPC removed · resource/elicitation</b><code>resources/subscribe</code>、<code>resources/unsubscribe</code>、<code>notifications/elicitation/complete</code> 以及 <code>elicitationId</code> 被移除。</div>
       <div class="change deprecated"><b>RPC removed · 旧 Tasks</b>2025-11-25 的 <code>tasks/result</code> 改为轮询 <code>tasks/get</code> + <code>tasks/update</code>；<code>tasks/list</code> 被移除。</div>
@@ -999,7 +1066,7 @@ Authorization: Bearer …</code></pre>
 
   <ol class="clean">
     <li><strong>冻结基线</strong>：记录现有 Client/Server 支持的协议日期、SDK 主版本与 transport。</li>
-    <li><strong>找隐含状态</strong>：搜索 initialize、initialized、Mcp-Session-Id、GET/SSE resume、Server→Client requests。</li>
+    <li><strong>找隐含状态</strong>：搜索 initialize、initialized、MCP-Session-Id、GET/SSE resume、Server→Client requests。</li>
     <li><strong>改请求模型</strong>：每次带完整 <code>_meta</code>；跨请求工作流改用显式 handle。</li>
     <li><strong>改交互</strong>：把 elicitation/sampling 路径重画成 <code>input_required → retry</code>。</li>
     <li><strong>双向互测</strong>：MCP 2.0 Client→Server、MCP 1.0 Client→兼容 Server、断线重试、多副本轮询都要测。</li>
@@ -1155,7 +1222,7 @@ uv run mcp dev server.py</code></pre>
   <p>
     先保持隐式状态实现不变，只替换 transport 并启动 A/B 两个 Server 副本。每一个 JSON-RPC POST
     都必须发送 <code>Accept: application/json, text/event-stream</code>，同时携协议 metadata；抓包观察
-    <code>MCP-Protocol-Version</code>、<code>Mcp-Method</code>、<code>Mcp-Name</code>，并确认没有 <code>Mcp-Session-Id</code>。
+    <code>MCP-Protocol-Version</code>、<code>Mcp-Method</code>、<code>Mcp-Name</code>，并确认没有 <code>MCP-Session-Id</code>。
   </p>
 
   <p>
