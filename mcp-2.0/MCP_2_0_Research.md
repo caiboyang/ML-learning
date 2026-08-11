@@ -1048,8 +1048,18 @@ Host 看完再决定读哪些。
 ```
 
 - `audience`：`"user"` / `"assistant"`，这份内容给谁看；
-- `priority`：0.0–1.0，1 表示“基本必需”，0 表示“完全可选”；
+- `priority`：0.0–1.0 的**相对重要性**
+  （规范原文：1 = “most important”，注解为 effectively required；
+  0 = “least important”，注解为 entirely optional）；
 - `lastModified`：ISO 8601 时间戳。
+
+**【解释】**
+`priority` 是一条**排序用的相对刻度**，
+不是"必须纳入 / 必须丢弃"的开关。
+
+Server 标 1 不等于 Host 有义务把它塞进上下文，
+标 0 也不等于 Host 必须丢掉它——
+否则就和下面这条自相矛盾了。
 
 规范说 Client 用它们来
 filter、prioritize which resources to include in context、sort。
@@ -1062,10 +1072,22 @@ Server 只能标 `priority: 0.8` 表达“我觉得这个重要”，
 **这个机制之所以存在，恰恰因为 Server 说了不算**——
 若 Server 能直接决定，就不需要“建议”这一层。
 
-**3. `subscribe`。**
+**3. 变更订阅。**
 内容变了 Host 收到
 `notifications/resources/updated`，
 自己决定要不要重读。
+
+注意 MCP 2.0 的 wire 流程：
+`subscribe` 只是 Server 的**capability 名**，
+**没有** `resources/subscribe` 这个方法
+（它已被移除，见第 16.5 节）。
+
+实际做法是 Client 发
+`subscriptions/listen`，
+把 URI 放进 `resourceSubscriptions` 过滤器；
+Server 才会在该 stream 上推
+`notifications/resources/updated`。
+见第 16.6 节。
 
 当前规范见
 [Resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources)。
@@ -1183,17 +1205,32 @@ Server **SHOULD** 同时在 `content` 中放一份序列化 JSON。
 Tool 是模型控制，默认动作是执行。
 
 **【解释】**
-把"读文件"做成 Tool，
-200 次文件读取就是 200 次
-"模型决定要做某事"。
+注意规范要求的是
+“**有能力**拒绝”，
+不是“每次都必须弹窗确认”。
 
-结果只有两种：
-要么弹爆用户，
-要么用户开始无脑点同意——
+成熟 Host 完全可以按风险分级：
+把 `read_file` 判成低风险自动放行，
+只对 `delete_file` 要求显式确认。
+所以“做成 Tool 就一定弹爆用户”是不成立的。
+
+**【评价】**
+真正的代价因此要说准一点：
+
+Tool 这个身份**默认携带“需要审批”的信号**。
+把只读操作也塞进来，
+Host 就得**自己去建风险分级**，
+才能把它重新排除出审批面。
+
+不做分级的 Host——现实中不少——
+就会退化成两种结果：
+弹爆用户，
+或者用户开始无脑点同意，
 而后者会让 `delete_file` 那次审批**一起失效**。
 
-审批是有预算的，
-应该花在真正有副作用的操作上。
+用 Resource 表达只读内容，
+等于**从一开始就不进这条审批通道**，
+不必依赖 Host 有没有实现分级。
 
 #### 代价二：`tools/call` 不可缓存
 
