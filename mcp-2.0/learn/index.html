@@ -551,6 +551,25 @@ Authorization: Bearer …</code></pre>
     <figcaption>“模型控制”不等于模型拥有权限；Host 必须保留最后执行权。</figcaption>
   </figure>
 
+  <div class="callout key">
+    <span class="tag mono">「应用控制」控的是什么</span>
+    最常见的误读是「那模型就用不了 Resource 了」——<strong>不对</strong>。规范给 Host 的三种做法里，
+    第三种就是「automatic context inclusion, based on heuristics or <strong>the AI model's selection</strong>」，
+    模型完全可以是最终挑选者。区别在决定权的<strong>来源</strong>：Tool 是协议赋予的（列进 <code>tools/list</code>，
+    模型就能建议调用），Resource 是 Host 策略层的（Host 可以下放给用户，也可以下放给模型）。
+    换个角度更好记：<strong>Tool 的默认动作是执行，Resource 的默认动作是取内容</strong>——
+    读一个文件读十遍没事，删一个文件删十遍就出事。
+  </div>
+
+  <p>
+    支撑这件事的关键机制是 <code>annotations</code>：Server 可以给资源标
+    <code>audience</code>（<code>"user"</code>／<code>"assistant"</code>）、
+    <code>priority</code>（0–1，1 表示基本必需）和 <code>lastModified</code>，
+    Client 据此 filter、排序、决定挤爆上下文时先丢谁。注意这个字段的性质——
+    <strong>Server 只能「建议」<code>priority: 0.8</code>，纳不纳、排第几裁决权在 Host。
+    它之所以存在，恰恰因为 Server 说了不算。</strong>
+  </p>
+
   <div class="callout risk">
     <span class="tag mono">不要被单词骗了</span>
     “Server”可以只是你电脑里被启动的一个命令；“Client”也不是用户看到的 App。
@@ -1011,6 +1030,18 @@ Authorization: Bearer …</code></pre>
     迁移时既要决定功能替代方案，也要删除不能再发送的旧方法与 <code>elicitationId</code> 字段。
     旧 Tasks 也不能原样搬运：用 <code>tasks/get</code> + <code>tasks/update</code> 轮询替代
     <code>tasks/result</code>，删除 <code>tasks/list</code>，并且只在双方协商 opt-in Tasks extension 后启用。
+  </div>
+
+  <div class="callout risk">
+    <span class="tag mono">Skills 还不是规范的一部分</span>
+    你会在官方规范首页看到「Skills over MCP」，但截至本页冻结日期它<strong>不在规范里</strong>：
+    <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640">SEP-2640</a>
+    仍在 Extensions Track、状态 In Review，建在 <strong>Resources</strong> 之上；
+    <a href="https://modelcontextprotocol.io/community/working-groups/skills-over-mcp">工作组章程</a>
+    自己还把「convention vs. protocol extension vs. both」列为未定的中期目标。
+    和 Prompt 的区别在触发方：<strong>Prompt 是用户按的一个按钮，Skill 是模型自己决定要不要翻的一本手册</strong>——
+    所以它落在「模型控制的上下文」这一格，也就是它建在 Resource 而非 Prompt 之上的原因。
+    需要用户主动触发的模板现在就用 Prompt；<strong>别把架构压在未定案的东西上</strong>。
   </div>
 
   <div class="callout key">
