@@ -2788,6 +2788,17 @@ throw new Error(`compaction still above threshold after ${spec.compactionRetries
 
 > 【实现明说】"No mainstream coding harness gives the model in-loop recall, and **none of the surveyed implementations makes compaction prefix-cache-aware**."
 
+> ⚠️ **这句话不能与 §13.1 混着读，它们说的不是同一个 cache。** 这篇 note 写于 `2026-07-06`，而 §13.1 那个前缀复用改动是 `2026-07-21` 落地的——晚了半个月。但即使不看日期，两者针对的也是**两条不同的轴**：
+>
+> | | 关心的请求 | 失效从哪开始 | 谁解决了 |
+> |---|---|---|---|
+> | **(i) 摘要调用自己的复用** | 压缩时多发的**那次 aux 请求** | 常规写法从**位置 0**（换了 system prompt）；dsh 改成前缀延长后可复用到指令之前 | dsh 已实现（§13.1），Letta self-compact 做了一半 |
+> | **(ii) 压完之后的对话前缀** | 压缩落盘后的**下一次对话请求** | checkpoint 替换在头部，所以从**接近位置 0** 处失效 | **无人解决**；recallable compaction 提案就是冲这一条去的 |
+>
+> note 那句说的是 **(ii)**——它整个设计（冻结 stub 让前缀逐字节稳定）都在这一维上做文章。而 dsh 已实现的 `07-21` 改动解决的是 **(i)**，**并不改善 (ii)**：checkpoint 照样替换头部，下一次对话请求照样从头失效。
+>
+> 【我的判断】(ii) 这一维上**十一家没有分化**——大家都在头部（或接近头部）做替换，所以压完之后的对话前缀一律从接近位置 0 处失效。正因为没有分化，本报告前面的对比表里也就看不到它；但它其实是压缩最大的一笔 cache 开销，只是被「压缩必然改写前缀」这句话当成了不可避免的公理。recallable compaction 的价值恰恰在于指出**它不是公理**：只要把「冻结的索引」和「可变的工作记忆」拆成两个物件，失效点就能从位置 0 推到很后面。这是本报告收集到的、唯一一个正面攻击 (ii) 的设计——尽管它还没实现。
+
 另有一条通用护栏：**膨胀守卫**——一次 pass 之后的大小若不严格小于之前，什么都不提交，等更多陈旧历史攒够了再试；两侧用同一个口径比较（优先 provider usage，回落字符估算）。
 
 ---
@@ -3486,6 +3497,8 @@ if (framedSummaryTokenCount >= prepared.shadowedTokenCount) throw new Error(...)
 > 第三栏值得单独强调，因为它对应的是一笔**容易被完全忽略的账**：压缩要多发一次请求，而那次请求处理的正好是**整个会话最长的那一刻**的历史。常规写法（另起 system prompt + 压平文本）在这次请求上一个 cache 都命中不了，于是最大的那段历史被全价读两遍。dsh 那篇 note 的原话：「defeating the cache exactly when the conversation is largest」。
 >
 > 代价也要说清楚：**要吃到这个红利，摘要就得用主模型**——换模型就换 cache key。所以第三栏与「用便宜的独立模型做摘要」（§17.6）在设计上是**互斥**的，而后者被 CompactionRL 的消融证明值 6.5 分（§21.1）。这是本报告发现的一处真实的、双方都有证据的取舍，且没有见到有人同时量过两侧。
+>
+> **还有一条这张表没有的轴，因为十一家在它上面没有分化**：压缩**落盘之后**，下一次对话请求的前缀从哪里开始失效？答案一律是「接近位置 0」——大家都在头部替换。这其实是压缩最大的一笔 cache 开销，但因为无人例外，它被当成了「压缩必然改写前缀」的公理写进各家文档。dsh 那份 **proposed** 的 recallable compaction 是本报告收集到的唯一一个正面攻击这一维的设计（把冻结的索引与可变的工作记忆拆成两个物件，让失效点从位置 0 推到 state checkpoint 处），详见 §13.15 里那张两条轴的对照表。
 
 Hermes 还把 caching 与 compaction 写进同一篇文档，明确列出「模型身份是 cache key 的一部分，`/model` 切换 / fallback / credential 轮换都会导致零命中」，并给出结论：**「Don't add features that silently swap the model or credentials mid-session.」**——dsh 的第三栏正是这条结论的一个正面应用：既然模型身份进 cache key，那就干脆别在摘要时换模型。
 
