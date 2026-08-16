@@ -2618,7 +2618,19 @@ return { start: surfaceNodes[0]!, end: surfaceNodes[keepFromIdx - 1]! }
 ## Critical Context               决策及其理由、约束、用户偏好、悬而未决的问题、继续所需的数据
 ```
 
-八节是本报告最多的一档（OpenClaw/Hermes 6~7 节）。硬约束也写得最死：「Output EXACTLY the Markdown structure below: keep every section, in order. **Write "(none)" for an empty section — never drop a section.**」——把「缺 section 可被程序检出」这件事直接变成了「不会缺」。
+八节是本报告最多的一档（OpenClaw/Hermes 6~7 节）。prompt 侧的约束也写得最死：「Output EXACTLY the Markdown structure below: keep every section, in order. **Write "(none)" for an empty section — never drop a section.**」——把「空 section 该怎么办」这个最常见的省略借口直接堵死了。
+
+> ⚠️ **但这只是一条生成约束，不是保证。** dsh **没有**任何 section 校验器：`compaction-basic/src/` 里 "section" 一词只出现在 prompt 字符串里，没有解析、没有校验、没有因缺 section 而重试的路径。模型不听话、或者输出中途漏掉一节而正常收尾，都不会被发现。
+>
+> 它确定性地挡住的是另外三类（都是 fail-closed，抛错即不落盘）：
+>
+> | 检查 | 挡住什么 |
+> |---|---|
+> | `finish.kind === 'max-tokens'` → 抛 `MAX_TOKENS` | **输出被 `maxTokens` 截断**——半截的 checkpoint 不会被当成完整的用（注意隐藏的 reasoning token 也吃这个额度） |
+> | 摘要没有任何非空 text block → 抛错 | 空输出 |
+> | 收缩守卫（§13.12） | 摘要不比被替换内容小 |
+>
+> 所以准确的分档是：**dsh 在 prompt 侧的结构约束最强，在代码侧的结构校验为零**。真要「缺 section 不会发生」，得像 OpenClaw safeguard 那样解析必需 section 并在失败时重跑摘要（§3.9），或像 Goose 那样用可校验的 JSON schema（§10.2）。
 
 四条 Rules 里有两条是位置变更的后果（指令现在在对话末尾，模型会把它当成用户的新请求）：
 
@@ -3167,7 +3179,7 @@ flowchart TD
 | Goose | **JSON schema → Jinja 渲染** | ✓（摘要也进下一轮） | 主 provider | schema 约束 + `code_fence` 转义 |
 | Letta | Markdown 5 sections | ✓ | **per-provider 便宜模型默认值** | `clip_chars` 50000 + ack |
 | **Google ADK** | 自由格式 + 两条硬指令（**声明用户语言** / **列出用过的工具名**） | ✓ **分路径**：token-threshold 用上轮摘要作 seed；sliding-window 用 `overlap_size` 重看原始事件，并非单次同时使用两者 | `BaseEventsSummarizer` 可换，模型独立 | 上轮摘要的 thought 不进下一轮；tool 内容截断至 2000 字符 |
-| **dsh** | Markdown **8 sections**（最多的一档），空节须写 `(none)`，**不许删 section**；且**强制英文** | ✓ `<compacted-summary>` + "do not copy it forward verbatim / drop stale ones / merge" | 默认**主模型**（且刻意如此——换模型就失去 cache 复用）；可配独立 provider/model | **确定性收缩校验**：加了框架的摘要必须严格小于被替换内容，否则抛错不落盘且**不重新生成**（`compactionRetries` 默认 1，那是成功落盘后仍超阈值的**收敛**重试，不是失败重试）；只有 text block 进 checkpoint（reasoning/tool-call 滤掉，图片直接报错） |
+| **dsh** | Markdown **8 sections**（最多的一档），空节须写 `(none)`、**不许删 section**（仅 prompt 约束，**无校验器**）；且**强制英文** | ✓ `<compacted-summary>` + "do not copy it forward verbatim / drop stale ones / merge" | 默认**主模型**（且刻意如此——换模型就失去 cache 复用）；可配独立 provider/model | 三条 **fail-closed** 检查，抛错即不落盘且**不重新生成**：收缩守卫（摘要须严格小于被替换内容）、`max-tokens` 截断、空输出。**不校 section、不校保真**（`compactionRetries` 默认 1，那是成功落盘后仍超阈值的**收敛**重试，不是失败重试）；只有 text block 进 checkpoint（reasoning/tool-call 滤掉，图片直接报错） |
 
 ### 16.5 L6 持久化
 
@@ -3470,7 +3482,11 @@ if (framedSummaryTokenCount >= prepared.shadowedTokenCount) throw new Error(...)
 
 `compactionRetries`（默认 1）是**另一回事**，很容易与上面混为一谈：它是**收敛**重试，不是**失败**重试——只有在一轮压缩**成功落盘之后**、重测发现压力仍高于阈值时，才会再选一段头部区间压第二轮；`retries + 1` 轮之后仍超阈值就抛错。
 
-所以这条校验挡住的是「摘要比原文还长」和「压了等于没压」，**挡不住**「摘要漏了那个 commit hash」，也**不会**像 OpenClaw 那样为不合格的摘要再跑一次摘要器。按「内容保真度的在线校验 + 失败重试」这个口径，十一家里仍然只有 OpenClaw 一家（Gemini CLI 的二次 probe 随其弃用移入附录 A）。
+同一条路上另有两个 fail-closed 检查，一并列出才不至于高估或低估这套东西：`finish.kind === 'max-tokens'` 抛 `MAX_TOKENS`（**输出被生成上限截断的半截 checkpoint 不会落盘**，注意隐藏的 reasoning token 也吃这个额度），以及「摘要没有任何非空 text block」抛错。
+
+所以这三条挡住的是「摘要比原文还长」「压了等于没压」「只写了一半」「什么都没写」，**挡不住**「摘要漏了那个 commit hash」，甚至**挡不住「少了一个 section」**——dsh 的八节结构是纯 prompt 约束，代码侧没有任何 section 解析或校验（§13.7）。它也**不会**像 OpenClaw 那样为不合格的摘要再跑一次摘要器。按「内容保真度的在线校验 + 失败重试」这个口径，十一家里仍然只有 OpenClaw 一家（Gemini CLI 的二次 probe 随其弃用移入附录 A）。
+
+> 【我的判断】dsh 这一档很值得单独记住，因为它是一个**容易被误读成更强**的组合：prompt 侧的结构约束是全场最死的（八节、空节写 `(none)`、不许删），代码侧的结构校验却是零。读者——包括本报告初版——很容易把前者当成后者。**生成约束降低省略率，校验器才保证不省略**，两者不能互相顶替。
 
 顺便说，dsh 这条与 §20 第 15 条（Gemini CLI「压完 token 变多就回滚」）目标相同、位置相反：Gemini CLI 是**压完再数、变多就回滚**，dsh 是**落盘前先比、不合格就不写**。后者不需要回滚路径，也不需要一个「已经改坏了但要撤回」的中间状态。
 
@@ -3629,7 +3645,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 ## 20. 可借鉴的设计清单（按投入产出比排序）
 
 1. **让旧摘要以显式 preserve / integrate 语义参与下一轮**，而不是对摘要重新摘要 —— 代价只是 prompt 里的一句话，换掉的是级联失真，投入产出比最高。但它不是无例外的事实：Codex 只把旧摘要当普通历史再次入模，ADK sliding-window 则改用原始事件 overlap（§17.3）
-2. **结构化摘要约束** —— 无一条路径用「summarize this」了事；其中固定 section 或 schema 8/11，Codex 与 ADK 只列必含要点，kimi-code 反其道用第一人称视角+必含内容清单替代标题约束。Progress 分 Done/In-Progress/Blocked 是最小可用集（dsh 有 8 个 section，是最多的一档，却恰好缺 Blocked 这一格）。再加一句几乎免费的硬约束：**空 section 写 `(none)`，不许删**（dsh）——这样「缺 section」就从「可被程序检出」变成了「不会发生」
+2. **结构化摘要约束** —— 无一条路径用「summarize this」了事；其中固定 section 或 schema 8/11，Codex 与 ADK 只列必含要点，kimi-code 反其道用第一人称视角+必含内容清单替代标题约束。Progress 分 Done/In-Progress/Blocked 是最小可用集（dsh 有 8 个 section，是最多的一档，却恰好缺 Blocked 这一格）。再加一句几乎免费的 prompt 约束：**空 section 写 `(none)`，不许删**（dsh）——它堵掉的是「这节没内容所以我省了」这个最常见的省略借口。但**它只是降低省略率，不是保证**：dsh 没有 section 校验器，模型不听话就是不听话。想要真保证，得配第 13 条那个确定性校验（解析必需 section，缺了重跑），或者干脆用可校验的 schema（Goose）。**别把生成约束当成校验用**
 3. **压缩后重新注入项目约定**（OpenClaw `postCompactionSections`）—— ConstraintRot 实测：压缩把违规率从 0% 抬到 30%（单模型最高 59%），且软性组织策略的衰减是硬性安全规范的 **8.3 倍**。没有模型先验兜底的项目约定，一旦不在上下文里就等于不存在（§21.2）
 4. **把「不可压缩区」做成显式配置** —— 治理约束、安全策略不该混在普通历史里等摘要转述。ConstraintRot：约束**存活**时违规 0%，被丢弃时 **38%**——存不存活几乎就是全部（§21.2）
 5. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。十一家里八家这么做；OpenHands 走通用事件截断、Codex 直接全丢，kimi-code 未见独立层，是三个例外。再进一步：**裁完重测一遍，若压力已回到阈值以下就把 LLM 调用整个跳过**（dsh）
