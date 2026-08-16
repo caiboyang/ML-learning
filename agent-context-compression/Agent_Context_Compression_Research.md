@@ -2365,7 +2365,7 @@ compaction 在 dsh 里**不是 agent loop 的一部分**，而是一个可选的
 > | `standard` / `code` / `cordis` | ✅ | ✅ | ✅（显式配 8192 / 4096 / 1024） | ❌ |
 > | `minimal` | ❌ | ❌ | ❌ | ❌ |
 >
-> 三点要记住：
+> 四点要记住：
 >
 > 1. **本节所说的「默认」一律指完整 preset**，不能泛化到任意 dsh composition。`minimal` 的注释直接写着「Context compaction is absent」——它是一个**完全没有压缩**的可用 agent，这在本报告十一家里是独一份的处境（其余各家要么内建、要么至少默认开）。
 > 2. **tool-result-pruner 虽然在代码上是可选兄弟服务，但在三个完整 preset 里是装上的**，而且 preset 里显式写死的三个数就是包内默认值。所以 §13.4 那条「免 LLM 裁剪先跑」描述的是真实默认路径，不是一个需要额外开启的选项。
@@ -2398,13 +2398,31 @@ const options: GenerateOptions = {
 
 1. **`tools` 照带不误**，尽管摘要器一次工具都不会调。note 里写明理由：`tools` 是被缓存 token 序列的一部分，删掉它会让后面每一个 token 错位，反而彻底破坏复用。
 2. **`system` 与 messages 必须逐字节一致**——所以 `region.ts` 不是自己渲染文本，而是走 `session.requestHeader()` 拿到持久化的 `system`/`tools`，再把被压区间的每个 seq 过一遍 `session.deriveEventMessage()`，得到与真实请求**同一个折叠函数**产出的 `Message` 对象。
-3. **命中是尽力而为，正确性不是**。note 明确划出了保证成立与不成立的两种情形：
+3. **命中是尽力而为，正确性不是**。note 划出了几种情形：
 
    | 情形 | 是否复用 |
    |---|---|
-   | 自动压缩 | ✅ **保证命中**——自动压缩总是从 surface 头部锚定，被压区间就是那次请求的头部，重放前缀与它精确相同 |
+   | 自动压缩，且 pruner 没有改写被压区间 | ✅ 完整复用——自动压缩总是从 surface 头部锚定，被压区间就是那次请求的头部，重放前缀与它精确相同 |
+   | 自动压缩，但 pruner 改写了被压区间内的 tool result | ⚠️ **只能复用到第一个被改写的 token 为止**（见下） |
    | `compactRegion` 压中段 | ❌ 仍然正确，但被压区间不是请求头部，放弃复用 |
    | 配了独立的 `summarizationProvider/Model` | ❌ 换了模型就换了 cache key，note 称这是「部署方明确的取舍，不是缺陷」 |
+
+> ⚠️ **note 说的「保证命中」在实际发行组合里会打折，这是一处包级设计与组合级行为的漂移，值得单独记一笔。**
+>
+> `2026-07-21` 那篇 note 是为 `compaction-basic` **单独**写的，在那个前提下「自动压缩保证命中」成立。但三个完整 preset 都在它前面挂了 `toolResultPruner`（§13 开头的 preset 表），而 `compactIfNeeded()` 的实际顺序是：
+>
+> ```
+> 达到阈值 → pruneSession() 改写超长 tool/result（立即落进 durable surface）
+>          → 用同一个 meter 重测 → 仍超阈值才构造 summarization input
+> ```
+>
+> `buildSummarizationInput()` 读的是**当前 surface**，也就是**裁剪之后**的那一版；而那次 warm request 携带的是**裁剪之前**的原文。只要有一个被改写的节点落在被压区间里，重放前缀就在那个 token 处与 warm request 分叉。pruner 自己的 README 把这一点写得很清楚：
+>
+> > 【实现明说】"Replacing an earlier result invalidates reuse from the first changed token. The pruned prefix is eligible for reuse while its route, envelope, and preceding history remain identical." ——并且同一节明说「otherwise **the summarizer reads the pruned surface**」。
+>
+> 所以准确的说法是：**自动 head-range 压缩具备完整复用的条件，但只有在 pruner 未改写该区间时才真的完整命中**；一旦发生改写，可复用的只是第一个改动点之前的那段前缀。什么时候不改写？tool result 没有超过 `thresholdChars`（默认 8192 字符）的时候——换言之，**恰恰是历史里塞满大宗 tool 输出、最需要省这笔钱的会话，最容易吃不到完整红利**。
+>
+> 【我的判断】这不是谁写错了，而是两个各自都正确的机制叠在一起后的净效果：pruner 为了省 token 主动改写前缀，prefix-reuse 为了省钱要求前缀别动。它们的目标在这一点上是**相反**的。真要两头都要，得让 pruner 的改写只作用于**摘要输入**而不落进 durable surface（那样又会破坏「模型可见 ⟺ 已记录」的仓库不变量），或者干脆把裁剪推迟到摘要之后。dsh 选了「裁剪先落盘」，代价就记在这里。
 
 > **这不是 dsh 独有的想法，但是最完整的一次表述。** Letta 的 `self_compact_*` 已经在做同一件事的一半：摘要请求作为 user 消息追加、并把 tools 一起传入，源码注释 `For cache compatibility with regular agent requests`（§11.1）。差别在于——Letta 只在 self-compact 模式下如此，默认的 `sliding_window` 模式走独立 summarizer 就没有这个性质；dsh 把它做成**默认后端的唯一路径**，并且把「何时命中、何时放弃」写成契约。这条恰好补上了 §2.11 那个矛盾的第五种态度：**不躲开 cache，也不只控制打断频率，而是让压缩这次额外调用本身成为缓存前缀的延长**。
 
@@ -2517,7 +2535,7 @@ export const PRUNE_MARKER = '\n\n[... tool result middle pruned ...]\n\n'
 
 形态上就是 §2.1 那个「头尾保留、中间挖掉」，但有三个别处没有的工程细节：
 
-1. **按 Unicode code point 切，不按 UTF-16 code unit**——保留边界因此不可能劈开一个代理对；README 也如实承认「grapheme clusters may still split」（emoji ZWJ 序列仍可能被切开）。对 CJK 与 emoji 混排的 tool 输出，这是个真实的正确性问题
+1. **按 Unicode code point 切，不按 UTF-16 code unit**——保留边界因此不可能劈开一个**代理对**（BMP 之外的字符：大量 emoji、生僻汉字、部分符号；常用汉字在 BMP 内不受影响）。README 同时如实承认「grapheme clusters may still split」——由多个 code point 拼成的**字素簇**（ZWJ emoji、组合变音符号）仍可能被切开。也就是说这一层只保证不产出非法码元，不保证不切坏一个「看起来是一个字」的东西
 2. **只在压力已经够格之后才跑**：低于阈值的 pre-step 检查从不裁剪。这与 OpenClaw 把 pruning 做成一套**独立调度**（按 cache TTL 决定何时动手，§3.10）是相反的取舍——dsh 的 pruning 是压缩管线里的第一阶段，不是并行的第二套机制
 3. **每次替换前先追加一条 `compaction/prune` 影子计价事件**，把被遮蔽节点按同一个 token meter 计价记下来。理由是让纯函数式的消费者（UI 投影）能直接做减法，而不必为每个节点保留状态
 
@@ -2694,7 +2712,13 @@ if (framedSummaryTokenCount >= prepared.shadowedTokenCount) {
 
 注意计价的是**加了前言和标签之后的**替换消息，用的是同一个 token meter，所以两边口径一致。
 
-**这个抛错不会被压缩循环接住**——它穿过 `compactRegion` 一路抛到 `agent/pre-step` 的监听器，那里警告一句、带着未压缩的历史继续这一步。**不合格的摘要不会被重新生成**。
+**这个抛错不会被压缩循环接住**——它穿过 `compactRegion` 一路抛到 `agent/pre-step` 的监听器，那里警告一句，然后**从最新的 durable surface 继续这一步**。**不合格的摘要不会被重新生成。**
+
+「最新的 durable surface」这个措辞是必要的，不能简写成「未压缩的历史」：pruner 跑在摘要之前，而它的替换是**立刻落进 durable surface** 的。所以实际有两种情形——pruner 没产生替换，那就是原历史；pruner 已经落了盘，那就是**裁剪之后**的历史。README 把这条写成了明确规则：
+
+> 【实现明说】"Summarization failure preserves the latest durable surface — before any replacement, the auto path logs a warning and proceeds with full over-budget history. **If pruning already landed, a later summarization failure proceeds from that durable pruned surface.**"
+
+这也正是 §13.3 那条「只跑成了裁剪、摘要抛了异常反而可以授权重试」成立的原因：那次裁剪是真实、已落盘的进展。
 
 `compactionRetries`（默认 1）解决的是另一个问题，两者容易混淆：
 
@@ -3132,7 +3156,7 @@ flowchart TD
 | **② UI 可查看** | 人能在界面上翻到吗 | 用户排查「它为什么忘了这件事」 |
 | **③ 模型可检索** | agent 在回合内能主动捞回来吗 | **agent 自己**——只有这一层能修复「摘要漏了那个 commit hash」 |
 
-三层是递进的，但**做到 ① 不蕴含 ②，做到 ② 更不蕴含 ③**。本报告里绝大多数「保留全量历史」的说法讲的是 ①（§17.7）；§17.8 那个「压缩+检索的组合拳」讲的才是 ③。下表最后一列问的是 ③，其中写「事件流可回放」的几项严格说只到 ①——本报告没有逐家核实它们是否另有模型可调的检索工具。
+三层是递进的，但**做到 ① 不蕴含 ②，做到 ② 更不蕴含 ③**。本报告里绝大多数「保留全量历史」的说法讲的是 ①（§17.7）；§17.8 那个「压缩+检索的组合拳」讲的才是 ③。下表最后一列问的是 ③，所以「事件流可回放」这类只到 ① 的证据一律记为**未核实**，不默认算作 ③。
 
 dsh 把这个区别暴露得最清楚：事件日志一个字节都没丢（①），客户端投影也读得到（②），但**模型够不着**（③ 仍是 proposed，§13.15）。
 
@@ -3140,19 +3164,19 @@ dsh 把这个区别暴露得最清楚：事件日志一个字节都没丢（①�
 |---|---|:-:|---|
 | **OpenClaw** | append-only session tree + `firstKeptEntryId` | ✓ 磁盘全在 | ✓ `postIndexSync` 重索引进 memory search |
 | **Hermes** | in-place 重写 + soft archive（`active=0, compacted=1`） | ✓ 行还在 | ✓ `session_search` |
-| **OpenHands** | 事件流 + `Condensation` 事件，View 由重放推导 | ✓ 事件不可变 | 事件流可回放 |
+| **OpenHands** | 事件流 + `Condensation` 事件，View 由重放推导 | ✓ 事件不可变 | **未核实**（只确认到 ①：事件流可回放；未见模型可调的检索工具） |
 | **Codex** | 新 context window（window id 链） | ✓ rollout trace | — |
 | **Cline** | `markPreservedByCompaction` 标记 | ✓ | — |
 | **Goose** | **双可见性标志**，不删除 | ✓ UI 看到全量 | — |
 | **Letta** | 消息表 + recall memory | ✓ | ✓ archival/recall search，**摘要里写 lookup hints** |
-| **Google ADK** | **区间式 compaction 事件**（可重叠共存，subsumption 消解），View 由事件流推导 | ✓ 事件不可变，原始事件只是被区间遮蔽 | 事件流可回放；旧 compaction 保留 |
+| **Google ADK** | **区间式 compaction 事件**（可重叠共存，subsumption 消解），View 由事件流推导 | ✓ 事件不可变，原始事件只是被区间遮蔽 | **未核实**（只确认到 ①：事件流可回放、旧 compaction 保留；未见模型可调的检索工具） |
 | **opencode** | compaction 作为 `type: "compaction"` 消息进入会话（带 `summary` + `recent`），配 `Started`/`Ended` 事件 | ✓ 消息条目仍在，且有 `revert-compact` | — |
 | **dsh** | **append-only 事件日志 + surface 的 `replace` 位置操作**；三条 `compaction/*` 事件全部 log-only，摘要必须搭一条普通 `user/message` 才进得了模型 | ✓ 事件不可变；被遮蔽节点只是不在 surface 上 | 日志里全在（`shadowedSeqs` 精确记录被遮蔽了哪些），但**当前没有模型可调的回捞工具**——`history_read`/`history_search` 仍是 proposed（§13.15） |
 | **kimi-code** | **未核实**（`compactionOps.ts` 未通读） | **未核实** | — |
 | *Gemini CLI（附录 A）* | *直接替换 history 数组* | *✗（内存）* | *—* |
 | **Antigravity** | 未公开 | **n/a（未公开）** —— KI 与 Artifacts 落盘是官方确证的，但那是**抽取出来的知识**，不能据此推断原始 transcript 在压缩后仍完整保留 | 官方确证 agent 可访问 `~/.gemini/antigravity/` |
 
-同一个问题「压缩后原始数据怎么办」，开源十一家里可核实的有七类答案。dsh 与 OpenClaw / OpenHands 同属 append-only 一类（只是把「跳过哪一段」表达成一个 `replace` 位置操作），但因为停在 ② 而没到 ③，单画一支：
+同一个问题「压缩后原始数据怎么办」，开源十一家里可核实的有七类答案。下图分类的是 **L6 的持久化机制**，也就是第 ① 层：
 
 ```mermaid
 flowchart LR
@@ -3167,16 +3191,26 @@ flowchart LR
     Q -->|"compaction 作为消息条目<br/>summary + recent，可 revert"| H["opencode"]
     Q -.->|"未核实"| K["kimi-code<br/>持久化层未通读"]
     Q -.->|"直接替换数组（附录 A）"| E["Gemini CLI<br/>已弃用，不计入"]
-    A --> R["可检索回捞"]
+    A --> R["① 原文仍在"]
     B --> R
+    C --> R
     D --> R
+    F --> R
     G --> R
-    C --> U["UI 看得到全量<br/>但无检索"]
-    F --> U
-    H --> U
-    I --> U
-    E --> N["丢了就是丢了"]
+    H --> R
+    I --> R
+    E --> N["① 都没有<br/>丢了就是丢了"]
 ```
+
+**第 ③ 层不能从这张图上读出来，必须按平台单独核**——同一个机制节点里的平台能力并不一致：`A` 里 OpenClaw 有 memory search 而 OpenHands 未核实，`G` 里 Letta 有 recall memory 而 Codex 没有。目前确认做到 ③ 的只有三家（§17.8）：
+
+| 平台 | ③ 的形态 |
+|---|---|
+| **OpenClaw** | `postIndexSync` 把被压内容重索引进 memory search |
+| **Hermes** | `session_search` |
+| **Letta** | archival / recall search，且**摘要里专门写 lookup hints** 指路 |
+
+其余各家要么明确没有（Codex、Cline、Goose、opencode），要么本报告只确认到 ① 而未核实是否另有模型可调的检索工具（OpenHands、ADK）。**dsh 是 ① 做满、③ 为零**——日志一个字节没丢，`shadowedSeqs` 精确记着被遮蔽了哪些节点，但模型没有工具够得着（§13.15）。
 
 ### 16.6 可插拔性
 
@@ -3407,7 +3441,7 @@ ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约
 if (framedSummaryTokenCount >= prepared.shadowedTokenCount) throw new Error(...)
 ```
 
-加了前言和标签之后的替换消息若不严格小于被它替换的内容，就抛错、不落盘。**这个抛错会一路穿出压缩循环**：自动路径在 `agent/pre-step` 里捕获它、警告一句、带着未压缩的历史继续这一步——**不会重新生成一份摘要**。
+加了前言和标签之后的替换消息若不严格小于被它替换的内容，就抛错、不落盘。**这个抛错会一路穿出压缩循环**：自动路径在 `agent/pre-step` 里捕获它、警告一句，然后**从最新的 durable surface 继续这一步**（pruner 若已落盘，继续的就是裁剪后的历史，不是原历史）——**不会重新生成一份摘要**。
 
 `compactionRetries`（默认 1）是**另一回事**，很容易与上面混为一谈：它是**收敛**重试，不是**失败**重试——只有在一轮压缩**成功落盘之后**、重测发现压力仍高于阈值时，才会再选一段头部区间压第二轮；`retries + 1` 轮之后仍超阈值就抛错。
 
@@ -3430,7 +3464,7 @@ if (framedSummaryTokenCount >= prepared.shadowedTokenCount) throw new Error(...)
 |---|---|---|---|
 | OpenClaw | ✅ `cache-ttl` pruning 对齐缓存生命周期 | ❌ | 依赖 provider |
 | Hermes | ✅ `every_n_turns` 显式作为 cache-break 频率旋钮 | ❌ | ✅ `agent/prompt_caching.py`，Anthropic `system_and_3` 四断点 |
-| **dsh** | ❌ | ✅ **默认路径，且写成了契约**：命中条件（自动压缩总是锚在 surface 头部）、放弃条件（压中段 / 配了独立摘要模型）都明确列出 | 依赖 provider |
+| **dsh** | ❌ | ✅ **默认路径，且写成了契约**：命中条件（自动压缩锚在 surface 头部）、放弃条件（压中段 / 配了独立摘要模型）都明确列出。⚠️ 但发行 preset 在它前面挂了 pruner，pruner 一旦改写被压区间，就只能复用到第一个改动点为止（§13.1） | 依赖 provider |
 | **Letta** | ❌ | ✅ 仅 `self_compact_*`：摘要请求作为 user 消息追加、tools 一起传入（`For cache compatibility with regular agent requests`）。默认的 `sliding_window` 模式走独立 summarizer，没有这个性质 | ✅（同上一列） |
 | **ADK** | ❌ | ❌ | ✅ 独立的 `ContextCacheConfig`（`cache_intervals` 10 / `ttl_seconds` 1800 / `min_tokens`） |
 | 其余六家（OpenHands、Codex、Cline、Goose、opencode、kimi-code） | ❌ | ❌ | 未提供专门机制 |

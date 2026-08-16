@@ -427,10 +427,11 @@ if (window - used &lt; reserve) compact()</code></pre>
         <br><br>
         <b>关键是裁完要用同一个计量器重测一遍</b>：如果压力已经回到阈值以下，
         <b>整个摘要调用就跳过了</b> —— 省下的是一次 LLM 调用、一次 cache 失效，以及一次不可逆的信息损失。
-        实测中这一步经常就够了，尤其是那种「读了几个大文件然后跑了个测试」的回合。
+        「读了几个大文件然后跑了个测试」这类回合，光这一步就有可能把压力压回阈值以下。
         <br><br>
         一个容易写错的细节：按 <b>Unicode code point</b> 切，不要按 UTF-16 code unit ——
-        否则中文和 emoji 会被劈成半个字符。
+        否则落在<b>代理对</b>（surrogate pair）上的字符会被劈成半个，大量 emoji 和生僻汉字都在此列（常用汉字在 BMP 内，不受影响）。
+        注意这只挡住代理对：由多个 code point 组成的<b>字素簇</b>（比如 ZWJ 拼出来的 emoji）仍可能被切开。
       </div>
     </div>
 
@@ -677,7 +678,7 @@ if (window - used &lt; reserve) compact()</code></pre>
     <span class="tag">接下来读什么</span>
     这篇是学习路径，给的是<b>取舍和顺序</b>。具体到某一家怎么实现、常量是多少、源码在哪一行，
     去看配套的知识库：<a href="../Agent_Context_Compression_Research.html">开源 Agent 平台的 Context Compression 机制研究</a> ——
-    十五个平台逐文件读源码，附版本快照与一致性说明。
+    横向核对十五个平台与生态；其中开源项逐文件读源码，附版本快照与一致性说明。
     <br><br>
     建议读法：<b>先按本篇的六层模型建立坐标系，再拿知识库当参考手册查</b>，
     而不是从头读到尾。那篇三千多行，是拿来查的，不是拿来通读的。
@@ -689,8 +690,8 @@ if (window - used &lt; reserve) compact()</code></pre>
 <footer>
   <div class="foot-inner">
     <p>
-      本篇的所有机制、常量与实证数字均来自配套知识库，后者基于十五个平台的源码逐文件阅读，
-      并标注版本快照；文档与源码冲突处以源码为准。
+      本篇的所有机制、常量与实证数字均来自配套知识库，后者横向核对十五个平台与生态，
+      其中开源项逐文件阅读源码并标注版本快照；文档与源码冲突处以源码为准。
     </p>
     <p>
       <a href="../../">← 返回 ML Learning Notes</a> ·
