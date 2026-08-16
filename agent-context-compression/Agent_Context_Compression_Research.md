@@ -2358,6 +2358,20 @@ compaction 在 dsh 里**不是 agent loop 的一部分**，而是一个可选的
 
 > **一个方法学上的便利**：dsh 把「为什么这么设计」写进 `.agents/notes/`，每篇都有 Problem / Decision / **Alternatives considered** / Consequences。本报告其余各家的设计意图都要从源码和注释里反推，dsh 这一节里凡标【实现明说】的，都能直接引到具体某篇 note。
 
+> ⚠️ **「默认行为」在 dsh 里是 preset 决定的，不是包的存在决定的。** 「everything is a plugin」的代价是：光看仓库里有哪些包，说不出跑起来到底装了什么。核对 `apps/cli/config/agent-presets/*/agent.cordis.yml` 之后：
+>
+> | preset | compaction-basic | command-compact | tool-result-pruner | spill |
+> |---|:-:|:-:|:-:|:-:|
+> | `standard` / `code` / `cordis` | ✅ | ✅ | ✅（显式配 8192 / 4096 / 1024） | ❌ |
+> | `minimal` | ❌ | ❌ | ❌ | ❌ |
+>
+> 三点要记住：
+>
+> 1. **本节所说的「默认」一律指完整 preset**，不能泛化到任意 dsh composition。`minimal` 的注释直接写着「Context compaction is absent」——它是一个**完全没有压缩**的可用 agent，这在本报告十一家里是独一份的处境（其余各家要么内建、要么至少默认开）。
+> 2. **tool-result-pruner 虽然在代码上是可选兄弟服务，但在三个完整 preset 里是装上的**，而且 preset 里显式写死的三个数就是包内默认值。所以 §13.4 那条「免 LLM 裁剪先跑」描述的是真实默认路径，不是一个需要额外开启的选项。
+> 3. **spill 反而不在任何 CLI preset 里**——只出现在 `examples/acp-agent/` 的 overlay 中。所以 §13.14 那一层是**示例级的可选项**，不是出厂行为；它的 `maxInlineBytes` 默认不设（即不设就等于关闭）也印证了这一点。
+> 4. `tokenMeter` 被**刻意留在 host 平面**而不进 compaction 的 realm（preset 注释解释了原因：它按 Session 分 fold，还要给浏览器提供 context-meter 投影单元，放进 realm 会随 preset 挂载而生灭）。所以「装不装压缩」与「有没有测量」在 dsh 里是两件独立的事。
+
 ### 13.1 最本质的差异：摘要调用被设计成「上一次请求的前缀延长」
 
 绝大多数实现的摘要调用是**另起一个请求**：一个专门的 summarizer system prompt，后面跟压平成一段文本的历史。dsh 曾经也是，然后专门发了一篇 bug-fix note 把它改掉（`2026-07-21-compaction-summary-prefix-cache-reuse.md`）：
@@ -2453,6 +2467,22 @@ flowchart TD
 两条入口的差别要看清：**pressure 路径先查阈值再决定要不要裁剪**（低于阈值时连免费的裁剪都不跑），**overflow 路径完全不查阈值**——provider 已经用报错证明了必须压。
 
 选 `agent/pre-step` 而不是 post-step 或 pre-request 是有理由的（`2026-07-10-after-call-compaction-pressure-and-overflow-recovery.md`）：在「上一步已闭合、下一步尚未组装」这个边界上，assistant 输出、所有 tool result（含合成的）、post-tool 注入的上下文、steering 全都已经落盘，压力视图描述的是一次**已完成**的调用；而 pre-request 时刻路由还可能变、tools 还没冻结，那个视图是暂定的。
+
+**这条原则有一个具体到会咬人的后果：headerless session 不会自动压缩。** 两个自动入口都只认 `session.requestHeader()?.config` 里那条**已落盘的路由**：
+
+```ts
+function routedTarget(session: Session) {
+  const config = session.requestHeader()?.config
+  if (config === undefined || config.provider.length === 0 || config.model.length === 0) return undefined
+  return { provider: config.provider, model: config.model }
+}
+// compactIfNeeded: if (target === undefined) return null
+// agent/request-error 监听器: if (target === undefined) return next()
+```
+
+即使 `AgentOptions` 上有完整的 provider/model，只要这个 session 还没有完成过一次路由请求，pressure 就直接返回 `null`，overflow 也原样把错误委托下去。note 里把「回落到 `AgentOptions.model`」明确列为**被否掉的方案**：自动策略必须描述一次**已完成的、已记录的**请求，否则它衡量的就不是真实发生过的事。
+
+对比之下，**摘要器那一侧允许回落**：`summarizeWithLlm` 的目标解析顺序是「显式配置 → 最近落盘的路由 → `AgentOptions`」，因为那只是在挑一个模型去执行摘要，不是在判断压力。这个不对称是有意的，容易读漏。（仓库里 `headerless`、`headerless-summary`、`headerless-overflow` 三组测试就是钉这个边界的。）
 
 overflow 那一支不需要任何容量元数据——provider 已经用报错证明了「必须压」——所以它**绕过阈值和尾部保留预算**（用 `retainTokens = 0` 调同一个选点函数），直接取最大的、tool 配对合法的头部区间，仍然留下最新那个不可分割单元。
 
@@ -2662,7 +2692,24 @@ if (framedSummaryTokenCount >= prepared.shadowedTokenCount) {
 }
 ```
 
-注意计价的是**加了前言和标签之后的**替换消息，用的是同一个 token meter，所以两边口径一致。之后还有一层：`compactionRetries`（默认 1）允许再压一轮头部 checkpoint，`retries + 1` 轮之后仍高于阈值就抛错。
+注意计价的是**加了前言和标签之后的**替换消息，用的是同一个 token meter，所以两边口径一致。
+
+**这个抛错不会被压缩循环接住**——它穿过 `compactRegion` 一路抛到 `agent/pre-step` 的监听器，那里警告一句、带着未压缩的历史继续这一步。**不合格的摘要不会被重新生成**。
+
+`compactionRetries`（默认 1）解决的是另一个问题，两者容易混淆：
+
+```ts
+for (let attempt = 0; attempt <= spec.compactionRetries; attempt += 1) {
+  const range = selectCompactableRange(...)
+  if (range === null) { if (result === null) return null; break }
+  result = await this.compactRegion(range.start, range.end, agent, signal)  // ← 抛错即穿出循环
+  measurement = meter.measure(agent.session)
+  if (measurement.totalTokens < spec.thresholdTokens) return result         // ← 达标就收工
+}
+throw new Error(`compaction still above threshold after ${spec.compactionRetries + 1} compaction attempts ...`)
+```
+
+也就是说它是**收敛**重试：一轮压缩**成功落盘之后**重测仍超阈值，才再选一段压第二轮。失败路径根本进不到下一次迭代。
 
 > 对照 §20 第 15 条（Gemini CLI「压完 token 变多就回滚」）：dsh 把同一条护栏做成了**前置条件**而不是事后回滚——不合格的摘要根本不会被写进日志，也就不需要回滚路径。
 
@@ -2979,7 +3026,7 @@ flowchart TD
     Q -->|"框架内建策略<br/>但只在溢出后补救"| D["CrewAI<br/>overflow-only<br/>撞墙才动手"]
     Q -->|"产品 / SDK 内建策略<br/>主动按阈值 / cadence"| C["十一个开源平台"]
     Q -->|"闭源，策略未公开"| E["Antigravity<br/>只能核实分区 / 渐进加载"]
-    C --> C2["OpenClaw · Hermes · OpenHands · Codex · opencode<br/>kimi-code · Cline · Goose · Letta · ADK"]
+    C --> C2["OpenClaw · Hermes · OpenHands · Codex · opencode<br/>kimi-code · Cline · Goose · Letta · ADK · dsh"]
 ```
 
 补上这三家之后，「什么时候压」这个问题的答案谱系才完整：
@@ -3073,11 +3120,23 @@ flowchart TD
 | Goose | **JSON schema → Jinja 渲染** | ✓（摘要也进下一轮） | 主 provider | schema 约束 + `code_fence` 转义 |
 | Letta | Markdown 5 sections | ✓ | **per-provider 便宜模型默认值** | `clip_chars` 50000 + ack |
 | **Google ADK** | 自由格式 + 两条硬指令（**声明用户语言** / **列出用过的工具名**） | ✓ **分路径**：token-threshold 用上轮摘要作 seed；sliding-window 用 `overlap_size` 重看原始事件，并非单次同时使用两者 | `BaseEventsSummarizer` 可换，模型独立 | 上轮摘要的 thought 不进下一轮；tool 内容截断至 2000 字符 |
-| **dsh** | Markdown **8 sections**（最多的一档），空节须写 `(none)`，**不许删 section**；且**强制英文** | ✓ `<compacted-summary>` + "do not copy it forward verbatim / drop stale ones / merge" | 默认**主模型**（且刻意如此——换模型就失去 cache 复用）；可配独立 provider/model | **确定性收缩校验**：加了框架的摘要必须严格小于被替换内容，否则不落盘；`compactionRetries` 默认 1；只有 text block 进 checkpoint（reasoning/tool-call 滤掉，图片直接报错） |
+| **dsh** | Markdown **8 sections**（最多的一档），空节须写 `(none)`，**不许删 section**；且**强制英文** | ✓ `<compacted-summary>` + "do not copy it forward verbatim / drop stale ones / merge" | 默认**主模型**（且刻意如此——换模型就失去 cache 复用）；可配独立 provider/model | **确定性收缩校验**：加了框架的摘要必须严格小于被替换内容，否则抛错不落盘且**不重新生成**（`compactionRetries` 默认 1，那是成功落盘后仍超阈值的**收敛**重试，不是失败重试）；只有 text block 进 checkpoint（reasoning/tool-call 滤掉，图片直接报错） |
 
 ### 16.5 L6 持久化
 
-| 平台 | 模型 | 全量历史是否保留 | 能否检索回捞 |
+**先把「还在不在」拆成三层**，否则下表很容易被读成一个二元问题：
+
+| 层 | 问的是 | 谁受益 |
+|---|---|---|
+| **① 存储可恢复** | 原文还在磁盘 / 日志里吗 | 事后取证、重放、导出训练轨迹 |
+| **② UI 可查看** | 人能在界面上翻到吗 | 用户排查「它为什么忘了这件事」 |
+| **③ 模型可检索** | agent 在回合内能主动捞回来吗 | **agent 自己**——只有这一层能修复「摘要漏了那个 commit hash」 |
+
+三层是递进的，但**做到 ① 不蕴含 ②，做到 ② 更不蕴含 ③**。本报告里绝大多数「保留全量历史」的说法讲的是 ①（§17.7）；§17.8 那个「压缩+检索的组合拳」讲的才是 ③。下表最后一列问的是 ③，其中写「事件流可回放」的几项严格说只到 ①——本报告没有逐家核实它们是否另有模型可调的检索工具。
+
+dsh 把这个区别暴露得最清楚：事件日志一个字节都没丢（①），客户端投影也读得到（②），但**模型够不着**（③ 仍是 proposed，§13.15）。
+
+| 平台 | 模型 | 全量历史是否保留（①） | ③ 模型能否检索回捞 |
 |---|---|:-:|---|
 | **OpenClaw** | append-only session tree + `firstKeptEntryId` | ✓ 磁盘全在 | ✓ `postIndexSync` 重索引进 memory search |
 | **Hermes** | in-place 重写 + soft archive（`active=0, compacted=1`） | ✓ 行还在 | ✓ `session_search` |
@@ -3093,7 +3152,7 @@ flowchart TD
 | *Gemini CLI（附录 A）* | *直接替换 history 数组* | *✗（内存）* | *—* |
 | **Antigravity** | 未公开 | **n/a（未公开）** —— KI 与 Artifacts 落盘是官方确证的，但那是**抽取出来的知识**，不能据此推断原始 transcript 在压缩后仍完整保留 | 官方确证 agent 可访问 `~/.gemini/antigravity/` |
 
-同一个问题「压缩后原始数据怎么办」，开源十一家里可核实的有七类答案。dsh 与 OpenClaw / OpenHands 同属 append-only 一类（只是把「跳过哪一段」表达成一个 `replace` 位置操作），但**尚未提供回捞路径**，所以单画一支：
+同一个问题「压缩后原始数据怎么办」，开源十一家里可核实的有七类答案。dsh 与 OpenClaw / OpenHands 同属 append-only 一类（只是把「跳过哪一段」表达成一个 `replace` 位置操作），但因为停在 ② 而没到 ③，单画一支：
 
 ```mermaid
 flowchart LR
@@ -3249,7 +3308,7 @@ dsh 把这条推得比别家更远：仓库级不变量是「**Model-visible ⟺
 
 OpenClaw（postIndexSync）、Hermes（session_search）、Letta（recall memory + lookup hints）都承认：**摘要一定会丢东西，所以要留一条回捞的路**。
 
-反过来看，dsh 的日志里其实什么都在（`shadowedSeqs` 精确记录了哪些节点被遮蔽），**缺的只是一对模型可调的读取工具**——`history_read` / `history_search` 已经设计好了但还是 proposed 状态（§13.15）。那篇 note 顺带给出了一个判断，与本节可以互相印证：「a detail absent from summaries and keywords draws no recall. Recall converts **"unreachable even when suspected" into "reachable when suspected"**.」——回捞解决的不是「不知道自己丢了什么」，而是「怀疑丢了什么但够不着」。
+按 §16.5 那个三层口径，这一节问的正是**第 ③ 层**——上面三家是十一家里唯一确认做到 ③ 的。反过来看，dsh 的日志里其实什么都在（`shadowedSeqs` 精确记录了哪些节点被遮蔽），**缺的只是一对模型可调的读取工具**——`history_read` / `history_search` 已经设计好了但还是 proposed 状态（§13.15）。它是「① 做满、③ 为零」这个组合最清楚的样本：**存储层的完备性一点也不自动变成 agent 的记忆能力**。那篇 note 顺带给出了一个判断，与本节可以互相印证：「a detail absent from summaries and keywords draws no recall. Recall converts **"unreachable even when suspected" into "reachable when suspected"**.」——回捞解决的不是「不知道自己丢了什么」，而是「怀疑丢了什么但够不着」。
 
 ### 17.9 手动 compaction 语义与自动不同
 
@@ -3342,13 +3401,17 @@ Hermes 的注释把第一条的理由说得最清楚：**「assistant 输出的�
 
 ADK 走的是第三条路：不做事后校验，而是**在 prompt 里前置约束**（声明语言、列工具名），并在数据侧保证输入不被污染（上轮摘要的 thought 不进下一轮）。成本最低，但没有失败检测。
 
-**dsh 是第四条，而且必须把校验的对象讲清楚才不至于误读**：它确实有一条在线的、确定性的、失败即重试的校验——但校的是**收缩**，不是**保真**：
+**dsh 是第四条，而且必须把校验的对象和失败后的动作都讲清楚才不至于误读**：它确实有一条在线的、确定性的校验——但校的是**收缩**，不是**保真**，而且**失败不重试**：
 
 ```ts
 if (framedSummaryTokenCount >= prepared.shadowedTokenCount) throw new Error(...)
 ```
 
-加了前言和标签之后的替换消息若不严格小于被它替换的内容，就不落盘；`compactionRetries`（默认 1）再压一轮，仍高于阈值则抛错。这挡住的是「摘要比原文还长」和「压了等于没压」，**挡不住**「摘要漏了那个 commit hash」。所以按「内容保真度的在线校验」这个口径，十一家里仍然只有 OpenClaw 一家（Gemini CLI 的二次 probe 随其弃用移入附录 A）。
+加了前言和标签之后的替换消息若不严格小于被它替换的内容，就抛错、不落盘。**这个抛错会一路穿出压缩循环**：自动路径在 `agent/pre-step` 里捕获它、警告一句、带着未压缩的历史继续这一步——**不会重新生成一份摘要**。
+
+`compactionRetries`（默认 1）是**另一回事**，很容易与上面混为一谈：它是**收敛**重试，不是**失败**重试——只有在一轮压缩**成功落盘之后**、重测发现压力仍高于阈值时，才会再选一段头部区间压第二轮；`retries + 1` 轮之后仍超阈值就抛错。
+
+所以这条校验挡住的是「摘要比原文还长」和「压了等于没压」，**挡不住**「摘要漏了那个 commit hash」，也**不会**像 OpenClaw 那样为不合格的摘要再跑一次摘要器。按「内容保真度的在线校验 + 失败重试」这个口径，十一家里仍然只有 OpenClaw 一家（Gemini CLI 的二次 probe 随其弃用移入附录 A）。
 
 顺便说，dsh 这条与 §20 第 15 条（Gemini CLI「压完 token 变多就回滚」）目标相同、位置相反：Gemini CLI 是**压完再数、变多就回滚**，dsh 是**落盘前先比、不合格就不写**。后者不需要回滚路径，也不需要一个「已经改坏了但要撤回」的中间状态。
 
