@@ -3210,7 +3210,9 @@ flowchart LR
 | **Hermes** | `session_search` |
 | **Letta** | archival / recall search，且**摘要里专门写 lookup hints** 指路 |
 
-其余各家要么明确没有（Codex、Cline、Goose、opencode），要么本报告只确认到 ① 而未核实是否另有模型可调的检索工具（OpenHands、ADK）。**dsh 是 ① 做满、③ 为零**——日志一个字节没丢，`shadowedSeqs` 精确记着被遮蔽了哪些节点，但模型没有工具够得着（§13.15）。
+其余各家（Codex、Cline、Goose、opencode、OpenHands、ADK）一律记为「**本报告在固定 SHA 的源码核对中未发现**」——注意这是**未发现**，不是**明确不存在**：本报告没有逐家通读它们完整的工具注册表与调用链，所以给不出负证据。表里的 `—` 与这里的措辞是同一个证据边界。
+
+只有 **dsh 这一家可以下更强的结论**：它的回捞工具是被**明确写成 proposed 而尚未实现**的（`.agents/notes/proposed/feature/2026-07-06-recallable-compaction.md`），note 里连工具名 `history_read` / `history_search` 都定好了。所以 dsh 是**① 做满、③ 为零**——日志一个字节没丢，`shadowedSeqs` 精确记着被遮蔽了哪些节点，但模型确实没有工具够得着（§13.15）。这也是它比其余各家更适合用来说明这个区别的原因：**别人是「没找到」，它是「有设计、还没做」**。
 
 ### 16.6 可插拔性
 
