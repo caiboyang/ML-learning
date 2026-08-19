@@ -340,10 +340,21 @@ trial 1 ✅   trial 2 ✅   trial 3 ✅   trial 4 ❌   trial 5 ✅   <span clas
   <p>这里有一个逐级失控的过程：</p>
 
   <ul class="arrow">
-    <li><b>老世界</b>：代码是确定的。跑一次和跑一万次结果一样，可以提前写测试穷举正确性。</li>
+    <li><b>老世界</b>：<b>在受控输入和受控状态下</b>，同一段代码路径跑一次和跑一万次结果一样，所以能提前写测试把它钉住。</li>
     <li><b>加一个 LLM 功能</b>：输入 → LLM → 输出。非确定了，但还受约束 —— 就这么一进一出。</li>
     <li><b>agent</b>：LLM 开始<b>决定要做什么动作</b> —— 调工具、发请求、查数据。行为不再写在代码里，而是<b>在运行时涌现出来</b>。</li>
   </ul>
+
+  <div class="call pit">
+    <span class="tag">「老世界是确定的」也只是个近似</span>
+    并发、时间、随机数、网络、共享状态、不稳定的依赖 —— 普通软件同样会<b>同一个测试跑两次两个结果</b>，
+    测试也从来不能穷举正确性。这里的对比只在<b>受控条件下的确定性代码路径</b>上成立。
+    <br><br>
+    为什么要较这个真：<b>agent harness 恰好就是由这些东西搭起来的</b>。
+    把「跑出来不一样」一律记到 LLM 头上，你就会漏掉真正的基础设施噪声 ——
+    而 STEP 06 会告诉你，那种噪声会让你的 trial <b>不再互相独立</b>，
+    进而让 STEP 05 算的所有统计量失效。<b>先分清是模型在抖还是环境在抖。</b>
+  </div>
 
   <p>
     再叠上第二个不受约束的东西：<strong>输入是一个自然语言输入框</strong>。用户能说什么，你完全管不住。
@@ -357,8 +368,18 @@ trial 1 ✅   trial 2 ✅   trial 3 ✅   trial 4 ❌   trial 5 ✅   <span clas
 
   <p>
     所以事实来源从代码搬到了 <strong>trace</strong>。你的代码库里只有 prompt 和 tools ——
-    看它看不出会发生什么。<strong>只有真正跑过留下的那条轨迹，才记录了 agent 究竟想了什么、干了什么。</strong>
+    看它看不出会发生什么。<strong>只有真正跑过留下的那条轨迹，才记录了实际发生了什么。</strong>
   </p>
+
+  <div class="call pit">
+    <span class="tag">但别指望轨迹能告诉你它「想了什么」</span>
+    很多 provider <b>不暴露思维链</b>，暴露的也常常只是一份摘要。
+    所以 trace 里可靠的是<b>可观察物</b>：消息、工具调用与返回、状态变化。
+    <br><br>
+    这直接影响 STEP 08 的根因分析怎么做 —— 「意图理解」和「计划」这两层
+    <b>多数时候只能从可观察物反推</b>，不是直接读出来的。
+    按「能读到模型的想法」去设计归因流程，你会为一份不存在的证据留位置。
+  </div>
 
   <h3 class="sub">三个观测原语</h3>
 
@@ -432,7 +453,7 @@ trial 1 ✅   trial 2 ✅   trial 3 ✅   trial 4 ❌   trial 5 ✅   <span clas
     <div class="layer"><div class="lid">01</div><div class="lname">Task</div><div class="ldesc">一个测试用例：定义好的输入 + 成功判据。也叫 problem / test case。</div></div>
     <div class="layer"><div class="lid">02</div><div class="lname">Trial</div><div class="ldesc">对一个 task 的<b>一次</b>尝试。因为输出会变，同一个 task 必须跑多次 —— 这是 STEP 05 的全部前提。</div></div>
     <div class="layer"><div class="lid">03</div><div class="lname">Grader</div><div class="ldesc">打分逻辑。一个 task 可以挂多个 grader、每个 grader 可以有多条断言。</div></div>
-    <div class="layer"><div class="lid">04</div><div class="lname">Transcript</div><div class="ldesc">完整记录：输出、工具调用、推理、中间结果，以及原始 API 消息。也叫 trace / trajectory。</div></div>
+    <div class="layer"><div class="lid">04</div><div class="lname">Transcript</div><div class="ldesc">一次 trial 的执行记录：消息、工具调用与返回、中间结果、原始 API 报文。也叫 trace / trajectory。<b>它记录的是可观察的部分</b> —— 模型内部的思考只有在 provider 愿意吐出来时才有，而且常常只是一份摘要。</div></div>
     <div class="layer star"><div class="lid">05</div><div class="lname">Outcome</div><div class="ldesc"><b>最终的环境状态</b>。航班有没有真的写进数据库 —— 而不是模型在文本里说它订好了。<b>只对有副作用的任务成立。</b></div></div>
     <div class="layer star"><div class="lid">06</div><div class="lname">Output / artifact</div><div class="ldesc">agent<b>产出的那个东西</b>本身：一份报告、一段代码建议、一个答案。只读类任务（研究、问答、代码审查）<b>没有环境状态可查</b>，判的就是它。别把两者混成一个词。</div></div>
     <div class="layer"><div class="lid">07</div><div class="lname">Eval harness</div><div class="ldesc">跑 eval 的基础设施：下发指令、并发执行、记录每一步、调用 grader、汇总。</div></div>
@@ -1054,8 +1075,19 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
 
   <div class="call key">
     <span class="tag">这个修正还附赠一个诊断</span>
-    judge 越不准、真实通过率离 50% 越远，修正的幅度就越大。
-    而当 <b>TPR 和 FPR 靠得很近</b>时，分母趋近 0，修正值会爆炸 ——
+    <b>你的 judge 有一个「恰好不偏」的通过率，而它一般不是 50%。</b>
+    令观测等于真实解出来是
+    <span class="mono" style="text-transform:none;letter-spacing:0">θ* = FPR / (1 − TPR + FPR)</span>，
+    上面这组数代进去正好是 <b>60%</b>；修正幅度按
+    <span class="mono" style="text-transform:none;letter-spacing:0">(1 − TPR + FPR) × |真实通过率 − θ*|</span>
+    线性增长 —— <b>离 θ* 越远才越大，不是离 50% 越远越大</b>：
+    <br><br>
+    真实 60% → 观测 60.0%，<b>根本不用修</b>；真实 50% → 观测 52.5%，差 2.5 点；
+    真实 90% → 观测 82.5%，差 7.5 点；真实 10% → 观测 22.5%，差 <b>12.5 点</b>。
+    <b>10% 和 90% 离 50% 一样远，修正幅度却差 5 个点</b> —— 因为两侧错误率本来就不对称。
+    只有 TPR 和 TNR 相等时，θ* 才落在 50%。
+    <br><br>
+    另一头：当 <b>TPR 和 FPR 靠得很近</b>时，分母趋近 0，修正值会爆炸 ——
     这正好告诉你一件事：<b>一个分不开好坏的 judge，喂多少条数据都得不出结论。</b>
     先把 judge 的分辨力做上去，再谈跑量。
     <br><br>
