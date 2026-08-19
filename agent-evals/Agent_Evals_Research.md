@@ -816,8 +816,9 @@ release:
     - regression_pass_rate >= 0.98
     - authorization_failures == 0
     - reference_solutions_pass == 1.00
-  compare_to_baseline:
-    - capability_pass_rate_delta >= 0
+  compare_to_baseline:                  # 必须与基线同批题、同环境快照、同 trial 数重跑
+    - capability_pass_rate_delta >= 0   # 按 task 配对；并要求配对差值的 95% 区间下界 > -0.02
+    - regression_task_flips_to_fail == 0  # 逐题事件，不看率
     - p95_latency_delta <= 0.15
     - mean_cost_delta <= 0.20
   manual_review:
@@ -827,6 +828,13 @@ release:
 ```
 
 阈值只是示例，不是跨产品标准。高风险副作用系统可能要求关键切片 pass^k 接近 1；创作工具则可能更重视 pairwise 偏好与用户 A/B。
+
+【实践建议】注意 `hard_gates` 与 `compare_to_baseline` 的**判据类型不同**，别用同一把尺子：
+
+- **回归类是逐题事件**——「有没有原本通过的题翻成失败」，一道翻了就报警，不需要率的统计量。这也是为什么百来条的 CI 套件做回归门就够用。
+- **能力类是率的比较**——必须按 §6.3 配对、按 §6.4 给区间。拿一个百来条套件上的 `+4 分` 宣布能力提升，落在噪声里（§6.4 表：n = 100 时 95% 区间约 ±9.6 分）。
+
+【实践建议】`compare_to_baseline` 里的每一项都要求**基线与候选在同一次运行中重跑**，不能拿文档里记录的历史分数比较——模型别名、环境镜像与 grader 版本都可能已经变了（§9.1 的 `system_version`）。
 
 ---
 
@@ -1017,7 +1025,11 @@ Known limits:
 8. aggregate 必须可回钻到 task、trial、transcript、output/artifact、outcome 与 grader evidence；
 9. 通过率是估计量，报告时带标准误与分母，比较候选版本时保持配对；
 10. judge 的通过率在满足三个前提时才做误差修正，且修正值本身也带不确定性；
-11. guardrail 与 evaluator 的区别在**是否在请求路径上强制执行**，不在速度或实现是否确定性。
+11. guardrail 与 evaluator 的区别在**是否在请求路径上强制执行**，不在速度或实现是否确定性；而**误报的代价由它接到哪个下游决策决定**——接上 hard gate 的 evaluator 要按 guardrail 的标准校准；
+12. 被评对象是**可独立核验的东西**（有副作用任务看环境状态，只读任务看产物本身），**从不是 agent 关于自己的陈述**；产物指真实交付物（diff、文件、报告），不是对话的最后一句；
+13. 回归判据是**逐题事件**，能力判据是**率的比较**；只有后者需要配对与区间；
+14. 涉及混淆矩阵与修正的地方**必须先声明正类**（§5.4 用 fail 为正类，§5.6 用 pass 为正类）；
+15. 通用打包指标只作**探索信号**用于挑选待人工审阅的样本，线上评估器同样要从自己的误差分析里长出来，不得直接当质量结论。
 
 ---
 

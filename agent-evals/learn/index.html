@@ -489,8 +489,14 @@ trial 1 ✅   trial 2 ✅   trial 3 ✅   trial 4 ❌   trial 5 ✅   <span clas
 
   <p>
     「在线通常没有 ground truth」这一条决定了在线评测<strong>多半要换一套指标</strong>：
-    你没法判「答案对不对」，但可以判轨迹合不合理、效率高不高、有没有明显的质量问题、
+    你没法判「答案对不对」，但可以判轨迹合不合理、效率高不高、有没有踩到你已知的失败模式、
     用户有没有表现出受挫。
+  </p>
+  <p>
+    <strong>但「不需要参考答案」不等于「可以用通用指标」。</strong>
+    线上跑一个现成的 hallucination / helpfulness 打分器，得到的仍然是一个你不知道它在测什么的数
+    —— 见 STEP 08。在线评估器同样要<strong>从你自己的误差分析里长出来</strong>：
+    你在 STEP 08 归纳出的那几类失败模式，哪几类不需要标准答案就能识别，就把哪几类做成在线评估器。
   </p>
   <p>
     说「通常」是因为确实有例外，而且这些例外恰好落在 agent 最要紧的场景上：
@@ -1091,7 +1097,10 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
 
   <p>
     MT-Bench 那篇（Zheng et al., 2023）给了两个方向的结论。好消息：强 judge 与人类的一致率
-    <strong>可以超过 80%，和人与人之间的一致率是同一水平</strong>。坏消息是同一篇里列的三个偏差，到今天仍然成立：
+    <strong>可以超过 80%，和人与人之间的一致率是同一水平</strong>。
+    （注意这是<strong>那篇论文在它自己的成对比较数据集上</strong>的口径 ——
+    <strong>别把 80% 拿来当你自己 judge 的验收线</strong>，验收看的是上面说的 TPR/TNR。）
+    坏消息是同一篇里列的三个偏差，到今天仍然成立：
   </p>
 
   <div class="tiles">
@@ -1233,6 +1242,17 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
     前一个结论会让你去重写订单查询的 prompt，后一个会让你去补一条「查不到时该怎么办」的路径。
     <strong>同一批数据，两个完全不同的修法。</strong>
   </p>
+
+  <div class="call pit">
+    <span class="tag">但切开维度会把分母切小</span>
+    上表第二行的 n 只有 <b>20</b>。按 STEP 05 那把尺子，75% 这个数的 95% 区间大约是
+    <b>±19 个点</b> —— 单看它你说不出「到底有多糟」。
+    <br><br>
+    这里能下结论，是因为<b>两行之间差了 50 个点</b>，这个差距远远越过了两边的噪声。
+    换成 24% vs 35% 就不行了。
+    <b>切维度是为了定位问题，不是为了得到精确数字</b> —— 每加一维分母就掉一截，
+    到了三维交叉，很多格子只剩个位数。<b>看格子里的 n 再决定信不信它。</b>
+  </div>
 
   <p>
     对 agent 还有一个更针对性的工具：<strong>转移失败矩阵</strong> ——
@@ -1532,6 +1552,20 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
     </div>
   </div>
 
+  <div class="call key">
+    <span class="tag">100 条为什么够 —— 它和 STEP 05 不矛盾</span>
+    STEP 05 说 100 个任务的置信区间有 ±9.6 分，那为什么 CI 用 100 条就行？
+    因为<b>两者判的东西不一样</b>：
+    <br><br>
+    <b>回归门是按题判的，不是按率判的。</b>回归套件本来就跑在接近 100% 上，
+    你要的信号是「<b>有没有哪道原本会的题现在不会了</b>」—— 那是一个逐题的配对事件，
+    一道翻了就该报警，不需要率的统计量。
+    <br><br>
+    <b>能力增益才要按率判</b>，也才需要那把尺子。所以同一个 100 条的套件，
+    <b>拿来当回归门是够的，拿来宣布「能力涨了 4 分」就不够。</b>
+    搞混这一点，你会要么在 CI 里追噪声，要么拿回归套件去论证进步。
+  </div>
+
   <h3 class="sub">guardrail 不是 evaluator</h3>
 
   <p>
@@ -1658,6 +1692,8 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
       <tr><td>质量分很高，但出过越权事故</td><td>硬门被加权平均稀释了，它应该是布尔的</td><td>STEP 04</td></tr>
       <tr><td>judge 的精确率很漂亮</td><td>先看它拒判了多少 —— unknown 有没有从分母里溜走</td><td>STEP 07</td></tr>
       <tr><td>修好的 bug 过两周又回来了</td><td>回归用例入库时没验证「旧版失败、新版通过」</td><td>STEP 08</td></tr>
+      <tr><td>切了三维之后每格都很难看</td><td>先看格子里的 n —— 切一维掉一截分母，三维交叉常只剩个位数</td><td>STEP 08</td></tr>
+      <tr><td>agent 挂了但确实有报错栈</td><td>那是普通故障，别绕开 stack trace 去读 trace</td><td>STEP 02</td></tr>
       <tr><td>不知道该从哪开始</td><td>把你发版前手动点的那几下写下来，20~50 个就够</td><td>STEP 06</td></tr>
     </tbody>
   </table>
