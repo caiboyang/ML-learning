@@ -27,6 +27,15 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *另设一节**效果评测**，梳理 2026 年的实证工作：CompactionRL（只换摘要器就有 6.5 分区间）、ConstraintRot（压缩把治理约束违规率从 0% 抬到 30%，最高 59%）、Slipstream（按轨迹而非文本判定保真度），并逐条对应回设计清单。*
   * *先建立统一的六层参照模型（测量/触发/选点/减法/重组/持久化）解决各家术语打架的问题；再用一整节讲**设计理念**——头尾保留中间压缩在利用长上下文检索的 U 形曲线（Lost in the Middle）、迭代更新在规避有损压缩的级联失真、保留用户原话背后的信息论不对称、为什么不能告诉模型"上下文快满了"、摘要器为何是一个信任降级点、压缩与 prompt cache 的根本张力（含 DeepSeek Harness 那条「让摘要调用本身成为缓存前缀的延长」的解法）；然后逐家深挖，最后横向对比触发哲学（绝对余量 vs 百分比 vs cadence）、减法哲学、持久化模型，以及 OpenClaw × Hermes 逐项对照与可借鉴设计清单。*
 
+* 🎓 [把「感觉变好了」变成一个数字 — 从零学 Agent Evals](https://caiboyang.github.io/ML-learning/agent-evals/learn/)
+  * *十步学习路径，从零基础起步。假设你写过 agent 但没系统做过 eval，读完能自己设计、实现并校准一套评测。先算一笔账：真实成功率 75% 的 agent 什么都不改重跑一遍，**35.5% 看起来更好、29.0% 打平、35.5% 看起来更差**——噪声本身是对称的，方向是流程给的（只在上涨时宣布改进、重跑到满意为止、确认偏误），所以「把观察到的上涨当证据」等于把那 35.5% 全收成假阳性。然后讲 agent 为什么不能像软件那样测（没有 stack trace，因为失败的是推理；trace 才是事实来源），建立 run / trace / thread 三层坐标系与 task / trial / grader / outcome 的词汇表，拆解三种打分器的死角，讲透 **pass@k 与 pass^k** 和被普遍跳过的误差棒（50 个任务的 95% 区间有 ±13.6 分；配对比较、加题优先于加重复、聚类标准误可达朴素值 3 倍）。*
+  * *后半程是三块硬骨头：**LLM judge 怎么校准到值得信**（Critique Shadowing 七步、为什么禁用 1–5 分量表、为什么不能报原始一致率、以及把 judge 当有误差的仪器做通过率修正）；**误差分析**为什么才是真正产生价值的一步（开放式/轴心编码、只标第一个失败点、按维度切开失败率、转移失败矩阵）；以及 **eval 自己会坏**的三种方式——题写坏了、饱和、以及**被你自己磨损**（dev suite 与发布留出集必须分开）。编码 benchmark 那条线被完整跟到了今天：SWE-bench（2023，人工标注发现 68.3% 有问题）→ Verified（2024，去坏题并重排难度后 GPT-4o 从 16% 到 33.2%，模型一个字节没改）→ 因污染与饱和被弃用、转向 Pro（2026）→ **Pro 自己约 30% 是坏的，OpenAI 于 2026-07-08 撤回推荐**。三年三代，每代都在同一个位置出问题。另含评测控制面隔离、必须按过程评分的三类义务、硬门不参与加权、「第一处偏离」检查链（末端是 grader 输入与判定，让「是我们的 eval 错了」保持在候选假设里），以及「按症状查表」十六条。*
+  * *素材：LangChain（Harrison Chase）的 observability × eval 讲解、Anthropic 的 Demystifying Evals for AI Agents、Hamel Husain 的 LLM-as-a-Judge 与 Evals FAQ；扩展了 Miller 的误差棒、Shankar 的 criteria drift、MT-Bench 的 judge 偏差与 τ-bench 的 pass^k。文中还并列了 Anthropic 与 Hamel 在「要不要 eval 驱动开发」上的**真实分歧**并给出调和方案。*
+
+* 📚 [Agent Evals 参考手册：证据链、Grader 合同与统计口径](https://caiboyang.github.io/ML-learning/agent-evals/Agent_Evals_Research.html)（[Markdown 原文](agent-evals/Agent_Evals_Research.md)）
+  * *与上面的学习页配套：**那篇给取舍和顺序，这篇给字段、模板和来源边界**。统一词典（task / trial / run / trace / trajectory / output-artifact / outcome，并说明这些词在各平台粒度不一致时该核对什么）、成功判据的三层分层（task-result contract / process obligations / experience quality）、grader 梯子、Judge Contract 的 YAML、误差修正的三个前提、误差棒的完整口径、按「第一处偏离」归因的检查表、四类 agent 的 grader 重心、最小 harness 的目录与不可变 trial 产物 schema、release gate 示例、十二个反模式，以及三份可直接抄的 checklist（task review / judge review / experiment handoff）。*
+  * *每条陈述都标注了 **【来源事实】/【综合解释】/【实践建议】**，并附来源账本与证据边界；文末单列与学习页的一致性检查十一条。*
+
 * 🎓 [从 API 到 MCP 2.0 — 零基础十步学习路径](https://caiboyang.github.io/ML-learning/mcp-2.0/learn/)
   * *从普通 API、RPC 与 JSON-RPC 的底层差异讲起，还原 MCP 1.0 的 Host / Client / Server、生命周期与 primitives，再解释 MCP 2.0 为什么走向 stateless、MRTR、显式状态 handle 与缓存，并串起 extensions、auth 和迁移。本专题正文统一使用 **MCP 1.0 → MCP 2.0** 的教学分代，分别对应官方 **2025-11-25 及以前 → 2026-07-28 及以后**；wire 报文与兼容声明仍使用日期版本。*
   * *与下面的参考手册配套：建议先读学习页建立问题意识和协议心智模型，再用手册核对规范、线级报文与迁移细节。*
