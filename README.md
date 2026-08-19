@@ -32,6 +32,10 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *后半程是三块硬骨头：**LLM judge 怎么校准到值得信**（Critique Shadowing 七步、为什么禁用 1–5 分量表、为什么不能报原始一致率、以及把 judge 当有误差的仪器做通过率修正）；**误差分析**为什么才是真正产生价值的一步（开放式/轴心编码、只标第一个失败点、按维度切开失败率、转移失败矩阵）；以及 **eval 自己会坏**的三种方式——题写坏了、饱和、以及**被你自己磨损**（dev suite 与发布留出集必须分开）。编码 benchmark 那条线被完整跟到了今天：SWE-bench（2023，人工标注发现 68.3% 有问题）→ Verified（2024，去坏题并重排难度后 GPT-4o 从 16% 到 33.2%，模型一个字节没改）→ 因污染与饱和被弃用、转向 Pro（2026）→ **Pro 自己约 30% 是坏的，OpenAI 于 2026-07-08 撤回推荐**。三年三代，每代都在同一个位置出问题。另含评测控制面隔离、必须按过程评分的三类义务、硬门不参与加权、「第一处偏离」检查链，以及「按症状查表」十四条。*
   * *素材：LangChain（Harrison Chase）的 observability × eval 讲解、Anthropic 的 Demystifying Evals for AI Agents、Hamel Husain 的 LLM-as-a-Judge 与 Evals FAQ；扩展了 Miller 的误差棒、Shankar 的 criteria drift、MT-Bench 的 judge 偏差与 τ-bench 的 pass^k。文中还并列了 Anthropic 与 Hamel 在「要不要 eval 驱动开发」上的**真实分歧**并给出调和方案。*
 
+* 📚 [Agent Evals 参考手册：证据链、Grader 合同与统计口径](https://caiboyang.github.io/ML-learning/agent-evals/Agent_Evals_Research.html)（[Markdown 原文](agent-evals/Agent_Evals_Research.md)）
+  * *与上面的学习页配套：**那篇给取舍和顺序，这篇给字段、模板和来源边界**。统一词典（task / trial / run / trace / trajectory / output-artifact / outcome，并说明这些词在各平台粒度不一致时该核对什么）、成功判据的三层分层（task-result contract / process obligations / experience quality）、grader 梯子、Judge Contract 的 YAML、误差修正的三个前提、误差棒的完整口径、按「第一处偏离」归因的检查表、四类 agent 的 grader 重心、最小 harness 的目录与不可变 trial 产物 schema、release gate 示例、十二个反模式，以及三份可直接抄的 checklist（task review / judge review / experiment handoff）。*
+  * *每条陈述都标注了 **【来源事实】/【综合解释】/【实践建议】**，并附来源账本与证据边界；文末单列与学习页的一致性检查十一条。*
+
 * 🎓 [从 API 到 MCP 2.0 — 零基础十步学习路径](https://caiboyang.github.io/ML-learning/mcp-2.0/learn/)
   * *从普通 API、RPC 与 JSON-RPC 的底层差异讲起，还原 MCP 1.0 的 Host / Client / Server、生命周期与 primitives，再解释 MCP 2.0 为什么走向 stateless、MRTR、显式状态 handle 与缓存，并串起 extensions、auth 和迁移。本专题正文统一使用 **MCP 1.0 → MCP 2.0** 的教学分代，分别对应官方 **2025-11-25 及以前 → 2026-07-28 及以后**；wire 报文与兼容声明仍使用日期版本。*
   * *与下面的参考手册配套：建议先读学习页建立问题意识和协议心智模型，再用手册核对规范、线级报文与迁移细节。*
