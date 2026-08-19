@@ -18,6 +18,13 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ### 4. Agent Engineering
 
+* 🎓 [不再凭感觉调 Agent — 十步建立 Eval 系统](https://caiboyang.github.io/ML-learning/agent-evals/learn/)
+  * *从一次「agent 说已完成、grader 给了 100 分、真实环境却没有变化」的错误现场出发，建立 Task → Trial → Transcript + Task Result → Graders → Decision 的完整证据链。十步讲清 success contract、20–50 个初始任务的构造、capability / regression 分工、dev / holdout 边界、code / model / human grader 的选择、Critique Shadowing 与 LLM judge 校准、pass@k / pass^k、run / trace / thread、生产失败回流，以及一个不绑定平台的最小 eval harness。*
+  * *与下面的参考手册配套：学习页用同一个退款案例串起十步主线；手册再展开完整词典、跨 Agent 类型设计、可复制模板与来源边界。*
+
+* 📚 [Agent Evals：从「感觉变好了」到可复现实验](https://caiboyang.github.io/ML-learning/agent-evals/Agent_Evals_Research.html)（[Markdown 原文](agent-evals/Agent_Evals_Research.md)）
+  * *以 Anthropic 的 agent eval 体系、Hamel Husain 的 Critique Shadowing 和 LangChain 的 observability → evaluation 飞轮为三条主轴，并扩展到 evaluator criteria drift、LLM judge 的 position / verbosity / self-enhancement 偏差、τ-bench 的最终状态与 pass^k。覆盖 task / trial / output / outcome / grader / harness 统一词典、数据集与 grader 设计、随机性、trace 首个偏离点、不同 agent 类型、最小目录与 release gate、十二个反模式和可复制 checklist；参考手册明确区分来源事实、综合解释与实践建议，学习页则在各步末给出对应来源与扩展边界。*
+
 * 🎓 [把上下文压小而不压坏 — 从零学 Agent Context Compression](https://caiboyang.github.io/ML-learning/agent-context-compression/learn/)
   * *十步学习路径，从零基础起步。假设你只知道「LLM 有上下文窗口」，读完能自己设计并评估一套压缩策略。先看一次 agent 被撑爆的死亡现场，再讲窗口这堵墙的三个反直觉性质（每轮重发全部历史、装得下≠用得好、墙的位置未必是文档写的那个）；然后建立六层坐标系，手把手走完最小可用实现的六步，逐个拆解五个必踩的坑；最后是三个决定系统形态的设计选择、压缩解决不了的边界，以及怎么验证自己压对了。*
   * *与下面的知识库配套：**这篇给取舍和顺序，那篇给源码和常量**。建议先读这篇建立坐标系，再拿那篇当参考手册查。*

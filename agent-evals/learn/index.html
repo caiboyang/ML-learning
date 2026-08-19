@@ -1,0 +1,1514 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="从零建立 Agent Eval 系统：任务集、outcome、grader、LLM-as-a-judge、随机性、trace 与生产回流。" />
+<title>不再凭感觉调 Agent — 十步建立 Eval 系统</title>
+<style>
+:root{
+  --bg:#080a0f;
+  --bg-2:#0d1119;
+  --panel:#121824;
+  --panel-2:#171f2d;
+  --line:#273143;
+  --line-soft:#1b2331;
+  --ink:#f1efe8;
+  --ink-soft:#c5c2ba;
+  --ink-dim:#8d919b;
+  --lime:#b9f56d;
+  --lime-soft:#d6ff9e;
+  --cyan:#64d8ff;
+  --amber:#ffc66f;
+  --rose:#ff7f98;
+  --violet:#bca7ff;
+  --content:860px;
+  --wide:1050px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{
+  margin:0;
+  background:
+    radial-gradient(900px 460px at 80% -80px,rgba(100,216,255,.10),transparent 68%),
+    radial-gradient(700px 520px at -10% 22%,rgba(185,245,109,.07),transparent 68%),
+    var(--bg);
+  color:var(--ink);
+  font-family:ui-serif,"Noto Serif SC","Songti SC",Georgia,serif;
+  font-size:18px;
+  line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+}
+a{
+  color:var(--cyan);
+  text-decoration:underline;
+  text-decoration-thickness:.08em;
+  text-underline-offset:3px;
+}
+a:hover{text-decoration:underline;text-underline-offset:3px}
+code,pre,.mono{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+}
+code{
+  padding:1px 5px;
+  border-radius:4px;
+  background:rgba(100,216,255,.08);
+  color:#a9eaff;
+  font-size:.84em;
+}
+pre{
+  margin:24px 0;
+  padding:18px 19px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#090d14;
+  color:var(--ink-soft);
+  font-size:13px;
+  line-height:1.7;
+}
+pre code{padding:0;background:none;color:inherit;font-size:inherit}
+.skip{
+  position:absolute;
+  left:-9999px;
+  top:10px;
+  z-index:10;
+  padding:8px 12px;
+  background:var(--ink);
+  color:var(--bg);
+}
+.skip:focus{left:10px}
+.mono{
+  font-size:11px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.hero{
+  position:relative;
+  overflow:hidden;
+  padding:82px 24px 58px;
+  border-bottom:1px solid var(--line);
+}
+.hero::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  opacity:.26;
+  background-image:
+    linear-gradient(rgba(100,216,255,.12) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(100,216,255,.12) 1px,transparent 1px);
+  background-size:54px 54px;
+  mask-image:linear-gradient(to bottom,#000,transparent 88%);
+}
+.hero::after{
+  content:"EVAL";
+  position:absolute;
+  right:-18px;
+  bottom:-92px;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(185,245,109,.11);
+  font:800 clamp(150px,28vw,360px)/1 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:-.08em;
+  pointer-events:none;
+}
+.hero-inner{
+  position:relative;
+  width:min(100%,var(--wide));
+  margin:0 auto;
+}
+.crumbs{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:11px;
+  color:var(--ink-dim);
+}
+.dot{width:4px;height:4px;border-radius:50%;background:var(--ink-dim)}
+.eyebrow{margin-top:34px;color:var(--lime)}
+h1{
+  max-width:900px;
+  margin:15px 0 18px;
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:clamp(43px,7.5vw,84px);
+  line-height:1.02;
+  letter-spacing:-.045em;
+}
+h1 .accent{color:var(--lime)}
+.lede{
+  max-width:760px;
+  margin:0;
+  color:var(--ink-soft);
+  font-size:21px;
+  line-height:1.68;
+}
+.lede strong{color:var(--ink);font-weight:650}
+.hero-meta{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  margin-top:44px;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+.hero-meta>div{padding:18px 14px}
+.hero-meta>div+div{border-left:1px solid var(--line)}
+.hero-meta .label{color:var(--ink-dim)}
+.hero-meta .value{
+  margin-top:5px;
+  color:var(--ink);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:14px;
+  line-height:1.45;
+}
+.thesis{
+  width:min(100%,var(--content));
+  margin:0 auto;
+  padding:50px 24px 12px;
+}
+.thesis-box{
+  padding:23px 24px;
+  border:1px solid rgba(185,245,109,.35);
+  border-left:3px solid var(--lime);
+  border-radius:10px;
+  background:linear-gradient(120deg,rgba(185,245,109,.07),rgba(100,216,255,.035));
+  color:var(--ink-soft);
+  font-size:19px;
+}
+.thesis-box strong{color:var(--lime-soft)}
+.route{
+  width:min(100%,var(--wide));
+  margin:42px auto 0;
+  padding:0 24px;
+}
+.route-title{margin-bottom:12px;color:var(--ink-dim)}
+.route-list{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+}
+.route-list a{
+  min-width:0;
+  padding:11px 10px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:12px;
+  line-height:1.35;
+  text-decoration:none;
+}
+.route-list a:hover{
+  border-color:var(--cyan);
+  color:var(--ink);
+  text-decoration:none;
+}
+.route-list b{display:block;margin-bottom:3px;color:var(--lime);font-family:ui-monospace,monospace;font-size:10px}
+article{width:min(100%,var(--content));margin:0 auto;padding:24px 24px 30px}
+.lesson{
+  margin:92px 0;
+  scroll-margin-top:24px;
+}
+.lesson-head{
+  display:grid;
+  grid-template-columns:74px minmax(0,1fr);
+  gap:16px;
+  align-items:start;
+  padding-top:24px;
+  border-top:1px solid var(--line);
+}
+.step-no{padding-top:6px;color:var(--lime)}
+h2{
+  margin:0;
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:clamp(27px,4.7vw,39px);
+  line-height:1.18;
+  letter-spacing:-.02em;
+}
+.lesson-sub{
+  grid-column:2;
+  margin-top:-5px;
+  color:var(--ink-dim);
+}
+.deck{
+  margin:24px 0 28px;
+  padding-left:16px;
+  border-left:2px solid var(--violet);
+  color:#d8d0ff;
+  font-size:20px;
+  font-style:italic;
+  line-height:1.58;
+}
+p{margin:0 0 18px}
+p strong{color:var(--ink);font-weight:650}
+h3{
+  margin:38px 0 13px;
+  color:var(--ink);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:21px;
+  line-height:1.3;
+}
+.callout{
+  margin:25px 0;
+  padding:17px 18px;
+  border:1px solid var(--line);
+  border-left:3px solid var(--cyan);
+  border-radius:9px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.65;
+}
+.callout.key{border-left-color:var(--lime)}
+.callout.warn{border-left-color:var(--rose)}
+.callout.note{border-left-color:var(--amber)}
+.tag{
+  display:inline-block;
+  margin-bottom:9px;
+  padding:2px 7px;
+  border-radius:999px;
+  background:rgba(100,216,255,.10);
+  color:var(--cyan);
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+}
+.key .tag{background:rgba(185,245,109,.10);color:var(--lime)}
+.warn .tag{background:rgba(255,127,152,.11);color:var(--rose)}
+.note .tag{background:rgba(255,198,111,.11);color:var(--amber)}
+.callout b{color:var(--ink)}
+figure.explain{
+  width:min(calc(100vw - 32px),var(--wide));
+  margin:30px 50%;
+  padding:20px;
+  transform:translateX(-50%);
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:linear-gradient(145deg,rgba(18,24,36,.98),rgba(10,14,22,.98));
+}
+.figure-title{
+  margin-bottom:16px;
+  color:var(--ink-dim);
+  font-family:ui-monospace,monospace;
+  font-size:11px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+figure.explain figcaption{
+  margin-top:16px;
+  padding-top:12px;
+  border-top:1px solid var(--line-soft);
+  color:var(--ink-dim);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:12px;
+  line-height:1.55;
+}
+.source-line{
+  margin-top:24px;
+  padding-top:12px;
+  border-top:1px solid var(--line-soft);
+  color:var(--ink-dim);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:12px;
+  line-height:1.65;
+}
+.source-line a{color:var(--ink-soft)}
+.scene{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.scene-card{
+  min-width:0;
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--panel);
+}
+.scene-card .cap{margin-bottom:9px;color:var(--cyan);font:10px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase}
+.scene-card .line{margin:7px 0;color:var(--ink-soft);font:13px/1.5 ui-sans-serif,system-ui,sans-serif}
+.scene-card .ok{color:var(--lime)}
+.scene-card .bad{color:var(--rose)}
+.scene-card.danger{border-color:rgba(255,127,152,.55)}
+.score-strip{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+  margin-top:13px;
+  padding:10px 12px;
+  border-radius:7px;
+  background:#090d14;
+}
+.score-strip b{font:700 27px/1 ui-sans-serif,system-ui,sans-serif;color:var(--lime)}
+.evidence-chain{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:7px;
+  align-items:stretch;
+}
+.node{
+  position:relative;
+  min-width:0;
+  padding:12px 9px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:11px/1.45 ui-sans-serif,system-ui,sans-serif;
+  overflow-wrap:anywhere;
+}
+.node b{display:block;margin-bottom:4px;color:var(--ink);font-size:12px}
+.node:not(:last-child)::after{
+  content:"→";
+  position:absolute;
+  right:-8px;
+  top:50%;
+  z-index:2;
+  transform:translate(50%,-50%);
+  color:var(--lime);
+}
+.node.hot{border-color:rgba(185,245,109,.55)}
+.node.hot b{color:var(--lime-soft)}
+.two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:25px 0}
+.card{
+  min-width:0;
+  padding:17px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:14px;
+  line-height:1.6;
+}
+.card .label{
+  margin-bottom:8px;
+  color:var(--lime);
+  font:10px ui-monospace,monospace;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.card b{color:var(--ink)}
+.contract{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.contract-card{
+  min-width:0;
+  padding:16px;
+  border-top:2px solid var(--lime);
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:13px/1.6 ui-sans-serif,system-ui,sans-serif;
+}
+.contract-card:nth-child(2){border-top-color:var(--cyan)}
+.contract-card:nth-child(3){border-top-color:var(--violet)}
+.contract-card b{display:block;margin-bottom:6px;color:var(--ink);font-size:15px}
+.table-wrap{width:100%;max-width:100%;margin:25px 0;overflow-x:auto}
+table{
+  width:100%;
+  min-width:620px;
+  border-collapse:collapse;
+  color:var(--ink-soft);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:13px;
+  line-height:1.55;
+}
+th,td{padding:11px 12px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+th{color:var(--cyan);font:10px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase}
+td strong,td b{color:var(--ink)}
+.dataset-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+}
+.dataset-cell{
+  min-width:0;
+  padding:14px 12px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:12px/1.5 ui-sans-serif,system-ui,sans-serif;
+}
+.dataset-cell b{display:block;margin-bottom:5px;color:var(--ink);font-size:13px}
+.dataset-cell .sign{color:var(--lime);font:10px ui-monospace,monospace}
+.grader-stack{display:grid;gap:9px}
+.grader{
+  display:grid;
+  grid-template-columns:130px minmax(0,1fr) 120px;
+  gap:12px;
+  align-items:center;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:12px/1.5 ui-sans-serif,system-ui,sans-serif;
+}
+.grader b{color:var(--ink);font-size:14px}
+.grader .cost{text-align:right;color:var(--ink-dim);font:10px ui-monospace,monospace;text-transform:uppercase}
+.grader:nth-child(1){border-left:3px solid var(--lime)}
+.grader:nth-child(2){border-left:3px solid var(--cyan)}
+.grader:nth-child(3){border-left:3px solid var(--violet)}
+.gate{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+}
+.gate-box{
+  padding:15px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:12px/1.55 ui-sans-serif,system-ui,sans-serif;
+}
+.gate-box b{display:block;margin-bottom:4px;color:var(--ink);font-size:14px}
+.gate-arrow{color:var(--lime);font-family:ui-monospace,monospace}
+.shadow-loop{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+}
+.loop-step{
+  position:relative;
+  min-width:0;
+  padding:14px 11px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:12px/1.5 ui-sans-serif,system-ui,sans-serif;
+}
+.loop-step b{display:block;margin-bottom:5px;color:var(--ink)}
+.loop-step:not(:last-child)::after{
+  content:"→";
+  position:absolute;
+  right:-9px;
+  top:50%;
+  z-index:2;
+  transform:translate(50%,-50%);
+  color:var(--cyan);
+}
+.confusion{width:100%;min-width:0;border-collapse:separate;border-spacing:5px;table-layout:fixed}
+.sr-only{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+.cm{
+  padding:12px 8px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  text-align:center;
+  font:11px/1.4 ui-sans-serif,system-ui,sans-serif;
+}
+.cm.head{background:transparent;border-color:transparent;color:var(--ink-dim);font-family:ui-monospace,monospace;font-weight:400;vertical-align:middle}
+.cm.good{border-color:rgba(185,245,109,.42);background:rgba(185,245,109,.06)}
+.cm.bad{border-color:rgba(255,127,152,.38);background:rgba(255,127,152,.05)}
+.cm b{display:block;color:var(--ink);font-size:18px}
+.bias-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.bias{
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:12px/1.55 ui-sans-serif,system-ui,sans-serif;
+}
+.bias b{color:var(--rose)}
+.metric-duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.metric{
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--panel);
+}
+.metric .name{color:var(--cyan);font:12px ui-monospace,monospace}
+.metric .formula{margin:10px 0;color:var(--ink);font:700 clamp(21px,4vw,30px)/1.2 ui-sans-serif,system-ui,sans-serif}
+.metric .num{color:var(--lime);font:800 37px/1 ui-sans-serif,system-ui,sans-serif}
+.metric .desc{margin-top:9px;color:var(--ink-soft);font:13px/1.5 ui-sans-serif,system-ui,sans-serif}
+.metric.reliable .num{color:var(--rose)}
+.trace-map{
+  display:grid;
+  grid-template-columns:150px minmax(0,1fr);
+  gap:10px;
+}
+.trace-label{
+  display:grid;
+  place-items:center;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  color:var(--ink);
+  font:700 13px ui-sans-serif,system-ui,sans-serif;
+}
+.runs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.run{
+  padding:11px 8px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  text-align:center;
+  font:11px/1.4 ui-sans-serif,system-ui,sans-serif;
+}
+.run.hot{border-color:rgba(255,127,152,.55);color:var(--rose)}
+.flywheel{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:7px;
+}
+.wheel-step{
+  position:relative;
+  min-width:0;
+  padding:12px 8px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:11px/1.45 ui-sans-serif,system-ui,sans-serif;
+}
+.wheel-step b{display:block;margin-bottom:3px;color:var(--ink);font-size:12px}
+.wheel-step:not(:last-child)::after{
+  content:"→";
+  position:absolute;
+  right:-8px;
+  top:50%;
+  z-index:2;
+  transform:translate(50%,-50%);
+  color:var(--lime);
+}
+.file-tree{
+  padding:17px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#090d14;
+  color:var(--ink-soft);
+  font:12px/1.7 ui-monospace,monospace;
+}
+.file-tree .hot{color:var(--lime)}
+.scorecard{display:grid;gap:8px}
+.score-row{
+  display:grid;
+  grid-template-columns:150px minmax(0,1fr) 55px;
+  gap:10px;
+  align-items:center;
+  color:var(--ink-soft);
+  font:12px ui-sans-serif,system-ui,sans-serif;
+}
+.bar{height:8px;overflow:hidden;border-radius:99px;background:#090d14}
+.bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cyan),var(--lime))}
+.score-row.fail .bar span{background:var(--rose)}
+.score-row b{text-align:right;color:var(--ink);font-family:ui-monospace,monospace}
+.week{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:7px;
+}
+.day{
+  min-width:0;
+  padding:13px 9px;
+  border-top:2px solid var(--lime);
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:11px/1.45 ui-sans-serif,system-ui,sans-serif;
+}
+.day b{display:block;margin-bottom:5px;color:var(--ink);font-size:12px}
+.anti-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.anti{
+  padding:12px 13px;
+  border-left:2px solid var(--rose);
+  background:var(--panel);
+  color:var(--ink-soft);
+  font:12px/1.5 ui-sans-serif,system-ui,sans-serif;
+}
+.anti b{color:var(--ink)}
+.checklist{display:grid;gap:9px;margin:25px 0}
+details{padding:12px 0;border-top:1px solid var(--line)}
+details:last-child{border-bottom:1px solid var(--line)}
+summary{
+  cursor:pointer;
+  color:var(--ink);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-weight:650;
+}
+details p{
+  margin:10px 0 0;
+  padding-left:20px;
+  color:var(--ink-soft);
+  font-family:ui-sans-serif,"Noto Sans SC",system-ui,sans-serif;
+  font-size:14px;
+}
+footer{margin-top:70px;padding:38px 24px 68px;border-top:1px solid var(--line)}
+.footer-inner{width:min(100%,var(--content));margin:0 auto;color:var(--ink-dim);font:13px/1.65 ui-sans-serif,system-ui,sans-serif}
+.footer-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px}
+@media(max-width:860px){
+  .hero{padding-top:58px}
+  .hero-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero-meta>div:nth-child(3){border-left:0;border-top:1px solid var(--line)}
+  .hero-meta>div:nth-child(4){border-top:1px solid var(--line)}
+  .route-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .scene,.contract{grid-template-columns:1fr}
+  .evidence-chain,.flywheel{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .node:nth-child(3)::after,.wheel-step:nth-child(3)::after{display:none}
+  .dataset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .shadow-loop{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .loop-step:nth-child(2)::after{display:none}
+  .week{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  body{font-size:16px}
+  .hero{padding-inline:18px}
+  .hero-meta{grid-template-columns:1fr}
+  .hero-meta>div,.hero-meta>div+div,.hero-meta>div:nth-child(3){border-left:0;border-top:1px solid var(--line)}
+  .hero-meta>div:first-child{border-top:0}
+  .thesis,.route,article{padding-inline:18px}
+  .route-list{grid-template-columns:1fr}
+  .lesson{margin:74px 0}
+  .lesson-head{grid-template-columns:1fr;gap:4px}
+  .lesson-sub{grid-column:1;margin-top:2px}
+  .step-no{padding:0}
+  figure.explain{padding:15px}
+  .evidence-chain,.flywheel{grid-template-columns:1fr}
+  .node:not(:last-child)::after,.wheel-step:not(:last-child)::after{
+    right:50%;
+    top:auto;
+    bottom:-14px;
+    transform:translate(50%,50%) rotate(90deg);
+  }
+  .node:nth-child(3)::after,.wheel-step:nth-child(3)::after{display:block}
+  .node:last-child::after,.wheel-step:last-child::after{display:none}
+  .two-col,.metric-duo,.bias-grid,.anti-grid{grid-template-columns:1fr}
+  .dataset-grid{grid-template-columns:1fr}
+  .grader{grid-template-columns:1fr;gap:6px}
+  .grader .cost{text-align:left}
+  .gate{grid-template-columns:1fr}
+  .gate-arrow{transform:rotate(90deg);text-align:center}
+  .shadow-loop{grid-template-columns:1fr}
+  .loop-step:not(:last-child)::after{
+    right:50%;
+    top:auto;
+    bottom:-14px;
+    transform:translate(50%,50%) rotate(90deg);
+  }
+  .loop-step:nth-child(2)::after{display:block}
+  .confusion .cm{padding-inline:5px}
+  .trace-map{grid-template-columns:1fr}
+  .runs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .score-row{grid-template-columns:105px minmax(0,1fr) 45px}
+  .week{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="crumbs mono">
+      <a href="../../">ML Learning Notes</a>
+      <span class="dot" aria-hidden="true"></span>
+      <span>Agent Engineering</span>
+      <span class="dot" aria-hidden="true"></span>
+      <span>10-step learning path</span>
+    </div>
+    <div class="eyebrow mono">Agent Evals · From vibes to evidence</div>
+    <h1>不再凭感觉<br />调 <span class="accent">Agent</span></h1>
+    <p class="lede">
+      你的 agent 说「已经完成」，dashboard 也给了 100 分——但数据库里什么都没发生。
+      这篇从这个错误现场出发，十步建立一条能回答<strong>测什么、谁来判、为什么失败、能不能发布</strong>的证据链。
+    </p>
+    <div class="hero-meta">
+      <div><div class="label mono">读者假设</div><div class="value">会调用一次 LLM / Agent 即可</div></div>
+      <div><div class="label mono">读完能做到</div><div class="value">设计并审查一套最小 Agent Eval</div></div>
+      <div><div class="label mono">配套手册</div><div class="value"><a href="../Agent_Evals_Research.html">完整方法、模板与来源</a></div></div>
+      <div><div class="label mono">来源快照</div><div class="value">2026-08-18 · 10 steps</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="thesis">
+  <div class="thesis-box">
+    <strong>本篇唯一主线：</strong>
+    Eval 不是一个分数，而是一条可以回钻的证据链——
+    <code>Task → Trial → Transcript + Task Result → Graders → Decision</code>。
+    任何 aggregate 如果回不到具体任务、具体运行和具体证据，就只能制造确定感，不能制造可靠性。
+  </div>
+</div>
+
+<nav class="route" aria-label="十步目录">
+  <div class="route-title mono">Learning route</div>
+  <div class="route-list">
+    <a href="#step-1"><b>STEP 01</b>错误现场</a>
+    <a href="#step-2"><b>STEP 02</b>统一词典</a>
+    <a href="#step-3"><b>STEP 03</b>定义成功</a>
+    <a href="#step-4"><b>STEP 04</b>构造任务集</a>
+    <a href="#step-5"><b>STEP 05</b>选择 Grader</a>
+    <a href="#step-6"><b>STEP 06</b>校准 LLM Judge</a>
+    <a href="#step-7"><b>STEP 07</b>处理随机性</a>
+    <a href="#step-8"><b>STEP 08</b>读 Trace</a>
+    <a href="#step-9"><b>STEP 09</b>最小 Harness</a>
+    <a href="#step-10"><b>STEP 10</b>形成飞轮</a>
+  </div>
+</nav>
+
+<main id="main">
+<article>
+
+<section class="lesson" id="step-1">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 01</span>
+    <h2>先看一次「100 分」的失败</h2>
+    <div class="lesson-sub mono">The score is right. The eval is wrong.</div>
+  </div>
+  <p class="deck">最危险的不是 agent 失败，而是失败被 grader 判成成功。</p>
+
+  <p>假设你在评一个退款 agent。evaluation harness 的私有 fixture 已标明：用户身份已验证，订单 123 可退 42 美元；用户明确说：「Please refund order 123.」运行结束后出现三份证据：</p>
+
+  <figure class="explain" aria-labelledby="fig-1-title">
+    <div class="figure-title" id="fig-1-title">图 1 · 同一次 trial 的三个表面</div>
+    <div class="scene">
+      <div class="scene-card">
+        <div class="cap">Final answer</div>
+        <div class="line">Agent：<span class="ok">“Your $42 refund is complete.”</span></div>
+        <div class="line">看起来：完成了</div>
+      </div>
+      <div class="scene-card danger">
+        <div class="cap">Environment outcome</div>
+        <div class="line">refunds WHERE order_id=123：<span class="bad">0 rows</span></div>
+        <div class="line">真实状态：什么都没发生</div>
+      </div>
+      <div class="scene-card">
+        <div class="cap">Naive grader</div>
+        <div class="line">包含短语 <code>refund is complete</code></div>
+        <div class="score-strip"><span class="line">Verdict</span><b>100%</b></div>
+      </div>
+    </div>
+    <figcaption>字符串 grader 没写错；它忠实完成了错误的测量目标。真正 outcome 是环境最终状态。</figcaption>
+  </figure>
+
+  <p>
+    这个例子揭示 eval 的第一原则：<strong>模型输出只是一个声明，outcome 才是世界有没有真的改变。</strong>
+    能查数据库、文件、API、浏览器状态时，不要让 agent 自己宣布成功。
+  </p>
+
+  <div class="callout warn">
+    <span class="tag">四类问题</span><br />
+    <b>Agent failure：</b>没完成任务。<br />
+    <b>Task / spec failure：</b>题目歧义、要求互相冲突或正确答案不可达。<br />
+    <b>Grader failure：</b>把坏结果判成好结果。<br />
+    <b>Evaluation harness / infrastructure failure：</b>fixture、权限、超时、资源或残留状态让实验本身失真。<br />
+    一个总分不会告诉你是哪一类。
+  </div>
+
+  <p>
+    普通单轮 LLM 常能用 <code>prompt → response → score</code> 表示；agent 会跨多轮调用工具并修改状态，
+    早期错误还会向后传播。于是被测对象从一句回答变成了<strong>一整段 trajectory + 一个最终 outcome</strong>。
+  </p>
+
+  <div class="source-line">
+    来源：Anthropic
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying evals for AI agents</a>
+    对 transcript 与 outcome 的区分；τ-bench
+    <a href="https://arxiv.org/abs/2406.12045v1">以最终数据库状态评分</a>。
+  </div>
+</section>
+
+<section class="lesson" id="step-2">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 02</span>
+    <h2>把 Eval 世界的对象摆对位置</h2>
+    <div class="lesson-sub mono">Task, trial, trace, outcome, grader, harness</div>
+  </div>
+  <p class="deck">先统一证据链，后面所有工具名才不会把你带偏。</p>
+
+  <figure class="explain" aria-labelledby="fig-2-title">
+    <div class="figure-title" id="fig-2-title">图 2 · 一次 Agent Eval 的最小证据链</div>
+    <div class="evidence-chain">
+      <div class="node"><b>Task</b>输入、环境、成功标准</div>
+      <div class="node"><b>Trial</b>一次尝试；应尽量隔离</div>
+      <div class="node hot"><b>Transcript</b>模型与工具全过程</div>
+      <div class="node hot"><b>Task result</b>output / artifact + outcome</div>
+      <div class="node"><b>Graders</b>代码 / 模型 / 人</div>
+      <div class="node"><b>Decision</b>发布、回滚或深挖</div>
+    </div>
+    <figcaption>Suite 是一组 tasks；experiment 是某个系统版本在整组 tasks 上的一次完整运行。</figcaption>
+  </figure>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="label">Agent harness</div>
+      <b>让模型能行动的系统</b><br />
+      prompt、tools、循环、上下文、权限、重试与停止条件。所谓「评一个 agent」，实际在评
+      <strong>模型 × agent harness</strong>。
+    </div>
+    <div class="card">
+      <div class="label">Evaluation harness</div>
+      <b>让实验能重复的系统</b><br />
+      准备 fixture、启动 trial、保存 trace/output/outcome、运行 graders、聚合结果。框架能帮你跑，但不能替你定义成功。
+    </div>
+  </div>
+
+  <p>
+    在 observability 体系里，<strong>run</strong> 常表示一次模型调用、检索或工具执行；
+    一组 runs 构成一次 <strong>trace</strong>；多轮 traces 再组成 <strong>thread</strong>。
+    Anthropic 又把一次 trial 的完整记录称为 transcript，也承认 trace / trajectory 常被当作近义词。
+  </p>
+
+  <div class="callout key">
+    <span class="tag">迁移工具时别争名字</span><br />
+    只问四件事：一次用户任务边界在哪？多轮如何关联？tool result 和最终 state 有没有保存？
+    grader 实际读到哪一层？粒度对上，术语差异就不重要。
+  </div>
+
+  <div class="source-line">
+    来源：Anthropic 的
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Agent eval 词典</a>；
+    LangChain
+    <a href="https://docs.langchain.com/langsmith/observability-concepts">Observability concepts</a>。
+  </div>
+</section>
+
+<section class="lesson" id="step-3">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 03</span>
+    <h2>把「成功」拆成三层合同</h2>
+    <div class="lesson-sub mono">Task result first, obligations second, quality third</div>
+  </div>
+  <p class="deck">不要从“能算什么指标”出发，要从“用户究竟得到什么”出发。</p>
+
+  <figure class="explain" aria-labelledby="fig-3-title">
+    <div class="figure-title" id="fig-3-title">图 3 · 同一任务的三层 Success Contract</div>
+    <div class="contract">
+      <div class="contract-card">
+        <b>1 · Task result</b>
+        有副作用时查环境 outcome；只读任务则查最终 output / artifact。
+      </div>
+      <div class="contract-card">
+        <b>2 · Obligations</b>
+        是否先验证身份？是否越权？副作用前是否确认？
+      </div>
+      <div class="contract-card">
+        <b>3 · Experience</b>
+        解释清楚吗？语气合适吗？下一步可理解吗？
+      </div>
+    </div>
+    <figcaption>能可靠机械验证的部分优先用确定性 grader；groundedness、coverage 与体验质量等开放判断，仍可能需要经过人类校准的 LLM judge。</figcaption>
+  </figure>
+
+  <p>一条 task 至少要写清：</p>
+
+  <pre><code>id: refund_order_123
+input: "Please refund order 123."
+initial_state: fixture/refund_order_123.json  # identity_verified=true, amount_usd=42
+success:
+  outcome:
+    refund_created: true
+    order_id: 123
+    amount_usd: 42
+  obligations:
+    authorization_valid: true
+    duplicate_refund_count: 0
+  quality:
+    confirms_amount_and_status: true
+slices: [refund, happy-path, should-act]</code></pre>
+
+  <p>
+    检查题目是否清楚有个简单标准：<strong>两位领域专家能否独立得出相同的 pass/fail？</strong>
+    再为它写一份已知可行的 reference solution，并让这份解通过所有 graders。
+    如果 reference 都过不了，先修 task 或 grader。
+  </p>
+
+  <div class="callout note">
+    <span class="tag">题面与 Grader 的合同</span><br />
+    Grader 检查的要求必须能从题面或明确的产品规范中得知。题目叫 agent 写脚本，却没说路径，
+    测试却硬编码某个文件名——测到的是猜题，不是能力。
+  </div>
+
+  <h3>什么时候必须评过程？</h3>
+  <p>
+    不要规定唯一工具顺序，但三类过程义务不能丢：安全/合规、信息依据、资源边界。
+    「先鉴权再读私有数据」是硬门；「必须先调用 A 再调用 B」若没有业务理由，只是脆弱测试。
+  </p>
+
+  <div class="source-line">
+    来源：Anthropic 对
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">unambiguous tasks、reference solution 与 grade outcome</a>
+    的建议。
+  </div>
+</section>
+
+<section class="lesson" id="step-4">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 04</span>
+    <h2>先做 20–50 道真实题</h2>
+    <div class="lesson-sub mono">Small, real, balanced, owned</div>
+  </div>
+  <p class="deck">第一版数据集的价值来自任务真实性，不来自行数。</p>
+
+  <p>
+    从你本来就会手工检查的行为、bug、support ticket 和用户常见工作流开始。
+    Anthropic 给的实际起点是 20–50 道简单题；这足以在早期捕捉大变化。
+  </p>
+
+  <figure class="explain" aria-labelledby="fig-4-title">
+    <div class="figure-title" id="fig-4-title">图 4 · 初始集的四个桶</div>
+    <div class="dataset-grid">
+      <div class="dataset-cell"><span class="sign">01</span><b>Happy path</b>信息完整时核心价值能否完成</div>
+      <div class="dataset-cell"><span class="sign">02</span><b>Boundary</b>空结果、多结果、冲突资料与长输入</div>
+      <div class="dataset-cell"><span class="sign">03</span><b>Should act</b>该检索、该执行、该升级时会不会做</div>
+      <div class="dataset-cell"><span class="sign">04</span><b>Should not act</b>缺权限、缺信息、只问建议时能否克制</div>
+    </div>
+    <figcaption>平衡不是机械追求 50/50，而是覆盖 false positive 与 false negative 两个方向。</figcaption>
+  </figure>
+
+  <p>
+    Hamel 给了一个好用的展开坐标：<strong>feature × scenario × persona</strong>。
+    例如客服的 scenario 可包括多结果、无结果、歧义、系统错误与不支持功能；
+    但没有直接用户交互的 agent 未必需要 persona——它只是发现覆盖盲区的方法，不是标准 schema。
+  </p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="label">Capability suite</div>
+      <b>现在能做到多难？</b><br />
+      应该保留失败空间，给优化一座山爬。适合模型、prompt、tool 与架构比较。
+    </div>
+    <div class="card">
+      <div class="label">Regression suite</div>
+      <b>以前会的现在还会吗？</b><br />
+      应接近 100%，下降就调查。已攻克的 capability tasks 应「毕业」到这里。
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">不要混成一个均分</span><br />
+    capability 上升与 regression 下降可能相互抵消，最后 dashboard 显示「整体不变」。
+    但产品含义完全相反：一个是边界向外推，一个是既有承诺被破坏。
+  </div>
+
+  <div class="callout note">
+    <span class="tag">Dev ≠ Holdout</span><br />
+    日常调 prompt、tools 与 harness 用可反复读失败的 dev suite；发布结论再用锁定的 holdout 确认。
+    每次根据 holdout 结果继续调系统，它都会逐渐耗损，因此要限制查看并定期用新案例刷新。
+  </div>
+
+  <div class="source-line">
+    来源：Anthropic
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">20–50 tasks、平衡集合与 capability/regression</a>；
+    Hamel
+    <a href="https://hamel.dev/blog/posts/llm-judge/">feature / scenario / persona</a>。
+    Dev / holdout 是本文的实践扩展，参考 Google 对
+    <a href="https://developers.google.com/machine-learning/crash-course/overfitting/dividing-datasets">validation / test 耗损</a> 的说明。
+  </div>
+</section>
+
+<section class="lesson" id="step-5">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 05</span>
+    <h2>按判断性质选择 Grader</h2>
+    <div class="lesson-sub mono">Code where possible, models where necessary, humans as anchor</div>
+  </div>
+  <p class="deck">最强的 grader 不是最强模型，而是最便宜、最可复现、又刚好能判对这件事的方法。</p>
+
+  <figure class="explain" aria-labelledby="fig-5-title">
+    <div class="figure-title" id="fig-5-title">图 5 · Grader 梯子</div>
+    <div class="grader-stack">
+      <div class="grader"><b>Code-based</b><span>单测、schema、DB/file state、权限、tool args、延迟/token</span><span class="cost">fast · cheap</span></div>
+      <div class="grader"><b>Model-based</b><span>groundedness、完整性、语气、开放比较与复杂 rubric</span><span class="cost">flexible · noisy</span></div>
+      <div class="grader"><b>Human / SME</b><span>最终标准、争议样本、未知失败与 judge 校准</span><span class="cost">slow · anchor</span></div>
+    </div>
+    <figcaption>三者不是互斥选项。一个 task 常用多个 graders 分别守 outcome、obligation 与 quality。</figcaption>
+  </figure>
+
+  <h3>先判产物，再判路径</h3>
+  <p>
+    任务是「退款成功且不超过 100 美元」，就检查退款记录、金额、身份验证与通知。
+    不要无理由强制模型按你预想的唯一工具序列行动。合法解法往往不止一条。
+  </p>
+
+  <figure class="explain" aria-labelledby="fig-6-title">
+    <div class="figure-title" id="fig-6-title">图 6 · Partial credit 不能稀释 Hard gate</div>
+    <div class="gate">
+      <div class="gate-box"><b>Quality score · 0.92</b>解释清楚、语气好、下一步完整</div>
+      <div class="gate-arrow">+</div>
+      <div class="gate-box"><b style="color:var(--rose)">Authorization · FAIL</b>未验证身份就读取订单</div>
+    </div>
+    <div class="score-strip"><span class="line">Release verdict</span><b style="color:var(--rose)">FAIL</b></div>
+    <figcaption>子项分数用于诊断进展；安全、越权、错误副作用等硬失败不能被平均数抵消。</figcaption>
+  </figure>
+
+  <p>对 research agent，一套实用组合是：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>优先 Grader</th><th>证据</th></tr></thead>
+      <tbody>
+        <tr><td><strong>精确事实</strong></td><td>numeric / exact / tolerance</td><td>冻结 reference</td></tr>
+        <tr><td><strong>Groundedness</strong></td><td>claim-source judge</td><td>检索来源 + final answer</td></tr>
+        <tr><td><strong>Coverage</strong></td><td>required facts + judge</td><td>任务要求与参考面</td></tr>
+        <tr><td><strong>Source quality</strong></td><td>domain rubric</td><td>来源类型、权威性与时效</td></tr>
+        <tr><td><strong>效率</strong></td><td>code metrics</td><td>turns、tool calls、token、latency</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="source-line">
+    来源：Anthropic 的
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">code / model / human grader 分类与 agent 类型示例</a>。
+  </div>
+</section>
+
+<section class="lesson" id="step-6">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 06</span>
+    <h2>让 LLM Judge 先跟着专家学会判</h2>
+    <div class="lesson-sub mono">Critique shadowing before scaling</div>
+  </div>
+  <p class="deck">Judge 不是 ground truth；它只是另一位必须参加考试的模型。</p>
+
+  <figure class="explain" aria-labelledby="fig-7-title">
+    <div class="figure-title" id="fig-7-title">图 7 · 从 Critique Shadowing 到 Judge 校准</div>
+    <div class="shadow-loop">
+      <div class="loop-step"><b>1 · 找专家</b>谁的判断最接近真实用户价值</div>
+      <div class="loop-step"><b>2 · 看数据</b>专家 Pass/Fail + 详细 critique</div>
+      <div class="loop-step"><b>3 · 做 Judge</b>用专家样本写清单维度 rubric</div>
+      <div class="loop-step"><b>4 · 校准</b>留出样本上算错判，再扩量</div>
+    </div>
+    <figcaption>先修人工检查已经发现的明显产品错误；稳定的失败簇出现后，再决定是否需要专项 judge。</figcaption>
+  </figure>
+
+  <p>
+    Hamel 建议起步用<strong>二元 Pass/Fail + 足够详细的 critique</strong>。
+    八个含义模糊的 1–5 分，通常既不能稳定解释 3 与 4 的区别，也不直接告诉你该修什么。
+  </p>
+
+  <pre><code>{
+  "verdict": "fail",
+  "critique": "回答声称订单 123 的 42 美元退款已完成，但退款工具校验失败，退款表仍为 0 rows。",
+  "evidence": ["tool.process_refund.status=validation_error", "db.refunds[order_id=123]=[]"],
+  "error_type": "claimed_action_without_outcome"
+}</code></pre>
+
+  <h3>Judge 自己的成绩单</h3>
+
+  <figure class="explain" aria-labelledby="fig-8-title">
+    <div class="figure-title" id="fig-8-title">图 8 · 把 Fail 当正类的校准矩阵</div>
+    <table class="confusion">
+      <caption class="sr-only">LLM judge 与专家判定的混淆矩阵</caption>
+      <thead>
+        <tr>
+          <th class="cm head" scope="col">Judge \ 专家</th>
+          <th class="cm head" scope="col">专家 FAIL</th>
+          <th class="cm head" scope="col">专家 PASS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="cm head" scope="row">Judge FAIL</th>
+          <td class="cm good"><b>TP</b>抓到真失败</td>
+          <td class="cm bad"><b>FP</b>误杀正确结果</td>
+        </tr>
+        <tr>
+          <th class="cm head" scope="row">Judge PASS</th>
+          <td class="cm bad"><b>FN</b>漏掉真失败</td>
+          <td class="cm good"><b>TN</b>正确放行</td>
+        </tr>
+      </tbody>
+    </table>
+    <figcaption>Fail precision 看「判失败时有多可信」；Fail recall 看「真实失败抓到多少」。类别不平衡时，raw agreement 会很迷惑。</figcaption>
+  </figure>
+
+  <p>
+    还要报告 <code>Unknown rate</code> 与关键 slices。允许 judge 在证据不足时拒判，
+    比逼它猜一个确定答案更可靠。
+  </p>
+
+  <div class="callout note">
+    <span class="tag">Unknown = Abstention</span><br />
+    Unknown 不是第三个质量等级：它进入人工复核，并从 pass/fail confusion matrix 单列；
+    报告 precision/recall 时还要同时给全体样本上的 Unknown rate。
+  </div>
+
+  <p>
+    这里用于调 judge rubric 的 <strong>judge-calibration holdout</strong>，与 Step 4 用来确认系统发布结论的
+    <strong>system release holdout</strong> 是两套数据。先冻结 judge prompt、model 与 rubric，再运行 release holdout；前者不能替代后者。
+  </p>
+
+  <h3>四种必须专门测的偏差</h3>
+  <div class="bias-grid">
+    <div class="bias"><b>Position</b> · 交换 A/B 顺序，不一致就进入复核。</div>
+    <div class="bias"><b>Verbosity</b> · 放入短而正确与长而空的对照样本。</div>
+    <div class="bias"><b>Self-enhancement</b> · 隐藏模型身份，必要时换模型族 judge。</div>
+    <div class="bias"><b>Reasoning / injection</b> · 给 reference；把 agent 文本当不可信数据包裹。</div>
+  </div>
+
+  <div class="callout key">
+    <span class="tag">Criteria drift</span><br />
+    人需要标准才能评分，但看过真实输出后又会修改自己对标准的理解。
+    因此 rubric 是有版本、靠反例逐步收敛的产品规格，不是一次写完的真理。
+  </div>
+
+  <div class="source-line">
+    来源：Hamel
+    <a href="https://hamel.dev/blog/posts/llm-judge/">Critique Shadowing</a>；
+    Anthropic 对 <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Unknown 与多维 judges</a> 的建议；
+    Shankar et al.
+    <a href="https://arxiv.org/abs/2404.12272v1">Who Validates the Validators?</a>；
+    Zheng et al.
+    <a href="https://arxiv.org/abs/2306.05685v4">LLM judge 偏差研究</a>。
+    留出样本是本文加上的校准护栏，不是 Hamel 原流程的固定步骤。
+  </div>
+</section>
+
+<section class="lesson" id="step-7">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 07</span>
+    <h2>一次通过，不等于可靠</h2>
+    <div class="lesson-sub mono">Trials, pass@k, pass^k, paired comparison</div>
+  </div>
+  <p class="deck">Agent 的基本单位不是一次 demo，而是同一道 task 上一组尽量隔离的重复 trials。</p>
+
+  <p>假设某 task 每次成功概率 <code>p = 0.75</code>，跑 3 次：</p>
+
+  <figure class="explain" aria-labelledby="fig-9-title">
+    <div class="figure-title" id="fig-9-title">图 9 · 两个名字很像、方向相反的指标</div>
+    <div class="metric-duo">
+      <div class="metric">
+        <div class="name">pass@k · 至少成功一次</div>
+        <div class="formula">1 − (1 − p)<sup>k</sup></div>
+        <div class="num">98.4%</div>
+        <div class="desc">适合能多次尝试、只要找到一个有效解的场景。</div>
+      </div>
+      <div class="metric reliable">
+        <div class="name">pass^k · 必须每次都成功</div>
+        <div class="formula">p<sup>k</sup></div>
+        <div class="num">42.2%</div>
+        <div class="desc">适合客服、支付、自动操作等每次都必须可靠的场景。</div>
+      </div>
+    </div>
+    <figcaption>公式是独立、同成功率 trials 的直观近似。真实数据要保留 task-level trials，不能只报一个推算值。</figcaption>
+  </figure>
+
+  <p>
+    比较候选 A/B 时，用同一批 tasks、相同环境快照、相同 trial 数。
+    不只看 81% 与 84%，而要看每道题的迁移：
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>迁移</th><th>含义</th><th>动作</th></tr></thead>
+      <tbody>
+        <tr><td><strong>fail → pass</strong></td><td>候选带来的明确收益</td><td>读 trace 确认不是 grader 漏洞</td></tr>
+        <tr><td><strong>pass → fail</strong></td><td>潜在回归</td><td>优先按风险与 slice 深挖</td></tr>
+        <tr><td><strong>pass ↔ fail 随机跳</strong></td><td>边界任务或环境噪声</td><td>增加 trials，检查隔离和资源</td></tr>
+        <tr><td><strong>都失败</strong></td><td>capability 缺口或坏 task</td><td>读 reference 与失败 transcript</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout note">
+    <span class="tag">报告分母和不确定性</span><br />
+    写「43/50 tasks；150 trials 中 121 次成功」，并给区间与 slice。
+    小样本里 82% 对 86% 往往不足以支持「候选显著更好」。
+  </div>
+
+  <div class="source-line">
+    来源：Anthropic 对
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">pass@k / pass^k 与多 trials</a>
+    的解释；τ-bench
+    <a href="https://arxiv.org/abs/2406.12045v1">以 pass^k 衡量可靠性</a>。
+  </div>
+</section>
+
+<section class="lesson" id="step-8">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 08</span>
+    <h2>总分报警，Trace 定位</h2>
+    <div class="lesson-sub mono">Observability provides evidence; eval provides judgment</div>
+  </div>
+  <p class="deck">Agent 的逻辑一半在代码里，另一半只在运行时轨迹里出现。</p>
+
+  <figure class="explain" aria-labelledby="fig-10-title">
+    <div class="figure-title" id="fig-10-title">图 10 · Run → Trace → Thread</div>
+    <div class="trace-map">
+      <div class="trace-label">Trace · 一次用户操作 / turn</div>
+      <div class="runs">
+        <div class="run">Run<br />理解退款请求</div>
+        <div class="run">Run<br />读取订单 123</div>
+        <div class="run hot">Run<br />退款参数校验失败</div>
+        <div class="run">Run<br />仍声称已完成</div>
+      </div>
+      <div class="trace-label">Thread · 多轮</div>
+      <div class="runs">
+        <div class="run">Trace 1</div>
+        <div class="run">Trace 2</div>
+        <div class="run">Trace 3</div>
+        <div class="run">Trace 4</div>
+      </div>
+    </div>
+    <figcaption>Single-step 可评一个 run；full-turn 评完整 trace；multi-turn 评 thread 中的记忆与长期状态。因此一个 trial 会按任务形态映射到 trace 或 thread。</figcaption>
+  </figure>
+
+  <h3>找第一处偏离，不要只修最后一句</h3>
+
+  <pre><code>intent → plan → tool selection → tool arguments
+       → evidence / state → final response
+       → grader inputs → verdict
+              ↑
+        first invariant violation</code></pre>
+
+  <p>
+    如果 tool 已经取回正确证据，最后回答却映射错，修 response boundary；
+    如果第一步就理解错意图，改最后一句只是在遮盖上游故障。
+    要找的是最早可观察的不变量违反，把它当作根因分析起点；它不是第一个与 reference 轨迹不同的动作，也不自动证明因果根因。
+    它还能帮你区分 agent、task/spec、grader 与 evaluation harness / infrastructure 问题。
+  </p>
+
+  <h3>生产 Trace 怎样变成回归题</h3>
+
+  <figure class="explain" aria-labelledby="fig-11-title">
+    <div class="figure-title" id="fig-11-title">图 11 · Production → Offline Eval 飞轮</div>
+    <div class="flywheel">
+      <div class="wheel-step"><b>发现</b>反馈 / 监控找到 trace</div>
+      <div class="wheel-step"><b>确认</b>专家判断是真失败</div>
+      <div class="wheel-step"><b>清洗</b>脱敏、去动态依赖</div>
+      <div class="wheel-step"><b>冻结</b>fixture + 成功标准</div>
+      <div class="wheel-step"><b>验证</b>旧版红、修复版绿</div>
+      <div class="wheel-step"><b>守护</b>进入 regression suite</div>
+    </div>
+    <figcaption>LangChain 给出生产 trace 回流方向；人工确认、脱敏、冻结 fixture 与「旧版红、修复版绿」是本文加上的实践护栏。</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <span class="tag">三种时间维度</span><br />
+    <b>Offline：</b>发布前，冻结数据上做回归与比较。<br />
+    <b>Online：</b>生产 runs/threads 上做 reference-free 监控与异常发现。<br />
+    <b>Ad hoc：</b>围绕用户反馈或怀疑的模式，对历史 traces 做探索分析。
+  </div>
+
+  <div class="source-line">
+    来源：LangChain 视频
+    <a href="https://www.youtube.com/watch?v=FDVdLrloFOw">Observability and Evals for AI Agents: A Simple Breakdown</a>
+    及其
+    <a href="https://www.langchain.com/blog/agent-observability-powers-agent-evaluation">官方文字版</a>；
+    <a href="https://docs.langchain.com/langsmith/evaluation-concepts">LangSmith Evaluation concepts</a>。
+  </div>
+</section>
+
+<section class="lesson" id="step-9">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 09</span>
+    <h2>先做一个没有平台依赖的最小 Harness</h2>
+    <div class="lesson-sub mono">Clean environment, immutable artifacts, replayable graders</div>
+  </div>
+  <p class="deck">第一版需要的是闭合证据链，不是 dashboard、插件系统与无限配置。</p>
+
+  <figure class="explain" aria-labelledby="fig-12-title">
+    <div class="figure-title" id="fig-12-title">图 12 · 四个目录就够起步</div>
+    <div class="two-col">
+      <div class="file-tree">
+        evals/ <span class="hot"># evaluator-only · not mounted</span><br />
+        ├── <span class="hot">tasks.jsonl</span><br />
+        ├── fixtures/<br />
+        ├── graders/<br />
+        │&nbsp;&nbsp; ├── outcome.py<br />
+        │&nbsp;&nbsp; ├── obligations.py<br />
+        │&nbsp;&nbsp; └── quality_judge.md<br />
+        ├── run_eval.py<br />
+        └── reports/
+      </div>
+      <div class="scorecard">
+        <div class="score-row"><span>Outcome</span><div class="bar"><span style="width:96%"></span></div><b>96%</b></div>
+        <div class="score-row"><span>Obligations</span><div class="bar"><span style="width:100%"></span></div><b>100%</b></div>
+        <div class="score-row"><span>Quality</span><div class="bar"><span style="width:84%"></span></div><b>84%</b></div>
+        <div class="score-row fail"><span>Critical slice</span><div class="bar"><span style="width:67%"></span></div><b>67%</b></div>
+        <div class="score-row"><span>p95 latency</span><div class="bar"><span style="width:73%"></span></div><b>4.2s</b></div>
+      </div>
+    </div>
+    <figcaption>Aggregate 必须能点击或追溯到 task → trial → transcript + output/artifact + outcome → grader evidence。</figcaption>
+  </figure>
+
+  <p>运行顺序只有六步：</p>
+
+  <pre><code>for task in dataset:
+    for trial in repetitions:
+        env = make_clean_environment(task.fixture)
+        trace = run_production_agent(task.prompt, env)
+        output = collect_output_or_artifact(trace, env)
+        outcome = snapshot_outcome(env)
+        grades = run_graders(task, trace, output, outcome)
+        save_immutable_artifacts(trace, output, outcome, grades)
+
+compare_with_baseline()
+report_per_task_and_slices()</code></pre>
+
+  <p>每次 trial 必须保存：</p>
+
+  <ul>
+    <li>model/provider、prompt、tools schema 与 agent harness commit；</li>
+    <li>dataset、grader 与环境 fixture 版本；</li>
+    <li>完整 transcript、output/artifact、outcome snapshot 与每个 grader 的证据；</li>
+    <li>turns、tool calls、token、latency、cost 与 runtime errors。</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="tag">环境隔离不是清洁癖</span><br />
+    残留文件、共享缓存、git history、CPU/RAM 不足和资源耗尽都会制造相关失败或虚假优势。
+    如果 trials 不独立，你测到的可能是基础设施，不是 agent。
+  </div>
+
+  <div class="callout key">
+    <span class="tag">隔离 Eval Control Plane</span><br />
+    整个 <code>evals/</code> 都不得挂载进 trial workspace。Harness 用 fixture 初始化环境；agent 只能通过与生产一致的 tools / API 观察环境，不能读取 raw fixture。
+    Expected state、reference、grader、judge rubric 和 holdout 标签都留在控制面，否则会把「会完成任务」测成「会读测试」。
+  </div>
+
+  <p>
+    Grader 应能在保存的 artifacts 上独立重跑，这样改 rubric 时不用重新付一遍 agent 运行成本，
+    也能把「agent 变了」与「grader 变了」分开。
+  </p>
+
+  <div class="source-line">
+    来源：Anthropic 对
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">stable isolated environment、完整 transcript 与 grader maintenance</a>
+    的建议。目录与伪代码为本篇实践模板。
+  </div>
+</section>
+
+<section class="lesson" id="step-10">
+  <div class="lesson-head">
+    <span class="step-no mono">STEP 10</span>
+    <h2>七天闭环，然后让 Suite 活下去</h2>
+    <div class="lesson-sub mono">Eval-driven development, not eval theater</div>
+  </div>
+  <p class="deck">一套小而有人维护的 eval，比一套华丽但没人读失败的 dashboard 更可靠。</p>
+
+  <figure class="explain" aria-labelledby="fig-13-title">
+    <div class="figure-title" id="fig-13-title">图 13 · 第一周只闭合一条真实 workflow</div>
+    <div class="week">
+      <div class="day"><b>Day 1</b>选 workflow，定义 outcome</div>
+      <div class="day"><b>Day 2</b>写 20–50 tasks 与 slices</div>
+      <div class="day"><b>Day 3</b>做 reference 与 code graders</div>
+      <div class="day"><b>Day 4</b>隔离环境，跑多 trials</div>
+      <div class="day"><b>Day 5</b>读全部失败和随机 passes</div>
+      <div class="day"><b>Day 6</b>建 error taxonomy，修最大类</div>
+      <div class="day"><b>Day 7</b>配对重跑，写发布 handoff</div>
+    </div>
+    <figcaption>主观质量 judge 可以第二周再做；先用人读数据，确认真正需要自动化的判断。</figcaption>
+  </figure>
+
+  <h3>看到这些信号就停下来</h3>
+
+  <div class="anti-grid">
+    <div class="anti"><b>只展示平均分</b>，回不到 task 和 transcript。</div>
+    <div class="anti"><b>Judge 从未与专家比较</b>，却被当作 ground truth。</div>
+    <div class="anti"><b>只测应该行动</b>，从不测应该克制。</div>
+    <div class="anti"><b>固定唯一工具路径</b>，把合法解法判错。</div>
+    <div class="anti"><b>Trials 共享环境</b>，状态泄漏或相关失败。</div>
+    <div class="anti"><b>Suite 永远 100%</b>，却没有更难的 capability 题。</div>
+    <div class="anti"><b>换了模型或 rubric</b>，judge 不重新校准。</div>
+    <div class="anti"><b>线上 trace 自动入库</b>，没有确认、脱敏与冻结。</div>
+  </div>
+
+  <h3>十问自测</h3>
+
+  <div class="checklist">
+    <details>
+      <summary>1. Agent 最后说“已退款”，能直接判成功吗？</summary>
+      <p>不能。应检查退款系统的最终状态；文本只是一份声明。</p>
+    </details>
+    <details>
+      <summary>2. Agent 用了与预期不同的工具顺序，但结果正确，应该失败吗？</summary>
+      <p>通常不该。优先评 outcome；只有安全、合规或业务义务要求具体过程时才设 hard gate。</p>
+    </details>
+    <details>
+      <summary>3. 什么时候应该用 LLM judge？</summary>
+      <p>确定性方法不足以判断的开放语义维度，例如 groundedness、完整性或语气；并且必须用专家样本校准。</p>
+    </details>
+    <details>
+      <summary>4. Judge 与专家 90% agreement，就一定可靠吗？</summary>
+      <p>不一定。还要看样本量、类别基准率、fail precision/recall、confusion matrix、unknown 与关键 slices。</p>
+    </details>
+    <details>
+      <summary>5. 为什么同时需要 should-act 和 should-not-act？</summary>
+      <p>只测一个方向会优化成极端策略，例如逢问必搜或什么都拒绝。</p>
+    </details>
+    <details>
+      <summary>6. pass@3 很高，能证明客服 agent 很可靠吗？</summary>
+      <p>不能。pass@3 只问三次里至少一次成功；客服更关心多次都成功的 pass^k 或 task-level reliability。</p>
+    </details>
+    <details>
+      <summary>7. Observability 和 Eval 是同一件事吗？</summary>
+      <p>不是。Observability 记录发生了什么；Eval 用任务与标准判断好不好。Trace 是证据，不自动是 verdict。</p>
+    </details>
+    <details>
+      <summary>8. 一条生产 bad trace 可以自动进入 regression suite 吗？</summary>
+      <p>不应自动进入。先由专家确认、脱敏、冻结依赖、补成功标准与 reference，并验证旧版红、修复版绿。</p>
+    </details>
+    <details>
+      <summary>9. Capability suite 100% 是好消息吗？</summary>
+      <p>对回归保护是好消息，对继续衡量进步则已饱和。把已攻克题转入 regression，再补更难 capability 题。</p>
+    </details>
+    <details>
+      <summary>10. 一次分数变化至少应能解释到哪一层？</summary>
+      <p>具体 task、trial、transcript、output/outcome、grader evidence，并区分 agent、task/spec、grader 与 evaluation harness / infrastructure 故障。</p>
+    </details>
+  </div>
+
+  <div class="callout key">
+    <span class="tag">完成标准</span><br />
+    不是「接上了一个 eval 平台」，而是：任何分数变化都能指出哪些真实任务发生了什么变化；
+    失败有 transcript、output/artifact 与 outcome 证据；judge 经过人类校准；候选与基线在同一环境配对比较；
+    发布决定能说明证据边界与已知未知。
+  </div>
+
+  <div class="source-line">
+    继续查阅：
+    <a href="../Agent_Evals_Research.html">Agent Evals 配套参考手册</a>；
+    Anthropic
+    <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">完整 zero-to-one roadmap</a>；
+    Hamel
+    <a href="https://hamel.dev/blog/posts/llm-judge/">LLM judge 校准实务</a>。
+  </div>
+</section>
+
+</article>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <p>
+      本页用退款案例串起学习顺序与取舍；完整词典、跨 Agent 类型设计、模板和来源边界请进入配套手册。
+      页面中的 YAML、阈值与目录是教学模板，不是任何平台声明的固定 schema。
+    </p>
+    <div class="footer-links">
+      <a href="../../">← 返回 ML Learning Notes</a>
+      <a href="../Agent_Evals_Research.html">打开 Agent Evals 参考手册</a>
+      <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic 原文</a>
+      <a href="https://hamel.dev/blog/posts/llm-judge/">Hamel 原文</a>
+      <a href="https://www.youtube.com/watch?v=FDVdLrloFOw">LangChain 视频</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
