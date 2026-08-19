@@ -223,7 +223,7 @@ layout: null
     <h1 class="kicker">把「感觉变好了」<br>变成一个<span class="accent">数字</span></h1>
     <p class="lede">
       你把 prompt 改了一行，agent 是变好了还是变坏了？没有 eval，这个问题只能靠猜 ——
-      而 agent 的非确定性会让猜测<strong>系统性地偏向「变好了」</strong>。
+      而在 agent 的非确定性面前，<strong>「看起来涨了」有三分之一强的概率什么都没发生</strong>。
       这篇从「为什么手动测一定会骗你」讲到「怎么知道自己的 eval 有没有坏」。
     </p>
     <div class="meta-grid">
@@ -263,16 +263,33 @@ trial 1 ✅   trial 2 ✅   trial 3 ✅   trial 4 ❌   trial 5 ✅   <span clas
 <span class="c"># 实情：两组数都可以来自同一个 75% 成功率的分布，什么都没发生</span></code></pre>
 
   <p>
-    这不是修辞。假设真实成功率是 75%、两边完全相同，各跑 5 次做对比，
-    <strong>「后一次看起来更好」的概率大约是 35%</strong>（另有 29% 打平，35% 看起来更差）。
-    也就是说：<strong>你什么都不改，重跑一遍，有三分之一强的机会看到「提升」。</strong>
+    这不是修辞。假设真实成功率是 75%、两边完全相同，各跑 5 次做对比：
+  </p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="num">35.5%</div><div class="note">后一次<b>看起来更好</b></div></div>
+    <div class="stat"><div class="num">29.0%</div><div class="note">打平</div></div>
+    <div class="stat"><div class="num">35.5%</div><div class="note">后一次<b>看起来更差</b></div></div>
+  </div>
+
+  <p>
+    先看清楚这三个数字说的是什么：<strong>噪声本身是对称的</strong>。
+    非确定性并不偏向「变好」，它同样有 35.5% 的概率让你觉得变差了。
   </p>
 
   <div class="call pit">
-    <span class="tag">这里的坑不是「不够严谨」</span>
-    手动测试的问题不是精度不够，是它会<b>系统性地产生假阳性</b>。
-    再叠加一层：你本来就期待它变好，所以你只会记住支持你假设的那次运行。
-    <b>非确定性 + 确认偏误，等于一个几乎必然会骗到你的组合。</b>
+    <span class="tag">方向不是噪声给的，是流程给的</span>
+    偏向来自<b>你怎么用这个数</b>：
+    <br><br>
+    <b>一、你只在看到上涨时才宣布改进。</b>把任何观察到的上涨都当成证据，
+    就等于把那 35.5% 全部收成了假阳性 —— 而看到下跌时你会说「再跑一次试试」。
+    <br><br>
+    <b>二、你会重跑到满意为止。</b>每多跑一轮，撞出一个好看结果的机会就多一次。
+    <br><br>
+    <b>三、确认偏误让你记住支持假设的那次。</b>
+    <br><br>
+    所以准确的说法是：<b>非确定性提供了 35.5% 的原料，是你的流程把它加工成了「变好了」。</b>
+    这也意味着它可修 —— 修的是流程，不是模型。
   </div>
 
   <p>没有 eval 的团队，会陷在一个固定的循环里：</p>
@@ -300,10 +317,25 @@ trial 1 ✅   trial 2 ✅   trial 3 ✅   trial 4 ❌   trial 5 ✅   <span clas
   </p>
 
   <p>
-    agent 出错时没有 stack trace ——
-    因为<strong>没有哪一行代码失败了。失败的是推理</strong>。一个 agent 花两分钟走了 200 步，
-    在某一步想错了，你手上没有任何传统工具能指向那一步。
+    agent 也会出<strong>普通的错</strong>：工具调用超时、权限不对、返回值反序列化失败、
+    harness 自己有 bug。这些<strong>照样有 stack trace，照样该用传统办法查</strong> ——
+    后面 STEP 08 的「第一处偏离」表里，运行时、fixture、授权都单列成行，就是这个原因。
   </p>
+
+  <p>
+    真正的新问题是另一类：<strong>纯粹的推理失败</strong>。
+    一个 agent 花两分钟走了 200 步，每一步的代码都正常返回，但它在某一步<strong>想错了</strong> ——
+    这时没有哪一行代码失败，也就没有 stack trace 可看，
+    你手上没有任何传统工具能指向那一步。
+  </p>
+
+  <div class="call key">
+    <span class="tag">所以第一个动作是分类，不是查</span>
+    拿到一个失败先问：<b>这是普通故障还是推理故障？</b>
+    是前者，传统诊断依然是最快的路，别绕开它去读 trace；
+    是后者，传统工具帮不上忙，下面这套才开始起作用。
+    <b>把两类混为一谈，你会在有 stack trace 的时候放着它不用。</b>
+  </div>
 
   <p>这里有一个逐级失控的过程：</p>
 
@@ -1514,12 +1546,22 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
     <thead><tr><th></th><th>guardrail（护栏）</th><th>evaluator（评估器）</th></tr></thead>
     <tbody>
       <tr><td><b>定义性差别</b></td><td><b>在请求路径上强制执行</b> —— 会拦截、改写或阻断用户将看到的内容</td><td><b>事后测量</b> —— 只产生结论，不改变这次的响应</td></tr>
-      <tr><td>误报的代价</td><td><b>要当生产 bug 处理</b>：它误伤的是真实用户</td><td>只是数据脏了一点，回头修</td></tr>
+      <tr><td>误报的代价</td><td><b>立刻打在真实用户身上</b>，要当生产 bug 处理</td><td><b>看它接到哪里</b>：只进看板时是脏数据，回头修；<b>一旦接上 CI hard gate 或发布决策，误报会挡住正确的版本，漏报会放回归进生产</b></td></tr>
       <tr><td>常见形态<br><span class="mono" style="text-transform:none;letter-spacing:0;font-size:11px">（是倾向，不是定义）</span></td><td>正则、校验器、轻量分类器；<b>也可以是模型</b> —— 基于模型的审核就是概率性的、慢的</td><td>rubric、LLM judge、代码断言；<b>也可以是确定性的</b> —— 事后跑的状态校验依然是 evaluator</td></tr>
       <tr><td>典型取舍</td><td>延迟预算紧，所以偏好快而确定的实现，并把误报压到极低</td><td>可以跑得很重，因为不占用户的时间</td></tr>
       <tr><td>典型职责</td><td>明确的高危失败：PII 泄露、脏话、格式不合法</td><td>主观质量、趋势、回归，结论进看板</td></tr>
     </tbody>
   </table>
+  </div>
+
+  <div class="call pit">
+    <span class="tag">别把「不改变响应」读成「错了没关系」</span>
+    这两件事是分开的：<b>guardrail 的错误立刻可见，evaluator 的错误延迟生效</b> ——
+    但延迟不等于便宜。本篇 STEP 06 和下面的 release gate 都在鼓励你<b>拿 evaluator 做发布判据</b>，
+    那一刻它的误报就是「拦住一个本该发的版本」，漏报就是「放一个回归进生产」。
+    <br><br>
+    <b>判断代价看的是它接到哪个决策上，不是看它在不在请求路径上。</b>
+    只进看板的 evaluator 可以容忍噪声；进 hard gate 的那几个，校准标准要按 guardrail 来。
   </div>
 
   <p>

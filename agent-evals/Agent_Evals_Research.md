@@ -462,10 +462,14 @@ MT-Bench / Chatbot Arena 研究记录了 position、verbosity、self-enhancement
 | 前提 | 违反时会怎样 | 对策 |
 |---|---|---|
 | **1. 二分类** | judge 会返回 unknown 时，拒判被默默算成一种判断 | 先把 unknown 移出分母；移出后得到的是**「已判样本」上的条件通过率**，不是总体率——要么人工裁决 unknown，要么明确给上下界 |
-| **2. 校准集的 TPR/FPR 能迁移到生产分布** | judge 在不同任务类别上错得不一样、而生产配比与校准集不同时，代入总体校准率**可能比不修正还偏** | 按类别分层校准、分层修正；这是 label shift 问题 [P] |
+| **2. 类条件错误率可迁移** | judge 在不同任务类别上错得不一样、而生产的类别配比与校准集不同时，聚合出来的 `s` 与 `f` 在生产上已经不成立，代入公式**可能比不修正还偏** | 按类别分层校准、分层修正；并监控类别配比本身的漂移 |
 | **3. TPR/FPR 自身的估计误差被传播** | 几十条标注量出的 0.90 真值可能是 0.83 或 0.95 | **修正值也要给误差棒**，不能当精确数字报 |
 
-【综合解释】这个式子还附带一个诊断：当 **TPR 与 FPR 接近**时分母趋近 0，修正值发散——这正说明一个**分辨不开好坏的 judge，喂多少条数据都得不出结论**。先提升分辨力，再谈跑量。
+【综合解释】前提 2 值得说清楚它**不是**什么。这类修正（Rogan–Gladen 及其变体）成立的经典条件正是 **label shift**：类条件分布 `P(x | y)` 保持不变，只有标签先验 `P(y)` 变化——在这个假设下，固定分类器的混淆率**可以**迁移，这恰恰是修正有效的理由。[P]
+
+所以这里要警惕的不是「发生了 label shift」，而是**这个假设本身被打破**：当生产里任务类别的构成变了，同一个 judge 面对的输入分布在**每个类别内部**也变了，于是 `P(judge 判 pass | 真实 pass)` 本身发生漂移。这属于子群构成变化 / 概念漂移，**不是** label shift——把它叫错名字，会让人去查错误的失效原因，也误述了 [P] 支持修正所依赖的前提。
+
+【综合解释】这个式子还附带一个诊断：当 **s 与 f 接近**时分母趋近 0，修正值发散——这正说明一个**分辨不开好坏的 judge，喂多少条数据都得不出结论**。先提升分辨力，再谈跑量。
 
 
 ---
@@ -648,7 +652,7 @@ intent → plan → tool selection → tool arguments → evidence/state → fin
 | | Guardrail | Evaluator |
 |---|---|---|
 | **定义性差别** | 在请求路径上强制执行——拦截、改写或阻断用户将看到的内容 | 事后测量——只产生结论，不改变这次响应 |
-| 误报代价 | **按生产 bug 处理**：误伤真实用户 | 数据脏一点，回头修 |
+| 误报代价 | **立刻打在真实用户身上**，按生产 bug 处理 | **取决于它接到哪个决策**：只进看板时是脏数据；接上 §9.3 的 hard gate 或发布决策后，误报会挡住正确版本、漏报会放回归进生产 |
 | 常见形态（倾向） | 正则、校验器、轻量分类器；**也可以是模型** | rubric、LLM judge、代码断言；**也可以是确定性的** |
 | 典型取舍 | 延迟预算紧，偏好快而确定的实现，误报压到极低 | 可跑得重，不占用户时间 |
 | 典型职责 | 明确的高危失败：PII、违禁内容、格式不合法 | 主观质量、趋势、回归 |
@@ -744,7 +748,7 @@ evals/                          # evaluator-only；不得挂载进 trial workspa
 }
 ```
 
-一次 trial 的不可变产物：
+一次 trial 的不可变产物。**`system_version` 必须覆盖 §1.2 列出的每一项**——只记 commit sha 是不够的：provider 把模型别名重指到新快照、有人调了 temperature 或思考预算、fixture 镜像换了，这几种情况下三个 sha 一个都不会变，两次实质不同的执行却会拿到同一个 `system_version`，既无法复现也无法归因。若 system prompt 与 tools schema 是外置的（不随 harness commit 一起变），要单独记它们的内容哈希：
 
 ```json
 {
@@ -752,9 +756,14 @@ evals/                          # evaluator-only；不得挂载进 trial workspa
   "trial_id": "t-003",
   "system_version": {
     "model": "provider/model-snapshot",
+    "model_alias_resolved_at": "2026-08-18T09:14:03Z",
+    "inference_params": {"temperature": 0.0, "top_p": 1.0, "thinking_budget": 4096},
     "agent_harness_commit": "abc123",
+    "system_prompt_sha": "sha256:…",
+    "tools_schema_sha": "sha256:…",
     "dataset_version": "evals-2026-08-18",
-    "grader_version": "g-07"
+    "grader_version": "g-07",
+    "fixture_image": "evalenv@sha256:…"
   },
   "transcript_path": "artifacts/t-003/trace.json",
   "output_path": "artifacts/t-003/final.txt",
@@ -792,6 +801,7 @@ compare_with_baseline()
 这段伪代码故意没有框架依赖。第一版最重要的不是并发、dashboard 或插件系统，而是：
 
 - 每个 trial 真正从干净环境开始；
+- 每个 trial 记录**完整运行指纹**（模型快照、推理参数、harness、prompt/tools 哈希、dataset、grader、fixture 镜像），而不只是几个 commit sha；
 - 被测路径与生产尽量一致；
 - transcript、output/artifact 与 outcome 都保存；
 - grader 可独立重跑；
@@ -975,7 +985,7 @@ Known limits:
 | **[T]** | Yao et al., [τ-bench: A Benchmark for Tool-Agent-User Interaction](https://arxiv.org/abs/2406.12045v1) | arXiv v1，2024-06-17 | 最终数据库状态与 pass^k；是特定 benchmark 设计，不是所有产品的统一 grader |
 | **[M]** | Evan Miller, [Adding Error Bars to Evals](https://arxiv.org/abs/2411.00640) | 2024-11-01 | §6.4 的全部统计口径：标准误、配对方差、重复采样的收益上限、聚类标准误、功效分析。算例基于特定分布假设，具体数字随你的分数方差与相关性变化 |
 | **[D]** | Dwork et al., [Generalization in Adaptive Data Analysis and Holdout Reuse](https://arxiv.org/abs/1506.02629) | 2015 | §3.4 / §6.4 第五条「反复用同一 holdout 会耗损」的理论出处。结论是统计学一般性的，迁移到 agent eval 时不提供具体的耗损速率 |
-| **[P]** | Lipton et al., [Detecting and Correcting for Label Shift with Black Box Predictors](https://proceedings.mlr.press/v80/lipton18a.html) | ICML 2018 | §5.6 前提 2：校准集与生产分布不一致时，代入总体校准率为何会失效 |
+| **[P]** | Lipton et al., [Detecting and Correcting for Label Shift with Black Box Predictors](https://proceedings.mlr.press/v80/lipton18a.html) | ICML 2018 | §5.6：**label shift 是这类修正成立的经典前提**（类条件分布不变、仅标签先验变化，因此混淆率可迁移）。本文用它界定前提 2 的适用边界，**不**用它解释类条件错误率漂移——那属于子群 / 概念漂移，不是 label shift |
 | **[S]** | Shi et al., [Optimization-based Prompt Injection Attack to LLM-as-a-Judge](https://arxiv.org/abs/2403.17710) | 2024 | §5.5：为什么分隔符与结构化输出是卫生手段而非安全边界 |
 | **[O1]** | OpenAI, [Introducing SWE-bench Verified](https://openai.com/index/introducing-swe-bench-verified/) | 2024-08 | §3.6：1,699 样本 / 93 位标注者 / 38.3% / 61.1% / 68.3% / 500 题 / 16% 与 33.2% |
 | **[O2]** | OpenAI, [Why SWE-bench Verified no longer measures frontier coding capabilities](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/) | 2026 | §3.6：污染、测试缺陷、饱和（74.9%→80.9%）与转向 Pro |
