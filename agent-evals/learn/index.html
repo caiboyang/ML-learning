@@ -726,6 +726,17 @@ trial 1 ✅   trial 2 ✅   trial 3 ✅   trial 4 ❌   trial 5 ✅   <span clas
 
   <p>代进去看看，会有点扎心（下表按 p = 60% 计算）：</p>
 
+  <div class="call pit" style="margin-top:0">
+    <span class="tag">先说这个公式什么时候不能用</span>
+    它在 <b>0% 和 100% 附近直接失效</b>：p = 1 时 SE = 0，
+    于是「50 道题全过」会被报成一个<b>宽度为零的区间</b> —— 看起来像确定性结论。
+    而<b>回归套件长期就跑在接近 100% 的地方</b>，正是最不该用它的位置。
+    <br><br>
+    边界上记<b>三倍法则</b>就够：<b>n 次里 0 次失败，只能说失败率大约低于 3/n</b>。
+    100 道题全过 ≈「失败率大概在 3% 以内」，<b>不等于「没有失败」</b> ——
+    按 3% 算，一天一万次真实请求就是三百次失败。
+  </div>
+
   <div class="tbl-wrap">
   <table>
     <thead><tr><th>任务数 n</th><th>标准误</th><th>95% 置信区间宽度</th><th>意味着什么</th></tr></thead>
@@ -1120,10 +1131,23 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
   </p>
 
   <p>
-    结论很硬：<strong>任何「先把指标定义完整，再开始评测」的流程都是反的。</strong>
-    这也解释了 Hamel 的流程为什么要专家<strong>边看边写 critique</strong>，而不是先发一份评分标准让人照着打分
-    —— 标准是<strong>从看数据的过程里长出来的</strong>。
+    所以 Hamel 的流程才要专家<strong>边看边写 critique</strong>，而不是先发一份评分标准让人照着打分
+    —— 那些<strong>你事先想不到的维度</strong>，是从看数据的过程里长出来的。
   </p>
+
+  <div class="call pit">
+    <span class="tag">但别把它读成「标准可以随时改」</span>
+    这条只适用于<b>在开发集上发现欠定义的、主观的那些维度</b>。两类东西<b>必须事先定义</b>：
+    <br><br>
+    <b>客观要求</b>（答案对不对、格式合不合法）和<b>安全义务</b>（授权、越界、不可逆操作）。
+    这些如果也「边看边定」，你就是在<b>移动球门</b> —— 看到模型没做到，就把标准调低一点。
+    <br><br>
+    而且还有一条硬约束：STEP 07 前面说过<b>先冻结 judge 再跑发布留出集</b>。
+    在留出集上看到结果再改标准，既是移动球门，也是<b>把评估器过拟合到那批样本上</b>。
+    <br><br>
+    <b>正确形状是：开发集上让标准长出来，然后冻结，再拿独立数据验证它。</b>
+    criteria drift 说的是「标准不能凭空写完」，不是「标准可以一直改」。
+  </div>
 
   <h3 class="sub">judge 自带的三个系统性偏差</h3>
 
@@ -1726,6 +1750,8 @@ se         = sqrt(p * (<span class="s">1</span> - p) / n_tasks)      <span class
       <tr><td>修好的 bug 过两周又回来了</td><td>回归用例入库时没验证「旧版失败、新版通过」</td><td>STEP 08</td></tr>
       <tr><td>切了三维之后每格都很难看</td><td>先看格子里的 n —— 切一维掉一截分母，三维交叉常只剩个位数</td><td>STEP 08</td></tr>
       <tr><td>agent 挂了但确实有报错栈</td><td>那是普通故障，别绕开 stack trace 去读 trace</td><td>STEP 02</td></tr>
+      <tr><td>回归套件全绿，就当没风险了</td><td>100 题全过只说明失败率大约 &lt;3%，不是 0</td><td>STEP 05</td></tr>
+      <tr><td>CI 老是因为一道题红了又自己好了</td><td>单次翻转是抽样噪声，回归门该卡「复核后的可靠性下降」</td><td>STEP 05</td></tr>
       <tr><td>不知道该从哪开始</td><td>把你发版前手动点的那几下写下来，20~50 个就够</td><td>STEP 06</td></tr>
     </tbody>
   </table>
