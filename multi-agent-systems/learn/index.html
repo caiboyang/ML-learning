@@ -477,6 +477,11 @@ End_to_End_Latency(MAS) = <span class="hl">∑ Latency(Agent_i) + Coordination_O
     </div>
   </div>
 
+  <div class="call arch" style="margin-bottom: 1.5rem;">
+    <span class="tag">声明</span>
+    <code>TaskEnvelope</code> 和 <code>AgentResult</code> 是本文自拟的 <b>provider-neutral 教学模型</b>，用于说明一个可靠 handoff 至少要包含什么。它们不是 Anthropic、ADK 或 LangChain 定义的 wire protocol。实际生产系统可用 JSON Schema、Pydantic、Protobuf 等来实现。
+  </div>
+
   <pre><code><span class="c">// 生产级标准通信合同：TaskEnvelope (分发) 与 AgentResult (回传)</span>
 class TaskEnvelope:
     task_id: str             <span class="c"># 唯一子任务 ID</span>
@@ -484,10 +489,12 @@ class TaskEnvelope:
     context_slice: dict      <span class="c"># 严格裁剪的最小上下文片段</span>
     permission_boundary: list<span class="c"># 允许调用的工具白名单</span>
     budget_tokens: int       <span class="c"># 最大 Token 消耗预算</span>
+    dependencies: list[str]  <span class="c"># 前置任务 ID 列表，用于 DAG 并发调度</span>
+    output_contract: str     <span class="c"># 预期输出的格式或 Schema 名称</span>
 
 class AgentResult:
     task_id: str
-    status: "success" | "partial" | "failed"
+    status: "success" | "partial" | "retryable_error" | "blocked" | "failed"
     summary: str             <span class="c"># 结构化结论 (100-200 tokens)</span>
     evidence: list[str]      <span class="c"># 工具执行证据引用</span>
     artifact_uris: list[str] <span class="c"># 大型数据指针句柄 (art://...)</span></code></pre>
@@ -656,6 +663,17 @@ def run_production_orchestrator(goal: str, max_attempts: int = 3):
       <h4>第一处偏离定位法 (Earliest Divergence Detection)</h4>
       <div class="txt">在 Trace 树的节点输出做断言检查，最先出错的节点承担归因责任，下游所有异常均判定为受害者。</div>
     </div>
+  </div>
+
+  <h3 style="margin-top: 48px; margin-bottom: 24px; color: var(--paper); font-family: 'Inter Tight', sans-serif;">🔬 最小实践 Lab：研究型 Orchestrator–Workers</h3>
+  <div class="call arch" style="margin-bottom: 48px;">
+    <p><b>这个 Lab 教什么？</b> 它不是教你“多开几个 Agent”，而是让你亲手观察：任务图决定 Agent 数量、独立节点并行、结构化回传降低合并成本，以及局部失败如何恢复。</p>
+    <ul style="color: var(--chalk);">
+      <li style="margin-bottom:8px;"><b>A. S0 (单体基线)：</b> 1 个 Agent 完成检索、比较、写作。记录基线成本。</li>
+      <li style="margin-bottom:8px;"><b>B. W1 (固定工作流)：</b> 拆分成 3 个集合，3 个 Worker 并发处理，主节点确定性合并。</li>
+      <li style="margin-bottom:8px;"><b>C. M1 (动态 MAS)：</b> Orchestrator 动态生成 2-3 个子问题，分配给 Worker 执行，最后交由 Synthesizer 消重与补充缺口。</li>
+      <li><b>D. M1 + 故障演练：</b> 人为让 1 个 Worker 失败，观察系统是否仅针对缺失数据重新派发，并在 1 次重试后成功输出 Partial 结果。</li>
+    </ul>
   </div>
 
   <h3 style="margin-top: 48px; color: var(--paper); font-family: 'Inter Tight', sans-serif;">🎯 10 道核心思考自测题</h3>

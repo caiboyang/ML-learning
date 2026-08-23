@@ -350,6 +350,10 @@ flowchart TD
 
 ### 6.1 形式化通信载荷：TaskEnvelope 与 AgentResult
 
+> [!NOTE]
+> **声明：下面不是行业标准**
+> `TaskEnvelope` 和 `AgentResult` 是本文自拟的 **provider-neutral 教学模型**，用于说明一个可靠 handoff 至少要包含什么。它们不是 Anthropic、ADK 或 LangChain 定义的 wire protocol。实际生产系统可用 JSON Schema、Pydantic、Protobuf 或框架专属的状态对象来实现。
+
 为了彻底解决自由文本通信导致的 Token 膨胀、指令模糊与状态泄露，生产级 MAS 必须推行强类型通信契约：
 
 ```python
@@ -368,11 +372,13 @@ class TaskEnvelope(BaseModel):
     permission_boundary: List[str] = Field(description="允许调用的工具白名单")
     budget_tokens: int = Field(default=4000, description="当前子任务的最大 Token 预算")
     stop_conditions: List[str] = Field(description="任务完成或熔断的判定条件")
+    dependencies: List[str] = Field(default_factory=list, description="前置任务 ID 列表，用于 DAG 并发调度")
+    output_contract: str = Field(default="", description="预期输出的格式或 Schema 名称，防止下游解析失败")
 
 class AgentResult(BaseModel):
     """Worker 向 Orchestrator 回传的标准执行结果"""
     task_id: str
-    status: Literal["success", "partial", "failed"] = Field(description="执行状态")
+    status: Literal["success", "partial", "retryable_error", "blocked", "failed"] = Field(description="执行状态")
     summary: str = Field(description="精炼的结构化结论（控制在 100-200 tokens）")
     evidence: List[str] = Field(description="结论所依赖的外部工具执行证据或数据引用")
     artifact_uris: List[str] = Field(
@@ -511,6 +517,69 @@ flowchart LR
 | **M1 (MAS)** |  |  |  | 通常 3-10x |  |  |  |
 | **M1 + Fault** |  |  |  |  |  |  | 关键指标 |
 
+### 8.1 最小实践 Lab：研究型 orchestrator–workers
+
+为了防止“为了多 Agent 而多 Agent”，我们设计了这个循序渐进的最小实验。它不是教你“多开几个 agent”，而是让你亲手观察：
+
+1. 任务图和上下文边界如何决定 agent 数量；
+2. 只有独立节点才能并行；
+3. 结构化 handoff 如何降低合并成本；
+4. 一个 worker 失败时如何局部恢复；
+5. multi-agent 是否真的胜过 single-agent baseline。
+
+#### 任务与限制
+选择一个需要阅读 9–12 份一手资料的技术问题。例如：“比较三种 agent memory 方案的状态模型、失败恢复和评测方式。”
+**实验限制：**
+- 最多 3 个 research workers，最多 1 次 replan；
+- workers 只读，不允许外部写操作；
+- 每条重要结论必须带 URL、来源类型、检查日期和不确定性；
+- synthesizer 只接收 `AgentResult`，不接收每个 worker 的整段 scratchpad。
+
+#### 依次实现四版
+
+**A. S0 (single-agent baseline)**
+- 一个 agent 完成检索、阅读、比较和写作；
+- 记录 token、tool calls、总时间、来源覆盖和引用错误。
+
+**B. W1 (固定 parallel workflow)**
+- 人工把 9–12 份资料分成三个不重叠集合；
+- 三个 worker 并发提取相同 schema，之后由一个确定性 merge 步骤按字段合并。
+
+**C. M1 (动态 orchestrator)**
+- orchestrator 根据问题生成 2–3 个子问题和依赖；
+- 只并行 `dependencies: []` 的无依赖任务；
+- synthesizer 做消重、冲突和缺口检查。
+
+**D. M1 + failure recovery**
+- 人为让一个 worker 超时，或返回缺来源的 `partial`；
+- 验证系统能保留成功结果、只补派缺口，并在一次 replan 后停止。
+
+#### Provider-neutral 伪代码
+
+```python
+def run_research(user_task):
+    plan = orchestrator.make_plan(user_task, max_workers=3)
+    assert is_acyclic(plan.dependencies)
+    assert writes_do_not_conflict(plan.tasks)
+
+    results = run_ready_tasks(
+        plan.tasks,
+        max_parallelism=3,
+        timeout_seconds=180,
+    )
+
+    gaps = validate_results(results)
+    if gaps and plan.replans_used < 1:
+        repair_tasks = orchestrator.replan_only_gaps(gaps, prior_results=results)
+        results += run_ready_tasks(repair_tasks, max_parallelism=2)
+
+    draft = synthesize(results, preserve_provenance=True)
+    verdict = verify(draft, required_coverage=user_task.requirements)
+    return draft if verdict.passed else partial_delivery(draft, verdict.failures)
+```
+
+这展示了：DAG 检查、副作用冲突检查、有界并发、局部重规划、数据 provenance 与诚实的 partial delivery。
+
 ---
 
 ## 9. 可观测性、评测与归因定位
@@ -612,3 +681,6 @@ gantt
 
 ---
 *Multi-Agent Systems Reference Manual · Produced for ML-Learning Architecture Series.*
+
+<!-- GitHub Pages/Jekyll emits Mermaid fences as code blocks; render them client-side. -->
+<script type="module" src="../assets/js/util/mermaid-render.js"></script>
