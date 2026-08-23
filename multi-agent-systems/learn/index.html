@@ -115,6 +115,8 @@ layout: null
   .callout.explain .tag { color: var(--violet); }
   .callout.warn { border-left-color: var(--rose); }
   .callout.warn .tag { color: var(--rose); }
+  .trace-list { margin: 10px 0 0; padding-left: 20px; }
+  .trace-list li { margin: 7px 0; }
 
   .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 10px; margin: 28px 0; }
   .node { display: grid; place-items: center; min-height: 84px; padding: 13px; border: 1px solid var(--rule); border-radius: 9px; background: var(--surface); text-align: center; font: 500 14px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
@@ -309,20 +311,56 @@ layout: null
 </section>
 
 <section id="step-6" data-step>
-  <div class="section-head"><span class="section-num">STEP 06</span><h2>把三种 planning 架构当作取舍，不是排名</h2></div>
-  <div class="section-sub">Plan-and-Execute · ReWOO · LLMCompiler</div>
-  <p class="deck">它们解决的是计划表示、变量依赖和调度方式，不是“第几代模型”。</p>
-  <div class="table-wrap">
+  <div class="section-head"><span class="section-num">STEP 06</span><h2>用同一个任务看三种决策方式</h2></div>
+  <div class="section-sub">ReAct · ReWOO · LLMCompiler</div>
+  <p class="deck">差别不在名字，而在何时决定下一步、怎样传值，以及 ready 分支能不能同时运行。</p>
+  <p>统一任务：查出本届 Super Bowl 的两支参赛队伍，找出各自 quarterback，再按相同的常规赛字段比较两人。下面只用 <code>Team A</code>、<code>QB-A</code> 这类占位符，不提供时效体育答案。</p>
+
+  <div class="callout explain">
+    <span class="tag">轨迹 A · ReAct</span>
+    <ol class="trace-list">
+      <li>模型决定先查两支队伍，执行搜索并读取 observation。</li>
+      <li>它沿 Team A 分支查 QB-A；统计工具若误返季后赛数据，下一轮看到口径错误，再改查 regular season。</li>
+      <li>随后走 Team B 分支，等两边字段齐全后比较并结束。</li>
+    </ol>
+    每个 observation 都回到下一轮模型，所以适合结果会改变路径的任务。代价是经典循环一次走一个动作，独立分支也会串行。若无状态 API 每轮重传全历史，执行 <code>k</code> 轮时通常约有 <code>O(k)</code> 次决策调用，最大单次输入约 <code>O(k)</code>，等长轮次下累计输入约 <code>O(k²)</code>；这是作者代码调用形状与 ReWOO token 公式的综合推导，不是 ReAct 论文的性能保证。
+  </div>
+
+  <div class="callout explain">
+    <span class="tag">轨迹 B · ReWOO</span>
+    <ol class="trace-list">
+      <li>Planner 在工具运行前写完整蓝图：<code>#E1</code> 查队伍，<code>#E2/#E3</code> 从它取两个 QB，<code>#E4/#E5</code> 查同口径统计。</li>
+      <li>原版 Worker 按文本顺序填 <code>#E1 → #E2 → #E3 → #E4 → #E5</code>；其中 <code>LLM[...]</code> 仍会发生模型调用。</li>
+      <li>Solver 最后读取全部 Plan/Evidence 作答，Work 阶段没有原生 replan。本例有两个 <code>LLM[...]</code> Worker，因此是 Planner 1 次＋Worker 2 次＋Solver 1 次，共 4 次模型调用，而不是固定 2 次。</li>
+    </ol>
+    <code>#E</code> 让值流向可见，也减少每步重送完整历史。它不是经过拓扑校验的 DAG，作者原版 Worker 也不并行。
+  </div>
+
+  <div class="callout explain">
+    <span class="tag">轨迹 C · LLMCompiler</span>
+    <ol class="trace-list">
+      <li>Planner 流式输出带 <code>$id</code> 依赖的 tasks；任务 1 一解析完就能执行，Planner 继续生成后续节点。</li>
+      <li>队伍结果就绪后，两个 QB 节点一起 ready；各自完成后，对应统计节点可以分别启动。</li>
+      <li>比较节点等待两边统计，Joiner 最后选择 Finish 或 Replan。论文正式三组件是 Planner、TFU、Executor；Joiner 是作者官方实现里的最终模型阶段，不是天然独立 agent。</li>
+    </ol>
+    它不是把所有节点一次性同时发出，而是沿 <code>1 → (2 ∥ 3) → (4 ∥ 5) → compare</code> 推进；墙钟收益受较慢分支所在的加权关键路径控制。漏边会让任务过早执行，多余的边会损失并发；共享写冲突、限流和补偿仍要由应用处理。
+  </div>
+
+  <p>Plan-and-Execute 位于 ReAct 与后两者之间：它先列 step list，再由 executor 逐项执行并让 planner 判断结束或重规划，但没有 ReWOO 的显式 evidence slots，也没有 LLMCompiler 的 readiness scheduler。</p>
+
+  <div class="table-wrap" role="region" aria-label="架构选择对照表；窄屏可水平滚动查看" tabindex="0">
     <table>
-      <thead><tr><th>架构</th><th>计划表示</th><th>执行特征</th><th>主要限制</th></tr></thead>
+      <thead><tr><th>任务信号</th><th>优先考虑</th><th>需要接受的代价</th></tr></thead>
       <tbody>
-        <tr><td><strong>Plan-and-Execute</strong></td><td>多步清单</td><td>planner 做全局方向，executor 逐项完成</td><td>主要串行；每项仍可能调用 LLM</td></tr>
-        <tr><td><strong>ReWOO</strong></td><td>线性步骤＋<code>#E</code> 变量</td><td>后续任务引用前序结果，减少反复重规划</td><td>原版 worker 顺序执行；任务本身仍可包含 LLM 调用</td></tr>
-        <tr><td><strong>LLMCompiler</strong></td><td>带依赖的 task DAG</td><td>依赖满足即可调度，可流式产生任务</td><td>要处理错边、漏边、并发副作用和 replan 抖动</td></tr>
+        <tr><td>新 observation 经常改变下一步</td><td><strong>ReAct</strong></td><td>串行关键路径、重复模型决策、增长中的历史</td></tr>
+        <tr><td>路径可预见，主要想减少重复 prompt</td><td><strong>ReWOO</strong></td><td>原版顺序 Worker，执行期不改计划</td></tr>
+        <tr><td>多个慢工具有清晰的部分依赖</td><td><strong>LLMCompiler</strong></td><td>Planner 必须画对边，还要治理并发与副作用</td></tr>
+        <tr><td>步骤固定，模型无需决定路由</td><td><strong>普通 workflow</strong></td><td>灵活性较少，但更容易测试和恢复</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="callout fact"><span class="tag">【来源事实】LangChain</span>LangChain 的文章把三者作为 planning-agent 原型。文章引用的 3.6× 是 LLMCompiler 论文在特定实验中的结果，不是所有业务任务的速度承诺。</div>
+  <div class="callout fact"><span class="tag">来源边界</span>LangChain 提供 Plan-and-Execute、ReWOO、LLMCompiler 的比较入口；ReAct、ReWOO 和 LLMCompiler 的执行细节与实验数字应回到各自论文和作者代码。完整逐轮轨迹、调用形状与准确 benchmark 口径见研究笔记 §4 和 §7.4。</div>
+  <div class="callout warn"><span class="tag">共同边界</span>三者都不天然是 multi-agent。一个模型、一段调度代码和普通工具就能实现这些流程；只有节点真正启动拥有独立上下文和控制权的 agent runtime 时，具体部署才是 multi-agent。</div>
 </section>
 
 <section id="step-7" data-step>
