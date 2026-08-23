@@ -18,6 +18,13 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ### 4. Agent Engineering
 
+* 🎓 [从一个 Agent 到一支可控团队 — Multi-Agent Systems 十步学习路径](https://caiboyang.github.io/ML-learning/multi-agent-systems/learn/)
+  * *从 single-agent baseline 开始，用十步建立多智能体系统的决策与工程坐标：什么时候值得拆分、为什么要按上下文边界拆、ADK 的 hierarchy / Sequential / Parallel / Loop 如何表达控制流，以及 planning 为什么不等于 multi-agent。后半程用任务合同、局部失败恢复、single-agent 对照评测和一个最小研究 Lab，把“多开几个 agent”变成可验证的系统设计。页面提供步骤导航与可展开自测答案。*
+  * *与下面的详细笔记配套：**这篇给取舍和顺序，那篇给完整 schema、失败轨迹、评估矩阵与来源边界**。建议先走完十步，再把详细笔记当作实现参考。*
+
+* 📚 [Multi-Agent Systems 学习笔记：何时拆分、如何协作、怎样评测](https://caiboyang.github.io/ML-learning/multi-agent-systems/Multi_Agent_Systems_Study_Notes.html)（[Markdown 原文](multi-agent-systems/Multi_Agent_Systems_Study_Notes.md)）
+  * *基于 Anthropic、Google ADK 与 LangChain 三份一手材料，建立 decomposition / assignment / execution / communication / synthesis / evaluation 六维坐标系；区分来源事实、综合解释与实践建议，并覆盖 provider-neutral 的任务合同、端到端失败恢复、成本与延迟权衡、single-agent baseline 评估矩阵、自测题和渐进式最小 Lab。*
+
 * 🎓 [把上下文压小而不压坏 — 从零学 Agent Context Compression](https://caiboyang.github.io/ML-learning/agent-context-compression/learn/)
   * *十步学习路径，从零基础起步。假设你只知道「LLM 有上下文窗口」，读完能自己设计并评估一套压缩策略。先看一次 agent 被撑爆的死亡现场，再讲窗口这堵墙的三个反直觉性质（每轮重发全部历史、装得下≠用得好、墙的位置未必是文档写的那个）；然后建立六层坐标系，手把手走完最小可用实现的六步，逐个拆解五个必踩的坑；最后是三个决定系统形态的设计选择、压缩解决不了的边界，以及怎么验证自己压对了。*
   * *与下面的知识库配套：**这篇给取舍和顺序，那篇给源码和常量**。建议先读这篇建立坐标系，再拿那篇当参考手册查。*

@@ -9,7 +9,8 @@ description: "从 single-agent baseline 出发，学习 multi-agent 的上下文
 > 研究与链接校验日期：**2026-08-23**<br>
 > 核心范围：Anthropic 的 multi-agent 决策框架、Google ADK 的协作模型、LangChain 的 planning agents。<br>
 > 阅读约定：**【来源事实】** 表示来源直接支持；**【综合解释】** 表示把多个来源放进同一模型后的推导；**【实践建议】** 表示可执行但仍需用自己的任务验证。<br>
-> 版本提醒：ADK 与 LangChain/LangGraph 都在快速演进。本文讲稳定的架构思想；涉及类名、API 和推荐路径时，须以当前官方文档为准。
+> 版本提醒：ADK 与 LangChain/LangGraph 都在快速演进。本文讲稳定的架构思想；涉及类名、API 和推荐路径时，须以当前官方文档为准。<br>
+> 建议读法：先走一遍配套的 [十步视觉学习路径](learn/)，再把本文当作 schema、失败轨迹、评估矩阵与来源边界的详细参考。
 
 ---
 
@@ -866,6 +867,8 @@ def run_research(user_task):
 <sub>
 
 学习笔记，非官方文档。本文的统一坐标系、TaskEnvelope、AgentResult、恢复顺序和评估矩阵是教学性综合，不是厂商协议或行业标准。
+
+[十步视觉学习路径](learn/) · [返回 ML Learning Notes](../)
 
 </sub>
 
