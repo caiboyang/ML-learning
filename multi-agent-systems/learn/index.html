@@ -170,7 +170,6 @@ layout: null
     .lede { font-size: 19px; }
     .meta-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
     h2 { font-size: 25px; }
-    .matrix { grid-template-columns: 86px minmax(220px, 1fr) minmax(220px, 1fr); }
   }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
@@ -192,7 +191,7 @@ layout: null
       <div class="meta"><div class="label">读者假设</div><div class="value">写过单 Agent 或工具调用</div></div>
       <div class="meta"><div class="label">学习长度</div><div class="value">10 步 · 约 35–45 分钟</div></div>
       <div class="meta"><div class="label">完成目标</div><div class="value">能设计、恢复并评测 MAS</div></div>
-      <div class="meta"><div class="label">详细参考</div><div class="value"><a href="../Multi_Agent_Systems_Research.html">完整学习笔记</a></div></div>
+      <div class="meta"><div class="label">详细参考</div><div class="value"><a href="../Multi_Agent_Systems_Research.html">研究笔记</a></div></div>
     </div>
   </div>
 </header>
@@ -217,7 +216,8 @@ layout: null
   <div class="section-head"><span class="section-num">STEP 01</span><h2>先建立最强的单 Agent 基线</h2></div>
   <div class="section-sub">The baseline is part of the architecture</div>
   <p class="deck">不知道一个 agent 能做到什么，就不知道多个 agent 究竟解决了什么。</p>
-  <p>假设任务是“读取支付日志、定位失败原因、提出修复并生成用户说明”。先让一个 agent 在相同工具、模型和数据下完成它，并保存完整 trace。不要因为任务看起来复杂，就先创建 planner、coder、tester 和 reviewer。</p>
+  <p>假设值班工程师收到一条支付失败告警。先把相关日志、runbook 和代码交给一个 agent，让它给出故障假设、对应证据、修复建议和用户说明。工程师复核时不只看答案，还要看它读过哪些材料、在哪一步走偏、有没有漏掉约束。这条完整 trace 就是 baseline。</p>
+  <p>如果同类任务里，单 agent 反复被长日志挤掉关键上下文，或者总在几个相似工具之间选错，拆分才有明确目标。反过来，如果它已经稳定完成任务，再加 planner 和 reviewer 主要会增加交接，未必带来可测收益。先把简单方案做到可复现，后面与 multi-agent 的对照才有意义。</p>
   <div class="flow" aria-label="基线到多智能体的决策流程">
     <div class="node">Single agent<br><small>同模型、同工具</small></div><div class="arrow">→</div>
     <div class="node">复现瓶颈<br><small>质量 / 上下文 / 工具</small></div><div class="arrow">→</div>
@@ -225,7 +225,7 @@ layout: null
   </div>
   <div class="callout fact">
     <span class="tag">【来源事实】Anthropic</span>
-    Anthropic 建议先从最简单可行方案开始；其测试中，等价任务的 multi-agent 实现通常消耗 single-agent 的 <strong>3–10 倍 token</strong>。这是厂商经验，不是跨任务定律。
+    Anthropic 建议先从最简单可行方案开始；其测试中，等价任务的 multi-agent 实现通常消耗 single-agent 的 <strong>3 到 10 倍 token</strong>。这是厂商经验，不是跨任务定律。
   </div>
   <details>
     <summary>为什么“第 8 轮一定崩”不是一个好判断？</summary>
@@ -239,9 +239,10 @@ layout: null
   <p class="deck">多一个 agent 必须对应一个可测瓶颈，而不是多一个角色名称。</p>
   <div class="tiles">
     <div class="tile"><div class="label">上下文保护</div><div class="body">子任务读取大量材料，但主任务只需要短结论。worker 在自己的 context 中过滤，只回传证据与摘要。</div></div>
-    <div class="tile"><div class="label">并行探索</div><div class="body">多个研究路径彼此独立，可同时运行。主要收益通常是<strong>覆盖面</strong>；墙钟时间可能下降，总计算量不会。</div></div>
+    <div class="tile"><div class="label">并行探索</div><div class="body">多个研究路径彼此独立，可同时运行。主要收益通常是<strong>覆盖面</strong>；墙钟时间可能下降，总计算量往往不会随之下降。</div></div>
     <div class="tile"><div class="label">专业化</div><div class="body">工具、权限或领域上下文明显不同。先试工具发现与更好提示；路由边界清晰时再拆 specialist。</div></div>
   </div>
+  <p>拆之前，先说清瓶颈落在哪张卡上。主 agent 被长材料淹没，才需要上下文保护；几条检索路线互不等待，并行才可能缩短墙钟时间；权限或工具集合确实不同，专业化才有稳定边界。一个任务可能同时命中两项，但最好先写下主要假设，后面的实验才能解释收益来自哪里。</p>
   <ul class="checklist">
     <li>瓶颈可以在同一任务集上复现，而不是一次主观感受。</li>
     <li>更好的 prompt、检索、压缩或工具发现仍解决不了。</li>
@@ -258,6 +259,7 @@ layout: null
     <div class="tile"><div class="label">坏边界 · 传话筒</div><div class="body"><strong>规划 → 编码 → 测试 → 评审</strong><br>同一功能的实现动机和失败历史被反复压缩、转述，协调成本可能高于工作本身。</div></div>
     <div class="tile"><div class="label">好边界 · 可隔离</div><div class="body"><strong>认证模块 / 支付模块</strong><br>每个 worker 在清晰接口内完成设计、实现与自测；独立 verifier 做黑盒验收。</div></div>
   </div>
+  <p>两张卡的差别在交接物。按工种拆时，下一位往往要补齐上一位的动机和试错过程，结果是 agent 在传话。按模块拆也不是自动正确：认证和支付之间仍要有清楚的接口，worker 的输出还得能单独测试。下面三个问题就是在检查这件事，而不是替角色表找更多名字。</p>
   <h3>三个边界测试</h3>
   <ul class="checklist">
     <li>worker 能否在少量初始输入后独立工作？</li>
@@ -347,6 +349,7 @@ task:
     <div class="tile"><div class="label">TaskEnvelope</div><div class="body">描述“为什么派、允许看什么、允许做什么、怎样算完成”。</div></div>
     <div class="tile"><div class="label">AgentResult</div><div class="body">返回状态、摘要、证据、artifact、未决问题和可否重试；不倾倒整段 scratchpad。</div></div>
   </div>
+  <p><code>TaskEnvelope</code> 解决执行前的不确定性，<code>AgentResult</code> 让协调者在执行后能验收、续跑或止损。可以做一个朴素检查：worker 此刻退出，另一个 worker 能否只凭任务合同和已保存的 artifact 接手？如果还得翻整段对话猜目标，handoff 仍然没有设计好。</p>
 </section>
 
 <section id="step-8" data-step>
@@ -358,6 +361,7 @@ task:
     <div class="node">冻结成功结果<br><small>checkpoint / artifact</small></div><div class="arrow">→</div>
     <div class="node">有界修复<br><small>局部 retry / replan</small></div>
   </div>
+  <p>先看失败有没有污染共享状态或产生外部写入。只读查询超时而原计划仍成立时，可以重试这个节点；新证据推翻了下游依赖时，应重规划受影响的分支；已经发出的邮件或数据库写入，则要先确认幂等、审批和补偿范围。分类决定哪些结果可以冻结，也决定修复要停在节点、分支还是人工处理。</p>
   <details>
     <summary>场景 A：一个 research worker 超时</summary>
     <div class="answer">保留其他 worker 已验证的结果；缩小超时节点范围并复用已抓取 artifact；最多进行约定次数的重试。再次失败则返回 partial 和缺口，不把全队重新运行。</div>
@@ -436,8 +440,8 @@ task:
       <a href="https://www.langchain.com/blog/planning-agents">LangChain：Plan-and-Execute Agents</a>。
     </p>
     <p>版本补充：<a href="https://adk.dev/workflows/">ADK Workflows</a>、<a href="https://docs.langchain.com/oss/python/langgraph/workflows-agents">LangGraph Workflows and Agents</a>。核对日期：2026-08-23。框架 API 与推荐路径可能继续变化。</p>
-    <p>这篇是<strong>视觉学习路径</strong>，给的是取舍与顺序。完整 schema、多轮失败轨迹、评估矩阵、论文数字与证据边界，请看 <a href="../Multi_Agent_Systems_Research.html">Multi-Agent Systems 详细学习笔记</a>。</p>
-    <p><a href="../../">← 返回 ML Learning Notes</a> · <a href="../Multi_Agent_Systems_Research.html">打开详细笔记</a></p>
+    <p>这篇是<strong>视觉学习路径</strong>，给的是取舍与顺序。完整 schema、多轮失败轨迹、评估矩阵、论文数字与证据边界，请看 <a href="../Multi_Agent_Systems_Research.html">研究笔记</a>。</p>
+    <p><a href="../../">← 返回 ML Learning Notes</a> · <a href="../Multi_Agent_Systems_Research.html">打开研究笔记</a></p>
   </div>
 </footer>
 
