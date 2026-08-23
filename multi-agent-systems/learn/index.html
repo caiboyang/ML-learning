@@ -141,7 +141,9 @@ layout: null
   details[open] summary { border-bottom: 1px solid var(--rule); color: var(--mint-soft); }
   .answer { padding: 15px 18px; color: var(--paper-dim); font: 400 14.5px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
 
-  .matrix { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 1px; margin: 28px 0; overflow: hidden; border: 1px solid var(--rule); border-radius: 9px; background: var(--rule); }
+  .matrix-scroll { max-width: 100%; margin: 28px 0; overflow-x: auto; border-radius: 9px; overscroll-behavior-inline: contain; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+  .matrix-scroll:focus-visible { outline: 2px solid var(--mint-soft); outline-offset: 4px; }
+  .matrix { display: grid; grid-template-columns: 110px minmax(220px, 1fr) minmax(220px, 1fr); min-width: 590px; gap: 1px; overflow: hidden; border: 1px solid var(--rule); border-radius: 9px; background: var(--rule); }
   .matrix > div { min-height: 74px; padding: 13px; background: var(--surface); color: var(--paper-dim); font: 400 13.5px/1.55 'Inter', 'Noto Sans SC', sans-serif; }
   .matrix .axis { display: grid; place-items: center; color: var(--muted); font: 500 10px/1.45 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
   .matrix strong { display: block; margin-bottom: 3px; }
@@ -161,15 +163,14 @@ layout: null
     .section-sub { margin-left: 0; }
     .flow { grid-template-columns: 1fr; }
     .arrow { transform: rotate(90deg); justify-self: center; }
-    .matrix { grid-template-columns: 72px 1fr 1fr; }
+    .matrix { grid-template-columns: 86px minmax(220px, 1fr) minmax(220px, 1fr); }
   }
   @media (max-width: 430px) {
     h1 { font-size: 40px; }
     .lede { font-size: 19px; }
     .meta-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
     h2 { font-size: 25px; }
-    .matrix { grid-template-columns: 1fr; }
-    .matrix .axis { min-height: 44px; }
+    .matrix { grid-template-columns: 86px minmax(220px, 1fr) minmax(220px, 1fr); }
   }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
@@ -191,7 +192,7 @@ layout: null
       <div class="meta"><div class="label">读者假设</div><div class="value">写过单 Agent 或工具调用</div></div>
       <div class="meta"><div class="label">学习长度</div><div class="value">10 步 · 约 35–45 分钟</div></div>
       <div class="meta"><div class="label">完成目标</div><div class="value">能设计、恢复并评测 MAS</div></div>
-      <div class="meta"><div class="label">详细参考</div><div class="value"><a href="../Multi_Agent_Systems_Study_Notes.html">完整学习笔记</a></div></div>
+      <div class="meta"><div class="label">详细参考</div><div class="value"><a href="../Multi_Agent_Systems_Research.html">完整学习笔记</a></div></div>
     </div>
   </div>
 </header>
@@ -287,16 +288,20 @@ layout: null
     <span class="tag">版本边界 · 截至 2026-08-23</span>
     这些名称是 ADK 的具体表达，不是通用 MAS 标准。当前 ADK 2.0 还提供 graph、dynamic、collaborative workflows；实现前应重新查官方 API 与支持矩阵。
   </div>
+  <p>把这三层画清后，才轮到 planning。<strong>Multi-agent 轴</strong>问的是执行责任和上下文是否拆给多个自治运行单元；<strong>planning 轴</strong>问的是系统是否显式生成任务、顺序与依赖。一个决定“谁来做”，一个决定“工作怎样安排”，所以同一套拓扑可以有或没有 planner，同一份 plan 也可以交给一个或多个执行者。</p>
+  <p>下一步的四象限不是成熟度阶梯。默认从左上角的 single-agent 逐步行动开始：只需要全局依赖时向右，保留一个 agent 但显式规划；只需要隔离上下文或 specialist 时向下，用 router 协作而不先生成全局计划；只有任务形状也要动态发现、执行又确实需要独立 worker 时，才走到右下角的 planner → workers → joiner。</p>
 </section>
 
 <section id="step-5" data-step>
   <div class="section-head"><span class="section-num">STEP 05</span><h2>Planning 与 multi-agent 是正交维度</h2></div>
   <div class="section-sub">How work is planned ≠ who executes it</div>
   <p class="deck">Planner、executor、joiner 可以是不同 agent，也可以只是同一应用里的普通节点。</p>
-  <div class="matrix" role="table" aria-label="Planning 与 multi-agent 二乘二矩阵">
-    <div class="axis"></div><div class="axis">无显式 planning</div><div class="axis">有显式 planning</div>
-    <div class="axis">Single-agent</div><div><strong>逐步行动</strong>一个 agent 观察后决定下一步</div><div><strong>先计划再执行</strong>一个 agent 生成 step list 或 DAG</div>
-    <div class="axis">Multi-agent</div><div><strong>Router → specialist</strong>没有全局 planner 也能协作</div><div><strong>Planner → workers → joiner</strong>计划与执行单元均被拆开</div>
+  <div class="matrix-scroll" role="region" aria-label="Planning 与 multi-agent 矩阵；窄屏可水平滚动查看" tabindex="0">
+    <div class="matrix" role="table" aria-label="Planning 与 multi-agent 二乘二矩阵">
+      <div class="axis"></div><div class="axis">无显式 planning</div><div class="axis">有显式 planning</div>
+      <div class="axis">Single-agent</div><div><strong>逐步行动</strong>一个 agent 观察后决定下一步</div><div><strong>先计划再执行</strong>一个 agent 生成 step list 或 DAG</div>
+      <div class="axis">Multi-agent</div><div><strong>Router → specialist</strong>没有全局 planner 也能协作</div><div><strong>Planner → workers → joiner</strong>计划与执行单元均被拆开</div>
+    </div>
   </div>
   <div class="callout warn"><span class="tag">常见误区</span>有四个节点不代表有四个 agent；先生成 DAG 也不自动让系统成为 multi-agent。判断标准是运行单元是否拥有可区分的上下文、职责、工具或控制权。</div>
 </section>
@@ -371,6 +376,7 @@ task:
   <div class="section-head"><span class="section-num">STEP 09</span><h2>从 single-agent baseline 评测净收益</h2></div>
   <div class="section-sub">Outcome · Trajectory · Cost · Reliability</div>
   <p class="deck">多 agent “能完成”不够；它必须稳定优于最强的简单方案。</p>
+  <p>实验要先从<strong>失败预算</strong>反推，而不是让更复杂的系统靠无限重试换成功：固定每个版本可用的 model/tool calls、tokens、wall time、重试和 replan 次数，再在同一任务集、模型与工具下比较。这样测到的才是架构收益，而不是额外计算量。</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>版本</th><th>系统</th><th>它回答的问题</th></tr></thead>
@@ -382,6 +388,8 @@ task:
       </tbody>
     </table>
   </div>
+  <p>这四个版本是一组因果消融：S1 判断收益是否来自单 agent 优化，W1 隔离确定性编排的贡献，M1 最后才检验动态分解和独立上下文。随后给每个版本注入相同的 timeout、缺证据或冲突结果，沿 trace 找到<strong>第一处偏离</strong>：如果原计划仍成立，只重试失败节点；如果新证据改变了下游依赖，只重规划受影响的局部子图；预算耗尽就返回 partial 或停止。</p>
+  <p>因此实验还要记录“保留了多少已验证工作”和“恢复后是否重新通过验收”。只比较最终成功率，会把整队重跑与局部恢复混为一谈，也看不出多 agent 的额外故障面究竟有没有被控制住。</p>
   <ul class="checklist">
     <li><strong>结果：</strong>正确性、完整性、约束满足、引用有效。</li>
     <li><strong>轨迹：</strong>分解覆盖、路由、工具参数、越权、第一处偏离。</li>
@@ -428,8 +436,8 @@ task:
       <a href="https://www.langchain.com/blog/planning-agents">LangChain：Plan-and-Execute Agents</a>。
     </p>
     <p>版本补充：<a href="https://adk.dev/workflows/">ADK Workflows</a>、<a href="https://docs.langchain.com/oss/python/langgraph/workflows-agents">LangGraph Workflows and Agents</a>。核对日期：2026-08-23。框架 API 与推荐路径可能继续变化。</p>
-    <p>这篇是<strong>视觉学习路径</strong>，给的是取舍与顺序。完整 schema、多轮失败轨迹、评估矩阵、论文数字与证据边界，请看 <a href="../Multi_Agent_Systems_Study_Notes.html">Multi-Agent Systems 详细学习笔记</a>。</p>
-    <p><a href="../../">← 返回 ML Learning Notes</a> · <a href="../Multi_Agent_Systems_Study_Notes.html">打开详细笔记</a></p>
+    <p>这篇是<strong>视觉学习路径</strong>，给的是取舍与顺序。完整 schema、多轮失败轨迹、评估矩阵、论文数字与证据边界，请看 <a href="../Multi_Agent_Systems_Research.html">Multi-Agent Systems 详细学习笔记</a>。</p>
+    <p><a href="../../">← 返回 ML Learning Notes</a> · <a href="../Multi_Agent_Systems_Research.html">打开详细笔记</a></p>
   </div>
 </footer>
 
