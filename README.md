@@ -20,7 +20,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 * 🎓 [从一个 Agent 到一支可控团队 — Multi-Agent Systems 十步学习路径](https://caiboyang.github.io/ML-learning/multi-agent-systems/learn/)
   * *从 single-agent baseline 开始，用十步建立多智能体系统的决策与工程坐标：什么时候值得拆分、为什么要按上下文边界拆、ADK 的 hierarchy / Sequential / Parallel / Loop 如何表达控制流，以及 planning 为什么不等于 multi-agent。后半程用任务合同、局部失败恢复、single-agent 对照评测和一个最小研究 Lab，把“多开几个 agent”变成可验证的系统设计。页面提供步骤导航与可展开自测答案。*
-  * *与下面的详细笔记配套：**这篇给取舍和顺序，那篇给完整 schema、失败轨迹、评估矩阵与来源边界**。建议先走完十步，再把详细笔记当作实现参考。*
+  * *与下面的研究笔记配套：**这篇给取舍和顺序，那篇给完整 schema、失败轨迹、评估矩阵与来源边界**。建议先走完十步，再把研究笔记当作实现参考。*
 
 * 📚 [Multi-Agent Systems 研究笔记：何时拆分、如何协作、怎样评测](https://caiboyang.github.io/ML-learning/multi-agent-systems/Multi_Agent_Systems_Research.html)（[Markdown 原文](multi-agent-systems/Multi_Agent_Systems_Research.md)）
   * *基于 Anthropic、Google ADK 与 LangChain 三份一手材料，建立 decomposition / assignment / execution / communication / synthesis / evaluation 六维坐标系；区分来源事实、综合解释与实践建议，并覆盖 provider-neutral 的任务合同、端到端失败恢复、成本与延迟权衡、single-agent baseline 评估矩阵、自测题和渐进式最小 Lab。*
