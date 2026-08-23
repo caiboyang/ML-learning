@@ -18,6 +18,13 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ### 4. Agent Engineering
 
+* 🎓 [从零开始掌握多智能体：Multi-Agent Systems 10步学习路径](https://caiboyang.github.io/ML-learning/multi-agent-systems/learn/)
+  * *十步进阶指南。从单 Agent 被上下文撑爆的死亡现场开始，揭示三大物理硬墙。带你走过 Anthropic 的上下文边界拆分哲学、Google ADK 的树状编排、以及 LangChain / LangGraph 里的执行引擎演进（ReWOO 变量解耦与 LLMCompiler 强并行 DAG）。深入解析内存状态（白板与 URI 句柄）、危险的级联失效率 $P=\prod p_i$ 以及多 Agent 辩论中的马屁精陷阱。文末附带工业级监控 Trace 与第一处偏离溯源策略。*
+  * *与下面的参考手册配套：**这篇给架构全景和心智模型，那篇给具体的模式定义与对比**。建议先读这篇，再把那篇当成开发者的查阅手册。*
+
+* 📚 [Multi-Agent Systems 参考手册：架构拓扑、规划引擎与协作状态](https://caiboyang.github.io/ML-learning/multi-agent-systems/Multi_Agent_Systems_Research.html)（含架构拓扑与矩阵对照；[Markdown 原文](multi-agent-systems/Multi_Agent_Systems_Research.md)）
+  * *基于 Anthropic、Google ADK 和 LangChain MAS 实证的研究总结。拆解 Orchestrator-Workers、Verification Subagent 与 DAG 并行执行模式。建立了一套系统级的状态流转规范（Artifact Reference Pattern / Message Passing）。针对无限循环、早期误判 (Early Victory) 和幻觉移交 (Hallucinated Handoffs) 等常见反模式提供代码级的修复清单，以及市面上 6 大主流 Agent 框架的选型对照。*
+
 * 🎓 [把上下文压小而不压坏 — 从零学 Agent Context Compression](https://caiboyang.github.io/ML-learning/agent-context-compression/learn/)
   * *十步学习路径，从零基础起步。假设你只知道「LLM 有上下文窗口」，读完能自己设计并评估一套压缩策略。先看一次 agent 被撑爆的死亡现场，再讲窗口这堵墙的三个反直觉性质（每轮重发全部历史、装得下≠用得好、墙的位置未必是文档写的那个）；然后建立六层坐标系，手把手走完最小可用实现的六步，逐个拆解五个必踩的坑；最后是三个决定系统形态的设计选择、压缩解决不了的边界，以及怎么验证自己压对了。*
   * *与下面的知识库配套：**这篇给取舍和顺序，那篇给源码和常量**。建议先读这篇建立坐标系，再拿那篇当参考手册查。*
