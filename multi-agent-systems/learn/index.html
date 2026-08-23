@@ -1,0 +1,473 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="description" content="从 single-agent baseline 出发，用十步学习多智能体系统的拆分、协作、规划、失败恢复与评测。" />
+<title>从一个 Agent 到一支可控团队 — Multi-Agent Systems 十步学习路径</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,500&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #07090f;
+    --night: #0e1320;
+    --surface: #141a2a;
+    --surface-2: #1a2238;
+    --rule: #27314b;
+    --paper: #ece9e1;
+    --paper-dim: #bbb6aa;
+    --muted: #8f897e;
+    --mint: #7be3d7;
+    --mint-soft: #a7f2ea;
+    --violet: #b59bff;
+    --amber: #ffbd7f;
+    --rose: #ff91a5;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 92px; }
+  body {
+    margin: 0;
+    background: var(--void);
+    color: var(--paper);
+    font-family: 'Newsreader', 'Noto Serif SC', serif;
+    font-size: 18px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='1' cy='1' r='1' fill='%2327314b' opacity='.42'/></svg>");
+  }
+  a { color: var(--mint); text-underline-offset: 3px; }
+  a:hover { color: var(--mint-soft); }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--mint-soft); outline-offset: 4px; border-radius: 4px; }
+  code { font-family: 'JetBrains Mono', monospace; font-size: .84em; color: var(--mint-soft); }
+  .skip {
+    position: fixed; left: 16px; top: -80px; z-index: 20;
+    padding: 10px 14px; border-radius: 6px; background: var(--paper); color: var(--void);
+  }
+  .skip:focus { top: 12px; }
+  .progress { position: fixed; inset: 0 0 auto; height: 3px; z-index: 30; background: rgba(255,255,255,.05); }
+  .progress > span { display: block; width: 0; height: 100%; background: linear-gradient(90deg, var(--mint), var(--violet)); }
+
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 88px 28px 62px;
+    background: linear-gradient(to bottom, rgba(7,9,15,.9), rgba(7,9,15,.52)), var(--night);
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(820px 360px at 82% 0%, rgba(123,227,215,.12), transparent 62%),
+      radial-gradient(660px 340px at 0% 92%, rgba(181,155,255,.12), transparent 60%);
+  }
+  .hero-inner { position: relative; max-width: 920px; margin: 0 auto; }
+  .crumbs { display: flex; gap: 10px; flex-wrap: wrap; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow { margin-top: 30px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--mint); }
+  h1 {
+    max-width: 850px; margin: 16px 0 22px;
+    font: 700 clamp(40px, 7vw, 72px)/1.05 'Inter', 'Noto Sans SC', sans-serif;
+    letter-spacing: -.045em;
+  }
+  h1 .accent { color: var(--violet); }
+  .lede { max-width: 760px; margin: 0; color: var(--paper-dim); font-size: 21px; line-height: 1.7; }
+  .lede strong { color: var(--paper); }
+  .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 42px; padding: 20px 0; border-block: 1px solid var(--rule); }
+  .meta .label { font: 10px/1.4 'JetBrains Mono', monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .meta .value { margin-top: 5px; font: 500 14px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
+
+  .step-nav {
+    position: sticky; top: 0; z-index: 15;
+    background: rgba(7,9,15,.91); border-bottom: 1px solid var(--rule); backdrop-filter: blur(14px);
+  }
+  .step-nav-inner { display: flex; gap: 8px; max-width: 980px; margin: 0 auto; padding: 10px 20px; overflow-x: auto; scrollbar-width: thin; }
+  .step-link {
+    flex: 0 0 auto; padding: 7px 10px; border: 1px solid transparent; border-radius: 999px;
+    color: var(--muted); text-decoration: none; font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: .04em;
+  }
+  .step-link:hover { border-color: var(--rule); color: var(--paper); }
+  .step-link[aria-current="step"] { color: var(--void); background: var(--mint); border-color: var(--mint); }
+
+  main { max-width: 820px; margin: 0 auto; padding: 62px 28px 20px; }
+  section { margin: 0 0 92px; }
+  .section-head { display: flex; align-items: baseline; gap: 16px; padding-top: 22px; border-top: 1px solid var(--rule); }
+  .section-num { flex: 0 0 auto; color: var(--mint); font: 500 12px/1 'JetBrains Mono', monospace; letter-spacing: .12em; }
+  h2 { margin: 0; font: 700 30px/1.22 'Inter', 'Noto Sans SC', sans-serif; letter-spacing: -.02em; }
+  .section-sub { margin: 8px 0 24px 54px; color: var(--muted); font: 10px/1.5 'JetBrains Mono', monospace; letter-spacing: .14em; text-transform: uppercase; }
+  .deck { margin: 0 0 26px; padding-left: 15px; border-left: 2px solid var(--violet); color: #d4c8ff; font-size: 20px; font-style: italic; }
+  p { margin: 0 0 18px; }
+  strong { font-weight: 600; color: var(--paper); }
+  h3 { margin: 34px 0 12px; font: 600 19px/1.35 'Inter', 'Noto Sans SC', sans-serif; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 26px 0; }
+  .tiles.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile { padding: 18px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+  .tile .label { margin-bottom: 8px; color: var(--mint); font: 500 10px/1.4 'JetBrains Mono', monospace; letter-spacing: .11em; text-transform: uppercase; }
+  .tile .body { color: var(--paper-dim); font: 400 14.5px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+  .tile .body strong { color: var(--paper); }
+
+  .callout { margin: 26px 0; padding: 17px 19px; border: 1px solid var(--rule); border-left-width: 3px; border-radius: 9px; background: var(--surface); color: var(--paper-dim); font: 400 15px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+  .callout .tag { display: block; margin-bottom: 8px; font: 500 10px/1.4 'JetBrains Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
+  .callout.fact { border-left-color: var(--mint); }
+  .callout.fact .tag { color: var(--mint); }
+  .callout.explain { border-left-color: var(--violet); }
+  .callout.explain .tag { color: var(--violet); }
+  .callout.warn { border-left-color: var(--rose); }
+  .callout.warn .tag { color: var(--rose); }
+
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 10px; margin: 28px 0; }
+  .node { display: grid; place-items: center; min-height: 84px; padding: 13px; border: 1px solid var(--rule); border-radius: 9px; background: var(--surface); text-align: center; font: 500 14px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
+  .arrow { align-self: center; color: var(--mint); font: 20px/1 'JetBrains Mono', monospace; }
+
+  .table-wrap { overflow-x: auto; margin: 26px 0; }
+  table { width: 100%; min-width: 620px; border-collapse: collapse; font: 400 14px/1.55 'Inter', 'Noto Sans SC', sans-serif; }
+  th, td { padding: 11px 12px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  th { color: var(--mint); font: 500 10px/1.4 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+  td { color: var(--paper-dim); }
+
+  pre { margin: 24px 0; padding: 18px; overflow-x: auto; border: 1px solid var(--rule); border-radius: 9px; background: var(--night); }
+  pre code { color: var(--paper-dim); font-size: 12.5px; line-height: 1.7; }
+  .k { color: var(--violet); }
+  .s { color: var(--amber); }
+  .c { color: var(--muted); }
+
+  .checklist { list-style: none; margin: 24px 0; padding: 0; }
+  .checklist li { position: relative; margin: 11px 0; padding-left: 28px; color: var(--paper-dim); font: 400 15px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+  .checklist li::before { content: '✓'; position: absolute; left: 0; color: var(--mint); font-weight: 700; }
+
+  details { margin: 13px 0; border: 1px solid var(--rule); border-radius: 9px; background: var(--surface); }
+  summary { cursor: pointer; padding: 15px 18px; color: var(--paper); font: 600 15px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
+  details[open] summary { border-bottom: 1px solid var(--rule); color: var(--mint-soft); }
+  .answer { padding: 15px 18px; color: var(--paper-dim); font: 400 14.5px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+
+  .matrix-scroll { max-width: 100%; margin: 28px 0; overflow-x: auto; border-radius: 9px; overscroll-behavior-inline: contain; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+  .matrix-scroll:focus-visible { outline: 2px solid var(--mint-soft); outline-offset: 4px; }
+  .matrix { display: grid; grid-template-columns: 110px minmax(220px, 1fr) minmax(220px, 1fr); min-width: 590px; gap: 1px; overflow: hidden; border: 1px solid var(--rule); border-radius: 9px; background: var(--rule); }
+  .matrix > div { min-height: 74px; padding: 13px; background: var(--surface); color: var(--paper-dim); font: 400 13.5px/1.55 'Inter', 'Noto Sans SC', sans-serif; }
+  .matrix .axis { display: grid; place-items: center; color: var(--muted); font: 500 10px/1.45 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+  .matrix strong { display: block; margin-bottom: 3px; }
+
+  footer { border-top: 1px solid var(--rule); background: var(--night); }
+  .foot-inner { max-width: 820px; margin: 0 auto; padding: 42px 28px 58px; color: var(--paper-dim); font: 400 14px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+  .foot-inner p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 720px) {
+    body { font-size: 17px; }
+    .hero { padding: 66px 24px 46px; }
+    .meta-grid { grid-template-columns: repeat(2, 1fr); }
+    main { padding-inline: 22px; }
+    section { margin-bottom: 74px; }
+    .tiles, .tiles.two { grid-template-columns: 1fr; }
+    .section-head { align-items: flex-start; }
+    .section-sub { margin-left: 0; }
+    .flow { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); justify-self: center; }
+    .matrix { grid-template-columns: 86px minmax(220px, 1fr) minmax(220px, 1fr); }
+  }
+  @media (max-width: 430px) {
+    h1 { font-size: 40px; }
+    .lede { font-size: 19px; }
+    .meta-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+    h2 { font-size: 25px; }
+    .matrix { grid-template-columns: 86px minmax(220px, 1fr) minmax(220px, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#step-1">跳到学习内容</a>
+<div class="progress" aria-hidden="true"><span id="reading-progress"></span></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="crumbs"><span>ML Learning Notes</span><span>·</span><span>Agent Engineering</span><span>·</span><span>Multi-Agent</span></div>
+    <div class="eyebrow">十步学习路径 · 先做决策，再谈框架</div>
+    <h1>从一个 Agent<br>到一支<span class="accent">可控团队</span></h1>
+    <p class="lede">
+      Multi-agent 不是 single-agent 的升级按钮。它用更多独立上下文换取<strong>上下文保护、并行探索与专业化</strong>，
+      同时引入交接、合并、错误级联与更高成本。十步走完后，你应该能证明一个任务究竟值不值得拆。
+    </p>
+    <div class="meta-grid">
+      <div class="meta"><div class="label">读者假设</div><div class="value">写过单 Agent 或工具调用</div></div>
+      <div class="meta"><div class="label">学习长度</div><div class="value">10 步 · 约 35–45 分钟</div></div>
+      <div class="meta"><div class="label">完成目标</div><div class="value">能设计、恢复并评测 MAS</div></div>
+      <div class="meta"><div class="label">详细参考</div><div class="value"><a href="../Multi_Agent_Systems_Research.html">完整学习笔记</a></div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="step-nav" aria-label="十步学习导航">
+  <div class="step-nav-inner">
+    <a class="step-link" href="#step-1">01 基线</a>
+    <a class="step-link" href="#step-2">02 判断</a>
+    <a class="step-link" href="#step-3">03 边界</a>
+    <a class="step-link" href="#step-4">04 拓扑</a>
+    <a class="step-link" href="#step-5">05 正交</a>
+    <a class="step-link" href="#step-6">06 规划</a>
+    <a class="step-link" href="#step-7">07 合同</a>
+    <a class="step-link" href="#step-8">08 恢复</a>
+    <a class="step-link" href="#step-9">09 评测</a>
+    <a class="step-link" href="#step-10">10 Lab</a>
+  </div>
+</nav>
+
+<main>
+<section id="step-1" data-step>
+  <div class="section-head"><span class="section-num">STEP 01</span><h2>先建立最强的单 Agent 基线</h2></div>
+  <div class="section-sub">The baseline is part of the architecture</div>
+  <p class="deck">不知道一个 agent 能做到什么，就不知道多个 agent 究竟解决了什么。</p>
+  <p>假设任务是“读取支付日志、定位失败原因、提出修复并生成用户说明”。先让一个 agent 在相同工具、模型和数据下完成它，并保存完整 trace。不要因为任务看起来复杂，就先创建 planner、coder、tester 和 reviewer。</p>
+  <div class="flow" aria-label="基线到多智能体的决策流程">
+    <div class="node">Single agent<br><small>同模型、同工具</small></div><div class="arrow">→</div>
+    <div class="node">复现瓶颈<br><small>质量 / 上下文 / 工具</small></div><div class="arrow">→</div>
+    <div class="node">再测试 MAS<br><small>同题对照</small></div>
+  </div>
+  <div class="callout fact">
+    <span class="tag">【来源事实】Anthropic</span>
+    Anthropic 建议先从最简单可行方案开始；其测试中，等价任务的 multi-agent 实现通常消耗 single-agent 的 <strong>3–10 倍 token</strong>。这是厂商经验，不是跨任务定律。
+  </div>
+  <details>
+    <summary>为什么“第 8 轮一定崩”不是一个好判断？</summary>
+    <div class="answer">轮数本身不是因果变量。真正要测的是：上下文里有多少无关材料、工具是否混淆、关键约束是否丢失、任务是否能局部隔离。某些长任务一个 agent 仍能稳定完成，某些短任务则可能因为权限或路由设计立即失败。</div>
+  </details>
+</section>
+
+<section id="step-2" data-step>
+  <div class="section-head"><span class="section-num">STEP 02</span><h2>只为三类真实收益拆分</h2></div>
+  <div class="section-sub">Context · Parallelism · Specialization</div>
+  <p class="deck">多一个 agent 必须对应一个可测瓶颈，而不是多一个角色名称。</p>
+  <div class="tiles">
+    <div class="tile"><div class="label">上下文保护</div><div class="body">子任务读取大量材料，但主任务只需要短结论。worker 在自己的 context 中过滤，只回传证据与摘要。</div></div>
+    <div class="tile"><div class="label">并行探索</div><div class="body">多个研究路径彼此独立，可同时运行。主要收益通常是<strong>覆盖面</strong>；墙钟时间可能下降，总计算量不会。</div></div>
+    <div class="tile"><div class="label">专业化</div><div class="body">工具、权限或领域上下文明显不同。先试工具发现与更好提示；路由边界清晰时再拆 specialist。</div></div>
+  </div>
+  <ul class="checklist">
+    <li>瓶颈可以在同一任务集上复现，而不是一次主观感受。</li>
+    <li>更好的 prompt、检索、压缩或工具发现仍解决不了。</li>
+    <li>拆分后的质量收益有机会覆盖成本、延迟和维护风险。</li>
+  </ul>
+  <div class="callout warn"><span class="tag">不要拆</span>简单任务、强耦合任务、不可隔离的写操作，以及没有 trace、预算、超时和验收条件的系统。</div>
+</section>
+
+<section id="step-3" data-step>
+  <div class="section-head"><span class="section-num">STEP 03</span><h2>按上下文边界拆，不按工种拆</h2></div>
+  <div class="section-sub">Decomposition follows context</div>
+  <p class="deck">如果 worker 必须不断追问“你刚才为什么这么做”，边界通常拆错了。</p>
+  <div class="tiles two">
+    <div class="tile"><div class="label">坏边界 · 传话筒</div><div class="body"><strong>规划 → 编码 → 测试 → 评审</strong><br>同一功能的实现动机和失败历史被反复压缩、转述，协调成本可能高于工作本身。</div></div>
+    <div class="tile"><div class="label">好边界 · 可隔离</div><div class="body"><strong>认证模块 / 支付模块</strong><br>每个 worker 在清晰接口内完成设计、实现与自测；独立 verifier 做黑盒验收。</div></div>
+  </div>
+  <h3>三个边界测试</h3>
+  <ul class="checklist">
+    <li>worker 能否在少量初始输入后独立工作？</li>
+    <li>结果能否用 schema、artifact 和证据短交接？</li>
+    <li>并行任务是否同时满足“无数据依赖”和“无副作用冲突”？</li>
+  </ul>
+</section>
+
+<section id="step-4" data-step>
+  <div class="section-head"><span class="section-num">STEP 04</span><h2>分清拓扑、控制流与通信</h2></div>
+  <div class="section-sub">Google ADK as one concrete vocabulary</div>
+  <p class="deck">“谁管理谁”“谁先运行”“数据怎么传”是三个不同问题。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>回答什么</th><th>常见选择</th><th>风险</th></tr></thead>
+      <tbody>
+        <tr><td><strong>拓扑</strong></td><td>谁能调用或管理谁</td><td>orchestrator–workers、router–specialists、peer</td><td>路由错误、中心瓶颈、责任不清</td></tr>
+        <tr><td><strong>控制流</strong></td><td>谁先运行、谁可并行</td><td>sequential、parallel、loop、DAG</td><td>错误级联、race、不收敛</td></tr>
+        <tr><td><strong>通信</strong></td><td>输入输出怎样传递</td><td>message、shared state、artifact reference</td><td>污染、陈旧值、权限扩散</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout fact">
+    <span class="tag">【来源事实】Google ADK 博客</span>
+    ADK 用 parent/sub-agent hierarchy 组织 agent，并介绍 <code>SequentialAgent</code>、<code>ParallelAgent</code>、<code>LoopAgent</code>，以及 shared state、LLM-driven delegation 和显式 <code>AgentTool</code> 调用。
+  </div>
+  <div class="callout explain">
+    <span class="tag">版本边界 · 截至 2026-08-23</span>
+    这些名称是 ADK 的具体表达，不是通用 MAS 标准。当前 ADK 2.0 还提供 graph、dynamic、collaborative workflows；实现前应重新查官方 API 与支持矩阵。
+  </div>
+  <p>把这三层画清后，才轮到 planning。<strong>Multi-agent 轴</strong>问的是执行责任和上下文是否拆给多个自治运行单元；<strong>planning 轴</strong>问的是系统是否显式生成任务、顺序与依赖。一个决定“谁来做”，一个决定“工作怎样安排”，所以同一套拓扑可以有或没有 planner，同一份 plan 也可以交给一个或多个执行者。</p>
+  <p>下一步的四象限不是成熟度阶梯。默认从左上角的 single-agent 逐步行动开始：只需要全局依赖时向右，保留一个 agent 但显式规划；只需要隔离上下文或 specialist 时向下，用 router 协作而不先生成全局计划；只有任务形状也要动态发现、执行又确实需要独立 worker 时，才走到右下角的 planner → workers → joiner。</p>
+</section>
+
+<section id="step-5" data-step>
+  <div class="section-head"><span class="section-num">STEP 05</span><h2>Planning 与 multi-agent 是正交维度</h2></div>
+  <div class="section-sub">How work is planned ≠ who executes it</div>
+  <p class="deck">Planner、executor、joiner 可以是不同 agent，也可以只是同一应用里的普通节点。</p>
+  <div class="matrix-scroll" role="region" aria-label="Planning 与 multi-agent 矩阵；窄屏可水平滚动查看" tabindex="0">
+    <div class="matrix" role="table" aria-label="Planning 与 multi-agent 二乘二矩阵">
+      <div class="axis"></div><div class="axis">无显式 planning</div><div class="axis">有显式 planning</div>
+      <div class="axis">Single-agent</div><div><strong>逐步行动</strong>一个 agent 观察后决定下一步</div><div><strong>先计划再执行</strong>一个 agent 生成 step list 或 DAG</div>
+      <div class="axis">Multi-agent</div><div><strong>Router → specialist</strong>没有全局 planner 也能协作</div><div><strong>Planner → workers → joiner</strong>计划与执行单元均被拆开</div>
+    </div>
+  </div>
+  <div class="callout warn"><span class="tag">常见误区</span>有四个节点不代表有四个 agent；先生成 DAG 也不自动让系统成为 multi-agent。判断标准是运行单元是否拥有可区分的上下文、职责、工具或控制权。</div>
+</section>
+
+<section id="step-6" data-step>
+  <div class="section-head"><span class="section-num">STEP 06</span><h2>把三种 planning 架构当作取舍，不是排名</h2></div>
+  <div class="section-sub">Plan-and-Execute · ReWOO · LLMCompiler</div>
+  <p class="deck">它们解决的是计划表示、变量依赖和调度方式，不是“第几代模型”。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>架构</th><th>计划表示</th><th>执行特征</th><th>主要限制</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Plan-and-Execute</strong></td><td>多步清单</td><td>planner 做全局方向，executor 逐项完成</td><td>主要串行；每项仍可能调用 LLM</td></tr>
+        <tr><td><strong>ReWOO</strong></td><td>线性步骤＋<code>#E</code> 变量</td><td>后续任务引用前序结果，减少反复重规划</td><td>原版 worker 顺序执行；任务本身仍可包含 LLM 调用</td></tr>
+        <tr><td><strong>LLMCompiler</strong></td><td>带依赖的 task DAG</td><td>依赖满足即可调度，可流式产生任务</td><td>要处理错边、漏边、并发副作用和 replan 抖动</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout fact"><span class="tag">【来源事实】LangChain</span>LangChain 的文章把三者作为 planning-agent 原型。文章引用的 3.6× 是 LLMCompiler 论文在特定实验中的结果，不是所有业务任务的速度承诺。</div>
+</section>
+
+<section id="step-7" data-step>
+  <div class="section-head"><span class="section-num">STEP 07</span><h2>用合同交任务，不用一段含糊 prompt</h2></div>
+  <div class="section-sub">Task contract before delegation</div>
+  <p class="deck">可靠 handoff 至少要说清目标、边界、依赖、权限、预算、证据和失败语义。</p>
+  <pre><code><span class="c"># 教学性通用模型，不是任何厂商协议</span>
+task:
+  id: <span class="s">research-adk-001</span>
+  objective: <span class="s">提取 ADK 协作模式及版本边界</span>
+  include: [hierarchy, workflow, communication]
+  exclude: [写最终跨来源结论, 修改仓库]
+  dependencies: []
+  permissions:
+    tools: [web_read]
+    write_scope: []
+  budgets:
+    max_model_calls: 6
+    deadline_seconds: 180
+  output:
+    required: [claim, source_url, evidence_type, uncertainty]
+  errors: [blocked, retryable_error, partial, success]</code></pre>
+  <div class="tiles two">
+    <div class="tile"><div class="label">TaskEnvelope</div><div class="body">描述“为什么派、允许看什么、允许做什么、怎样算完成”。</div></div>
+    <div class="tile"><div class="label">AgentResult</div><div class="body">返回状态、摘要、证据、artifact、未决问题和可否重试；不倾倒整段 scratchpad。</div></div>
+  </div>
+</section>
+
+<section id="step-8" data-step>
+  <div class="section-head"><span class="section-num">STEP 08</span><h2>失败时局部恢复，不要整队重跑</h2></div>
+  <div class="section-sub">Classify · Preserve · Repair · Stop</div>
+  <p class="deck">失败恢复的核心不是“多试几次”，而是保留已验证成果，只修明确缺口。</p>
+  <div class="flow">
+    <div class="node">分类失败<br><small>timeout / 缺证据 / 冲突</small></div><div class="arrow">→</div>
+    <div class="node">冻结成功结果<br><small>checkpoint / artifact</small></div><div class="arrow">→</div>
+    <div class="node">有界修复<br><small>局部 retry / replan</small></div>
+  </div>
+  <details>
+    <summary>场景 A：一个 research worker 超时</summary>
+    <div class="answer">保留其他 worker 已验证的结果；缩小超时节点范围并复用已抓取 artifact；最多进行约定次数的重试。再次失败则返回 partial 和缺口，不把全队重新运行。</div>
+  </details>
+  <details>
+    <summary>场景 B：两个 worker 给出冲突结论</summary>
+    <div class="answer">先比较来源时间、版本、定义和证据，不用多数投票抹平分歧。必要时新增一个只核对冲突点的验证任务，并在最终结果中保留仍未解决的不确定性。</div>
+  </details>
+  <details>
+    <summary>场景 C：任务包含发邮件或写数据库</summary>
+    <div class="answer">无数据依赖不代表可以安全并行。先标注 read/write set、幂等性、审批与可补偿范围。补偿动作不能保证恢复到“从未发生”，不可逆副作用应尽量置于最终审批之后。</div>
+  </details>
+</section>
+
+<section id="step-9" data-step>
+  <div class="section-head"><span class="section-num">STEP 09</span><h2>从 single-agent baseline 评测净收益</h2></div>
+  <div class="section-sub">Outcome · Trajectory · Cost · Reliability</div>
+  <p class="deck">多 agent “能完成”不够；它必须稳定优于最强的简单方案。</p>
+  <p>实验要先从<strong>失败预算</strong>反推，而不是让更复杂的系统靠无限重试换成功：固定每个版本可用的 model/tool calls、tokens、wall time、重试和 replan 次数，再在同一任务集、模型与工具下比较。这样测到的才是架构收益，而不是额外计算量。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>版本</th><th>系统</th><th>它回答的问题</th></tr></thead>
+      <tbody>
+        <tr><td><strong>S0</strong></td><td>single agent＋相同工具</td><td>最简单系统能做到什么？</td></tr>
+        <tr><td><strong>S1</strong></td><td>single agent＋压缩/工具发现</td><td>更简单的优化能否解除瓶颈？</td></tr>
+        <tr><td><strong>W1</strong></td><td>固定 sequence/parallel workflow</td><td>收益是否只来自确定性控制流？</td></tr>
+        <tr><td><strong>M1</strong></td><td>动态 orchestrator＋workers</td><td>动态分解和独立上下文是否还有净增益？</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>这四个版本是一组因果消融：S1 判断收益是否来自单 agent 优化，W1 隔离确定性编排的贡献，M1 最后才检验动态分解和独立上下文。随后给每个版本注入相同的 timeout、缺证据或冲突结果，沿 trace 找到<strong>第一处偏离</strong>：如果原计划仍成立，只重试失败节点；如果新证据改变了下游依赖，只重规划受影响的局部子图；预算耗尽就返回 partial 或停止。</p>
+  <p>因此实验还要记录“保留了多少已验证工作”和“恢复后是否重新通过验收”。只比较最终成功率，会把整队重跑与局部恢复混为一谈，也看不出多 agent 的额外故障面究竟有没有被控制住。</p>
+  <ul class="checklist">
+    <li><strong>结果：</strong>正确性、完整性、约束满足、引用有效。</li>
+    <li><strong>轨迹：</strong>分解覆盖、路由、工具参数、越权、第一处偏离。</li>
+    <li><strong>效率：</strong>tokens、成本、model/tool calls、p50/p95、关键路径。</li>
+    <li><strong>可靠性：</strong>多次运行通过率、恢复成功率、失败类型分布。</li>
+  </ul>
+  <div class="callout explain"><span class="tag">【实践建议】保留门槛</span>只有当 M1 相对 S0/S1/W1 的质量或覆盖提升稳定大于额外成本、延迟、故障率与维护负担时，才保留动态 multi-agent。</div>
+</section>
+
+<section id="step-10" data-step>
+  <div class="section-head"><span class="section-num">STEP 10</span><h2>做一个会失败的最小 Lab</h2></div>
+  <div class="section-sub">Build evidence, not a demo</div>
+  <p class="deck">真正的练习不是“多开三个 agent”，而是证明边界、恢复和评测都成立。</p>
+  <div class="tiles two">
+    <div class="tile"><div class="label">任务</div><div class="body">选择一个需要阅读 9–12 份一手资料的技术问题，最多 3 个只读 research workers、最多 1 次 replan。</div></div>
+    <div class="tile"><div class="label">四个版本</div><div class="body">依次实现 S0、固定并行 W1、动态 M1、M1＋人为 timeout/缺证据。</div></div>
+    <div class="tile"><div class="label">记录</div><div class="body">质量、来源覆盖、引用错误、tokens、model calls、wall time 与恢复结果。</div></div>
+    <div class="tile"><div class="label">毕业标准</div><div class="body">能说清收益来自隔离、并行、专业化，还是其实只来自更好的 workflow。</div></div>
+  </div>
+
+  <h3>毕业自测</h3>
+  <details>
+    <summary>1. Planner 生成 DAG，普通函数执行节点。这一定是 multi-agent 吗？</summary>
+    <div class="answer">不一定。Planning 描述分解、依赖和调度；如果只有一个 agent，其余节点都是确定性函数或工具，它仍可以是 single-agent workflow。</div>
+  </details>
+  <details>
+    <summary>2. 两个任务没有数据依赖，就一定能并行吗？</summary>
+    <div class="answer">不一定。还要检查共享资源、写集合、rate limit、锁、幂等、审批与权限。数据独立只是并行安全的一部分。</div>
+  </details>
+  <details>
+    <summary>3. M1 质量高 2%，成本高 6×，应该上线吗？</summary>
+    <div class="answer">信息不足。还要看统计不确定性、任务价值、安全硬门、关键切片、故障/恢复率、p95 延迟预算，以及 W1/S1 是否已经得到相同收益。</div>
+  </details>
+
+  <div class="callout fact"><span class="tag">如果十步只记一条</span><strong>先有 baseline，再谈团队；按 context boundary 拆；用同题评估证明净收益。</strong></div>
+</section>
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <p><strong>三份核心材料：</strong>
+      <a href="https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them">Anthropic：Building multi-agent systems</a>、
+      <a href="https://cloud.google.com/blog/topics/developers-practitioners/building-collaborative-ai-a-developers-guide-to-multi-agent-systems-with-adk">Google Cloud：Building Collaborative AI with ADK</a>、
+      <a href="https://www.langchain.com/blog/planning-agents">LangChain：Plan-and-Execute Agents</a>。
+    </p>
+    <p>版本补充：<a href="https://adk.dev/workflows/">ADK Workflows</a>、<a href="https://docs.langchain.com/oss/python/langgraph/workflows-agents">LangGraph Workflows and Agents</a>。核对日期：2026-08-23。框架 API 与推荐路径可能继续变化。</p>
+    <p>这篇是<strong>视觉学习路径</strong>，给的是取舍与顺序。完整 schema、多轮失败轨迹、评估矩阵、论文数字与证据边界，请看 <a href="../Multi_Agent_Systems_Research.html">Multi-Agent Systems 详细学习笔记</a>。</p>
+    <p><a href="../../">← 返回 ML Learning Notes</a> · <a href="../Multi_Agent_Systems_Research.html">打开详细笔记</a></p>
+  </div>
+</footer>
+
+<script>
+  const sections = [...document.querySelectorAll('[data-step]')];
+  const links = [...document.querySelectorAll('.step-link')];
+  const progress = document.getElementById('reading-progress');
+
+  const setCurrent = (id) => {
+    links.forEach((link) => {
+      if (link.getAttribute('href') === `#${id}`) link.setAttribute('aria-current', 'step');
+      else link.removeAttribute('aria-current');
+    });
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+    if (visible[0]) setCurrent(visible[0].target.id);
+  }, { rootMargin: '-20% 0px -65% 0px', threshold: [0, .2, .5] });
+
+  sections.forEach((section) => observer.observe(section));
+  setCurrent('step-1');
+
+  const updateProgress = () => {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const ratio = max > 0 ? Math.min(1, window.scrollY / max) : 1;
+    progress.style.width = `${ratio * 100}%`;
+  };
+  updateProgress();
+  addEventListener('scroll', updateProgress, { passive: true });
+</script>
+</body>
+</html>
