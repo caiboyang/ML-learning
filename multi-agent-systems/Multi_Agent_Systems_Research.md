@@ -1,13 +1,13 @@
 ---
 layout: default
 title: "Multi-Agent Systems 参考手册：架构拓扑、规划引擎与协作状态"
-description: "从单 Agent 崩溃现场到多智能体系统 (MAS) 的架构设计：深度剖析 Anthropic 5 大协作拓扑、Google ADK 树状模型、LangChain 规划引擎演进（ReWOO / LLMCompiler）、状态与内存治理、级联失效遏制与分布式 Tracing。"
+description: "从单 Agent 崩溃现场到多智能体系统 (MAS) 的架构设计：深度剖析 Anthropic 5 大协作拓扑、Google ADK 树状模型、LangChain 规划引擎演进（ReWOO / LLMCompiler）、状态与通信数据合同 (TaskEnvelope/AgentResult)、级联失效遏制与 S0/W1/M1 评测阶梯。"
 ---
 
 # Multi-Agent Systems 参考手册：架构拓扑、规划引擎与协作状态
 
-> 研究日期：2026-08-23<br>
-> 主题范围：面向由多个大语言模型（LLM）驱动的协作系统，讨论多智能体系统（MAS）的设计哲学、任务解耦、拓扑范式（Anthropic / Google ADK / LangGraph / AutoGen / CrewAI / Swarm）、规划与执行引擎、状态管理、共识与失效遏制，以及分布式可观测性与评测。<br>
+> 研究与链接校验日期：**2026-08-23**<br>
+> 主题范围：面向由多个大语言模型（LLM）驱动的协作系统，讨论多智能体系统（MAS）的设计哲学、任务解耦、拓扑范式（Anthropic / Google ADK / LangGraph / AutoGen / CrewAI / Swarm）、规划引擎与 MAS 的正交性、通信契约（TaskEnvelope / AgentResult）、状态治理、级联失效遏制，以及 $S_0 \rightarrow W_1 \rightarrow M_1$ 评测与可观测性。<br>
 > 配套学习页：[从零开始掌握多智能体：Multi-Agent Systems 10步学习路径](learn/)　**先读那篇建立取舍和心智模型，再拿这篇当手册查**<br>
 > 阅读约定：文中的 **【来源事实】** 是来源直接支持的陈述，**【综合解释】** 是把多个来源放进同一模型后的推导，**【实践建议】** 是可执行但需按具体系统验证的工程方案。<br>
 > 来源对齐：本手册完整融合了 Anthropic 官方指南《Building Multi-Agent Systems: When and How to Use Them》、Google Cloud《Building Collaborative AI with ADK》、LangChain《Planning Agents》以及 2024–2026 年主流多 Agent 生态与学术实证（ReWOO, LLMCompiler, Multi-Agent Debate, OTel GenAI）。
@@ -43,11 +43,11 @@ flowchart TD
 一套工业级生产可用的 MAS 必须同时回答六个核心工程问题：
 
 1. **何时拆分？**——必须按照**上下文边界（Context Boundaries）**而非**问题类型（Problem Types）**拆分。让负责实现的 Worker 自己写测试，而不是拆出传话筒式的“测试员”。
-2. **何时绝不用 MAS？**——简单任务切勿引入 MAS。MAS 的 Token 消耗通常是单 Agent 的 **3 到 10 倍**，且端到端成功率遵循乘法级联衰减 $P_{\text{sys}} = \prod p_i$。
-3. **如何规划？**——放弃低效短视的盲目 ReAct 循环；选择两阶段 Plan-and-Execute、解耦变量占位的 **ReWOO**，或利用 DAG 拓扑实现无阻塞并行的 **LLMCompiler**。
-4. **如何共享状态？**——严禁在 Agent 之间传递动辄数万 Token 的完整原始对话历史。必须推行**工件引用指针模式（Artifact Reference Pattern）**，通过 URI 句柄（Handle）按需检索。
-5. **如何避免共识坍塌？**——警惕多智能体辩论中的**马屁精陷阱（Sycophancy Cascade）**，强制异构模型互审、对抗性角色分配与基于外部工具执行证据的盲审仲裁（Blind Arbitration）。
-6. **如何监控与定位？**——引入 OpenTelemetry GenAI 分布式 Trace 树，通过**第一处偏离检测（Earliest Divergence Detection）**与反事实消融分析，将故障准确归因到特定 Step。
+2. **何时绝不用 MAS？**——简单任务切勿引入 MAS。MAS 的 Token 消耗通常是单 Agent 的 **3 到 10 倍**，且端到端成功率遵循乘法级联衰减 $P_{\text{sys}} = \prod p_i$。必须先建立单 Agent 基线（$S_0$）。
+3. **规划与 MAS 的本质区别？**——**Planning Architecture 不等于 Multi-Agent**。规划（DAG/Plan-and-Execute）解决的是任务依赖与调度结构；Multi-Agent 解决的是执行上下文与权限的物理隔离。单 Agent 完全可以驱动复杂的 DAG。
+4. **如何规范通信？**——严禁在 Agent 之间传递动辄数万 Token 的完整原始对话历史。必须推行强类型通信合同（`TaskEnvelope` 与 `AgentResult`）以及**工件引用指针模式（Artifact Reference Pattern）**。
+5. **如何避免共识坍塌与级联失败？**——警惕多智能体辩论中的**马屁精陷阱（Sycophancy Cascade）**，强制异构模型对抗与盲审仲裁；对不可逆操作推行 **LLM Saga 逆向补偿事务**。
+6. **如何监控与评测？**——采用 $S_0 \rightarrow W_1 \rightarrow M_1$ 的基准阶梯证明 MAS 的净收益；引入 OpenTelemetry GenAI 分布式 Trace 树与**第一处偏离检测（Earliest Divergence Detection）**实现精准归因。
 
 ---
 
@@ -83,9 +83,22 @@ $$\text{State}_{t+1} = \text{LLM}(\text{SystemPrompt}, \text{Tools}, \text{Histo
 
 ---
 
-## 2. 统一词典与多 Agent 坐标系
+## 2. 统一词典与多 Agent 六维坐标系
 
-为了消除不同框架（Anthropic, Google ADK, LangGraph, AutoGen, CrewAI, Swarm）在术语上的混淆，本手册定义标准化的多 Agent 概念坐标系：
+为了消除不同框架（Anthropic, Google ADK, LangGraph, AutoGen, CrewAI, Swarm）在术语上的混淆，本手册定义标准化的六维多 Agent 坐标系：
+
+### 2.1 框架无关的六维坐标
+
+| 坐标维度 | 要回答的核心工程问题 | 常见技术选择 |
+|---|---|---|
+| **1. 分解 (Decomposition)** | 谁把高层目标拆成可执行子任务？ | 人工静态拆分、Router 分流、Planner 生成 DAG、Orchestrator 动态规划 |
+| **2. 分派 (Assignment)** | 子任务交给谁，凭借什么机制决定？ | 固定绑定、规则路由、LLM Intent Delegation、竞标/协商机制 |
+| **3. 执行 (Execution)** | 子任务按什么时序和依赖运行？ | Sequential Pipeline、Parallel Fork-Join、Looping/Polling、Dependency DAG |
+| **4. 状态与通信 (Communication)** | Agent 看到什么，怎样安全传值？ | Actor 消息传递、Shared Session 白板、Artifact URI 句柄、Event Sourcing 日志 |
+| **5. 聚合与仲裁 (Synthesis)** | 谁负责消重、解冲突与质量验收？ | Lead Orchestrator、Solver、Joiner、独立 Verification Subagent、Blind Judge |
+| **6. 评测与归因 (Evaluation)** | 怎样证明整体和每一跳都是对的？ | Outcome Grader、Process Obligations、Trace 第一处偏离检测、S0/W1/M1 阶梯 |
+
+### 2.2 核心实体词典
 
 | 统一术语 | 英文对照 | 核心定义与工程边界 | 常见误区 |
 |---|---|---|---|
@@ -93,9 +106,9 @@ $$\text{State}_{t+1} = \text{LLM}(\text{SystemPrompt}, \text{Tools}, \text{Histo
 | **子智能体** | **Subagent / Worker** | 在独立沙箱中被上层唤起、执行受限子任务、完成后仅返回精简结果的节点。 | 让 Subagent 直接持有全局会话历史 |
 | **主管 / 编排者** | **Supervisor / Orchestrator** | 负责任务意图分类、DAG 拆解、子任务分发与最终结果聚合的中枢节点。 | 让 Orchestrator 亲自去做脏活细节调用 |
 | **共享黑板** | **Blackboard (Shared State)** | 所有协作 Agent 均可读写的全局集中式状态或内存空间（如 ADK Session）。 | 把未经清洗的中间过程直接写进黑板 |
-| **消息信封** | **Message Envelope** | 智能体之间异步通信的强类型载荷，包含 Sender, Recipient, Intent, Data。 | 传递无格式的自由纯文本 |
+| **任务信封** | **TaskEnvelope** | 分发任务的标准化载荷（含 Task ID、目标、上下文片段、权限、Token 预算）。 | 传递无格式的自然语言纯文本 |
+| **执行结果** | **AgentResult** | 回传给上层的标准化结构（含状态 success/partial/failed、摘要、证据、工件句柄）。 | 直接将完整的内部调试 Trace 倾倒回传 |
 | **工件指针** | **Artifact Reference (URI)** | 指向外部持久化存储（S3/GCS/DB）的对象句柄（如 `art://table_01.parquet`）。 | 把 10MB 的 CSV 原始数据贴在 Prompt 里 |
-| **单步 vs 轨迹** | **Step vs Trajectory** | Step 是单次 Tool Call/LLM 调用；Trajectory 是达成目标全流程的所有 Step 序列。 | 把整个 Trajectory 当成一次不可分的 Step |
 | **验证闸门** | **Verification Gate** | 独立于执行者的专用审计 Agent 或代码规则引擎，负责在状态提交前做硬性校验。 | 让编写代码的 Agent 自行宣布“我测过了” |
 
 ---
@@ -169,9 +182,7 @@ flowchart TD
 
 ## 4. 架构拓扑与协作范式深度剖析
 
-### 4.1 Anthropic 的 5 种基础模式与多 Agent 延伸
-
-Anthropic 将基于 LLM 的系统构建模式划分为工作流（Workflow）与自主智能体（Agent）两大梯队：
+### 4.1 Anthropic 的 5 种基础模式
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -275,18 +286,37 @@ classDiagram
 
 ---
 
-## 5. 规划与执行引擎演进
+## 5. 规划与执行引擎演进（及 Planning 与 MAS 的正交性）
 
-### 5.1 Naive ReAct 的短视与崩溃
+### 5.1 核心概念澄清：Planning Architecture $\neq$ Multi-Agent
 
-传统的 ReAct 模式通过 `Thought -> Action -> Observation` 循环进行：
-- **短视贪心（Short-sightedness）**：每次只看眼前一步，缺乏全局里程碑规划；
-- **错误死循环（Compounding & Wandering）**：一旦中间某步工具返回未预料的结果，Agent 极易陷入盲目重试，直到 Token 耗尽；
-- **极高的 Token 与延迟浪费**：每调一个简单工具，都要拉起一次大模型全量上下文推理。
+【综合解释】在许多工程讨论中，开发者常将 Plan-and-Execute、ReWOO 或 LLMCompiler 直接等同于 Multi-Agent。**这是严重的架构概念混淆！**
+
+- **规划架构（Planning Architecture）**：回答的是**「工作如何被分解、调度与组织依赖」**（DAG 结构、变量求值、重规划机制）。一个单一 Agent 配合执行代码完全可以运行复杂的 LLMCompiler DAG。
+- **多智能体架构（Multi-Agent System）**：回答的是**「谁来执行、各自拥有怎样的可见上下文、权限沙箱与生命周期」**。
+- **两者的交叉点**：当 DAG 中的某个 Node 本身需要深度推理、专有工具集且必须保持局部上下文隔离时，该 Node 才会被实例化为一个专职 Subagent。
+
+```mermaid
+flowchart TD
+    subgraph Dimension1["维度 A: 规划与依赖架构 (Planning Architecture)"]
+        D1["Naive ReAct (单步交替)"]
+        D2["Plan-and-Execute (两阶段串行)"]
+        D3["ReWOO (变量占位解耦)"]
+        D4["LLMCompiler (DAG 依赖并行流)"]
+    end
+
+    subgraph Dimension2["维度 B: 执行实体架构 (Execution Unit Architecture)"]
+        E1["Single-Agent (单模型循环调用)"]
+        E2["Deterministic Code Nodes (纯代码工具求值)"]
+        E3["Multi-Agent Isolation (独立沙箱 Subagent)"]
+    end
+
+    Dimension1 -.->|正交组合| Dimension2
+```
 
 ---
 
-### 5.2 规划引擎演进四代梯队
+### 5.2 规划引擎演进四代梯队对比
 
 ```mermaid
 flowchart TD
@@ -307,8 +337,6 @@ flowchart TD
     end
 ```
 
-### 5.3 核心规划引擎对比
-
 | 架构 | 规划机制 | 执行机制 | 变量占位支持 | 典型延迟表现 | 适用场景 |
 |---|---|---|---|---|---|
 | **ReAct** | 单步交替 | 每步必调 LLM | ❌ 无 | 最慢（串行等待） | 极简未知任务 |
@@ -318,19 +346,44 @@ flowchart TD
 
 ---
 
-## 6. 状态、内存与工件管理
+## 6. 状态治理与通信数据契约 (Data Contracts)
 
-### 6.1 共享黑板 vs 消息传递
+### 6.1 形式化通信载荷：TaskEnvelope 与 AgentResult
 
-在多 Agent 协同中，状态流转存在两大主流流派：
-1. **共享黑板模式（Blackboard / Shared State）**（以 Google ADK / LangGraph 为代表）：
-   - 所有 Agent 围绕同一个全局 Session State 读写；
-   - 优点：状态可见性高，便于状态持久化与快照回滚；
-   - 危险：多个并发 Agent 写入时可能产生**状态竞态条件（Race Condition）**与非受控的状态污染。
-2. **消息传递模式（Message Passing / Actor Model）**（以 AutoGen v0.4 Core 为代表）：
-   - 每个 Agent 拥有绝对私有的内部状态，彼此仅通过不可变的强类型消息交互；
-   - 优点：彻底杜绝并发冲突，天然支持跨网络分布式部署；
-   - 危险：跨节点状态汇总需要显式设计聚合并行模式。
+为了彻底解决自由文本通信导致的 Token 膨胀、指令模糊与状态泄露，生产级 MAS 必须推行强类型通信契约：
+
+```python
+from typing import Dict, Any, List, Optional, Literal
+from pydantic import BaseModel, Field
+
+class TaskEnvelope(BaseModel):
+    """Orchestrator 分发给 Worker 的标准化任务信封"""
+    task_id: str = Field(description="全局唯一子任务 ID")
+    parent_goal: str = Field(description="上层业务目标简述")
+    instructions: str = Field(description="本 Worker 的明确执行指令")
+    context_slice: Dict[str, Any] = Field(
+        default_factory=dict, 
+        description="严格裁剪的最小必要上下文，严禁倾倒全量历史"
+    )
+    permission_boundary: List[str] = Field(description="允许调用的工具白名单")
+    budget_tokens: int = Field(default=4000, description="当前子任务的最大 Token 预算")
+    stop_conditions: List[str] = Field(description="任务完成或熔断的判定条件")
+
+class AgentResult(BaseModel):
+    """Worker 向 Orchestrator 回传的标准执行结果"""
+    task_id: str
+    status: Literal["success", "partial", "failed"] = Field(description="执行状态")
+    summary: str = Field(description="精炼的结构化结论（控制在 100-200 tokens）")
+    evidence: List[str] = Field(description="结论所依赖的外部工具执行证据或数据引用")
+    artifact_uris: List[str] = Field(
+        default_factory=list, 
+        description="产出的大型数据/文件指针句柄 (art://...)"
+    )
+    unresolved_questions: Optional[List[str]] = Field(
+        default=None, 
+        description="遇到阻塞或无法验证的边缘条件"
+    )
+```
 
 ---
 
@@ -347,17 +400,12 @@ sequenceDiagram
     participant B as Agent B (Data Analyst)
 
     A->>Store: 写入 50MB 原始数据 (sales_2026.parquet)
-    A->>Lead: 返回结构化工件句柄 (Artifact Handle, 80 tokens)
+    A->>Lead: 返回 AgentResult (包含 URI 句柄, 80 tokens)
     Note over Lead: 仅记录 URI 与元数据，Context 保持纯净
-    Lead->>B: 委派任务: 传入 URI 指针与分析指令
+    Lead->>B: 分派 TaskEnvelope: 传入 URI 指针与分析指令
     B->>Store: 使用 DuckDB/SQL 算子精准过滤需要字段 (按需查询)
-    B-->>Lead: 提交分析摘要 (200 tokens)
+    B-->>Lead: 回传 AgentResult 业务分析摘要 (150 tokens)
 ```
-
-【实践建议】**严格实施指针传递**：
-- Subagent 处理海量数据时，统一将产物写入 Blob 或缓存；
-- 向上层汇报时，只返回包含 `artifact_id`、`uri`、`schema`、`row_count` 与 `summary` 的结构化描述体；
-- 下游 Subagent 通过专有工具（如 SQL 探针）定向抽取局部信息。
 
 ---
 
@@ -383,7 +431,16 @@ $$p_{\text{effective}} = 1 - (1 - p)^k$$
 
 ---
 
-### 7.2 Multi-Agent Debate 与马屁精陷阱（Sycophancy Cascade）
+### 7.2 局部恢复与 Partial 降级处理
+
+【实践建议】当某个 Worker 返回 `status="partial"`（如子任务超时或部分证据缺失）时，**Orchestrator 绝对不能简单粗暴地触发全量任务重跑**！
+- **保留已验证成果**：将已经生成的有效数据持久化；
+- **增量重试**：仅针对缺失的证据或失败的局部步骤重新生成 `TaskEnvelope`；
+- **诚实停止**：若达到重试上限，在最终输出中显式披露未决盲区，而不是让下游 Agent 编造幻觉。
+
+---
+
+### 7.3 Multi-Agent Debate 与马屁精陷阱（Sycophancy Cascade）
 
 【来源事实】学术研究（Du et al., 2023; Liang et al., 2023）证明多 Agent 相互辩论可纠正事实幻觉。但在无约束的自由辩论中，LLM 受 RLHF 对齐偏好的影响，极易产生**顺从妥协（Sycophancy）**——次级 Agent 会在第二轮轻易认同主要 Agent 的错误假说，导致假共识（False Consensus）。
 
@@ -409,7 +466,7 @@ $$p_{\text{effective}} = 1 - (1 - p)^k$$
 
 ---
 
-### 7.3 不可逆副作用与 Agentic Saga 补偿事务
+### 7.4 不可逆副作用与 Agentic Saga 补偿事务
 
 当 Agent 拥有写数据库、发邮件、转账等真实世界副作用时，单纯的重试会导致数据灾难。必须引入 **LLM Saga 模式**：
 
@@ -426,13 +483,39 @@ flowchart LR
     A3 -.->|触发回滚| C2
 ```
 
-【实践建议】每一个具备副作用的 Agent 工具必须成对注册正向操作与补偿操作（如 `create_user` 对应 `delete_user`）。一旦后续步骤发生不可逆崩溃，编排器按逆序自动调用补偿事务链。
+---
+
+## 8. 评测基准阶梯：S0 到 M1 的科学验证
+
+为了防止“为了多 Agent 而多 Agent”，必须建立受控的实验对比阶梯：
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    MAS 评测基准阶梯 (Benchmark Ladder)                             |
++-------------------+------------------------------------+-------------------------------------------+
+| 阶段              | 架构形态                           | 验证目的                                  |
++-------------------+------------------------------------+-------------------------------------------+
+| **S0 基线**       | 单 Agent + 必需工具                | 测量单 Agent 的实际质量瓶颈与崩溃位置     |
+| **W1 固定工作流** | 硬编码 DAG / 固定并发流水线        | 检验「只靠固定并行/拆分」能带来多少收益   |
+| **M1 动态 MAS**   | Supervisor + 动态 Subagent 调度    | 检验「动态自主编排」是否带来超越 W1 的净收益|
+| **M1 + 故障注入** | 注入超时、缺证据、API 429 报错     | 检验系统在异常扰动下的局部恢复与容灾韧性  |
++-------------------+------------------------------------+-------------------------------------------+
+```
+
+### 实验记录指标表
+
+| 版本 | 任务成功率 (Pass Rate) | 一手证据引用率 | 幻觉率 | 总 Token 消耗 | 模型调用次数 | 墙钟耗时 (P95) | 故障恢复率 |
+|---|---|---|---|---|---|---|---|
+| **S0 (Single)** | 基准值 |  |  | 基准 (1x) |  |  | N/A |
+| **W1 (Workflow)**|  |  |  | 通常 1.5-2x |  | 通常最短 | N/A |
+| **M1 (MAS)** |  |  |  | 通常 3-10x |  |  |  |
+| **M1 + Fault** |  |  |  |  |  |  | 关键指标 |
 
 ---
 
-## 8. 可观测性、评测与归因定位
+## 9. 可观测性、评测与归因定位
 
-### 8.1 OpenTelemetry GenAI 语义规范与分布式 Trace 树
+### 9.1 OpenTelemetry GenAI 语义规范与分布式 Trace 树
 
 ```mermaid
 gantt
@@ -456,109 +539,14 @@ gantt
     Invoke Verifier (E2E Test) :done, 10, 12
 ```
 
-**核心 Trace 属性标签：**
-- `gen_ai.conversation.id`：贯穿所有智能体的全局 Trace ID；
-- `gen_ai.agent.name` / `gen_ai.agent.id`：当前执行节点的身份与层级；
-- `gen_ai.operation.name`：`create_agent` / `invoke_agent` / `execute_tool` / `agent_handoff`；
-- `gen_ai.usage.prompt_tokens` / `completion_tokens`：每个节点的精细化成本监控。
-
 ---
 
-### 8.2 第一处偏离检测与反事实归因
+### 9.2 第一处偏离检测与反事实归因
 
-当一个由 8 个 Agent 协同完成的复杂任务最终结果错误时，切忌把所有 Agent 一并责怪：
 1. **第一处偏离检测（Earliest Divergence Detection）**：
    在 Trace 的每个节点输出端挂载断言检查器，顺着拓扑流找到**第一个**违背规范的输出。下游所有节点的错误均判定为“受污染上下文引起的受害者失败”；
 2. **反事实消融归因（Counterfactual Step Ablation）**：
    将怀疑出错的 Agent $i$ 的输出替换为人工作出的标准答案（Gold Output），若下游全流程立即恢复成功，则 Agent $i$ 承担全额失效归因责任。
-
----
-
-## 9. 框架横向选型矩阵与生产代码模式
-
-### 9.1 经典模式 1：Anthropic 风格的 Orchestrator-Worker 与代码级校验循环
-
-```python
-from typing import Dict, Any, List
-from pydantic import BaseModel, Field
-
-class SubtaskResult(BaseModel):
-    task_id: str
-    status: str
-    summary: str
-    artifact_uri: str = Field(description="URI pointer to generated artifact")
-
-def run_orchestrator_worker_pipeline(user_goal: str, max_attempts: int = 3) -> Dict[str, Any]:
-    """Anthropic Best Practice: Orchestrator-Workers with Hardcoded App-Level Loop"""
-    orchestrator = LeadOrchestratorAgent()
-    verifier = IndependentVerificationAgent()
-    
-    for attempt in range(1, max_attempts + 1):
-        # 1. Orchestrator decomposes goal into isolated subtasks
-        plan = orchestrator.generate_execution_plan(user_goal)
-        
-        worker_results: List[SubtaskResult] = []
-        for task in plan.tasks:
-            # 2. Worker executes in an isolated sandbox with minimum necessary context
-            worker = DomainWorkerAgent(domain=task.domain)
-            res = worker.execute_isolated(task.instructions, task.context_slice)
-            worker_results.append(res)
-            
-        # 3. Orchestrator aggregates structured summaries (preventing token explosion)
-        combined_draft = orchestrator.synthesize_results(worker_results)
-        
-        # 4. Independent Verifier checks against negative test suites
-        audit_report = verifier.verify_solution(user_goal, combined_draft)
-        if audit_report.is_passed:
-            return {"status": "SUCCESS", "result": combined_draft, "attempts": attempt}
-        
-        # Feed explicit failure feedback into next orchestrator loop
-        user_goal = f"{user_goal}\n[Feedback on Attempt {attempt}]: {audit_report.failure_reasons}"
-        
-    raise RuntimeError(f"MAS pipeline failed to converge after {max_attempts} attempts.")
-```
-
----
-
-### 9.2 经典模式 2：ReWOO 变量解耦规划代码模式
-
-```python
-import re
-from typing import Dict, Any
-
-class ReWOOExecutionEngine:
-    """ReWOO: Decoupling Planning from Execution using Variable Placeholders"""
-    def __init__(self, planner_llm, tool_registry):
-        self.planner = planner_llm
-        self.tools = tool_registry
-
-    def execute(self, query: str) -> str:
-        # 1. Planner outputs a plan containing #E1, #E2 variable placeholders
-        blueprint = self.planner.generate_rewoo_plan(query)
-        # Example blueprint:
-        # Plan 1: Search weather in Tokyo -> #E1 = WeatherSearch[Tokyo]
-        # Plan 2: Convert temperature from #E1 -> #E2 = UnitConverter[#E1.temp]
-        
-        variable_store: Dict[str, Any] = {}
-        
-        # 2. Execution phase runs deterministically in pure code (NO LLM calls!)
-        for step in blueprint.steps:
-            # Replace variable references (#E1) with evaluated results
-            resolved_args = self._resolve_variables(step.args, variable_store)
-            tool_fn = self.tools.get(step.tool_name)
-            
-            # Execute tool and populate variable
-            result = tool_fn(**resolved_args)
-            variable_store[f"#{step.id}"] = result
-            
-        # 3. Solver LLM receives only clean query and final variable dictionary
-        final_answer = self.planner.solve(query, variable_store)
-        return final_answer
-
-    def _resolve_variables(self, args: dict, store: dict) -> dict:
-        # Regex substitution of #E[0-9]+ references
-        ...
-```
 
 ---
 
@@ -581,13 +569,41 @@ class ReWOOExecutionEngine:
 
 ---
 
-## 11. 来源账本与一致性说明
+## 11. 核心思考自测题（附参考答案）
 
-本手册所有核心论断均由以下官方权威文献与学术论文支撑：
+1. **问：一个 Planner 生成了任务 DAG，由普通 Python 函数并发执行各节点。这算不算 Multi-Agent System？**
+   *答：不一定。Planning 是依赖与调度结构；如果执行节点只是确定性代码函数或单模型实例调用，它属于 Single-Agent Workflow。只有当执行节点具有隔离的自主上下文、专有提示词与独立决策空间时，才构成 MAS。*
+2. **问：为什么“规划 Agent $\rightarrow$ 编码 Agent $\rightarrow$ 测试 Agent”是坏边界，而独立的“Verification Subagent”又是好边界？**
+   *答：因为编码与测试共享大量的实现假设和探索上下文，分拆会导致严重的传话筒信息丢失；而独立的 Verification Agent 是黑盒验收者，它不需要关心中间调试细节，只需对照最终交付物与测试用例进行客观审计，上下文完全天然隔离。*
+3. **问：两个子任务没有数据依赖，是否就一定能并发执行？**
+   *答：不一定。还必须检查它们是否共享带副作用的外部资源（如写同一张数据库表、触发同一个外部 API 的 Rate Limit、抢占全局锁等）。*
+4. **问：Shared Session State 为什么绝不能等同于“共享完整对话历史”？**
+   *答：Shared State 应当是受 Schema 严格约束的数据平面（存放结构化事实与工件指针）；共享完整对话历史会导致严重的上下文污染、指令覆盖和数倍的 Token 浪费。*
+5. **问：如果动态多 Agent 系统的任务完成质量比单 Agent 高 2%，但 Token 成本高 6 倍、P95 延迟高 2 倍，应该上线吗？**
+   *答：不能盲目上线。需要权衡任务的商业价值、延迟预算、统计置信区间以及是否可以通过优化单 Agent Prompt 或引入固定工作流（W1）以更低代价达到同等效果。*
 
-- **[A1] Anthropic**: *Building Multi-Agent Systems: When and How to Use Them* (2025/2026) & *Building Effective Agents*.
-- **[G1] Google Cloud**: *Building Collaborative AI: A Developer's Guide to Multi-Agent Systems with ADK* (2025/2026).
-- **[L1] LangChain**: *Planning Agents* (Plan-and-Execute, ReWOO, LLMCompiler) by LangChain Engineering.
+---
+
+## 12. 一页总结（十条黄金法则）
+
+1. **先有 Baseline，再谈 Multi-Agent。** 先用单 Agent 测出具体崩溃边界。
+2. **按 Context Boundary 拆分。** 杜绝传话筒式的工种角色拆分。
+3. **Planning 不等于 Multi-Agent。** 规划是时序调度，MAS 是空间隔离。
+4. **合同优于 Prompt。** 强制使用强类型 `TaskEnvelope` 与 `AgentResult`。
+5. **工件指针杜绝数据倾倒。** 跨 Agent 交互只传递 URI 句柄。
+6. **局部故障局部恢复。** Worker 返回 Partial 时严禁粗暴全量重跑。
+7. **并发优化延迟，不优化 Token。** 并行提高吞吐，但增加系统总算力消耗。
+8. **防范辩论中的马屁精陷阱。** 异构模型对抗 + 盲审裁判。
+9. **不可逆操作必配补偿事务。** 引入 LLM Saga 确保副作用可回滚。
+10. **最小必要复杂度原则。** 凡是固定代码流能解决的问题，绝不用动态自主 Agent。
+
+---
+
+## 13. 来源账本与一致性说明
+
+- **[A1] Anthropic**: *Building Multi-Agent Systems: When and How to Use Them* (2026-01-23) & *Building Effective Agents*.
+- **[G1] Google Cloud**: *Building Collaborative AI: A Developer's Guide to Multi-Agent Systems with ADK* (2025-11-05).
+- **[L1] LangChain**: *Plan-and-Execute Agents / Planning Agents* (2024-02-13).
 - **[M1] AutoGen v0.4**: *Layered Architecture and Actor Model for Multi-Agent Systems* (Microsoft Research).
 - **[D1] Multi-Agent Debate**: Du et al. (2023) *Improving Factuality and Reasoning in Language Models through Multi-Agent Debate*.
 - **[R1] ReWOO Paper**: Xu et al. (2023) *ReWOO: Decoupling Reasoning from Observation for Efficient Augmented Language Models*.

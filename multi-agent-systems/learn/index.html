@@ -185,10 +185,12 @@ layout: null
   td b, td strong { color: var(--paper); font-weight: 600; }
   .tbl-wrap { overflow-x: auto; }
 
-  .checkpoint { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px; padding: 22px; margin: 32px 0; font-family: 'Inter','Noto Sans SC',sans-serif; }
-  .checkpoint-head { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ghost-glow); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 8px; }
-  .checkpoint-q { font-size: 16px; font-weight: 600; color: var(--paper); margin-bottom: 12px; }
-  .checkpoint-opt { background: var(--surface); border: 1px solid var(--rule); padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; font-size: 14px; color: var(--paper-dim); }
+  /* Q&A Cards */
+  .qa-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; }
+  .qa-q { font-family: 'Inter Tight','Noto Sans SC',sans-serif; font-size: 16px; font-weight: 600; color: var(--paper); margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; }
+  .qa-q .q-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--phosphor); }
+  .qa-a { font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14.5px; color: var(--paper-dim); line-height: 1.65; }
+  .qa-a b { color: var(--paper); }
 
   footer { border-top: 1px solid var(--rule); margin-top: 80px; padding: 40px 28px 72px; }
   .foot-inner { max-width: 780px; margin: 0 auto; color: var(--paper-muted); font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14px; line-height: 1.7; }
@@ -214,7 +216,7 @@ layout: null
     <div class="meta-grid">
       <div><div class="label">读者假设</div><div class="value">写过单 Agent，踩过上下文溢出与幻觉</div></div>
       <div><div class="label">读完能做到</div><div class="value">掌握 MAS 架构选型、规划引擎与失效归因</div></div>
-      <div><div class="label">一手素材</div><div class="value">Anthropic · Google ADK · LangGraph</div></div>
+      <div><div class="label">一手素材</div><div class="value">Anthropic · Google ADK · LangChain</div></div>
       <div><div class="label">配套手册</div><div class="value"><a href="../Multi_Agent_Systems_Research.html">查看参考手册</a></div></div>
     </div>
   </div>
@@ -407,10 +409,17 @@ End_to_End_Latency(MAS) = <span class="hl">∑ Latency(Agent_i) + Coordination_O
 
 <!-- ============ 5 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">规划引擎的进化跃迁</h2></div>
-  <div class="section-sub">从盲目 ReAct 到 ReWOO 与 LLMCompiler 的 DAG 并行</div>
+  <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">规划引擎的进化跃迁与概念正交性</h2></div>
+  <div class="section-sub">Planning 不等于 Multi-Agent · 变量占位与 DAG 异步并行</div>
 
   <p class="deck">如何在长程复杂任务中既保持全局视野，又消除 80% 的模型推理延迟？</p>
+
+  <div class="call key">
+    <span class="tag">关键心智模型：Planning 与 MAS 是正交的</span>
+    <b>规划架构（Planning）</b>解决的是任务的依赖、时序与调度逻辑（如 DAG 生成与变量替换）；<br>
+    <b>多智能体架构（MAS）</b>解决的是执行实体的上下文边界、权限隔离与沙箱生命周期。<br>
+    一个单一 Agent 配合纯代码执行器完全可以跑通复杂的 LLMCompiler DAG；只有当 DAG 某个节点需要独立推理且必须保护主上下文时，才需要将其升级为一个 Subagent！
+  </div>
 
   <div class="steps">
     <div class="step">
@@ -441,17 +450,11 @@ End_to_End_Latency(MAS) = <span class="hl">∑ Latency(Agent_i) + Coordination_O
       </div>
     </div>
   </div>
-
-  <div class="call key">
-    <span class="tag">ReWOO 的核心精髓</span>
-    将“规划时的逻辑依赖”与“执行时的 API 调用”彻底剥离。Planner 只负责构思蓝图并绑定占位符，
-    执行引擎拿到蓝图后如同运行一段解析脚本，直到最后需要汇总时才由 Solver 做单次提炼。
-  </div>
 </section>
 
 <!-- ============ 6 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">状态治理：工件指针模式（Artifact URI）</h2></div>
+  <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">状态治理与通信合同 (TaskEnvelope / AgentResult)</h2></div>
   <div class="section-sub">杜绝跨节点数据倾倒的工程黄金法则</div>
 
   <p class="deck">当 Agent A 处理了 50MB 的销售数据，它该如何交给 Agent B 进行分析？</p>
@@ -474,21 +477,24 @@ End_to_End_Latency(MAS) = <span class="hl">∑ Latency(Agent_i) + Coordination_O
     </div>
   </div>
 
-  <pre><code><span class="c">// ❌ 灾难：直接在消息中倾倒 10,000 行 CSV (烧掉 40,000 Tokens)</span>
-{"role": "assistant", "content": "这是提取的数据：id,name,amount\n1,Alice,100\n2,Bob,200..."}
+  <pre><code><span class="c">// 生产级标准通信合同：TaskEnvelope (分发) 与 AgentResult (回传)</span>
+class TaskEnvelope:
+    task_id: str             <span class="c"># 唯一子任务 ID</span>
+    instructions: str        <span class="c"># 明确执行指令</span>
+    context_slice: dict      <span class="c"># 严格裁剪的最小上下文片段</span>
+    permission_boundary: list<span class="c"># 允许调用的工具白名单</span>
+    budget_tokens: int       <span class="c"># 最大 Token 消耗预算</span>
 
-<span class="c">// ✅ 正解：工件引用指针模式 (仅需 60 Tokens)</span>
-{
-  "artifact_id": "art_20260823_parquet",
-  "uri": "s3://company-analytics/q3_sales.parquet",
-  "schema": ["user_id: int", "region: string", "gmv: float"],
-  "row_count": 142800,
-  "summary": "Q3 销售总览：总计 14.28 万笔交易，已清洗完毕。"
-}</code></pre>
+class AgentResult:
+    task_id: str
+    status: "success" | "partial" | "failed"
+    summary: str             <span class="c"># 结构化结论 (100-200 tokens)</span>
+    evidence: list[str]      <span class="c"># 工具执行证据引用</span>
+    artifact_uris: list[str] <span class="c"># 大型数据指针句柄 (art://...)</span></code></pre>
 
   <div class="call arch">
-    <span class="tag">沙箱隔离与精简汇报</span>
-    给每个 Subagent 分配独立的上下文沙箱。当 Subagent 经过 15 轮内部搜索探索后，向 Supervisor 汇报时<b>只提交一份 100 Token 的结构化 JSON 结论</b>，其内部的中间失败与无用 Trace 全部留在沙箱内销毁，保护主管 Context 始终保持纯净。
+    <span class="tag">沙箱隔离与 Partial 优雅降级</span>
+    当 Subagent 遇到部分数据缺失返回 <code>status="partial"</code> 时，<b>Orchestrator 绝对不能粗暴全量重跑</b>！应当保留已验证的有效成果，仅针对缺失部分增量派发补充任务。
   </div>
 </section>
 
@@ -506,11 +512,6 @@ P_system = <span class="hl">∏(i=1..n) p_i</span>
 5 步链路成功率  = 0.95⁵  ≈ <span class="hl">77.38%</span>
 10 步链路成功率 = 0.95¹⁰ ≈ <span class="hl">59.87%</span>   <span class="cmt">// 超过 40% 的任务直接失败！</span>
 20 步链路成功率 = 0.95²⁰ ≈ <span class="hl">35.85%</span></div>
-
-  <div class="call pit">
-    <span class="tag">不可逆操作的灾难</span>
-    当 Agent 拥有写数据库、发邮件、扣费等真实副作用时，简单的失败重试会导致极其严重的脏数据灾难。
-  </div>
 
   <div class="steps">
     <div class="step">
@@ -556,12 +557,6 @@ P_system = <span class="hl">∏(i=1..n) p_i</span>
       <div class="lbl">防线 3 · 盲审裁判 (Judge)</div>
       <div class="body">裁判 Agent 只能审查匿名论点与真实的 Tool 执行返回值。<b>不带外部可验证证据的论点一律判无效</b>。</div>
     </div>
-  </div>
-
-  <div class="call key">
-    <span class="tag">警惕早期误判 (Early Victory)</span>
-    在验证 Agent（Verifier）中，最常见的问题是跑通了一个最基础的 Happy Path 就草草宣布胜利。
-    必须在 Verifier 的 System Prompt 中强制注入<b>反向测试与全量回归用例</b>要求。
   </div>
 </section>
 
@@ -639,38 +634,80 @@ def run_production_orchestrator(goal: str, max_attempts: int = 3):
 
 <!-- ============ 10 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">监控、评估与「第一处偏离」归因</h2></div>
-  <div class="section-sub">从「感觉集群坏了」到精准锁定元凶</div>
+  <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">评测阶梯、归因定位与 10 大核心自测</h2></div>
+  <div class="section-sub">从 S0 基线阶梯到「第一处偏离」失效定位</div>
 
-  <p class="deck">如何从由 15 次跨 Agent 调用构成的 Trace 树中，用算法找出真正的第一个错误节点？</p>
+  <p class="deck">如何科学证明你的多 Agent 系统真正产生了超越单 Agent 的净收益？</p>
 
   <div class="steps">
     <div class="step">
-      <h4>1. OpenTelemetry GenAI 语义追踪</h4>
-      <div class="txt">
-        统一使用 <code>gen_ai.conversation.id</code> 串联整个集群调用链，记录每个节点的 <code>agent.name</code>、<code>tool.call</code>、Prompt 与 Completion Token 消耗。
-      </div>
+      <h4>基准阶梯 1 · S0 (Single Agent Baseline)</h4>
+      <div class="txt">单个 Agent + 必需工具。记录单体架构的基准准确率、Token 成本与具体崩溃位置。</div>
     </div>
     <div class="step">
-      <h4>2. 第一处偏离检测（Earliest Divergence Detection）</h4>
-      <div class="txt">
-        沿着拓扑执行树做断言检查。系统级错误的根因几乎永远是<b>最早发生偏差的那个 Step</b>，下游 Agent 的所有异常只是被污染 Context 的受害者。
-      </div>
+      <h4>基准阶梯 2 · W1 (Fixed Parallel Workflow)</h4>
+      <div class="txt">固定 DAG / 确定性分块并发。验证如果不需要大模型动态调度，仅靠固定并行能提高多少质量。</div>
     </div>
     <div class="step">
-      <h4>3. 反事实消融归因（Counterfactual Step Ablation）</h4>
-      <div class="txt">
-        将怀疑出错的 Agent 输出替换为人工作出的标准答案（Gold Output）。若下游全流程立即恢复成功，则该 Agent 承担全额失效归因责任。
-      </div>
+      <h4>基准阶梯 3 · M1 (Dynamic Multi-Agent)</h4>
+      <div class="txt">Supervisor 动态编排。检验自主调度的质量提升是否足以覆盖其 3-10x 的 Token 账单。</div>
+    </div>
+    <div class="step">
+      <h4>第一处偏离定位法 (Earliest Divergence Detection)</h4>
+      <div class="txt">在 Trace 树的节点输出做断言检查，最先出错的节点承担归因责任，下游所有异常均判定为受害者。</div>
     </div>
   </div>
 
-  <div class="checkpoint">
-    <div class="checkpoint-head">🧠 毕业检测点</div>
-    <div class="checkpoint-q">你的团队正在构建一个代码自动重构系统，包含架构分析、重构代码生成和测试用例编写。以下哪种架构设计最符合生产级 MAS 最佳实践？</div>
-    <div class="checkpoint-opt">A. 设立一个 Architect Agent，一个 Coder Agent，一个 Tester Agent，三者在同一个 GroupChat 里自由讨论。</div>
-    <div class="checkpoint-opt" style="border-color: var(--phosphor); color: var(--paper); background: rgba(123,227,215,0.06);"><b>B. (正确解)</b> 按功能模块拆分（如 Auth 模块 Worker），每个 Worker 拥有独立的沙箱完成设计、编码与自测，跨节点传递工件 URI，最后由独立 Verifier 进行全量回归。</div>
-    <div class="checkpoint-opt">C. 使用单一 ReAct Agent，直接塞入 50 个 Git 和编译器工具，让它自行完成所有任务。</div>
+  <h3 style="margin-top: 48px; color: var(--paper); font-family: 'Inter Tight', sans-serif;">🎯 10 道核心思考自测题</h3>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q01</span> 一个 Planner 生成 DAG，普通函数执行各节点，这是 Multi-Agent 吗？</div>
+    <div class="qa-a"><b>答：</b>不一定。Planning 是依赖与调度结构；若执行节点只是普通函数或单模型实例，仍属于 Single-Agent Workflow。只有执行单元具备独立上下文、隔离沙箱与私有权限时才构成 MAS。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q02</span> 为什么“规划 -> 编码 -> 测试 -> 评审”常是坏边界，而独立的 Verifier 又是好边界？</div>
+    <div class="qa-a"><b>答：</b>编码和测试共享大量的实现假设与动机，分拆会导致传话筒效应丢失上下文；而独立 Verifier 属于黑盒验收，只需对比代码产物与验收规则，上下文天然隔离。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q03</span> 两个任务没有数据依赖，是否就一定能并发执行？</div>
+    <div class="qa-a"><b>答：</b>不一定。还必须检查它们是否共享带副作用的外部资源（如写同一张数据库表、API 频控 Rate Limit、争夺全局锁等）。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q04</span> ADK 的 AgentTool 与 sub-agent 区别能否当作跨框架标准？</div>
+    <div class="qa-a"><b>答：</b>不能。这是 Google ADK 特有的体系建模与命名，在 LangGraph 或 AutoGen 中有不同的对应抽象。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q05</span> Shared Session State 为什么绝不能等同于“共享完整对话历史”？</div>
+    <div class="qa-a"><b>答：</b>State 应是受 Schema 严格控制的数据平面（存放结构化事实与工件指针）；共享完整对话历史会导致严重的上下文污染与 Token 爆炸。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q06</span> Worker 返回 partial 时，Orchestrator 为什么不应直接全量重跑？</div>
+    <div class="qa-a"><b>答：</b>应当保留已验证的有效成果，只派发补全缺失证据的增量任务，避免浪费成本并引入非必要的随机波动。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q07</span> Multi-Agent 的 Token 变多，但 Wall Time 变短，矛盾吗？</div>
+    <div class="qa-a"><b>答：</b>不矛盾。并发减少了关键路径（Critical Path）上的串行等待时间，但系统总计算量（Total Tokens）因多次调用而显著增加。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q08</span> 怎样用实验区分“多 Agent 有效”与“固定并行 Workflow 已经足够”？</div>
+    <div class="qa-a"><b>答：</b>对比 W1（固定并行拆分）与 M1（动态多 Agent）。若 W1 在同等任务集上已达到相似质量，则动态编排带来的复杂度和成本并无净收益。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q09</span> 为什么只检查最终回答会漏掉越权或错误路由？</div>
+    <div class="qa-a"><b>答：</b>正确的回答可能是通过越权调用、数据泄露或错误的路由侥幸得到的；必须同时校验 Process Obligations（过程合规）与 Trace 轨迹。</div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q"><span class="q-tag">Q10</span> 如果动态 MAS 质量高 2%，但成本高 6x、P95 延迟高 2x，应该上线吗？</div>
+    <div class="qa-a"><b>答：</b>不能只凭这三个数字决定。还需评估任务的商业价值、容错门槛、统计置信区间、关键用户切片以及是否可以通过 W1 工作流优化解决。</div>
   </div>
 </section>
 
