@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Multi-Agent Systems 学习笔记：何时拆分、如何协作、怎样评测"
+title: "Multi-Agent Systems 研究笔记：何时拆分、如何协作、怎样评测"
 description: "从 single-agent baseline 出发，学习 multi-agent 的上下文边界、协作拓扑、planning、通信合同、失败恢复与评测方法。"
 ---
 
@@ -352,6 +352,8 @@ flowchart LR
 
 ### 5.2 TaskEnvelope
 
+示例使用的完整来源 URL：[Google Cloud ADK 原文][G]。
+
 ```yaml
 task_envelope:
   task_id: research-adk-001
@@ -359,7 +361,7 @@ task_envelope:
   objective: "提取 ADK 原文中的协作模式及其边界"
   inputs:
     artifact_refs:
-      - "https://cloud.google.com/.../building-collaborative-ai..."
+      - "https://cloud.google.com/blog/topics/developers-practitioners/building-collaborative-ai-a-developers-guide-to-multi-agent-systems-with-adk"
     facts_already_known: []
   context_boundary:
     include: ["hierarchy", "Sequential", "Parallel", "Loop", "communication"]
@@ -394,6 +396,8 @@ task_envelope:
 
 ### 5.3 AgentResult
 
+结果中的 `evidence.url` 仍指向同一份可点击的 [Google Cloud ADK 原文][G]。
+
 ```yaml
 agent_result:
   task_id: research-adk-001
@@ -405,7 +409,7 @@ agent_result:
       confidence: medium
   evidence:
     - id: src-1
-      url: "https://cloud.google.com/.../building-collaborative-ai..."
+      url: "https://cloud.google.com/blog/topics/developers-practitioners/building-collaborative-ai-a-developers-guide-to-multi-agent-systems-with-adk"
       source_type: primary_official
       checked_at: "2026-08-23"
   artifacts: []
@@ -532,6 +536,47 @@ sequenceDiagram
 5. **有限重规划**：例如最多 1 次 replan；每次必须减少一个明确缺口。
 6. **停止并诚实交付**：预算耗尽时返回 partial/blocked 和缺口，不无限循环。
 
+### 6.5 Agentic Saga：副作用失败后怎样补偿
+
+前面的“局部重试”主要针对只读研究。agent 一旦会扣款、写数据库、发邮件或创建外部资源，失败恢复就不能只重跑模型调用。
+
+【来源事实】Garcia-Molina 与 Salem 在 1987 年提出 Saga：把长事务拆成可交错执行的子事务；若后续失败，就执行相应的 compensating transactions 来修正已完成的部分执行。[Saga 原始论文][SAGA]
+
+【综合解释】本文把 Saga 应用于 agent workflow，称为 **Agentic Saga**。这是教学性的工程适配，不是 OpenTelemetry、ADK、LangChain 或其他框架定义的标准模式。核心不是“让另一个 agent 道歉”，而是让 orchestrator 对每个现实副作用维护可执行、可审计的补偿合同。
+
+【实践建议】以“预留库存 → 扣款 → 发确认邮件”为例：
+
+| 正向步骤 | 现实副作用 | 补偿动作 | 关键边界 |
+|---|---|---|---|
+| `T1 reserve_inventory` | 库存被占用 | `C1 release_inventory` | 释放必须引用原 reservation id |
+| `T2 charge_payment` | 用户已扣款 | `C2 refund_payment` | refund 是新交易，不是抹掉 charge |
+| `T3 send_confirmation` | 邮件已被外部看见 | 没有真正逆操作 | 发送前设审批/commit gate，失败后只能更正通知 |
+
+【实践建议】orchestrator 的最小执行规则是：
+
+1. **执行前分类副作用**：`read_only`、`compensatable` 或 `irreversible`；没有补偿/审批方案的写操作不得自动开始。
+2. **成功后才压入补偿栈**：`T1` 成功就压入 `C1`，`T2` 成功再压入 `C2`；不能在结果未知时假设动作已经提交。
+3. **失败后逆序补偿**：若 `T3` 前失败，依次尝试 `C2 → C1`，避免先释放库存、但退款仍未处理造成新的不一致窗口。
+4. **补偿也可能失败**：持久化 `compensation_pending/failed` 状态，有限重试后进入人工处理；不能把“已发起补偿”报告成“已恢复”。
+5. **正向与补偿都要幂等**：分别使用稳定 idempotency key，例如 `task-42:T2:forward` 与 `task-42:T2:compensate`；重放同一动作应返回已有结果，而不是再次扣款或退款。
+
+一个最小补偿栈可以只保存这些字段：
+
+```yaml
+compensation_entry:
+  saga_id: checkout-42
+  forward_step: charge_payment
+  forward_operation_id: charge-987
+  forward_idempotency_key: checkout-42:T2:forward
+  compensate_action: refund_payment
+  compensate_args:
+    charge_id: charge-987
+  compensate_idempotency_key: checkout-42:T2:compensate
+  status: pending
+```
+
+**补偿不等于回滚历史。** 补偿是在当前世界中提交一个新的语义修正动作：用户可能已经看到扣款，汇率或手续费可能变化，并发流程也可能已经读取旧状态。`refund` 能使业务余额接近正确，却不能让 `charge` 从历史、审计日志或用户认知中消失。对于不可逆动作，应把人工审批、延迟发送、outbox/confirm 阶段或明确的更正流程放在动作之前，而不是事后假装存在完美 rollback。
+
 ---
 
 ## 7. 上下文、token、成本与延迟
@@ -587,6 +632,8 @@ LangChain 博客宣称 planning agents 可能更快、更省成本、质量更�
 
 - ReWOO 论文摘要报告在 HotpotQA 上约 5× token efficiency、准确率提高 4%；[ReWOO 论文][P1]
 - LLMCompiler 当前 arXiv 摘要报告在论文特定任务上最高约 3.7× latency speedup、6.7× cost saving、约 9% accuracy improvement。[LLMCompiler 论文][P2]
+
+【来源事实】2024 年 LangChain 博客写的是 LLMCompiler 论文“最高 **3.6×** speedup”，而 arXiv v1、博客发布前的 v2 与当前 v3 摘要都写最高约 **3.7×** latency speedup。[L] [P2] 【综合解释】这是两份来源的表述口径不一致；现有证据不能把差异归因于论文后续版本更新，也不能把二者当成两次独立实验或平均成一个新数字。引用历史文章时保留 3.6×；描述论文摘要时使用约 3.7×，两者都加上“特定 benchmark、up to”的限定。
 
 这些都应表述为特定 benchmark、模型和论文版本下的结果，而不是业务系统预期值。
 
@@ -676,6 +723,85 @@ recovery_rate
 ```
 
 任何一个硬安全义务失败，都不应被更高平均质量抵消。
+
+### 9.5 OpenTelemetry GenAI trace：先还原“第一处偏离”
+
+【来源事实】截至 2026-08-23，OpenTelemetry 的 GenAI agent/framework semantic conventions 状态仍是 **Development**，并已从 core semantic-conventions 页面迁到独立的 `semantic-conventions-genai` 仓库。[迁移说明][OTEL_MOVED] 当前文档定义了 `invoke_workflow`、远程/进程内 `invoke_agent`、`plan` 与 `execute_tool` 等 span；普通模型推理由 GenAI inference span 表达。[Agent spans][OTEL_AGENT] [GenAI spans][OTEL_SPANS]
+
+这些是 span 语义，不是一份 multi-agent task protocol。规范也没有强制所有框架生成完全相同的父子树。下面是**本文建议的最小 trace 树**，用来把最终失败回钻到 plan、worker、tool 或 verifier：
+
+```mermaid
+flowchart TD
+    W["invoke_workflow multi_agent_research<br/>operation = invoke_workflow"]
+    O["invoke_agent orchestrator"]
+    P["plan orchestrator"]
+    A["invoke_agent worker_anthropic"]
+    G["invoke_agent worker_google"]
+    L["invoke_agent worker_langchain"]
+    AC["chat model"]
+    AT["execute_tool web_read"]
+    GC["chat model"]
+    GT["execute_tool web_read"]
+    LC["chat model"]
+    LT["execute_tool web_read"]
+    V["invoke_agent verifier"]
+
+    W --> O
+    O --> P
+    W --> A
+    W --> G
+    W --> L
+    A --> AC
+    A --> AT
+    G --> GC
+    G --> GT
+    L --> LC
+    L --> LT
+    W --> V
+```
+
+这棵树描述的是**一次实际执行**，不是 planner 的 task DAG。DAG join 可能依赖两个前驱，但一个 span 仍只有一个 parent；【实践建议】把依赖 ID 放在任务合同/事件中，必要时用 span links 表达额外因果关系，不要靠开始时间猜依赖。
+
+#### 官方字段：按对应 span 的 requirement level 使用
+
+| 当前 OTel 字段 | 用途 | 边界 |
+|---|---|---|
+| `gen_ai.operation.name` | 区分 `invoke_workflow`、`invoke_agent`、`plan`、`execute_tool`、`chat` 等操作 | 在对应规范 span 上使用已定义值 |
+| `gen_ai.workflow.name` | 低基数、对应用有意义的 workflow 名 | 不要用每次运行都变化的 ID，也不要默认写框架类型名 |
+| `gen_ai.agent.name`、`gen_ai.agent.id`、`gen_ai.agent.version` | 标识被调用 agent 及其版本 | requirement level 随远程/进程内 span 与字段可用性变化 |
+| `gen_ai.conversation.id` | 关联已有 session/thread | 仅在应用/框架确有 ID 时记录；不要临时生成 UUID 冒充 |
+| `gen_ai.provider.name`、`gen_ai.request.model` | 标识 provider 与请求模型 | 并非每类 agent/workflow span 都同时要求 |
+| `gen_ai.usage.input_tokens`、`gen_ai.usage.output_tokens` | 归因模型用量 | 应记录在规范允许且 provider 可给出用量的 span 上 |
+| `gen_ai.tool.name`、`gen_ai.tool.call.id` | 标识工具与某次调用 | `tool.name` 在 execute-tool span 必需；call id 可用时推荐 |
+| `error.type` | 低基数错误类别 | 操作以错误结束时条件必需；详细堆栈留在受控事件/日志 |
+
+【来源事实】`gen_ai.input.messages`、`gen_ai.output.messages`、`gen_ai.tool.call.arguments` 与 `gen_ai.tool.call.result` 等内容字段是 opt-in，规范明确警告它们可能包含敏感信息；默认不应为了“trace 完整”就采集原始 prompt、PII 或工具结果。[OTEL_SPANS]
+
+#### 本文建议字段：不要放进 `gen_ai.*` 冒充标准
+
+下面的 `app.multi_agent.*` 是**本文建议的应用自定义 schema**。生产系统应按自己的 OTel attribute namespace、基数和隐私政策调整：
+
+| 建议字段 | 回答的问题 |
+|---|---|
+| `app.multi_agent.task.id` | 这是哪一个结构化子任务 |
+| `app.multi_agent.task.parent_id` | 它由哪个任务拆出 |
+| `app.multi_agent.task.attempt` | 这是第几次重试，是否在重复劳动 |
+| `app.multi_agent.task.dependency_ids` | planner 声明了哪些前驱；用于还原 DAG |
+| `app.multi_agent.task.status` | `success/partial/retryable_error/blocked` 中哪一种 |
+| `app.multi_agent.delegation.reason` | orchestrator 为什么选这个 worker |
+| `app.multi_agent.artifact.ids` | 结果落在哪些可追溯 artifact；避免把正文塞进 span |
+| `app.multi_agent.budget.model_calls` | 当前任务消耗了多少模型调用 |
+| `app.multi_agent.saga.id`、`app.multi_agent.saga.step` | 此副作用属于哪个 Saga 和步骤 |
+| `app.multi_agent.compensation.status` | 补偿是 pending、succeeded 还是 failed |
+
+【实践建议】高基数 task/artifact ID 保留在 trace 查询中，不要直接作为聚合 metric label；内容只存摘要、hash 或受控 artifact reference。至少把 `agent/harness version`、任务合同版本、attempt、错误类别和 Saga 状态保留下来，才能从最终坏结果定位第一处偏离。
+
+#### 版本漂移怎么处理
+
+- 在 telemetry 资源或部署元数据中记录 semantic-conventions 版本/commit 与 instrumentation 版本；
+- 升级前对照 emitted spans，而不是只看最新网页字段；
+- dashboard 同时容忍旧字段迁移窗口，但不要永久双写两套自定义含义；
+- 本节只确认截至 2026-08-23 的 Development 规范，字段和 requirement level 以后仍可能不兼容地变化。
 
 ---
 
@@ -844,6 +970,10 @@ def run_research(user_task):
 - [L2] [LangGraph, *Workflows and agents*](https://docs.langchain.com/oss/python/langgraph/workflows-agents) — 当前 workflow/agent 区分与 orchestrator-worker 等模式。
 - [P1] [Xu et al., *ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models*](https://arxiv.org/abs/2305.18323)
 - [P2] [Kim et al., *An LLM Compiler for Parallel Function Calling*](https://arxiv.org/abs/2312.04511)
+- [SAGA] [Garcia-Molina and Salem, *Sagas*（Princeton Technical Report TR-070-87）](https://www.cs.princeton.edu/techreports/1987/070.pdf) — Saga 与 compensating transaction 的原始来源。
+- [OTEL_MOVED] [OpenTelemetry, *GenAI attributes moved*](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/) — GenAI conventions 的迁移与旧 registry 状态。
+- [OTEL_AGENT] [OpenTelemetry, *Semantic Conventions for GenAI agent and framework spans*](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md) — workflow、agent 与 plan spans；状态为 Development。
+- [OTEL_SPANS] [OpenTelemetry, *Semantic conventions for generative client AI spans*](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md) — inference、tool span、字段和内容采集边界。
 
 ### 13.4 证据边界
 
@@ -851,6 +981,8 @@ def run_research(user_task):
 - Anthropic 案例数字与 ReWOO/LLMCompiler 论文数字来自不同任务、模型、参照和版本，本文没有把它们横向相加或直接外推。
 - Google 原博客没有系统覆盖失败、安全和 benchmark；对应章节中的许多护栏已标为【综合解释】或【实践建议】。
 - ADK 与 LangChain/LangGraph 的 API、类名、示例路径可能继续漂移。本文最后核对日期为 2026-08-23，实施前请重查当前一手文档。
+- Agentic Saga 是把原始 Saga 思想应用于 agent 副作用工作流的【综合解释】，不是某个 agent 框架的现成标准。
+- OpenTelemetry GenAI semantic conventions 在核对日仍为 Development；本文建议的 `app.multi_agent.*` 字段不属于 OTel 标准。
 
 [A]: https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them
 [A2]: https://www.anthropic.com/engineering/multi-agent-research-system
@@ -861,12 +993,16 @@ def run_research(user_task):
 [L2]: https://docs.langchain.com/oss/python/langgraph/workflows-agents
 [P1]: https://arxiv.org/abs/2305.18323
 [P2]: https://arxiv.org/abs/2312.04511
+[SAGA]: https://www.cs.princeton.edu/techreports/1987/070.pdf
+[OTEL_MOVED]: https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/
+[OTEL_AGENT]: https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md
+[OTEL_SPANS]: https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md
 
 ---
 
 <sub>
 
-学习笔记，非官方文档。本文的统一坐标系、TaskEnvelope、AgentResult、恢复顺序和评估矩阵是教学性综合，不是厂商协议或行业标准。
+研究笔记，非官方文档。本文的统一坐标系、TaskEnvelope、AgentResult、Agentic Saga、恢复顺序、trace 建议字段和评估矩阵是教学性综合，不是厂商协议或行业标准。
 
 [十步视觉学习路径](learn/) · [返回 ML Learning Notes](../)
 
