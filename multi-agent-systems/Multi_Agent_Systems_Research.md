@@ -37,41 +37,35 @@ description: "从 single-agent baseline 出发，学习 multi-agent 的上下文
 
 ---
 
-## 0. 先给结论
+## 0. 先看一个常见的调试现场
 
-Multi-agent 不是 single-agent 的“高级版开关”。它是用更多独立执行上下文换取三类能力：
+你在看一条客服 agent 的 trace。用户只想知道退货进度，主 agent 却先后拿到了完整订单历史、账单规则和物流记录。最后的回答只用到订单号、当前状态和下一步处理时间。与此同时，另一个发票查询与退货进度没有数据依赖，本来可以单独处理。
 
-- **上下文保护**：把大量中间材料留在 worker 内，只把必要结论交回主上下文；
-- **并行探索**：让彼此独立的路径同时搜索，主要提高覆盖面，也可能缩短墙钟时间；
-- **专业化**：给不同 worker 更窄的工具、指令、权限或领域资料。
+这时，拆分才有具体理由。订单 worker 留住冗长历史，只回传几个经过核对的字段，主上下文因此没有被中间材料淹没。发票 worker 只加载账单工具与相关规则，负责另一组事实核对。两条查询没有数据依赖，所以适合并发；并发首先增加覆盖面，在条件合适时也会缩短墙钟时间。
 
-但代价也同时出现：重复加载上下文、任务交接、结果合并、路由错误、共享状态冲突、错误级联，以及更难调试的非确定轨迹。
+如果每个 worker 仍收到整段对话，完成后再把大段结果互相转述，系统只是多了模型调用和交接点。路由、共享状态与结果合并也会带来新的失败路径。
 
-【来源事实】Anthropic 把“先证明单智能体的具体瓶颈，再考虑多智能体”作为核心建议，并报告其场景中多智能体通常消耗单智能体 **3–10 倍 token**。这是供应商自身经验，不是跨模型、跨任务的定律。[Anthropic 原文][A]
+【来源事实】Anthropic 建议先找出 single-agent 的可复现瓶颈，再决定是否使用 multi-agent；其团队报告，在自己的场景中，多智能体通常消耗单智能体 **3–10 倍 token**。这是供应商经验，不是跨模型、跨任务的定律。[Anthropic 原文][A]
 
-最值得记住的一句话是：
-
-> **按上下文边界拆，而不是按组织架构或工种名称拆。**
-
-如果规划、执行、测试需要共享同一批细节与决策历史，把它们交给不同 agent 可能只是在制造“传话游戏”。反过来，两个研究方向彼此独立、只需回传结构化证据，就是很自然的边界。
+真正要检查的是上下文边界。规划、实现和测试若持续依赖同一批决策细节，交给不同 agent 往往会增加转述损失。两个独立研究方向只需回传统一格式的证据，拆分就合理得多。
 
 ---
 
 ## 1. 先统一概念：什么是 multi-agent
 
-### 1.1 一个可操作的定义
+### 1.1 先看运行时边界，不看类名
 
-本文把 **agent** 看成一个运行单元：
+代码里出现 `PlannerAgent`、`ResearchAgent` 和 `SummaryAgent`，还不能说明系统里有三个 agent。先看运行时：它们是否有各自可见的上下文和状态，能否使用不同工具或权限，是否分别运行自己的执行循环并决定何时停止。如果所谓 `SummaryAgent` 只是一次固定的模型调用，它更适合被记作 workflow node。
 
-> `模型或确定性策略 + 指令 + 可见上下文/状态 + 工具/权限 + 执行循环 + 停止条件`
+本文采用下面这个 provider-neutral 的工作定义：
 
-因此，agent 不等于一次 LLM 调用，也不等于一个角色名称。
+> `agent = 模型或确定性策略 + 指令 + 可见上下文/状态 + 工具/权限 + 执行循环 + 停止条件`
 
-本文把 **multi-agent system** 定义为：
+一次 LLM 调用、一个普通函数或一个带 `Agent` 后缀的类名，都不会自动算作独立 agent。
 
-> 多个这样的运行单元拥有可区分的上下文、职责或控制权，通过代码或消息协调，共同完成一个上层目标。
+> `multi-agent system = 多个拥有可区分上下文、职责或控制权的运行单元，通过代码或消息协调，共同完成一个上层目标`
 
-这个定义与 Anthropic 文章中“多个 LLM 实例运行于独立对话上下文，并由代码协调”的工程定义相容。[Anthropic 原文][A] 它也允许某些 worker 使用确定性逻辑，而不强迫每个节点都由 LLM 自主决策。
+Anthropic 的工程定义强调多个 LLM 实例在独立对话上下文中运行并由代码协调，与这里的判断方式一致。[Anthropic 原文][A] 本文的定义稍宽，允许 worker 使用确定性策略；是否算 agent，仍取决于运行时边界，而不是节点名称。
 
 ### 1.2 经典 MAS 与现代 LLM agent team 不要混为一谈
 
@@ -281,35 +275,25 @@ LangChain 文章把典型 ReAct 概括为：
 
 这不代表 ReAct 总是更差。对短任务、环境变化快或每个 observation 都会改变下一步时，即时决策可能比先做长计划更合适。
 
-### 4.3 Plan-and-Execute
+### 4.3 LangChain 的三种 planning architecture
 
-基本结构是：
+【来源事实】LangChain 的文章依次讨论 Plan-and-Execute、ReWOO 与 LLMCompiler。三者都把全局规划和局部执行分开，但计划表示、依赖表达与调度方式不同。[LangChain 原文][L]
 
-1. planner 生成多步计划；
-2. executor 接收用户问题和当前 step，调用一个或多个工具；
-3. planner 检查中间结果，决定结束或重规划。
+| 架构 | 计划怎样表示 | 怎样执行与反馈 | 解决了什么，还留下什么 |
+|---|---|---|---|
+| Plan-and-Execute | 多步 step list | executor 逐步运行；planner 检查结果并决定结束或重规划 | 大模型可以专注全局计划，局部执行可交给较便宜模型；步骤仍以串行为主，没有变量引用 |
+| ReWOO | 交错的 `Plan:` 与 `E#:`；后续步骤用 `#E1` 引用结果 | worker 绑定变量后顺序执行，solver 最后汇总 | 数据依赖进入计划，不必每步重规划；原版执行器仍没有利用独立分支的并行性 |
+| LLMCompiler | planner 流式生成 task DAG | 依赖满足后立即调度；joiner 回答或重规划 | 并行由依赖图决定；工程上还要处理 schema、环依赖、副作用并发与反复 replan |
 
-**为什么可能有效**：昂贵模型负责全局推理，局部执行可用更便宜模型；不必在每个工具调用后都做一次完整全局推理。
-
-**原文限制**：执行仍然主要串行；没有变量赋值；每个 task 仍要经过 LLM。
-
-### 4.4 ReWOO：把数据依赖写进计划
-
-ReWOO 用交错的 `Plan:` 与 `E#:` 表示步骤，并允许后续步骤引用前序结果，例如：
+ReWOO 的变量引用可以写得很直接：
 
 ```text
 E1 = Search[本届赛事的两支队伍]
 E2 = LLM[从 #E1 提取队伍 A 的 quarterback]
 E3 = LLM[从 #E1 提取队伍 B 的 quarterback]
-E4 = Search[查询 #E2 的统计数据]
-E5 = Search[查询 #E3 的统计数据]
 ```
 
-变量引用让执行器只拿当前所需输入，减少反复重规划；但原版 worker 仍按序执行，本可并行的 `E2/E3` 和 `E4/E5` 没有充分并发。[LangChain 原文][L]
-
-### 4.5 LLMCompiler：从线性计划到可调度 DAG
-
-LLMCompiler 进一步让 planner 流式产生带依赖的 tasks；Task Fetching Unit 在依赖满足时立即调度；joiner 根据完整执行历史选择回答或重规划。[LangChain 原文][L]
+`E2` 和 `E3` 共享 `E1`，彼此没有数据依赖；ReWOO 把这个关系写进了计划，但原文中的 worker 仍按顺序执行。LLMCompiler 再把这种依赖表示交给 scheduler，让已经 ready 的 task 尽早开始。[LangChain 原文][L]
 
 ```mermaid
 flowchart LR
@@ -324,19 +308,9 @@ flowchart LR
     RP --> P
 ```
 
-**为什么是推进**：DAG 把“可并行”从直觉变成依赖约束；流式规划让早期无依赖任务不必等完整计划生成。
+> **边界提醒：DAG/workflow node 不等于 agent。** 图中的 `T1`、`T2`、`T3` 可以是普通函数、工具调用或固定 workflow node。只有当某个节点形成独立的运行单元，拥有自己的上下文、职责或控制权时，本文才把它计为 agent。把 planner、scheduler 和 joiner 画成三个框，也不会自动得到 multi-agent system。
 
-**还需自己解决**：计划 schema 解析、漏边/错边/环依赖、副作用工具的安全并发、重规划抖动和 joiner 漏证据。LangChain 博客没有系统给出这些生产失败语义。
-
-### 4.6 三种架构对照
-
-| 架构 | 计划表示 | 执行 | 反馈 | 适合 |
-|---|---|---|---|---|
-| Plan-and-Execute | step list | 主要串行 | 每步后结束或重规划 | 需要全局方向但依赖不复杂 |
-| ReWOO | 线性步骤 + `#E` 变量 | 顺序绑定变量 | solver 汇总 | 想减少反复规划并明确传值 |
-| LLMCompiler | task DAG | 依赖满足即调度，可并行 | joiner 回答或 replan | 独立分支多、延迟受关键路径影响 |
-
-### 4.7 截至 2026-08-23 的 LangChain 漂移提示
+### 4.4 截至 2026-08-23 的 LangChain 漂移提示
 
 2024 年博客链接的部分 notebook 已成为迁移/归档占位，不应直接当最新版教程。当前实现应优先看 [LangGraph Workflows and Agents][L2]；该文档也明确区分 workflow 的预定代码路径与 agent 的动态过程。博客仍适合学习 Plan-and-Execute、ReWOO、LLMCompiler 的思想史。
 
@@ -430,7 +404,111 @@ agent_result:
 
 `status: partial` 不是失败的委婉说法。它允许 orchestrator 保留已经验证的证据，同时只补派缺口，而不是丢弃全部工作后重跑。
 
-### 5.4 通信的五条最低规则
+### 5.4 物理派发示例：OpenAI Responses API
+
+下面是 **provider-specific implementation example**：它只展示怎样把前面的 provider-neutral `TaskEnvelope` / `AgentResult` 落到一次真实 API 往返，不把 OpenAI 的 item 类型反推成通用协议。【来源事实】Responses API 的 function call 出现在 `response.output`；应用执行后，要把原 output item 与引用同一 `call_id` 的 `function_call_output` 一起放入后续 input。`strict: true` 还要求 object 关闭 `additionalProperties`，并把所有 properties 列入 `required`。[OpenAI Function calling guide][OAI_FUNCTION]
+
+```python
+import json
+import os
+
+from openai import OpenAI
+
+client = OpenAI()
+ORCHESTRATOR_MODEL = os.environ["ORCHESTRATOR_MODEL"]
+WORKER_MODEL = os.environ["WORKER_MODEL"]
+
+DELEGATE_TOOL = {
+    "type": "function",
+    "name": "delegate_research",
+    "description": "Create one bounded TaskEnvelope for a research worker.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "task_id": {"type": "string"},
+            "objective": {"type": "string"},
+            "include": {"type": "array", "items": {"type": "string"}},
+            "exclude": {"type": "array", "items": {"type": "string"}},
+            "source_urls": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["task_id", "objective", "include", "exclude", "source_urls"],
+        "additionalProperties": False,
+    },
+    "strict": True,
+}
+
+
+def validate_task_envelope(value):
+    expected = {"task_id", "objective", "include", "exclude", "source_urls"}
+    if not isinstance(value, dict):
+        raise ValueError("TaskEnvelope must be an object")
+    if set(value) != expected:
+        raise ValueError("TaskEnvelope fields do not match the transport schema")
+    if not isinstance(value["task_id"], str) or not isinstance(value["objective"], str):
+        raise ValueError("task_id and objective must be strings")
+    for key in ("include", "exclude", "source_urls"):
+        if not isinstance(value[key], list) or not all(isinstance(x, str) for x in value[key]):
+            raise ValueError(f"{key} must be a list of strings")
+    return value
+
+
+def dispatch_one(user_task):
+    orchestrator_input = [{"role": "user", "content": user_task}]
+    routed = client.responses.create(
+        model=ORCHESTRATOR_MODEL,
+        input=orchestrator_input,
+        tools=[DELEGATE_TOOL],
+        tool_choice={"type": "function", "name": "delegate_research"},
+        parallel_tool_calls=False,
+    )
+
+    # 1. Orchestrator 返回 function_call；应用解析并验证 arguments。
+    orchestrator_input.extend(routed.output)
+    call = next(
+        item
+        for item in routed.output
+        if item.type == "function_call" and item.name == "delegate_research"
+    )
+    task_envelope = validate_task_envelope(json.loads(call.arguments))
+
+    # 2. 这是一个全新的 worker model request，不是在本地假装“切换角色”。
+    worker = client.responses.create(
+        model=WORKER_MODEL,
+        instructions="Execute only the supplied TaskEnvelope and return evidence-backed findings.",
+        input=json.dumps(task_envelope, ensure_ascii=False),
+    )
+    agent_result = {
+        "task_id": task_envelope["task_id"],
+        "attempt": 1,
+        "status": "success" if worker.output_text.strip() else "partial",
+        "claims": [],
+        "evidence": [],
+        "artifacts": [{"type": "worker_text", "content": worker.output_text}],
+        "open_questions": [],
+        "usage": {"model_calls": 1},
+        "errors": [],
+        "recommended_next_action": "synthesize" if worker.output_text.strip() else "retry_or_stop",
+    }
+
+    # 3. 用原 function_call 的同一个 call_id 回传 worker 结果。
+    orchestrator_input.append(
+        {
+            "type": "function_call_output",
+            "call_id": call.call_id,
+            "output": json.dumps(agent_result, ensure_ascii=False),
+        }
+    )
+    final = client.responses.create(
+        model=ORCHESTRATOR_MODEL,
+        input=orchestrator_input,
+        tools=[DELEGATE_TOOL],
+    )
+    return final.output_text
+```
+
+`strict` 约束的是 function-call JSON 形状，不替应用完成语义授权。应用仍要检查 URL、权限、预算和 include/exclude 边界；上面的 `agent_result` 沿用 5.3 的字段，但生产实现还应对每个字段做完整 schema 校验。
+
+### 5.5 通信的五条最低规则
 
 1. **传 artifact reference，少传整段对话**：保留可追溯性，也减少重复 token。
 2. **事实与推断分栏**：worker 不应把自己的架构推论写成来源原话。
@@ -438,7 +516,7 @@ agent_result:
 4. **结果可幂等合并**：用 `task_id + attempt` 去重，重试不能重复写外部状态。
 5. **版本化共享状态**：写入 `{key, version, writer, timestamp}`，并行写必须有 merge/compare-and-swap 规则。
 
-### 5.5 Message passing 与 shared state
+### 5.6 Message passing 与 shared state
 
 | 选择 | 优点 | 风险 | 适合 |
 |---|---|---|---|
@@ -457,7 +535,7 @@ agent_result:
 
 用户要求：
 
-> 比较三份 multi-agent 材料，写一份中文学习笔记；必须使用一手来源，指出版本漂移，并给出可执行 lab。
+> 比较三份 multi-agent 材料，写一份中文研究笔记；必须使用一手来源，指出版本漂移，并给出可执行 lab。
 
 orchestrator 先判断：三份来源可以独立阅读，适合并行；最终概念统一与写作强耦合，应由一个 synthesizer 完成；引用检查可黑盒验证。
 
@@ -472,7 +550,7 @@ sequenceDiagram
     participant L as Worker L: LangChain
     participant V as Verifier
 
-    U->>O: 三份材料整合成学习笔记
+    U->>O: 三份材料整合成研究笔记
     O->>O: 定义边界、合同、预算与完成条件
     par 独立研究
         O->>A: 研究何时用、上下文拆分、成本
@@ -538,44 +616,53 @@ sequenceDiagram
 
 ### 6.5 Agentic Saga：副作用失败后怎样补偿
 
-前面的“局部重试”主要针对只读研究。agent 一旦会扣款、写数据库、发邮件或创建外部资源，失败恢复就不能只重跑模型调用。
+前面的局部 retry/replan 主要修复推理或只读研究；它不等于撤销现实副作用。agent 一旦会改代码、推送 commit、创建 PR 或发送通知，失败恢复就不能只重跑模型调用。
 
 【来源事实】Garcia-Molina 与 Salem 在 1987 年提出 Saga：把长事务拆成可交错执行的子事务；若后续失败，就执行相应的 compensating transactions 来修正已完成的部分执行。[Saga 原始论文][SAGA]
 
 【综合解释】本文把 Saga 应用于 agent workflow，称为 **Agentic Saga**。这是教学性的工程适配，不是 OpenTelemetry、ADK、LangChain 或其他框架定义的标准模式。核心不是“让另一个 agent 道歉”，而是让 orchestrator 对每个现实副作用维护可执行、可审计的补偿合同。
 
-【实践建议】以“预留库存 → 扣款 → 发确认邮件”为例：
+【实践建议】以“生成代码修改 → 创建 PR → 通知 reviewer”为例。模型只负责提出工具参数；应用必须先按结构化 schema、repo/branch allowlist 与权限规则验证，再调用工具：
 
 | 正向步骤 | 现实副作用 | 补偿动作 | 关键边界 |
 |---|---|---|---|
-| `T1 reserve_inventory` | 库存被占用 | `C1 release_inventory` | 释放必须引用原 reservation id |
-| `T2 charge_payment` | 用户已扣款 | `C2 refund_payment` | refund 是新交易，不是抹掉 charge |
-| `T3 send_confirmation` | 邮件已被外部看见 | 没有真正逆操作 | 发送前设审批/commit gate，失败后只能更正通知 |
+| `T1 create_commit` | 远端分支出现新 commit | `C1 revert_commit` | `commit_sha` 必须来自工具结果，不能由模型填写 |
+| `T2 open_pull_request` | 仓库出现可见 PR | `C2 close_pull_request` | 使用工具返回的 `pull_request_id`，关闭也不会抹掉审计历史 |
+| `T3 notify_reviewers` | reviewer 已看到通知 | 没有真正逆操作 | 只在 PR 已确认创建且通过 commit gate 后发送；失败后只能补发更正 |
 
 【实践建议】orchestrator 的最小执行规则是：
 
-1. **执行前分类副作用**：`read_only`、`compensatable` 或 `irreversible`；没有补偿/审批方案的写操作不得自动开始。
-2. **成功后才压入补偿栈**：`T1` 成功就压入 `C1`，`T2` 成功再压入 `C2`；不能在结果未知时假设动作已经提交。
-3. **失败后逆序补偿**：若 `T3` 前失败，依次尝试 `C2 → C1`，避免先释放库存、但退款仍未处理造成新的不一致窗口。
-4. **补偿也可能失败**：持久化 `compensation_pending/failed` 状态，有限重试后进入人工处理；不能把“已发起补偿”报告成“已恢复”。
-5. **正向与补偿都要幂等**：分别使用稳定 idempotency key，例如 `task-42:T2:forward` 与 `task-42:T2:compensate`；重放同一动作应返回已有结果，而不是再次扣款或退款。
+1. **调用前持久化 intent**：先写入稳定 `saga_id`、step、结构化参数摘要和 `forward_idempotency_key`，初始 `outcome: pending`；不能先写外部系统、后补审计记录。
+2. **显式结果才决定状态**：工具明确返回未提交，记为 `not_committed`；明确成功且带 provider operation ID，记为 `committed`。`forward_operation_id` 只能从工具/provider 结果提取，不能接受模型臆造的 commit SHA、PR number 或 message ID。
+3. **超时/响应丢失一律记 `unknown`**：请求可能未到达，也可能已经提交但回包丢失。先按 idempotency key 查询 provider 状态；若 provider 支持幂等，可用同一 key 安全重放以取得原结果。
+4. **unknown 时冻结回退**：在当前 step 收敛为 `committed` 或 `not_committed` 前，不得补偿更早步骤。否则当前动作稍后浮现为成功时，系统会进入新的不一致状态；无法自动收敛就转 `manual_review`。
+5. **确认 committed 才入补偿栈**：保存工具返回的 `forward_operation_id` 后才压入对应补偿。若工作流随后中止，再按本例的依赖逆序尝试 `C2 → C1`；这只是本例顺序，不是所有 Saga 的普适规则。
+6. **补偿也可能失败**：持久化 `compensation_pending/failed`，有限重试后进入人工处理；不能把“已发起补偿”报告成“已恢复”。
+7. **正向与补偿都要幂等**：分别使用稳定 key，例如 `pr-42:T2:forward` 与 `pr-42:T2:compensate`；重放同一动作应返回已有结果，而不是创建第二个 PR 或重复关闭。
 
-一个最小补偿栈可以只保存这些字段：
+请求超时后的 intent 会先停在 `unknown`；只有 reconcile 后确认 committed，才生成补偿栈条目：
 
 ```yaml
+forward_intent:
+  saga_id: pr-42
+  forward_step: open_pull_request
+  forward_idempotency_key: pr-42:T2:forward
+  outcome: unknown              # pending | committed | not_committed | unknown
+  forward_operation_id: null    # 只能由工具/provider 结果填入
+
 compensation_entry:
-  saga_id: checkout-42
-  forward_step: charge_payment
-  forward_operation_id: charge-987
-  forward_idempotency_key: checkout-42:T2:forward
-  compensate_action: refund_payment
+  saga_id: pr-42
+  forward_step: open_pull_request
+  forward_operation_id: pr-184  # reconcile 确认后，来自 provider
+  forward_idempotency_key: pr-42:T2:forward
+  compensate_action: close_pull_request
   compensate_args:
-    charge_id: charge-987
-  compensate_idempotency_key: checkout-42:T2:compensate
+    pull_request_id: pr-184
+  compensate_idempotency_key: pr-42:T2:compensate
   status: pending
 ```
 
-**补偿不等于回滚历史。** 补偿是在当前世界中提交一个新的语义修正动作：用户可能已经看到扣款，汇率或手续费可能变化，并发流程也可能已经读取旧状态。`refund` 能使业务余额接近正确，却不能让 `charge` 从历史、审计日志或用户认知中消失。对于不可逆动作，应把人工审批、延迟发送、outbox/confirm 阶段或明确的更正流程放在动作之前，而不是事后假装存在完美 rollback。
+**补偿不等于回滚历史。** 补偿是在当前世界中提交一个新的语义修正动作：reviewer 可能已经看到 PR 或通知，并发流程也可能已经读取旧状态。`revert` 与 `close` 能把仓库带回可接受状态，却不能让原 commit、PR 和审计记录消失。对于不可逆通知，应把人工审批、延迟发送、outbox/confirm 阶段或明确的更正流程放在 commit gate 之前，而不是事后假装存在完美 rollback。
 
 ---
 
@@ -633,9 +720,7 @@ LangChain 博客宣称 planning agents 可能更快、更省成本、质量更�
 - ReWOO 论文摘要报告在 HotpotQA 上约 5× token efficiency、准确率提高 4%；[ReWOO 论文][P1]
 - LLMCompiler 当前 arXiv 摘要报告在论文特定任务上最高约 3.7× latency speedup、6.7× cost saving、约 9% accuracy improvement。[LLMCompiler 论文][P2]
 
-【来源事实】2024 年 LangChain 博客写的是 LLMCompiler 论文“最高 **3.6×** speedup”，而 arXiv v1、博客发布前的 v2 与当前 v3 摘要都写最高约 **3.7×** latency speedup。[L] [P2] 【综合解释】这是两份来源的表述口径不一致；现有证据不能把差异归因于论文后续版本更新，也不能把二者当成两次独立实验或平均成一个新数字。引用历史文章时保留 3.6×；描述论文摘要时使用约 3.7×，两者都加上“特定 benchmark、up to”的限定。
-
-这些都应表述为特定 benchmark、模型和论文版本下的结果，而不是业务系统预期值。
+> 附注：LangChain 2024 博客写 3.6×，LLMCompiler 的 arXiv 摘要写约 3.7×；现有证据没有解释这处表述差异，本文按各自来源保留，并把两者都限定为论文特定 benchmark 上的 `up to` 结果。[L] [P2]
 
 ---
 
@@ -856,31 +941,32 @@ flowchart TD
 - 让另一个 worker 返回缺来源的 `partial`；
 - 验证系统能保留成功结果、只补派缺口，并在一次 replan 后停止。
 
-### 10.4 Provider-neutral 伪代码
+### 10.4 把 Lab 接到真实派发
+
+单个子任务的物理数据流直接复用 5.4 的 `dispatch_one`：`function_call → arguments 解析/验证 → 新 worker request → AgentResult → 同 call_id 的 function_call_output → orchestrator`。Lab 这一层只增加 DAG 批次、并发上限、一次局部 replan 和最终验收，不再复制一份 SDK 循环：
 
 ```python
 def run_research(user_task):
-    plan = orchestrator.make_plan(user_task, max_workers=3)
+    plan = make_dependency_plan(user_task, max_workers=3)
     assert is_acyclic(plan.dependencies)
     assert writes_do_not_conflict(plan.tasks)
 
-    results = run_ready_tasks(
-        plan.tasks,
-        max_parallelism=3,
-        timeout_seconds=180,
-    )
+    results = []
+    for ready_batch in topological_batches(plan.tasks, plan.dependencies):
+        # 每个 dispatch_one 都执行 5.4 的真实 Responses API 物理派发。
+        results += bounded_parallel_map(dispatch_one, ready_batch, max_parallelism=3)
 
     gaps = validate_results(results)
     if gaps and plan.replans_used < 1:
-        repair_tasks = orchestrator.replan_only_gaps(gaps, prior_results=results)
-        results += run_ready_tasks(repair_tasks, max_parallelism=2)
+        repairs = replan_only_gaps(gaps, prior_results=results)
+        results += bounded_parallel_map(dispatch_one, repairs, max_parallelism=2)
 
     draft = synthesize(results, preserve_provenance=True)
     verdict = verify(draft, required_coverage=user_task.requirements)
     return draft if verdict.passed else partial_delivery(draft, verdict.failures)
 ```
 
-这不是某个 SDK 的可运行 API，而是用最少代码显式展示：DAG 检查、副作用检查、有界并发、局部重规划、provenance 与诚实的 partial delivery。
+这里的 control-loop helper 仍是教学伪代码；真实模型请求、item 传递与 `call_id` 关联以 5.4 为准。实现 Lab 时，应把每次 `function_call`、worker response 和 `function_call_output` 保存进 trace，才能区分“模型决定派发”和“应用真的启动了另一个 worker request”。
 
 ### 10.5 记录表
 
@@ -970,10 +1056,13 @@ def run_research(user_task):
 - [L2] [LangGraph, *Workflows and agents*](https://docs.langchain.com/oss/python/langgraph/workflows-agents) — 当前 workflow/agent 区分与 orchestrator-worker 等模式。
 - [P1] [Xu et al., *ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models*](https://arxiv.org/abs/2305.18323)
 - [P2] [Kim et al., *An LLM Compiler for Parallel Function Calling*](https://arxiv.org/abs/2312.04511)
+- [OAI_FUNCTION] [OpenAI, *Function calling guide*](https://developers.openai.com/api/docs/guides/function-calling) — Responses API 的 function-call item、tool output 回传与 strict schema 要求。
 - [SAGA] [Garcia-Molina and Salem, *Sagas*（Princeton Technical Report TR-070-87）](https://www.cs.princeton.edu/techreports/1987/070.pdf) — Saga 与 compensating transaction 的原始来源。
 - [OTEL_MOVED] [OpenTelemetry, *GenAI attributes moved*](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/) — GenAI conventions 的迁移与旧 registry 状态。
 - [OTEL_AGENT] [OpenTelemetry, *Semantic Conventions for GenAI agent and framework spans*](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md) — workflow、agent 与 plan spans；状态为 Development。
 - [OTEL_SPANS] [OpenTelemetry, *Semantic conventions for generative client AI spans*](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md) — inference、tool span、字段和内容采集边界。
+- [D1] [Choi et al., *Debate or Vote: Which Yields Better Decisions in Multi-Agent Large Language Models?*（NeurIPS 2025）](https://proceedings.neurips.cc/paper_files/paper/2025/hash/934252acd87f254d5d4672fbde283bd2-Abstract-Conference.html)：区分 debate 与 majority voting 的实验研究。
+- [D2] [Choi et al., *An Empirical Study of Group Conformity in Multi-Agent Systems*（Findings of ACL 2025）](https://aclanthology.org/2025.findings-acl.265/)：多 agent 讨论中的群体从众实证。
 
 ### 13.4 证据边界
 
@@ -983,6 +1072,7 @@ def run_research(user_task):
 - ADK 与 LangChain/LangGraph 的 API、类名、示例路径可能继续漂移。本文最后核对日期为 2026-08-23，实施前请重查当前一手文档。
 - Agentic Saga 是把原始 Saga 思想应用于 agent 副作用工作流的【综合解释】，不是某个 agent 框架的现成标准。
 - OpenTelemetry GenAI semantic conventions 在核对日仍为 Development；本文建议的 `app.multi_agent.*` 字段不属于 OTel 标准。
+- 本文没有展开 debate、majority voting 或 consensus。NeurIPS 2025 的实验把 debate 与 voting 分开后，发现不少收益来自简单多数；另一项 ACL 2025 研究观察到，中立 agent 会向人数多数或能力更强的 agent 靠拢。[D1] [D2] 两项研究的任务与实验设置不同，本文只把 gain attribution 和 group conformity 记为风险，不据此给协作拓扑排名。
 
 [A]: https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them
 [A2]: https://www.anthropic.com/engineering/multi-agent-research-system
@@ -993,10 +1083,13 @@ def run_research(user_task):
 [L2]: https://docs.langchain.com/oss/python/langgraph/workflows-agents
 [P1]: https://arxiv.org/abs/2305.18323
 [P2]: https://arxiv.org/abs/2312.04511
+[OAI_FUNCTION]: https://developers.openai.com/api/docs/guides/function-calling
 [SAGA]: https://www.cs.princeton.edu/techreports/1987/070.pdf
 [OTEL_MOVED]: https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/
 [OTEL_AGENT]: https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md
 [OTEL_SPANS]: https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md
+[D1]: https://proceedings.neurips.cc/paper_files/paper/2025/hash/934252acd87f254d5d4672fbde283bd2-Abstract-Conference.html
+[D2]: https://aclanthology.org/2025.findings-acl.265/
 
 ---
 
