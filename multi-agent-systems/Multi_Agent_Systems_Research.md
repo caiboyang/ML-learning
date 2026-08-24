@@ -246,6 +246,8 @@ Google 文章给出三种协作机制：
 
 ## 4. Planning 与 multi-agent 是两个正交维度
 
+这份 multi-agent 笔记先花一节拆解 single-agent planning，因为架构图常把 planner、worker、joiner 画成多个框。图中的框首先只是 workflow node，不一定是 agent。看清单个模型如何规划、传值和调度工具之后，才能判断某个节点是否真的拥有独立上下文、职责或控制权。下面用 ReAct、ReWOO 和 LLMCompiler 校准这条边界，再回到 multi-agent 设计。
+
 ### 4.1 为什么不能画等号
 
 Planning 回答：
@@ -265,54 +267,143 @@ planner、executor、solver、joiner 可以由不同 agent 承担，也可以只
 | Single-agent | ReAct 式逐步行动 | 一个 agent 生成并执行 step list / DAG |
 | Multi-agent | router → specialist | planner/orchestrator → 多 workers → joiner |
 
-### 4.2 ReAct 的出发点
+### 4.2 先固定同一个任务
 
-LangChain 文章把典型 ReAct 概括为：
-
-`提出下一动作 → 执行动作 → 观察 → 再决定下一动作`
-
-【来源事实】文章指出两项局限：通常每次工具调用后都要再调用 LLM；每次只规划当前一步，不强制考虑全局任务。[LangChain 原文][L]
-
-这不代表 ReAct 总是更差。对短任务、环境变化快或每个 observation 都会改变下一步时，即时决策可能比先做长计划更合适。
-
-### 4.3 LangChain 的三种 planning architecture
-
-【来源事实】LangChain 的文章依次讨论 Plan-and-Execute、ReWOO 与 LLMCompiler。三者都把全局规划和局部执行分开，但计划表示、依赖表达与调度方式不同。[LangChain 原文][L]
-
-| 架构 | 计划怎样表示 | 怎样执行与反馈 | 解决了什么，还留下什么 |
-|---|---|---|---|
-| Plan-and-Execute | 多步 step list | executor 逐步运行；planner 检查结果并决定结束或重规划 | 大模型可以专注全局计划，局部执行可交给较便宜模型；步骤仍以串行为主，没有变量引用 |
-| ReWOO | 交错的 `Plan:` 与 `E#:`；后续步骤用 `#E1` 引用结果 | worker 绑定变量后顺序执行，solver 最后汇总 | 数据依赖进入计划，不必每步重规划；原版执行器仍没有利用独立分支的并行性 |
-| LLMCompiler | planner 流式生成 task DAG | 依赖满足后立即调度；joiner 回答或重规划 | 并行由依赖图决定；工程上还要处理 schema、环依赖、副作用并发与反复 replan |
-
-ReWOO 的变量引用可以写得很直接：
+下面三种架构共用一个任务和同一组依赖：查出本届 Super Bowl 的两支参赛队伍，分别检索两队的 quarterback，再按相同的常规赛字段比较两人。队伍、球员和统计都用占位符表示，避免把时效体育事实混进架构讨论。
 
 ```text
-E1 = Search[本届赛事的两支队伍]
-E2 = LLM[从 #E1 提取队伍 A 的 quarterback]
-E3 = LLM[从 #E1 提取队伍 B 的 quarterback]
+T1  查两支参赛队伍
+├─ T2A  用 T1 的 Team A 检索 quarterback ─ T3A  查 QB-A 的常规赛数据 ┐
+└─ T2B  用 T1 的 Team B 检索 quarterback ─ T3B  查 QB-B 的常规赛数据 ├─ T4 比较 ─ T5 回答
+                                                                       ┘
 ```
 
-`E2` 和 `E3` 共享 `E1`，彼此没有数据依赖；ReWOO 把这个关系写进了计划，但原文中的 worker 仍按顺序执行。LLMCompiler 再把这种依赖表示交给 scheduler，让已经 ready 的 task 尽早开始。[LangChain 原文][L]
+真实依赖并不复杂：`T1` 必须先完成；A、B 两条分支随后可以各自推进；`T4` 要等两边统计都齐全。三种架构的差别在于谁先把这些关系写出来，工具返回异常时何时改路，以及两个 ready 分支能否同时运行。
+
+### 4.3 ReAct：看完本轮结果，再决定下一步
+
+ReAct 把语言推理和环境动作交错起来。Thought 是写进上下文的语言动作，可用于分解目标、解释 observation、跟踪进度和处理例外；Action 改变外部环境或调用工具；Observation 再进入下一轮决策。[ReAct 论文][R] 作者的 HotpotQA 代码通常在每轮用一次 completion 生成 Thought 和 Action，调用环境后把三者追加到历史；解析失败时才额外补生成 Action。[ReAct 官方代码][R_CODE]
+
+同一任务可以这样运行，所有返回值仍是占位符：
+
+| 轮次 | Thought 与 Action | Observation | 下一轮怎样变 |
+|---:|---|---|---|
+| 1 | 先查参赛队伍：`Search(本届 Super Bowl 参赛队伍)` | `<Team A>, <Team B>` | 两条 QB 查询第一次有了具体实体 |
+| 2 | 查 Team A 的 QB：`Search(<Team A> quarterback)` | `<QB-A>` | A 分支可以查统计 |
+| 3 | 查 QB-A 数据：`Stats(<QB-A>, season)` | 返回了 `<postseason stats>` | 口径错误，下一轮改成 regular season |
+| 4 | 修正查询：`Stats(<QB-A>, regular season)` | `<Stats-A>` | A 分支完成 |
+| 5 | 查 Team B 的 QB：`Search(<Team B> quarterback)` | `<QB-B>` | B 分支可以查统计 |
+| 6 | 查 QB-B 数据：`Stats(<QB-B>, regular season)` | `<Stats-B>` | 两边字段齐全后才能比较 |
+| 7 | 调用比较工具：`Compare(<Stats-A>, <Stats-B>)` | `<Comparison>` | 比较结果成为一条新的 observation |
+| 8 | 读取 `<Comparison>`，再执行 `Finish(<answer with sources>)` | `<Finished>` | 输出带来源的答案并结束 |
+
+轮 3 到轮 4 展示了 ReAct 真正解决的问题：下一步取决于刚拿到的 observation，模型无需在开工前猜中全部路径。工具超时、实体含糊或页面结构变化时，它也有机会改查询或换工具。
+
+代价同样清楚。经典循环要等本轮工具返回后才能产生下一动作，所以 A、B 两条独立分支不会天然并发。这里的复杂度是把作者参考代码的调用形状与 ReWOO 的 token 公式合在一起推出来的，ReAct 论文没有直接给出这条定律：若执行 `k` 轮，模型调用数是 `O(k)`；若每轮新增的 Thought/Action/Observation 长度近似相同，第 `t` 轮输入是 `O(t)`，最大单次输入是 `O(k)`，全任务累计输入是 `O(k²)`。这个推导还假设无状态 API 每轮重传全历史；prompt caching、服务端状态或轨迹压缩会改变实际计算与计费。[ReAct 官方代码][R_CODE] [ReWOO 论文][P1]
+
+换成账单算术更直观。假设第 `t` 轮的输入恰好是 `t × 1k` token，没有缓存或压缩，而且只计算 input token；10 轮累计输入就是 `(1 + 2 + ... + 10) × 1k = 55k` token。`55k` 只演示这组等差数列怎样累加，不是任何模型或任务的测量结果。
+
+ReAct 给恢复留下决策点，但不保证模型一定能从坏 observation 中恢复。生产实现仍要补步骤预算、重复检测、工具 timeout、结构化错误和写操作保护。它原生描述的是一个 agent 与环境的循环，不带并行 worker、任务 DAG 或 agent 间协议。
+
+### 4.4 Plan-and-Execute：从逐步决定过渡到先列步骤
+
+LangChain 的 Plan-and-Execute 先让 planner 生成多步清单，再让 executor 逐项完成，随后由 planner 判断结束或重规划。[LangChain 原文][L] 它把全局方向从每一步的局部决策中抽了出来，也允许用较便宜的执行模型。
+
+这个版本仍以 step list 为主，没有 `#E1` 或 `$1` 这样的显式值引用；执行也主要串行。下面的 ReWOO 和 LLMCompiler 分别补上“值怎样流动”和“ready task 怎样调度”这两个问题，因此 Plan-and-Execute 在这里作为过渡，不单独展开。
+
+### 4.5 ReWOO：先写完整蓝图，再顺序填 evidence
+
+ReWOO 把流程拆成 Planner、Worker、Solver。Planner 在任何工具返回前一次性生成完整的 `Plan` 与 evidence slots；Worker 调用工具并把结果绑定到 `#E`；Solver 最后读取原问题、全部 Plan 与 Evidence 作答。[ReWOO 论文][P1]
+
+```text
+Plan: 查两支参赛队伍。
+#E1 = Search[本届 Super Bowl 参赛队伍]
+Plan: 用 #E1 中第一支队伍的名称查官方 quarterback 资料。
+#E2 = Search[first team in #E1 starting quarterback official]
+Plan: 用 #E1 中第二支队伍的名称查官方 quarterback 资料。
+#E3 = Search[second team in #E1 starting quarterback official]
+Plan: 查 QB-A 的常规赛字段。
+#E4 = Search[#E2 regular season stats]
+Plan: 查 QB-B 的相同字段。
+#E5 = Search[#E3 regular season stats]
+```
+
+物理执行顺序是 `Planner → #E1 → #E2 → #E3 → #E4 → #E5 → Solver`。`#E1` 先返回两支队伍，`#E2` 和 `#E3` 再据此分别检索 quarterback，统计查询只使用已经落到 evidence slot 的 QB 资料，因此数据链是闭合的。作者原始 `PWS` 实现用普通 `for` loop 依次执行 evidence，并在每一步替换已经绑定的 `#E`。[ReWOO 官方实现][P1_CODE] `#E2` 与 `#E3` 在 `#E1` 完成后虽然互不依赖，原版 Worker 仍不会并行执行。
+
+`#E` 解决的是显式传值和重复顶层规划。它不是一张经过验证的 DAG：原版没有独立 dependency list、拓扑排序、cycle check、条件分支或执行期 replan。本例把 `Search[...]` 设为不调用模型的检索工具，所以总共只有 Planner 和 Solver 两次模型调用。ReWOO 并不固定为两次；计划里每增加一个 `LLM[...]` evidence slot，就会再增加一次模型调用。一般调用形状仍是一次 Planner，加上零到多次 LLM-backed Worker，再加一次 Solver。[ReWOO 论文][P1] [ReWOO 官方实现][P1_CODE]
+
+如果统计工具返回空结果，原始 Work 阶段不会回到 Planner 改蓝图。Worker 继续填后续 evidence，Solver 最后尝试谨慎作答。这个选择减少了 observation 对计划的干扰，也会让错误假设拖到最后才暴露。它适合执行路径大体可预见、值依赖清楚、主要压力来自重复 prompt 的任务；探索式排障和大量异常分支通常更适合逐步决策或混合架构。
+
+### 4.6 LLMCompiler：流式生成 DAG，ready 就执行
+
+LLMCompiler 的物理流可以直接记成三步。Planner 用模型流式写出带编号的 task 和 `$id` 依赖；Task Fetching Unit 是普通调度器，检查 readiness、替换参数，再把任务交给 Executor 异步调用工具；作者官方实现最后让 Joiner 读取完整轨迹并选择 Finish 或 Replan。[LLMCompiler 论文][P2] [LLMCompiler 官方实现][P2_CODE]
+
+名称上要区分论文与实现：论文正式列出的三个组件是 Function Calling Planner、Task Fetching Unit 和 Executor；本文所说的 Joiner 是作者官方实现中负责最终汇总并判断 Finish/Replan 的模型阶段，不代表第四个自治 agent。[LLMCompiler 论文][P2] [LLMCompiler 官方实现][P2_CODE]
+
+```text
+1. search("本届 Super Bowl 两支队伍")
+2. search_qb("first team in $1", source="official")
+3. search_qb("second team in $1", source="official")
+4. search_stats("$2 regular season stats")
+5. search_stats("$3 regular season stats")
+6. compare("$4", "$5")
+7. join()
+```
+
+这条轨迹按 readiness 展开：
+
+1. Planner 一输出任务 1，Executor 就能开始搜索；Planner 同时继续生成任务 2 到 7。
+2. 任务 1 完成后，两条 `search_qb` 任务一起 ready，可以并发检索各队的官方 quarterback 资料。
+3. 任务 2 完成即可启动任务 4，不必等待 B 分支；任务 3 与任务 5 同理。
+4. 任务 6 等待 `$4` 和 `$5`，所以整体工具时间受更慢的那条分支控制。
+5. Joiner 读取计划和 observations。证据够就 Finish；缺口改变了依赖或查询路径时，才触发下一轮 Planner。
+
+这里的并发语义是“ready task 可异步执行”，并不绑定某个固定的 `ThreadPoolExecutor` 或线程模型。Replan 也只是把已有轨迹交给 Planner 生成下一份计划；应用可以要求它优先保留成功结果，但架构本身不保证只改局部子图。
 
 ```mermaid
 flowchart LR
-    U["用户目标"] --> P["Planner<br/>流式生成任务与依赖"]
-    P --> T1["T1: 查来源 A"]
-    P --> T2["T2: 查来源 B"]
-    T1 --> T3["T3: 比较 A 与 B"]
-    T2 --> T3
-    T3 --> J{"Joiner<br/>证据够吗"}
-    J -- "够" --> F["最终回答"]
-    J -- "缺口" --> RP["Replan<br/>仅补缺失节点"]
-    RP --> P
+    P["Planner<br/>流式输出任务"] --> T1["1 查两支队伍"]
+    T1 --> T2["2 检索 QB-A"]
+    T1 --> T3["3 检索 QB-B"]
+    T2 --> T4["4 查 Stats-A"]
+    T3 --> T5["5 查 Stats-B"]
+    T4 --> T6["6 比较"]
+    T5 --> T6
+    T6 --> J{"Joiner"}
+    J -- "Finish" --> F["回答"]
+    J -- "Replan" --> P
 ```
 
-> **边界提醒：DAG/workflow node 不等于 agent。** 图中的 `T1`、`T2`、`T3` 可以是普通函数、工具调用或固定 workflow node。只有当某个节点形成独立的运行单元，拥有自己的上下文、职责或控制权时，本文才把它计为 agent。把 planner、scheduler 和 joiner 画成三个框，也不会自动得到 multi-agent system。
+并发收益取决于加权关键路径，不取决于图里画了多少节点。漏边会让任务过早启动，多余的边会把并行重新串行化；`$id` 也看不见两个工具是否写同一文件或数据库行。写操作还要另加 read/write set、锁、幂等、超时结果核验与补偿。Joiner 的 replan 需要次数和总预算，否则会重复工作，甚至重复副作用。
 
-### 4.4 截至 2026-08-23 的 LangChain 漂移提示
+LLMCompiler 也不天然是 multi-agent。Planner 和 Joiner 可以复用同一个模型，Task Fetching Unit 是普通 scheduler，Executor 可以只调用函数或 API。只有某些节点真正启动拥有独立上下文和控制权的 agent runtime 时，具体部署才是 multi-agent。
 
-2024 年博客链接的部分 notebook 已成为迁移/归档占位，不应直接当最新版教程。当前实现应优先看 [LangGraph Workflows and Agents][L2]；该文档也明确区分 workflow 的预定代码路径与 agent 的动态过程。博客仍适合学习 Plan-and-Execute、ReWOO、LLMCompiler 的思想史。
+### 4.7 放在同一张表里比较
+
+| 维度 | ReAct | ReWOO 原版 | LLMCompiler |
+|---|---|---|---|
+| 何时决定下一步 | 每次 observation 后 | 工具运行前一次生成完整蓝图 | Planner 流式生成 task；Joiner 可在图完成后要求 replan |
+| 计划表示 | 增长中的 Thought / Action / Observation 历史 | `Plan:` 与 `#E = Tool[input]` 文本 slots | 带 `$id` 引用的 task DAG |
+| observation 后是否改计划 | 每轮都可以局部调整 | Work 阶段不改，Solver 最后综合 | 当前图内按原依赖执行；Joiner 可触发新一轮 plan |
+| 原生可并行性 | 经典单轨循环没有分支调度 | 潜在依赖可见，但原始 Worker 顺序执行 | Task Fetching Unit 调度全部 ready tasks |
+| 模型调用与上下文 | 约每轮一次顶层决策；历史持续增长并反复重送 | Planner + Solver 固定两端；LLM-backed Worker 另算；各 step 不读完整轨迹 | Planner 与 Joiner 为主要模型阶段；Executor 可为函数、API 或 LLM；工具 observations 汇总到 Joiner |
+| 失败恢复 | 坏 observation 回到下一轮决策；仍需预算与结构化错误 | 原版无执行期 replan，失败 evidence 交给 Solver | task 级错误处理需应用补齐；Joiner 可 Finish/Replan，replan 必须有上限 |
+| 更适合 | 路径不确定、实体歧义、工具结果会改变下一步 | 路径可预见、值依赖清楚、希望减少重复 prompt | 部分独立的高延迟工具调用，依赖可显式表达，wall-clock latency 重要 |
+| 不适合 | 大量 ready 分支、长历史、昂贵串行工具链 | 异常路径多、需要条件/循环/执行中改计划、追求原生并发 | DAG 接近单链、共享写冲突、严格限流、Planner 难以稳定画对依赖 |
+| 是否天然 multi-agent | 否，一个 agent 就能跑完整循环 | 否，Planner/Worker/Solver 可以是同一程序的节点 | 否，Planner/TFU/Executor/Joiner 是组件，不等于自治 agent |
+
+### 4.8 怎么选
+
+- 刚拿到的页面、错误或环境状态会决定下一步时，先考虑 ReAct。
+- 路径能预先写清，主要问题是每步重复调用大模型和重送历史时，ReWOO 提供了较小的 plan-first 结构。
+- 依赖图里有多条慢分支，且依赖与副作用都能显式约束时，LLMCompiler 才有稳定的调度空间。
+- 若步骤固定、模型不需要决定路由，普通代码 workflow 通常更简单。
+
+这四条是架构选择规则，不是性能排名。实际保留哪种方案，仍要在同一任务集、模型、工具和预算下对照 single-agent baseline。
+
+### 4.9 截至 2026-08-23 的 LangChain 漂移提示
+
+2024 年博客链接的部分 notebook 已成为迁移或归档占位，不应直接当最新版教程。当前实现应优先看 [LangGraph Workflows and Agents][L2]；该文档也明确区分 workflow 的预定代码路径与 agent 的动态过程。LangChain 博客仍适合学习 Plan-and-Execute、ReWOO、LLMCompiler 的比较框架；执行细节和实验数字以对应论文与作者代码为准。
 
 ---
 
@@ -717,10 +808,10 @@ compensation_entry:
 
 LangChain 博客宣称 planning agents 可能更快、更省成本、质量更高，但正文没有给完整 benchmark 表。[L]
 
-- ReWOO 论文摘要报告在 HotpotQA 上约 5× token efficiency、准确率提高 4%；[ReWOO 论文][P1]
-- LLMCompiler 当前 arXiv 摘要报告在论文特定任务上最高约 3.7× latency speedup、6.7× cost saving、约 9% accuracy improvement。[LLMCompiler 论文][P2]
+- ReWOO 的 HotpotQA 1000 样本主表使用 `gpt-3.5-turbo`，两种方法都给 2 个工具和 6 个同任务 exemplars。平均 tokens 从 ReAct 的 `9795.1` 降到 `1986.2`，比例为 **4.93×**。semantic Acc 从 `40.8` 到 `42.4`，是 **+1.6 个百分点**，相对约 `+3.9%`；F1 是 `+0.5` 个百分点，EM 则是 `-1.8` 个百分点。因此摘要中的“约 5× token efficiency、4% accuracy improvement”不能改写成“所有准确率指标提高 4 个百分点”。[ReWOO 论文][P1]
+- LLMCompiler 表格里的最好 latency 与 cost 结果都来自 Movie Recommendation 的特定 GPT 配置：**3.74× latency speedup** 和 **6.73× cost reduction**。其中 latency 是 `20.47s / 5.47s`，基线是论文为减少循环和早停而专门提示过的 `ReAct†`；原始 ReAct 因延迟不稳定未报告 latency。ParallelQA 的 LLaMA-2 70B 准确率从 `59.59%` 到 `68.14%`，是 **+8.55 个百分点**（相对约 `+14.3%`）；它不是跨模型、跨 benchmark 的普遍“约 9% 提升”。[LLMCompiler 论文][P2]
 
-> 附注：LangChain 2024 博客写 3.6×，LLMCompiler 的 arXiv 摘要写约 3.7×；现有证据没有解释这处表述差异，本文按各自来源保留，并把两者都限定为论文特定 benchmark 上的 `up to` 结果。[L] [P2]
+> 附注：LangChain 2024 博客写 3.6×，LLMCompiler 摘要写约 3.7×，表格最好值是 3.74×。本文按各自来源保留，并把它们都限定为特定 benchmark 与配置下的 `up to` 结果。[L] [P2]
 
 ---
 
@@ -1022,7 +1113,7 @@ def run_research(user_task):
 1. **先有 baseline，再谈团队。** 先证明 single agent 的具体瓶颈。
 2. **按 context boundary 拆。** 能独立工作、结构化回传、黑盒验证才是好边界。
 3. **拓扑不等于控制流。** hierarchy、parallel、loop、shared state、delegation 分别回答不同问题。
-4. **Planning 不等于 multi-agent。** Plan-and-Execute、ReWOO、LLMCompiler 是规划/依赖/调度架构；是否多智能体取决于执行单元边界。
+4. **Planning 不等于 multi-agent。** ReAct、Plan-and-Execute、ReWOO、LLMCompiler 描述决策、规划或调度；是否多智能体取决于执行单元边界。
 5. **合同要比 prompt 更完整。** 目标、范围、依赖、权限、预算、输出、证据、错误和停止条件缺一不可。
 6. **失败要局部恢复。** checkpoint、partial result、有限重试、有限 replan、诚实停止。
 7. **并行优化关键路径，不优化总 token。** 同时报告质量、成本和 p95 延迟。
@@ -1040,7 +1131,7 @@ def run_research(user_task):
 |---|---|---|
 | [Anthropic：Building multi-agent systems][A] | 何时用/不用、context-centric decomposition、orchestrator–subagent、verification、token 代价 | 3–10× token 是跨系统定律；角色越多越专业 |
 | [Google Cloud：Building Collaborative AI with ADK][G] | hierarchy、Sequential/Parallel/Loop、shared state、delegation、AgentTool | 所有 MAS 都必须去中心化；ADK 术语是通用标准 |
-| [LangChain：Plan-and-Execute Agents][L] | ReAct 局限、Plan-and-Execute、ReWOO、LLMCompiler | planning node 天然是一个独立 agent；2024 notebook 是当前 API 教程 |
+| [LangChain：Plan-and-Execute Agents][L] | ReAct 到 plan-first 架构的比较入口，以及 Plan-and-Execute、ReWOO、LLMCompiler 的关系 | planning node 天然是独立 agent；博客摘要可代替原论文、作者代码或当前 API 文档 |
 
 ### 13.2 核心来源
 
@@ -1054,8 +1145,12 @@ def run_research(user_task):
 - [G2] [Google ADK, *Workflows*](https://adk.dev/workflows/) — 当前 workflow 分类与迁移语境。
 - [G3] [Google ADK, *Why evaluate agents*](https://adk.dev/evaluate/) — final response、trajectory/tool-use 与多智能体中间证据。
 - [L2] [LangGraph, *Workflows and agents*](https://docs.langchain.com/oss/python/langgraph/workflows-agents) — 当前 workflow/agent 区分与 orchestrator-worker 等模式。
-- [P1] [Xu et al., *ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models*](https://arxiv.org/abs/2305.18323)
-- [P2] [Kim et al., *An LLM Compiler for Parallel Function Calling*](https://arxiv.org/abs/2312.04511)
+- [R] [Yao et al., *ReAct: Synergizing Reasoning and Acting in Language Models*](https://arxiv.org/abs/2210.03629) — Thought、Action、Observation 的原始定义与实验边界。
+- [R_CODE] [ReAct 作者的 HotpotQA 参考实现](https://github.com/ysymyth/ReAct/blob/master/hotpotqa.ipynb) — 逐轮生成 Thought/Action、调用环境并追加 observation。
+- [P1] [Xu et al., *ReWOO: Decoupling Reasoning from Observations for Efficient Augmented Language Models*](https://arxiv.org/pdf/2305.18323) — Plan/Work/Solve、HotpotQA 表格与 token 分析。
+- [P1_CODE] [ReWOO 作者的 PWS 执行流](https://github.com/billxbf/ReWOO/blob/main/algos/PWS.py) — evidence 解析、变量替换与原版顺序 Worker。
+- [P2] [Kim et al., *An LLM Compiler for Parallel Function Calling*](https://arxiv.org/html/2312.04511v3) — streamed task DAG、Task Fetching Unit、实验表格与失败分析。
+- [P2_CODE] [LLMCompiler 作者代码库](https://github.com/SqueezeAILab/LLMCompiler) — parser、readiness scheduler、Executor 与 Joiner/Replan 实现。
 - [OAI_FUNCTION] [OpenAI, *Function calling guide*](https://developers.openai.com/api/docs/guides/function-calling) — Responses API 的 function-call item、tool output 回传与 strict schema 要求。
 - [SAGA] [Garcia-Molina and Salem, *Sagas*（Princeton Technical Report TR-070-87）](https://www.cs.princeton.edu/techreports/1987/070.pdf) — Saga 与 compensating transaction 的原始来源。
 - [OTEL_MOVED] [OpenTelemetry, *GenAI attributes moved*](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/) — GenAI conventions 的迁移与旧 registry 状态。
@@ -1081,8 +1176,12 @@ def run_research(user_task):
 [G3]: https://adk.dev/evaluate/
 [L]: https://www.langchain.com/blog/planning-agents
 [L2]: https://docs.langchain.com/oss/python/langgraph/workflows-agents
-[P1]: https://arxiv.org/abs/2305.18323
-[P2]: https://arxiv.org/abs/2312.04511
+[R]: https://arxiv.org/abs/2210.03629
+[R_CODE]: https://github.com/ysymyth/ReAct/blob/master/hotpotqa.ipynb
+[P1]: https://arxiv.org/pdf/2305.18323
+[P1_CODE]: https://github.com/billxbf/ReWOO/blob/main/algos/PWS.py
+[P2]: https://arxiv.org/html/2312.04511v3
+[P2_CODE]: https://github.com/SqueezeAILab/LLMCompiler
 [OAI_FUNCTION]: https://developers.openai.com/api/docs/guides/function-calling
 [SAGA]: https://www.cs.princeton.edu/techreports/1987/070.pdf
 [OTEL_MOVED]: https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/
