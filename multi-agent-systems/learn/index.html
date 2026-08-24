@@ -319,31 +319,36 @@ layout: null
   <div class="callout explain">
     <span class="tag">轨迹 A · ReAct</span>
     <ol class="trace-list">
-      <li>模型决定先查两支队伍，执行搜索并读取 observation。</li>
-      <li>它沿 Team A 分支查 QB-A；统计工具若误返季后赛数据，下一轮看到口径错误，再改查 regular season。</li>
-      <li>随后走 Team B 分支，等两边字段齐全后比较并结束。</li>
+      <li>Round 1：模型调用 <code>Search(参赛队伍)</code>，收到 <code>Observation: Team A, Team B</code>。</li>
+      <li>Round 2：模型调用 <code>Search(Team A quarterback)</code>，收到 <code>Observation: QB-A</code>。</li>
+      <li>Round 3：模型查询 QB-A 的统计，observation 却是季后赛口径。</li>
+      <li>Round 4：模型根据上一轮结果改查 regular season，收到 <code>Stats-A</code>。</li>
+      <li>Round 5：模型调用 <code>Search(Team B quarterback)</code>，收到 <code>QB-B</code>。</li>
+      <li>Round 6：模型查询 QB-B 的 regular season 统计，收到 <code>Stats-B</code>。</li>
+      <li>Round 7：模型调用 <code>Compare(Stats-A, Stats-B)</code>，收到比较结果这一条 observation。</li>
+      <li>Round 8：模型读完 Round 7 的 observation，才输出 <code>Finish(answer)</code>。</li>
     </ol>
-    每个 observation 都回到下一轮模型，所以适合结果会改变路径的任务。代价是经典循环一次走一个动作，独立分支也会串行。若无状态 API 每轮重传全历史，执行 <code>k</code> 轮时通常约有 <code>O(k)</code> 次决策调用，最大单次输入约 <code>O(k)</code>，等长轮次下累计输入约 <code>O(k²)</code>；这是作者代码调用形状与 ReWOO token 公式的综合推导，不是 ReAct 论文的性能保证。
+    这是一条单轨串行链：下一轮必须等上一轮 observation，Team A 与 Team B 两条分支不会自动并发。历史也会不断变长。假设 10 轮请求的输入依次是 <code>1k, 2k, …, 10k</code> tokens，每轮都重传完整历史，没有缓存或压缩，而且只计算输入 tokens，那么累计输入是 <code>55k</code>。这只是说明重复读取历史的假设例子，不是 ReAct benchmark。
   </div>
 
   <div class="callout explain">
     <span class="tag">轨迹 B · ReWOO</span>
     <ol class="trace-list">
-      <li>Planner 在工具运行前写完整蓝图：<code>#E1</code> 查队伍，<code>#E2/#E3</code> 从它取两个 QB，<code>#E4/#E5</code> 查同口径统计。</li>
-      <li>原版 Worker 按文本顺序填 <code>#E1 → #E2 → #E3 → #E4 → #E5</code>；其中 <code>LLM[...]</code> 仍会发生模型调用。</li>
-      <li>Solver 最后读取全部 Plan/Evidence 作答，Work 阶段没有原生 replan。本例有两个 <code>LLM[...]</code> Worker，因此是 Planner 1 次＋Worker 2 次＋Solver 1 次，共 4 次模型调用，而不是固定 2 次。</li>
+      <li>Planner 先写完整蓝图：<code>#E1 = Search[参赛队伍]</code>；<code>#E2</code> 用 #E1 中的 Team A 名称查询 <code>Search[Team A quarterback]</code>；<code>#E3</code> 对 Team B 做同类查询；<code>#E4/#E5</code> 再分别查询两名 QB 的 regular season 统计。</li>
+      <li>原版 Worker 不做 readiness 调度，而是按 <code>#E1 → #E2 → #E3 → #E4 → #E5</code> 顺序填空。后一个查询需要变量时，先把已经得到的 evidence 替换进去。</li>
+      <li>Solver 最后读取全部 Plan/Evidence 作答，Work 阶段没有原生 replan。这个共享示例的 Worker 全是 Search 工具，所以模型调用只有 Planner 1 次加 Solver 1 次，共 2 次。</li>
     </ol>
-    <code>#E</code> 让值流向可见，也减少每步重送完整历史。它不是经过拓扑校验的 DAG，作者原版 Worker 也不并行。
+    <code>#E</code> 让值流向可见，也减少每步重送完整历史。它不是经过拓扑校验的 DAG，作者原版 Worker 也不并行。一般情况下，如果计划里出现 <code>LLM[...]</code> Worker，每执行一个就会额外调用一次模型；因此“Planner + Solver = 2 次”只适用于上面这个全 Search 示例。
   </div>
 
   <div class="callout explain">
     <span class="tag">轨迹 C · LLMCompiler</span>
     <ol class="trace-list">
-      <li>Planner 流式输出带 <code>$id</code> 依赖的 tasks；任务 1 一解析完就能执行，Planner 继续生成后续节点。</li>
-      <li>队伍结果就绪后，两个 QB 节点一起 ready；各自完成后，对应统计节点可以分别启动。</li>
-      <li>比较节点等待两边统计，Joiner 最后选择 Finish 或 Replan。论文正式三组件是 Planner、TFU、Executor；Joiner 是作者官方实现里的最终模型阶段，不是天然独立 agent。</li>
+      <li>Planner 流式产出任务及依赖：任务 1 是 <code>search_teams()</code>；任务 2、3 是 <code>search_qb("first team in $1")</code> 与 <code>search_qb("second team in $1")</code>；任务 4、5 分别用 <code>$2</code>、<code>$3</code> 查询 regular season 统计；任务 6 等待 <code>$4</code> 和 <code>$5</code> 后比较。</li>
+      <li>普通调度组件检查哪些依赖已经满足，再把 ready tasks 交给异步 Executor。任务 1 完成后，两个 search-backed QB 查询可以一起运行；任一 QB 返回后，对应统计查询就能启动。</li>
+      <li>比较任务等待两边统计。Joiner 读取完整结果后选择 Finish 或 Replan；Replan 会开启下一轮规划，但改动范围取决于新计划，不能保证只局部修补。</li>
     </ol>
-    它不是把所有节点一次性同时发出，而是沿 <code>1 → (2 ∥ 3) → (4 ∥ 5) → compare</code> 推进；墙钟收益受较慢分支所在的加权关键路径控制。漏边会让任务过早执行，多余的边会损失并发；共享写冲突、限流和补偿仍要由应用处理。
+    Planner 负责生成任务和依赖，调度与执行不要求固定使用某一种线程池。并发优势来自关键路径：流程按 <code>1 → (2 ∥ 3) → (4 ∥ 5) → 6</code> 推进，而不是把所有节点一次性发出。漏边会让任务过早执行，多余的边会损失并发；共享写冲突、限流和补偿仍要由应用处理。
   </div>
 
   <p>Plan-and-Execute 位于 ReAct 与后两者之间：它先列 step list，再由 executor 逐项执行并让 planner 判断结束或重规划，但没有 ReWOO 的显式 evidence slots，也没有 LLMCompiler 的 readiness scheduler。</p>
