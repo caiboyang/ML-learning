@@ -246,6 +246,8 @@ Google 文章给出三种协作机制：
 
 ## 4. Planning 与 multi-agent 是两个正交维度
 
+这份 multi-agent 笔记先花一节拆解 single-agent planning，因为架构图常把 planner、worker、joiner 画成多个框。图中的框首先只是 workflow node，不一定是 agent。看清单个模型如何规划、传值和调度工具之后，才能判断某个节点是否真的拥有独立上下文、职责或控制权。下面用 ReAct、ReWOO 和 LLMCompiler 校准这条边界，再回到 multi-agent 设计。
+
 ### 4.1 为什么不能画等号
 
 Planning 回答：
@@ -267,12 +269,12 @@ planner、executor、solver、joiner 可以由不同 agent 承担，也可以只
 
 ### 4.2 先固定同一个任务
 
-下面三种架构都处理同一件事：查出本届 Super Bowl 的两支参赛队伍，找出各自的 quarterback，再按同一组常规赛字段比较两人。队伍、球员和统计都用占位符表示；这里讨论数据怎样流动，不提供时效体育答案。
+下面三种架构共用一个任务和同一组依赖：查出本届 Super Bowl 的两支参赛队伍，分别检索两队的 quarterback，再按相同的常规赛字段比较两人。队伍、球员和统计都用占位符表示，避免把时效体育事实混进架构讨论。
 
 ```text
 T1  查两支参赛队伍
-├─ T2A  从 T1 取 Team A 的 quarterback ─ T3A  查 QB-A 的常规赛数据 ┐
-└─ T2B  从 T1 取 Team B 的 quarterback ─ T3B  查 QB-B 的常规赛数据 ├─ T4 比较 ─ T5 回答
+├─ T2A  用 T1 的 Team A 检索 quarterback ─ T3A  查 QB-A 的常规赛数据 ┐
+└─ T2B  用 T1 的 Team B 检索 quarterback ─ T3B  查 QB-B 的常规赛数据 ├─ T4 比较 ─ T5 回答
                                                                        ┘
 ```
 
@@ -280,7 +282,7 @@ T1  查两支参赛队伍
 
 ### 4.3 ReAct：看完本轮结果，再决定下一步
 
-【来源事实】ReAct 把语言推理和环境动作交错起来。Thought 是写进上下文的语言动作，可用于分解目标、解释 observation、跟踪进度和处理例外；Action 改变外部环境或调用工具；Observation 再进入下一轮决策。[ReAct 论文][R] 作者的 HotpotQA 代码通常在每轮用一次 completion 生成 Thought 和 Action，调用环境后把三者追加到历史；解析失败时才额外补生成 Action。[ReAct 官方代码][R_CODE]
+ReAct 把语言推理和环境动作交错起来。Thought 是写进上下文的语言动作，可用于分解目标、解释 observation、跟踪进度和处理例外；Action 改变外部环境或调用工具；Observation 再进入下一轮决策。[ReAct 论文][R] 作者的 HotpotQA 代码通常在每轮用一次 completion 生成 Thought 和 Action，调用环境后把三者追加到历史；解析失败时才额外补生成 Action。[ReAct 官方代码][R_CODE]
 
 同一任务可以这样运行，所有返回值仍是占位符：
 
@@ -292,11 +294,14 @@ T1  查两支参赛队伍
 | 4 | 修正查询：`Stats(<QB-A>, regular season)` | `<Stats-A>` | A 分支完成 |
 | 5 | 查 Team B 的 QB：`Search(<Team B> quarterback)` | `<QB-B>` | B 分支可以查统计 |
 | 6 | 查 QB-B 数据：`Stats(<QB-B>, regular season)` | `<Stats-B>` | 两边字段齐全后才能比较 |
-| 7 | `Compare(<Stats-A>, <Stats-B>)`，再 Finish | `<Comparison>` | 输出带来源的答案 |
+| 7 | 调用比较工具：`Compare(<Stats-A>, <Stats-B>)` | `<Comparison>` | 比较结果成为一条新的 observation |
+| 8 | 读取 `<Comparison>`，再执行 `Finish(<answer with sources>)` | `<Finished>` | 输出带来源的答案并结束 |
 
 轮 3 到轮 4 展示了 ReAct 真正解决的问题：下一步取决于刚拿到的 observation，模型无需在开工前猜中全部路径。工具超时、实体含糊或页面结构变化时，它也有机会改查询或换工具。
 
-代价同样清楚。经典循环要等本轮工具返回后才能产生下一动作，所以 A、B 两条独立分支不会天然并发。**下面是综合推导，不是 ReAct 论文直接给出的复杂度定律：**若执行 `k` 轮，作者参考代码通常每轮调用一次模型并追加完整轨迹，因此模型调用数是 `O(k)`；若每轮新增的 Thought/Action/Observation 长度近似相同，第 `t` 轮输入是 `O(t)`，最大单次输入是 `O(k)`，全任务累计输入则是 `O(k²)`。这个结论还假设无状态 API 每轮重传全历史；prompt caching、服务端状态或轨迹压缩会改变实际计算与计费。[ReAct 官方代码][R_CODE] [ReWOO 论文][P1]
+代价同样清楚。经典循环要等本轮工具返回后才能产生下一动作，所以 A、B 两条独立分支不会天然并发。这里的复杂度是把作者参考代码的调用形状与 ReWOO 的 token 公式合在一起推出来的，ReAct 论文没有直接给出这条定律：若执行 `k` 轮，模型调用数是 `O(k)`；若每轮新增的 Thought/Action/Observation 长度近似相同，第 `t` 轮输入是 `O(t)`，最大单次输入是 `O(k)`，全任务累计输入是 `O(k²)`。这个推导还假设无状态 API 每轮重传全历史；prompt caching、服务端状态或轨迹压缩会改变实际计算与计费。[ReAct 官方代码][R_CODE] [ReWOO 论文][P1]
+
+换成账单算术更直观。假设第 `t` 轮的输入恰好是 `t × 1k` token，没有缓存或压缩，而且只计算 input token；10 轮累计输入就是 `(1 + 2 + ... + 10) × 1k = 55k` token。`55k` 只演示这组等差数列怎样累加，不是任何模型或任务的测量结果。
 
 ReAct 给恢复留下决策点，但不保证模型一定能从坏 observation 中恢复。生产实现仍要补步骤预算、重复检测、工具 timeout、结构化错误和写操作保护。它原生描述的是一个 agent 与环境的循环，不带并行 worker、任务 DAG 或 agent 间协议。
 
@@ -313,32 +318,32 @@ ReWOO 把流程拆成 Planner、Worker、Solver。Planner 在任何工具返回�
 ```text
 Plan: 查两支参赛队伍。
 #E1 = Search[本届 Super Bowl 参赛队伍]
-Plan: 从 #E1 取 Team A 的 quarterback。
-#E2 = LLM[从 #E1 提取第一支队伍及其 quarterback]
-Plan: 从 #E1 取 Team B 的 quarterback。
-#E3 = LLM[从 #E1 提取第二支队伍及其 quarterback]
+Plan: 用 #E1 中第一支队伍的名称查官方 quarterback 资料。
+#E2 = Search[first team in #E1 starting quarterback official]
+Plan: 用 #E1 中第二支队伍的名称查官方 quarterback 资料。
+#E3 = Search[second team in #E1 starting quarterback official]
 Plan: 查 QB-A 的常规赛字段。
 #E4 = Search[#E2 regular season stats]
 Plan: 查 QB-B 的相同字段。
 #E5 = Search[#E3 regular season stats]
 ```
 
-物理执行顺序是 `Planner → #E1 → #E2 → #E3 → #E4 → #E5 → Solver`。作者原始 `PWS` 实现用普通 `for` loop 依次执行 evidence，并在每一步替换已经绑定的 `#E`。[ReWOO 官方实现][P1_CODE] `#E2` 与 `#E3` 在 `#E1` 完成后虽然互不依赖，原版 Worker 仍不会并行执行。
+物理执行顺序是 `Planner → #E1 → #E2 → #E3 → #E4 → #E5 → Solver`。`#E1` 先返回两支队伍，`#E2` 和 `#E3` 再据此分别检索 quarterback，统计查询只使用已经落到 evidence slot 的 QB 资料，因此数据链是闭合的。作者原始 `PWS` 实现用普通 `for` loop 依次执行 evidence，并在每一步替换已经绑定的 `#E`。[ReWOO 官方实现][P1_CODE] `#E2` 与 `#E3` 在 `#E1` 完成后虽然互不依赖，原版 Worker 仍不会并行执行。
 
-`#E` 解决的是显式传值和重复顶层规划。它不是一张经过验证的 DAG：原版没有独立 dependency list、拓扑排序、cycle check、条件分支或执行期 replan。Worker 也不等于无模型工具；示例中的 `LLM[...]` 会发生额外模型调用。准确的调用形状是一次 Planner，加上零到多次 LLM-backed Worker，再加一次 Solver。[ReWOO 论文][P1] [ReWOO 官方实现][P1_CODE]
+`#E` 解决的是显式传值和重复顶层规划。它不是一张经过验证的 DAG：原版没有独立 dependency list、拓扑排序、cycle check、条件分支或执行期 replan。本例把 `Search[...]` 设为不调用模型的检索工具，所以总共只有 Planner 和 Solver 两次模型调用。ReWOO 并不固定为两次；计划里每增加一个 `LLM[...]` evidence slot，就会再增加一次模型调用。一般调用形状仍是一次 Planner，加上零到多次 LLM-backed Worker，再加一次 Solver。[ReWOO 论文][P1] [ReWOO 官方实现][P1_CODE]
 
 如果统计工具返回空结果，原始 Work 阶段不会回到 Planner 改蓝图。Worker 继续填后续 evidence，Solver 最后尝试谨慎作答。这个选择减少了 observation 对计划的干扰，也会让错误假设拖到最后才暴露。它适合执行路径大体可预见、值依赖清楚、主要压力来自重复 prompt 的任务；探索式排障和大量异常分支通常更适合逐步决策或混合架构。
 
 ### 4.6 LLMCompiler：流式生成 DAG，ready 就执行
 
-LLMCompiler 的 Planner 流式输出带编号的工具任务；后续参数用 `$1`、`$2` 引用前序结果。官方 parser 从这些引用提取依赖。非 LLM 的 Task Fetching Unit 检查 readiness，替换参数并交给 Executor 异步执行；Joiner 最后根据完整轨迹选择 Finish 或 Replan。[LLMCompiler 论文][P2] [LLMCompiler 官方实现][P2_CODE]
+LLMCompiler 的物理流可以直接记成三步。Planner 用模型流式写出带编号的 task 和 `$id` 依赖；Task Fetching Unit 是普通调度器，检查 readiness、替换参数，再把任务交给 Executor 异步调用工具；作者官方实现最后让 Joiner 读取完整轨迹并选择 Finish 或 Replan。[LLMCompiler 论文][P2] [LLMCompiler 官方实现][P2_CODE]
 
 名称上要区分论文与实现：论文正式列出的三个组件是 Function Calling Planner、Task Fetching Unit 和 Executor；本文所说的 Joiner 是作者官方实现中负责最终汇总并判断 Finish/Replan 的模型阶段，不代表第四个自治 agent。[LLMCompiler 论文][P2] [LLMCompiler 官方实现][P2_CODE]
 
 ```text
 1. search("本届 Super Bowl 两支队伍")
-2. extract_qb("Team A from $1")
-3. extract_qb("Team B from $1")
+2. search_qb("first team in $1", source="official")
+3. search_qb("second team in $1", source="official")
 4. search_stats("$2 regular season stats")
 5. search_stats("$3 regular season stats")
 6. compare("$4", "$5")
@@ -348,16 +353,18 @@ LLMCompiler 的 Planner 流式输出带编号的工具任务；后续参数用 `
 这条轨迹按 readiness 展开：
 
 1. Planner 一输出任务 1，Executor 就能开始搜索；Planner 同时继续生成任务 2 到 7。
-2. 任务 1 完成后，任务 2 和 3 一起 ready，可以并发。
+2. 任务 1 完成后，两条 `search_qb` 任务一起 ready，可以并发检索各队的官方 quarterback 资料。
 3. 任务 2 完成即可启动任务 4，不必等待 B 分支；任务 3 与任务 5 同理。
 4. 任务 6 等待 `$4` 和 `$5`，所以整体工具时间受更慢的那条分支控制。
 5. Joiner 读取计划和 observations。证据够就 Finish；缺口改变了依赖或查询路径时，才触发下一轮 Planner。
 
+这里的并发语义是“ready task 可异步执行”，并不绑定某个固定的 `ThreadPoolExecutor` 或线程模型。Replan 也只是把已有轨迹交给 Planner 生成下一份计划；应用可以要求它优先保留成功结果，但架构本身不保证只改局部子图。
+
 ```mermaid
 flowchart LR
     P["Planner<br/>流式输出任务"] --> T1["1 查两支队伍"]
-    T1 --> T2["2 取 QB-A"]
-    T1 --> T3["3 取 QB-B"]
+    T1 --> T2["2 检索 QB-A"]
+    T1 --> T3["3 检索 QB-B"]
     T2 --> T4["4 查 Stats-A"]
     T3 --> T5["5 查 Stats-B"]
     T4 --> T6["6 比较"]
