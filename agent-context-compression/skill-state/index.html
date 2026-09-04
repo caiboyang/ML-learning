@@ -7,7 +7,7 @@ layout: null
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>把历史扔掉 — SKILL.state 论文精读</title>
-<meta name="description" content="SKILL.state (arXiv:2608.26263) 详细学习笔记：用显式可变执行状态替代 append-only 对话历史，并与十五平台 context compression 研究逐项对照。" />
+<meta name="description" content="SKILL.state (arXiv:2608.26263) 详细学习笔记：用显式可变执行状态替代 append-only 对话历史。含可交互的执行循环演示与 horizon 滑杆，并与十五平台 context compression 研究逐项对照。" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -111,6 +111,7 @@ layout: null
   .tiles.two { grid-template-columns: repeat(2, 1fr); }
   .tiles.four { grid-template-columns: repeat(4, 1fr); }
   @media (max-width: 760px) { .tiles, .tiles.two, .tiles.four { grid-template-columns: 1fr; } }
+  .tiles > *, .panes > *, .stat-row > *, .hbar > * { min-width: 0; }
   .tile { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 16px; }
   .tile .lbl { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--phosphor); margin-bottom: 8px; }
   .tile .body { font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14.8px; line-height: 1.62; color: var(--paper-dim); }
@@ -175,6 +176,66 @@ layout: null
   details.q .a { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule-soft); font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14.8px; line-height: 1.7; color: var(--paper-dim); }
   details.q .a b { color: var(--paper); }
 
+  /* ---------- interactive: focus & motion ---------- */
+  a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+    outline: 2px solid var(--phosphor); outline-offset: 3px; border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+
+  /* ---------- horizon slider ---------- */
+  .ctl { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 0 0 20px; padding-bottom: 18px; border-bottom: 1px solid var(--rule-soft); }
+  .ctl label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--paper-muted); }
+  .ctl input[type=range] { flex: 1 1 220px; min-width: 180px; accent-color: var(--amber); height: 22px; background: transparent; cursor: pointer; }
+  .ctl .readout { font-family: 'Inter Tight', sans-serif; font-size: 24px; font-weight: 800; color: var(--amber); letter-spacing: -.02em; min-width: 96px; font-variant-numeric: tabular-nums; }
+  .ticks { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--paper-muted); margin: -12px 0 20px; padding: 0 2px; }
+
+  .hbars { display: grid; gap: 10px; margin: 4px 0 0; }
+  .hbar { display: grid; grid-template-columns: 148px 1fr auto; align-items: center; gap: 12px; }
+  @media (max-width: 620px) {
+    .hbar { grid-template-columns: 1fr auto; grid-template-areas: "nm nm" "track val"; gap: 5px 10px; }
+    .hbar .nm { grid-area: nm; } .hbar .track { grid-area: track; } .hbar .val { grid-area: val; }
+  }
+  .hbar .nm { font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 13px; color: var(--paper-dim); display: flex; align-items: center; gap: 7px; }
+  .hbar .nm i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .hbar .track { display: block; height: 20px; background: var(--night); border-radius: 4px; overflow: hidden; }
+  .hbar .fill { display: block; height: 100%; border-radius: 0 4px 4px 0; transition: width .28s ease; }
+  .hbar .val { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--paper); min-width: 62px; text-align: right; font-variant-numeric: tabular-nums; }
+  .verdict { margin-top: 18px; padding: 14px 16px; border-radius: 8px; background: linear-gradient(135deg, rgba(201,133,0,.12), transparent); border: 1px solid var(--rule); border-left: 3px solid var(--amber); font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14.5px; line-height: 1.65; color: var(--paper-dim); }
+  .verdict b { color: var(--paper); }
+  .verdict .big { color: var(--amber); font-weight: 700; }
+
+  /* ---------- runtime stepper ---------- */
+  .rail { display: flex; gap: 8px; margin: 0 0 18px; flex-wrap: wrap; }
+  .rail .st { flex: 1 1 0; min-width: 120px; padding: 9px 11px; border: 1px solid var(--rule); border-radius: 8px; background: var(--night); font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 12.5px; color: var(--paper-muted); transition: all .2s; }
+  .rail .st .n { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .1em; display: block; margin-bottom: 2px; }
+  .rail .st.on { border-color: var(--amber); background: rgba(201,133,0,.12); color: var(--paper); }
+  .rail .st.on .n { color: var(--amber); }
+  .rail .st.done { color: var(--paper-dim); border-color: var(--rule); }
+
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px) { .panes { grid-template-columns: 1fr; } }
+  .pane { background: var(--night); border: 1px solid var(--rule); border-radius: 9px; padding: 14px 15px; min-height: 168px; }
+  .pane.act { border-color: var(--amber); box-shadow: 0 0 0 1px rgba(201,133,0,.25); }
+  .pane .ph { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--phosphor); margin-bottom: 10px; }
+  .pane.act .ph { color: var(--amber); }
+  .pane pre { margin: 0; background: none; border: 0; padding: 0; }
+  .pane pre code { font-size: 12px; line-height: 1.62; }
+  .kv { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.8; color: var(--paper-dim); }
+  .kv .del { color: var(--rose); text-decoration: line-through; opacity: .75; }
+  .kv .add { color: var(--phosphor-glow); }
+  .kv .k { color: var(--amber); }
+  .narr { margin: 16px 0 0; padding: 13px 15px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--rule); font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14.5px; line-height: 1.68; color: var(--paper-dim); }
+  .narr b { color: var(--paper); }
+  .nav { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .nav button { font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14px; font-weight: 600; padding: 9px 18px; border-radius: 7px; border: 1px solid var(--rule); background: var(--surface); color: var(--paper); cursor: pointer; transition: background .18s, border-color .18s; }
+  .nav button:hover:not(:disabled) { background: var(--surface-2); border-color: var(--amber); }
+  .nav button:disabled { opacity: .38; cursor: not-allowed; }
+  .nav button.primary { background: rgba(201,133,0,.18); border-color: var(--amber); color: var(--amber); }
+  .nav .pos { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--paper-muted); margin-left: auto; }
+
   footer { border-top: 1px solid var(--rule); margin-top: 76px; padding: 40px 28px 72px; }
   .foot-inner { max-width: 940px; margin: 0 auto; color: var(--paper-muted); font-family: 'Inter','Noto Sans SC',sans-serif; font-size: 14px; line-height: 1.75; }
   .foot-inner a { color: var(--phosphor); }
@@ -200,8 +261,8 @@ layout: null
     <div class="meta-grid">
       <div><div class="label">论文</div><div class="value"><a href="https://arxiv.org/abs/2608.26263">SKILL.state: Scalable Long-Horizon Agent Skills</a></div></div>
       <div><div class="label">作者</div><div class="value">Badhe, Tiwari, Chung</div></div>
-      <div><div class="label">评测模型</div><div class="value">Gemini-3-Flash · Gemma-4-31B · Qwen-3-8B</div></div>
-      <div><div class="label">配套研究</div><div class="value"><a href="../Agent_Context_Compression_Research.html">十五平台 Context Compression</a></div></div>
+      <div><div class="label">配套研究</div><div class="value"><a href="../Agent_Context_Compression_Research.html">十五平台 Context Compression</a> · <a href="../learn/">十步学习路径</a></div></div>
+      <div><div class="label">读法</div><div class="value">第 2、3 节可交互：拖滑杆、单步走完执行循环</div></div>
     </div>
   </div>
 </header>
@@ -219,7 +280,7 @@ layout: null
     <li><a href="#s7">数据四：换成开源权重模型之后</a></li>
     <li><a href="#s8">对照我的压缩研究：六层坐标系里它站在哪</a></li>
     <li><a href="#s9">我的分析：论文没测的那一维（prompt cache）</a></li>
-    <li><a href="#s10">它不成立的地方：五条我要反驳的</a></li>
+    <li><a href="#s10">它不成立的地方：六条我要反驳的</a></li>
     <li><a href="#s11">今天能抄什么：混合架构</a></li>
     <li><a href="#s12">自测 · 来源 · 口径</a></li>
   </ol>
@@ -396,6 +457,24 @@ layout: null
     </div>
   </figure>
 
+  <figure>
+    <div class="fig">
+      <p class="fig-title">自己拖一下：步数怎么把差距拉开</p>
+      <p class="fig-sub">全部为论文 Table 1 的实测值（Warehouse，Gemini-3-Flash），滑杆只在这五个测过的 horizon 之间切换，不做插值。</p>
+      <div class="ctl">
+        <label for="hz">执行步数 T</label>
+        <input type="range" id="hz" min="0" max="4" step="1" value="3"
+               aria-valuetext="100 步" aria-describedby="hz-out" />
+        <span class="readout" id="hz-out" aria-live="polite">T = 100</span>
+      </div>
+      <div class="ticks" aria-hidden="true"><span>10</span><span>25</span><span>50</span><span>100</span><span>200</span></div>
+      <div class="hbars" id="hz-bars"></div>
+      <div class="verdict" id="hz-verdict"></div>
+      <figcaption>把滑杆拖到 <b>10</b>：四种做法的准确率完全一样，token 差距不到 2 倍 —— <b>短程实验里这篇论文根本没有故事</b>。
+      拖到 <b>200</b>：差距变成 50 倍。这就是为什么第 5 节那句「评测必须跑到 T&#8805;50」比它看起来重要得多。</figcaption>
+    </div>
+  </figure>
+
   <div class="call mine">
     <span class="tag">我的第一条补充 · 论文的渐进复杂度框架被夸大了</span>
     论文把对手统一写成 <b>O(T&#178;)</b>，把自己写成 <b>O(T)</b>，读起来像是一个数量级的改进。
@@ -531,45 +610,33 @@ layout: null
 
   <figure>
     <div class="fig">
-      <p class="fig-title">论文 Appendix B.3 的真实一步</p>
-      <p class="fig-sub">左边是模型看到的全部输入，右边是它产出的全部输出。中间那段推理写得很长，然后被扔掉。</p>
-      <div class="tbl-wrap">
-      <table>
-        <tr>
-          <th style="width:50%">模型看到的（Warehouse，500 个货架）</th>
-          <th style="width:50%">模型产出的</th>
-        </tr>
-        <tr>
-          <td>
-            <pre style="margin:0"><code><span class="c"># P — 技能说明书（每步相同）</span>
-Instructions: 你是仓库执行 agent，动作空间为
-Store / Ship / Move / Wait …
+      <p class="fig-title">跑两轮试试：点「下一步」走完整个循环</p>
+      <p class="fig-sub">第一轮取自论文 Appendix B.3 的真实轨迹；第二轮加上论文 Appendix C 的背景遥测噪声，看 schema 怎么把它挡在外面。</p>
 
-<span class="c"># &#931;_t — 执行状态</span>
-<span class="g">{"inventory":{"shelf_7":"item_3",
- "shelf_42":"item_12","shelf_88":"item_5"}}</span>
+      <div class="rail" id="rt-rail" aria-hidden="true"></div>
 
-<span class="c"># O_t — 最新观测（就这一行）</span>
-Customer ordered item_12.</code></pre>
-          </td>
-          <td>
-            <pre style="margin:0"><code><span class="c"># R_t — 推理（用完即弃）</span>
-<span class="s">客户订了 item_12，我要发货。
-查执行状态，item_12 在 shelf_42。
-需要生成 Ship 动作并把该格清空。</span>
-
-<span class="c"># &#916;&#931;_t + a_t — 唯一存活下来的输出</span>
-<span class="k">{
-  "state_patch": {
-    "inventory": { "shelf_42": <b>null</b> }
-  },
-  "action": "Ship item_12 shelf_42"
-}</span></code></pre>
-          </td>
-        </tr>
-      </table>
+      <div class="panes">
+        <div class="pane" id="rt-in">
+          <div class="ph">模型这一轮看到的</div>
+          <div id="rt-in-body"></div>
+        </div>
+        <div class="pane" id="rt-out">
+          <div class="ph">模型这一轮产出的</div>
+          <div id="rt-out-body"></div>
+        </div>
       </div>
-      <figcaption>下一步模型看到的 <code>&#931;</code> 里，<code>shelf_42</code> 已经不存在了 —— 不是「被摘要说成空的」，是<b>真的不在字典里</b>。这就是论文全部信心的来源，也是它全部风险的来源。</figcaption>
+
+      <div class="narr" id="rt-narr" aria-live="polite"></div>
+
+      <div class="nav">
+        <button type="button" id="rt-prev">&#8592; 上一步</button>
+        <button type="button" id="rt-next" class="primary">下一步 &#8594;</button>
+        <button type="button" id="rt-reset">重来</button>
+        <span class="pos" id="rt-pos"></span>
+      </div>
+
+      <figcaption>注意第 3 阶段：<code>shelf_42</code> 不是「被摘要说成空的」，是<b>真的从字典里消失了</b>；而 <code>R</code> 在同一时刻被永久丢弃。
+      再注意第二轮：遥测数据<b>连进入状态的机会都没有</b>，因为 schema 里没有「电池电量」这个字段。</figcaption>
     </div>
   </figure>
 
@@ -581,6 +648,12 @@ Customer ordered item_12.</code></pre>
     <div class="tile"><div class="lbl">tested_hypotheses</div><div class="body">试过且失败的思路 —— 防止重复试同一条命令</div></div>
     <div class="tile"><div class="lbl">active_files &amp; working_dir</div><div class="body">当前在看哪些文件、在哪个目录</div></div>
     <div class="tile"><div class="lbl">cmd_summary</div><div class="body">命令历史的压缩形态</div></div>
+  </div>
+
+  <div class="call pit">
+    <span class="tag">先记一笔，第 10 节会算这笔账</span>
+    这五个字段里，<code>discovered_flags</code> 与 <code>tested_hypotheses</code> 都是<b>只增列表</b>。
+    论文的 O(1) 结论要求 <code>|&#931;|</code> 有界，而它<b>从没验证过这件事</b> —— 详见<a href="#s10">第 10 节反驳一</a>。
   </div>
 
   <div class="call key">
@@ -778,13 +851,24 @@ Customer ordered item_12.</code></pre>
   </div>
   <div class="legend" id="lg-noise" style="margin-top:14px"></div>
 
+  <div class="call pit">
+    <span class="tag">先说清楚：这一组<b>不是</b> SKILL.state 的独占优势</span>
+    高噪声下 Memory 是 <b>0.96</b>、Stateful 是 <b>0.98</b>、SKILL.state 是 <b>0.98</b> —— <b>三者基本打平</b>。崩掉的只有纯 ReAct 一家。
+    <br><br>
+    所以这组实验证明的是「<b>别把无关 telemetry 留在未来的 prompt 里</b>」，而不是「结构化状态优于摘要」。
+    论文 Appendix C 也写明它只测了 Condition 1（irrelevant context），<b>不是所有类型的上下文污染</b> ——
+    「看起来相关但其实误导」的那一类完全没测，而那才是真实环境里更难的。
+  </div>
+
   <div class="call key">
-    <span class="tag">机制上的差别值得说清</span>
-    Memory 与 Stateful 也扛住了噪声，但它们是<b>把噪声摘要掉或稀释掉</b>；SKILL.state 是噪声<b>从来没有机会进入下一次 prompt</b> ——
+    <span class="tag">但机制上的差别仍然值得说清</span>
+    Memory 与 Stateful 是<b>把噪声摘要掉或稀释掉</b>；SKILL.state 是噪声<b>从来没有机会进入下一次 prompt</b> ——
     它在生成 <code>&#916;&#931;</code> 的那一刻就被过滤了，因为 schema 里根本没有「电池电量」这个字段。
     <br><br>
     <b>这是 schema 最被低估的作用：它是一个白名单。</b> 摘要器面对的是「什么该删」的开放问题，schema 面对的是「什么该留」的封闭问题。
     这正是我研究 &#167;2.13「最好的压缩是不压缩」那条的机制版本。
+    <br><br>
+    差别落在成本而不是分数上：三家都能抗噪，但只有 SKILL.state 是<b>免费</b>抗的 —— 不需要额外的摘要调用。
   </div>
 
   <h3 class="sub">状态漂移恢复：从 5&#8211;14 步到 0 步</h3>
@@ -1111,78 +1195,164 @@ Customer ordered item_12.</code></pre>
   <div class="section-head"><span class="section-num">09</span><h2 class="section-title">我的分析：论文没测的那一维</h2></div>
   <div class="section-sub">prompt cache · 全文出现 0 次</div>
 
-  <p class="deck">论文报的全部成本指标都是<em>裸 token 计数</em>。但没有人是按裸 token 付钱的 —— 所有主流 provider 都有 prompt cache，命中部分按<em>约 0.1 倍</em>计价。这一维一旦计入，倍率会明显收窄。</p>
+  <p class="deck">论文报的全部成本指标都是<em>裸 token 计数</em>。但没有人按裸 token 付钱 —— 所有主流 provider 都有 prompt cache，命中部分按<em>约 0.1 倍</em>计价。这一维一旦计入，结论会变，而且变的方向<em>不是</em>我一开始以为的那个。</p>
 
-  <div class="call mine">
-    <span class="tag">为什么这一维正好打在 ReAct 的强项上</span>
-    ReAct 的历史是<b>纯追加</b>的 —— 第 t 步的 prompt 是第 t-1 步的<b>严格前缀延长</b>。
-    这正是 prompt cache 的理想形态：<b>每一步都能命中前一步的全部内容</b>，只有新增的那一小段按全价写入。
+  <h3 class="sub">先讲一个几乎所有人都会忽略的前提：缓存有门槛</h3>
+  <p>prompt cache 不是「有前缀就能命中」。它有一条<strong>最小可缓存前缀</strong>的硬性下限，低于它<strong>一个 token 都不缓存</strong>。Google ADK 的 <code>ContextCacheConfig</code> 把这条写在 docstring 里：</p>
+
+  <div class="pullquote">
+    缓存最早从会话的<b>第二轮</b>开始，且要求可缓存前缀达到该模型的最小值：<b>Gemini 2.5 为 2,048 token，Gemini 3 为 4,096 token</b>。因此短会话或单轮会话永远不会被缓存。
+    <span class="who">Google ADK · ContextCacheConfig docstring（见配套研究 &#167;12.7）</span>
+  </div>
+
+  <p>把这条放到论文的设定上 —— 论文全部主实验都跑在 <strong>Gemini-3-Flash</strong>，门槛就是 <strong>4,096 token</strong>。于是：</p>
+
+  <figure>
+    <div class="fig">
+      <p class="fig-title">谁够得着缓存门槛</p>
+      <p class="fig-sub">Warehouse T=100 的单步 prompt（token）。横线是 Gemini 3 的 4,096 token 最小可缓存前缀。</p>
+      <div class="legend" id="lg-thresh"></div>
+      <div class="chart-host" id="c-thresh"></div>
+      <figcaption>ReAct 的 prompt 在<b>第 24 步</b>越过门槛，此后每一步都能按 0.1&#215; 命中前一步的全部内容。
+      SKILL.state 恒定在 ~476 token，<b>整场任务都够不着门槛，一次都缓存不了</b>。</figcaption>
+    </div>
+  </figure>
+
+  <div class="call pit">
+    <span class="tag">这是本页最反直觉的一条，而且是我第一版写错了的一条</span>
+    我最初假设 SKILL.state 的 <code>P</code>（~350 token）能按 0.1&#215; 命中。<b>这在 Gemini 3 上不可能</b> —— 350 远低于 4,096。
     <br><br>
-    换句话说，论文那条「ReAct 烧了 1,245,413 token」的柱子，<b>其中 90% 以上是按 0.1 倍计价的</b>。
+    换句话说：<b>让 SKILL.state 便宜的那个性质（prompt 极小），正是让它拿不到十倍缓存折扣的那个性质。</b>
+    它不是「缓存得差一点」，是<b>结构性地被排除在缓存之外</b>。
+    <br><br>
+    感谢 <a href="https://github.com/caiboyang/ML-learning/pull/22">PR #22</a> 上的 review 指出这一点；下面的数字是据此重算的。
   </div>
 
   <figure>
     <div class="fig">
       <p class="fig-title">SKILL.state 相对 ReAct 的成本优势，按两种口径</p>
-      <p class="fig-sub">纵轴 = ReAct 成本 &#247; SKILL.state 成本。Warehouse T=100；缓存命中按 0.1&#215;、写入按 1.25&#215; 计价（5 分钟 TTL 档），且假设缓存全程不过期。</p>
+      <p class="fig-sub">纵轴 = ReAct 成本 &#247; SKILL.state 成本。Warehouse T=100；命中 0.1&#215;、写入 1.25&#215;（5 分钟 TTL 档），缓存全程不过期，且遵守 4,096 token 门槛。</p>
       <div class="chart-host" id="c-cache"></div>
-      <figcaption><b>这是我的建模推演，不是论文数据，也不是实测。</b>假设与算式见下方。</figcaption>
+      <figcaption><b>这是我的建模推演，不是论文数据，也不是实测。</b>假设与算式见下表。</figcaption>
     </div>
   </figure>
 
   <div class="tbl-wrap">
   <table>
-    <tr><th style="width:22%">项</th><th>ReAct（纯追加）</th><th>SKILL.state</th></tr>
-    <tr><td><b>单步 prompt</b></td><td>线性增长，T=100 时均值 9,090 token</td><td>恒定 ~476 token</td></tr>
+    <tr><th style="width:24%">项</th><th>ReAct（纯追加）</th><th>SKILL.state</th></tr>
+    <tr><td><b>单步 prompt</b></td><td>约 180&#183;t token（拟合自 Table 1）</td><td>恒定 ~476 token</td></tr>
     <tr><td><b>裸输入 token 合计</b></td><td class="num">909,000</td><td class="num">47,600</td></tr>
-    <tr><td><b>可缓存部分</b></td><td>前一步的<b>整个 prompt</b>（严格前缀）</td><td>只有 <code>P</code>（~350 token）；<code>&#931;</code> 与 <code>O</code> 每步都变</td></tr>
-    <tr><td><b>折算算式</b></td><td><code>0.1 &#215; 890,300 + 1.25 &#215; 18,700</code></td><td><code>100 &#215; (0.1&#215;350 + 126) + 1.25&#215;350</code></td></tr>
-    <tr class="hl"><td><b>有效成本</b></td><td class="num"><b>~112,400</b></td><td class="num"><b>~16,500</b></td></tr>
-    <tr><td><b>倍率</b></td><td colspan="2">裸 token <b>19.1&#215;</b> &#8594; 计入缓存后 <b>6.8&#215;</b></td></tr>
+    <tr><td><b>可缓存前缀</b></td><td>前一步的整个 prompt，<b>第 24 步起</b>越过 4,096</td><td><code>P</code> 仅 ~350 token &#8212; <b>永远够不着</b></td></tr>
+    <tr><td><b>第 1&#8211;23 步</b></td><td class="num">49,680（全价）</td><td rowspan="4" style="vertical-align:middle">全程无缓存<br><span style="color:var(--paper-muted)">有效成本 = 裸 token</span></td></tr>
+    <tr><td><b>第 24&#8211;100 步 · 命中</b></td><td class="num">0.1 &#215; 845,460 = 84,546</td></tr>
+    <tr><td><b>增量写入</b></td><td class="num">1.25 &#215; 180 &#215; 77 = 17,325</td></tr>
+    <tr><td><b>首次前缀写入</b></td><td class="num">1.25 &#215; 4,140 = 5,175</td></tr>
+    <tr class="hl"><td><b>有效成本</b></td><td class="num"><b>~156,700</b></td><td class="num"><b>47,600</b></td></tr>
+    <tr><td><b>倍率</b></td><td colspan="2">裸 token <b>19.1&#215;</b> &#8594; 计入缓存后 <b>3.3&#215;</b></td></tr>
   </table>
   </div>
 
-  <p><strong>结论没有被推翻，但被砍掉了三分之二。</strong>6.8 倍仍然是一个非常值得做的改进；19 倍则是一个不该用来做决策的数字。</p>
+  <p><strong>结论没有被推翻，但被砍掉了六分之五。</strong>3.3 倍仍然值得做；19 倍是一个不该用来做决策的数字。</p>
 
-  <h3 class="sub">推论一：压缩式系统在这一维上是最差的</h3>
-  <div class="call pit">
-    <span class="tag">这是我那篇研究 &#167;2.11 的核心张力，在这里刚好闭环</span>
-    压缩必然要<b>重写历史的开头</b>，而那正是缓存前缀所在的位置。前缀一变，后面全部作废，下一次请求要按 <b>1.25&#215;</b>（5 分钟档）或 <b>2&#215;</b>（1 小时档）全价重写。
+  <h3 class="sub">撤回：我此前对 &#964;-Bench Retail 的推断是错的</h3>
+  <div class="call fact">
+    <span class="tag">更正</span>
+    本页第一版写过「把 cache 计入后，&#964;-Bench Retail 上 ReAct 很可能反而更便宜」。<b>加上门槛之后这条不成立</b>：
+    该 benchmark 上 ReAct 单步 prompt 均值 2,819 字符（~705 token）、SKILL.state 3,325 字符（~831 token），
+    <b>两边都远低于 4,096，谁都拿不到缓存</b>。所以在公开 benchmark 那三格上，<b>论文的裸 token 比较基本就是对的</b>。
     <br><br>
-    于是三种运行时在缓存这一维上的排序是：
-    <br><br>
-    <b>ReAct 最好</b>（前缀永不改变，全程命中） &#8594; <b>SKILL.state 次之</b>（前缀恒定但很短，动态部分小） &#8594; <b>压缩式最差</b>（前缀既大又会被周期性打掉）。
-    <br><br>
-    <b>压缩是三者里唯一同时付两笔钱的：既要付摘要调用，又要付缓存重建。</b>
-    这一条论文没有讨论，但它是我这篇研究里最想让人记住的一条，而 SKILL.state 恰好给它提供了一个逃逸出口 —— 因为它<b>根本不重写前缀</b>，它只是让前缀之后的东西一直很小。
+    缓存折价只在<b>单步 prompt 本来就很大</b>的场景才咬得动 —— 也就是 Warehouse / Software Repository 这类长程合成任务，正好是论文倍率最亮眼的那几格。
   </div>
 
-  <h3 class="sub">推论二：&#964;-Bench Retail 那一格的 token 优势不稳</h3>
-  <p>再看论文 Table 4 里最不起眼的一行。&#964;-Bench Retail 上，SKILL.state 的裸 token 优势只有 <strong>22%</strong>（4.48M &#8594; 3.47M），而它的<strong>单步 prompt 反而是四种里最大的</strong>（3,325 vs ReAct 2,819 字符）。</p>
+  <h3 class="sub">推论一：压缩式系统在这一维上仍然是最差的</h3>
+  <div class="call pit">
+    <span class="tag">这是我那篇研究 &#167;2.11 的核心张力，在这里闭环</span>
+    压缩必然要<b>重写历史的开头</b>，而那正是缓存前缀所在的位置。前缀一变，后面全部作废，下一次请求按 <b>1.25&#215;</b>（5 分钟档）或 <b>2&#215;</b>（1 小时档）全价重写。
+    <br><br>
+    加上门槛这一条之后，三种运行时的排序是：
+    <br><br>
+    <b>ReAct 最好</b>（前缀大、稳定，长程上几乎全程命中）&#8594; <b>压缩式次之</b>（前缀够大能命中，但每次压缩打掉一次）&#8594; <b>SKILL.state 最差</b>（前缀太小，一次都命不中）。
+    <br><br>
+    注意这个排序<b>和裸 token 的排序正好相反</b>。SKILL.state 依然总成本最低 —— 但它是靠「少发」赢的，不是靠「发得便宜」赢的，而且它把「发得便宜」这条路<b>整个堵死了</b>。
+  </div>
+
+  <h3 class="sub">推论二：想同时要状态语义和缓存，<code>P</code> 就得<em>故意做大</em></h3>
+  <p>这是上面那条反过来读之后得到的设计结论，也是我认为本节最有用的一句：</p>
   <ul class="arrow">
-    <li>ReAct 的每一步都命中前缀缓存，有效成本远低于裸计数；</li>
-    <li>SKILL.state 每一步都改写 <code>&#931;</code>，<b>可缓存的只有 <code>P</code></b>，其余全价；</li>
-    <li>而它的单步 prompt 又<b>更大</b>。</li>
+    <li>缓存前缀必须 <b>&#8805; 门槛</b>（Gemini 3 是 4,096 token）才有意义；</li>
+    <li>SKILL.state 的前缀就是 <code>P</code>，而 <code>&#931;</code> 和 <code>O</code> 每步都变、必须排在 <code>P</code> <b>之后</b>；</li>
+    <li>所以要拿到缓存，<b><code>P</code> 必须自己就超过门槛</b> —— 完整的技能说明书、完整的工具定义、完整的项目约定，全部塞进 <code>P</code> 并保持逐字不变。</li>
   </ul>
-  <p>三条叠加，<strong>在这个 benchmark 上把 cache 计入后，ReAct 很可能反而更便宜</strong>。我没有足够信息把这个反转算到小数点（论文没给每任务步数，也没给 <code>P</code> 的实际大小），所以这里只给方向：<strong>22% 的裸 token 差距，扛不住任何一个合理的缓存折价模型。</strong></p>
+  <div class="call mine">
+    <span class="tag">一句反直觉的工程结论</span>
+    在这套架构里，<b>把 <code>P</code> 写大是省钱的，把 <code>P</code> 写小是烧钱的</b>。
+    一份 5,000 token 的说明书按 0.1&#215; 计价，等效 500 token；一份 350 token 的说明书按全价计价，等效 350 token —— 两者几乎持平，
+    但前者<b>顺带把「不可压缩通道」（第 11 节的通道 A）整个塞了进去，而且是免费的</b>。
+    <br><br>
+    这与「把 prompt 压小」的直觉正好相反，也正是本页第 11 节把治理约束放进通道 A 的成本依据。
+  </div>
 
   <div class="call fact">
     <span class="tag">口径声明</span>
-    本节全部数字为<b>建模推演</b>，基于：4 字符 &#8776; 1 token；缓存命中 0.1&#215;、写入 1.25&#215;；<b>缓存全程不过期</b>（这对 ReAct 最有利）。
-    真实情况下 5 分钟 TTL 常常在一次工具调用之间就过期——这是我研究 &#167;3「不压缩的三种死法」里的软失败那一条——<b>所以实际的 ReAct 缓存命中率会低于这里假设的理想值，真实倍率落在 6.8&#215; 与 19&#215; 之间</b>。
+    本节全部数字为<b>建模推演</b>，基于：4 字符 &#8776; 1 token；命中 0.1&#215;、写入 1.25&#215;；缓存全程不过期（这对 ReAct 最有利）；
+    单步 prompt 按 Table 1 拟合成 180&#183;t；门槛取 ADK 文档记载的 Gemini 3 的 4,096 token。
     <br><br>
-    我把它写出来不是为了给出精确数字，而是为了指出：<b>论文用裸 token 作为唯一成本指标，系统性地高估了自己的优势</b>，而这个高估在不同 benchmark 上的幅度并不一样。
+    <b>门槛是 provider 相关的</b>：若某 provider 的下限低到几百 token，SKILL.state 的 <code>P</code> 就能进缓存，倍率会回升到 6&#8211;7&#215; 一带。
+    真实的 5 分钟 TTL 也常在一次工具调用之间就过期（配套研究 &#167;3 的「软失败」），那会削弱 ReAct 一侧。
+    <b>所以 3.3&#215; 是一个中点估计，不是定论；要紧的是量级，不是小数点。</b>
+    <br><br>
+    我写这一节不是为了给出精确数字，而是为了指出：<b>论文用裸 token 作为唯一成本指标，系统性地高估了自己的优势</b>，而且高估的幅度<b>因 benchmark 而异</b> —— 合成长程任务上高估得多，公开交互 benchmark 上几乎没高估。
   </div>
 </section>
 
 <!-- ============ 10 ============ -->
 <section class="essay" id="s10">
-  <div class="section-head"><span class="section-num">10</span><h2 class="section-title">它不成立的地方：五条我要反驳的</h2></div>
+  <div class="section-head"><span class="section-num">10</span><h2 class="section-title">它不成立的地方：六条我要反驳的</h2></div>
   <div class="section-sub">读完全文之后我真正的保留意见</div>
 
   <p class="deck">前面九节我基本在替这篇论文说话，因为它的核心主张确实成立。这一节讲它<em>不能推广到哪里</em>——而这恰恰是我最关心的部分，因为我研究的那十五个平台，几乎全都落在它不成立的那一侧。</p>
 
-  <h4 class="subsub">反驳一 · 最该有的那个基线不存在</h4>
+  <h4 class="subsub">反驳一 · O(1) 只在 &#931; 自己不增长时成立，而论文从未验证这一点</h4>
+  <p>论文的核心公式是 <code>|P_t| = O(|P| + |&#931;| + |O|)</code>，「与 t 无关」。但这个式子成立的前提是 <strong><code>|&#931;|</code> 本身有界</strong> —— 而论文<strong>没有任何一处论证或测量这件事</strong>。</p>
+  <p>看它自己那个最有说服力的例子。InterCode CTF 的五字段 schema 里，有<strong>两个是只增列表</strong>：</p>
+
+  <figure>
+    <div class="fig">
+      <p class="fig-title">CTF schema 的五个字段，哪些有界？</p>
+      <p class="fig-sub">论文 &#167;3.1。有界的字段被新值覆盖；只增的字段每一步都可能变长。</p>
+      <div class="tbl-wrap">
+      <table>
+        <tr><th style="width:24%">字段</th><th style="width:14%">增长性</th><th>为什么</th></tr>
+        <tr><td><code>working_dir</code></td><td style="color:#199e70"><b>有界</b></td><td>单值，新值覆盖旧值</td></tr>
+        <tr><td><code>active_files</code></td><td style="color:#199e70"><b>准有界</b></td><td>当前打开的文件集合，会进也会出</td></tr>
+        <tr><td><code>cmd_summary</code></td><td style="color:#c98500"><b>取决于实现</b></td><td>「命令历史的压缩形态」—— 如果它只是把命令追加进去，它就是一段历史</td></tr>
+        <tr class="hl"><td><code>discovered_flags</code></td><td style="color:#FF8FA3"><b>只增</b></td><td>找到的 flag 只会越来越多，不会被删</td></tr>
+        <tr class="hl"><td><code>tested_hypotheses</code></td><td style="color:#FF8FA3"><b>只增</b></td><td><b>正是这个字段带来了 CTF 上的提升</b>——它的价值就来自「什么都不忘」，所以它<b>按设计</b>就是单调增长的</td></tr>
+      </table>
+      </div>
+      <figcaption>最讽刺的一点：论文归因于 <code>tested_hypotheses</code> 的那份收益（CTF 54.2% vs 46.4%），<b>恰恰来自这个字段的只增性质</b>。它记住的失败假设越多越有用，也就越长。<b>你不能同时要「它记住一切」和「它大小恒定」。</b></figcaption>
+    </div>
+  </figure>
+
+  <div class="call mine">
+    <span class="tag">所以 O(1) 是环境的性质，不是方法的性质</span>
+    Warehouse 的 &#931; 之所以恒定（1,775 &#8594; 1,811 字符，T=10 到 T=200 几乎不动），是因为<b>那个环境的真实状态本来就有界</b>：500 个格子，每格一个物品或 null，动作只是覆盖和删除，<b>没有任何一个字段会累积</b>。
+    <br><br>
+    换句话说，Table 1 里那条漂亮的水平线<b>是 Warehouse 给的，不是 SKILL.state 给的</b>。
+    把同一套方法放到一个需要记住「试过什么」的领域，&#931; 就会重新长成一段历史 —— 只不过是一段<b>结构化的、你自己写 schema 挑出来的</b>历史。
+  </div>
+
+  <p>论文自己的数据里就有这个苗头。&#964;-Bench Retail 上，SKILL.state 的单步 prompt 是四种运行时里<strong>最大的</strong>（3,325 字符 vs ReAct 2,819）—— 一个号称 O(1) 的方法，在最接近真实业务的那个 benchmark 上，prompt 比纯追加的 ReAct 还大。</p>
+
+  <div class="call pit">
+    <span class="tag">这条怎么改写本页其他部分</span>
+    <b>第 11 节推荐 <code>tested_hypotheses</code> 那条动作，必须附一个封顶策略</b>：只增字段要么设条数上限（保留最近 N 条 + 一个计数），要么定期让模型把它归并成更抽象的排除规则。
+    否则你只是<b>把上下文膨胀从对话通道搬到了状态通道</b>，一步没省。
+    <br><br>
+    正确的说法不是「SKILL.state 是 O(1)」，而是：<b>它把「上下文会不会爆」从一个运行时问题，变成了一个 schema 设计问题</b>。这是个巨大的进步 —— 因为 schema 是你能审、能测、能加断言的 —— 但它不是一个自动获得的保证。
+  </div>
+
+  <h4 class="subsub">反驳二 · 最该有的那个基线不存在</h4>
   <p>论文的 Stateful 基线是 <strong>「结构化状态 + 全量历史」</strong>。而我研究的十五个平台，<strong>没有一家</strong>是这么跑的——它们跑的是<strong>「结构化摘要 + 20K token 的原文 tail」</strong>。</p>
   <figure><div class="fig">
     <p class="fig-title">论文测了三格，真正的对手在第四格</p>
@@ -1220,21 +1390,21 @@ Customer ordered item_12.</code></pre>
     <figcaption>粉色虚线那一格是空的。论文用「全量历史 + 状态」当对手，等于让对手<b>同时背上历史膨胀的全部代价，却拿不到压缩的任何好处</b>。</figcaption>
   </div></figure>
 
-  <h4 class="subsub">反驳二 · 预算对齐实验把对手掐到真实系统的 1/40</h4>
+  <h4 class="subsub">反驳三 · 预算对齐实验把对手掐到真实系统的 1/40</h4>
   <p>已在第 5 节展开：<strong>1,800 字符 &#8776; 450 token</strong>，而 OpenClaw / opencode 的缓冲是 <strong>20,000 token</strong>，Codex CLI 光保留用户原话就给 20,000 token。「Summary-capped = 0.52」测的是 450 token 的摘要，不是生产级 compaction。这个实验证明了「统计式压缩器会毁掉标识符」（这条我完全同意），但没有证明「压缩式路线打不过状态式路线」。</p>
 
-  <h4 class="subsub">反驳三 · Warehouse 与方法同构</h4>
+  <h4 class="subsub">反驳四 · Warehouse 与方法同构</h4>
   <p>Warehouse 的真实世界状态<strong>本身就是一个字典</strong>：500 个互不相干的格子，每格一个字符串或 null。而 SKILL.state 的状态表示<strong>也是一个字典</strong>。这不是「方法在这个任务上表现好」，这是<strong>方法与任务共用同一个数据结构</strong>。</p>
   <p>论文自己其实给出了这个偏差的量：换到关系纠缠的 Software Repository 环境，优势从「一开始就赢」退化到「T&#8805;50 才赢」，中间还出现一次落败。<strong>SkillExecBench 是论文自建的，而它的两个环境里，被反复用来做主图的那个恰好是对方法最友好的那个。</strong></p>
 
-  <h4 class="subsub">反驳四 · 正文的措辞覆盖了两处不利结果</h4>
+  <h4 class="subsub">反驳五 · 正文的措辞覆盖了两处不利结果</h4>
   <div class="tiles two">
     <div class="tile"><div class="lbl">未提及 · 之一</div><div class="body">Gemma-4-31B 在 T=100 时 SKILL.state 与 Stateful <b>同为 0.42</b>；Qwen-3-8B 是 0.34 vs 0.31。正文只写「across both proprietary and open-weight models」，<b>没有一处说明准确率优势在长程 + 小模型上会消失</b>。</div></div>
     <div class="tile"><div class="lbl">未提及 · 之二</div><div class="body">Software Repository T=25 处 SKILL.state <b>0.88 &lt; Stateful 0.94</b>，是全文唯一落败。这个数据在附录 Table 6 里，正文与附录文字<b>都未提及</b>。</div></div>
   </div>
   <p style="margin-top:20px">两处都不是造假——数据都在表里。但它们都是<strong>读者需要主动去附录找才会发现的不利证据</strong>，而正文的概括性措辞恰好把它们盖住了。</p>
 
-  <h4 class="subsub">反驳五 · 它自己的前提就排除了我研究的那批系统</h4>
+  <h4 class="subsub">反驳六 · 它自己的前提就排除了我研究的那批系统</h4>
   <p>论文 Limitations 第一条写得很清楚（这一点我要给它记一功——写得诚实）：</p>
   <div class="pullquote">
     ……失效于三种情形：(1) 事先不知道固定 schema、状态结构必须在执行中动态发现时；(2) 一次正确的状态更新依赖于某条更早的观测，而它的相关性在当时未被识别、因而从未被写入状态时；(3) 任务目标本身定义在历史轨迹之上时（审计、追溯 provenance、解释过去的动作）。
@@ -1309,9 +1479,9 @@ Customer ordered item_12.</code></pre>
     </tr>
     <tr>
       <td class="num"><b>2</b></td>
-      <td>在 schema 里加一个 <code>tested_hypotheses</code> 类字段：<b>显式记下试过且失败的路</b></td>
+      <td>在 schema 里加一个 <code>tested_hypotheses</code> 类字段：<b>显式记下试过且失败的路</b>。<br>&#9888; <b>必须同时给它封顶</b>：设条数上限（保留最近 N 条 + 一个计数），或定期让模型归并成更抽象的排除规则</td>
       <td>InterCode CTF 54.2% vs 46.4%，论文把提升主要归因于这个字段</td>
-      <td>十一家的摘要模板里有 Done / In-Progress / Blocked，<b>但没有一家有「已排除」这一格</b>。这是清单里可以新增的一条</td>
+      <td>十一家的摘要模板里有 Done / In-Progress / Blocked，<b>但没有一家有「已排除」这一格</b>。这是清单里可以新增的一条。<br><b>封顶那半条是我加的</b>——不封顶就是把膨胀从对话通道搬到状态通道（见<a href="#s10">第 10 节反驳一</a>）</td>
     </tr>
     <tr>
       <td class="num"><b>3</b></td>
@@ -1360,6 +1530,15 @@ Customer ordered item_12.</code></pre>
     <code>R_t</code> 推理 &#8594; <b>验证通过后永久丢弃</b>；<code>&#916;&#931;_t</code> 状态补丁 &#8594; 确定性校验后合并进 &#931;；<code>a_t</code> 动作 &#8594; 交给环境执行。
     关键在第一条：<b>步内推理是完整的，但它不跨步存活</b>。
   </div></details>
+  <details class="q"><summary>论文的 O(1) 单步结论，前提是什么？这个前提被验证过吗？</summary><div class="a">
+    前提是 <b><code>|&#931;|</code> 本身有界</b> —— 而论文<b>没有任何一处论证或测量它</b>。
+    <br><br>
+    它自己的 CTF schema 里，<code>discovered_flags</code> 与 <code>tested_hypotheses</code> 都是<b>只增列表</b>；
+    而 <code>tested_hypotheses</code> 恰恰是论文归因 CTF 提升的那个字段 —— <b>它的价值就来自「什么都不忘」，所以按设计就会越来越长</b>。
+    <br><br>
+    Warehouse 上那条水平线是<b>环境给的</b>（500 个格子，只有覆盖与删除，没有累积字段），不是方法给的。
+    正确说法是：<b>SKILL.state 把「上下文会不会爆」从运行时问题变成了 schema 设计问题</b> —— 是进步，但不是自动保证。
+  </div></details>
   <details class="q"><summary>论文说自己把 O(T&#178;) 降到 O(T)。这个说法对压缩式系统成立吗？</summary><div class="a">
     <b>不成立。</b>O(T&#178;) 只对完全不压缩的 ReAct 成立。任何做了压缩的运行时，单步 prompt 都被窗口 W 卡住，累计是 <b>O(T&#183;W)——同样是线性</b>。
     SKILL.state 与生产系统的差距是<b>常数</b>（W 从 ~30,000 token 降到 ~500），不是阶数。这个常数值 16&#8211;40 倍，很大，但不是「二次降一次」。
@@ -1374,10 +1553,14 @@ Customer ordered item_12.</code></pre>
     SKILL.state 里，一个 key 被 <code>null</code> 掉就是真的没了，<b>没有第二份拷贝</b>，失效是<b>二值的</b>。
     实证：开源权重模型 <b>68% 的错误正是「误删了本该保留的 key」</b>。
   </div></details>
-  <details class="q"><summary>把 prompt cache 计入后，Warehouse T=100 的倍率会变成多少？为什么会变？</summary><div class="a">
-    裸 token <b>19.1&#215;</b> &#8594; 计入缓存约 <b>6.8&#215;</b>（本页第 9 节的建模推演，非论文数据）。
-    因为 ReAct 的历史是<b>纯追加</b>的，第 t 步 prompt 是第 t-1 步的严格前缀延长，<b>每一步都能命中缓存、按 0.1&#215; 计价</b>。
-    论文只报裸 token，系统性高估了自己的优势。<b>而压缩式系统在这一维上是三者里最差的</b>——它既付摘要调用，又周期性打掉缓存前缀。
+  <details class="q"><summary>prompt cache 有一条门槛。它为什么恰好卡死 SKILL.state？</summary><div class="a">
+    缓存要求<b>可缓存前缀达到最小值</b>（ADK 文档：Gemini 2.5 是 2,048 token，Gemini 3 是 <b>4,096</b>），低于它一个 token 都不缓存。
+    <br><br>
+    SKILL.state 的前缀只有 <code>P</code>（~350 token），<b>永远够不着</b>；ReAct 的 prompt 在第 24 步就越过门槛，此后每步按 0.1&#215; 命中。
+    于是 Warehouse T=100 的倍率从裸 token 的 <b>19.1&#215;</b> 掉到约 <b>3.3&#215;</b>。
+    <br><br>
+    反直觉之处：<b>让 SKILL.state 便宜的那个性质（prompt 极小），正是让它拿不到缓存折扣的那个性质。</b>
+    设计上的推论是 <code>P</code> 要<b>故意做大</b>到超过门槛，把不可压缩的项目约定全塞进去 —— 那部分就变成了 0.1&#215; 计价。
   </div></details>
   <details class="q"><summary>论文自己承认的三种失效情形是什么？其中哪一条排除了 coding agent？</summary><div class="a">
     (1) 事先没有固定 schema、结构必须动态发现；(2) 正确的更新依赖某条<b>当时未识别出相关性</b>的更早观测；(3) 任务目标定义在历史轨迹本身之上（审计、provenance）。
@@ -1414,11 +1597,24 @@ Customer ordered item_12.</code></pre>
     引用它们是为了确立「上下文管理的设计差异有多大量级」，<b>不是为各家排名</b>，也不能把 A 论文的分数放进 B 论文的表里。
   </div>
 
+  <h3 class="sub">更正记录</h3>
+  <div class="call pit">
+    <span class="tag">2026-09-04 · 第 9 节重算</span>
+    初版的 prompt cache 折算<b>漏掉了「最小可缓存前缀」这条硬门槛</b>，错误地假设 SKILL.state 的 <code>P</code>（~350 token）能按 0.1&#215; 命中。
+    在论文自己用的 Gemini-3-Flash 上门槛是 <b>4,096 token</b>（ADK 文档，配套研究 &#167;12.7），<code>P</code> 根本够不着。
+    <br><br>
+    三处随之更正：<b>倍率 6.8&#215; &rarr; 3.3&#215;</b>；<b>缓存维度排序</b>由「ReAct &gt; SKILL.state &gt; 压缩式」改为「ReAct &gt; 压缩式 &gt; SKILL.state」；
+    并<b>撤回</b>了「&#964;-Bench Retail 上 ReAct 可能反而更便宜」的推断（该 benchmark 两边都够不着门槛，裸 token 比较基本成立）。
+    <br><br>
+    由 <a href="https://github.com/caiboyang/ML-learning/pull/22">PR #22</a> 的 review 指出。原始错误的方向是<b>高估了 SKILL.state 的成本优势</b>——与我在同一节批评论文的方向一致，值得记一笔。
+  </div>
+
   <h3 class="sub">与配套研究的一致性说明</h3>
   <ul class="arrow">
     <li>本页<b>不修改</b>那篇研究的任何既有结论。它补充的是「效果评测」一节里此前空着的一格：<b>不压缩（状态外置到底）那条路线的量化证据</b>。</li>
     <li>那篇研究 &#167;20 的设计清单第 23 条「把状态外置而不是压缩」，此前只有 Antigravity 的架构取向与 OpenClaw memory flush 作为间接证据。<b>本页第 5 节的 0.94 vs 0.52 是这条目前最强的实证</b>，但要连同第 10 节的预算口径问题一起读。</li>
-    <li>那篇研究 &#167;2.11「压缩与 prompt cache 的根本张力」在本页第 9 节得到闭环：<b>三种运行时在缓存维度上的排序是 ReAct &gt; SKILL.state &gt; 压缩式</b>。这是我在两篇之间新增的判断，论文未涉及。</li>
+    <li>那篇研究 &#167;2.11「压缩与 prompt cache 的根本张力」与 &#167;12.7（ADK 记录的最小可缓存前缀）在本页第 9 节合并成一条新判断：<b>缓存维度上的排序是 ReAct &gt; 压缩式 &gt; SKILL.state，与裸 token 的排序正好相反</b>。论文未涉及这一维。<b>本页第一版把 SKILL.state 排在第二位，是漏掉了门槛这一条，已更正</b>（更正记录见文末）。</li>
+    <li>本页第 10 节反驳一（<b>O(1) 依赖 <code>|&#931;|</code> 有界，论文未验证</b>）是对那篇研究 &#167;1 六层模型的一条补充：<b>L4「减法」被搬到设计时之后，膨胀风险并没有消失，只是搬进了 schema</b>。相应地第 11 节推荐 <code>tested_hypotheses</code> 时附了封顶策略。</li>
     <li>那篇研究的十一家共识里，<b>「已排除的假设」这一格是空的</b>（模板都有 Done / In-Progress / Blocked，没有 Excluded）。本页第 11 节把它作为可新增的第 2 条动作提出，依据是 CTF 上 <code>tested_hypotheses</code> 字段带来的提升。</li>
   </ul>
 </section>
@@ -1563,6 +1759,12 @@ Customer ordered item_12.</code></pre>
     if (cfg.xLabel) svg.appendChild(el("text", { x: M.l + pw / 2, y: H - 6, fill: C.ink3, "font-family": FS, "font-size": 11.5, "text-anchor": "middle" }, cfg.xLabel));
     if (cfg.yLabel) svg.appendChild(el("text", { x: M.l, y: M.t - 6, fill: C.ink3, "font-family": FS, "font-size": 11, "text-anchor": "start" }, cfg.yLabel));
 
+    // threshold rule (drawn under the series)
+    if (cfg.rule) {
+      var ry = Y(cfg.rule.y);
+      svg.appendChild(el("line", { x1: M.l, y1: ry, x2: M.l + pw, y2: ry, stroke: cfg.rule.color || C.ink3, "stroke-width": 1.6 }));
+      svg.appendChild(el("text", { x: M.l + 6, y: ry - 7, fill: cfg.rule.color || C.ink3, "font-family": FM, "font-size": 11, "font-weight": 700 }, cfg.rule.label));
+    }
     // series
     var S = cfg.series;
     for (var s = 0; s < S.length; s++) {
@@ -1571,6 +1773,17 @@ Customer ordered item_12.</code></pre>
       svg.appendChild(el("path", { d: d, fill: "none", stroke: ser.color, "stroke-width": ser.emph ? 3 : 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
       for (var k2 = 0; k2 < n; k2++) {
         svg.appendChild(el("circle", { cx: X(k2), cy: Y(ser.values[k2]), r: ser.emph ? 5 : 4, fill: ser.color, stroke: "#141A2A", "stroke-width": 2 }));
+      }
+    }
+    // point annotations (fractional index positions allowed)
+    if (cfg.marks) {
+      for (var mi = 0; mi < cfg.marks.length; mi++) {
+        var mk = cfg.marks[mi];
+        var mx = M.l + mk.at * pw / (n - 1), my = Y(mk.y);
+        svg.appendChild(el("circle", { cx: mx, cy: my, r: 6, fill: "none", stroke: mk.color || C.ink, "stroke-width": 2 }));
+        svg.appendChild(el("line", { x1: mx, y1: my - 8, x2: mx, y2: my - 26, stroke: mk.color || C.ink, "stroke-width": 1 }));
+        var an = mk.anchor || "middle";
+        svg.appendChild(el("text", { x: mx + (an === "start" ? 4 : an === "end" ? -4 : 0), y: my - 32, fill: mk.color || C.ink, "font-family": FS, "font-size": 11.5, "font-weight": 600, "text-anchor": an }, mk.text));
       }
     }
     // endpoint direct labels
@@ -1691,6 +1904,139 @@ Customer ordered item_12.</code></pre>
   }
   var pct = function (v) { return v.toFixed(2); };
   var pctT = function (v) { return v.toFixed(2); };
+
+
+  /* ==================== INTERACTIVE: horizon slider ==================== */
+  function initHorizon() {
+    var slider = document.getElementById("hz");
+    if (!slider) return;
+    var T = [10, 25, 50, 100, 200];
+    var rows = [
+      { name: "Prompt (ReAct)", color: C.s1, v: [9438, 42689, 171658, 1245413, 2608755], acc: [0.90, 0.92, 0.88, 0.84, 0.74] },
+      { name: "Memory (Summary)", color: C.s2, v: [9972, 43067, 131455, 1082154, 6175509], acc: [1.00, 0.99, 0.93, 0.87, 0.84] },
+      { name: "Stateful (LangGraph)", color: C.s3, v: [10337, 41238, 170992, 1062387, 5041164], acc: [1.00, 1.00, 0.94, 0.91, 0.88] },
+      { name: "SKILL.state", color: C.s4, v: [5870, 14714, 30151, 65408, 122384], acc: [1.00, 1.00, 0.96, 0.94, 0.94] }
+    ];
+    var bars = document.getElementById("hz-bars"), out = document.getElementById("hz-out"), vd = document.getElementById("hz-verdict");
+    bars.innerHTML = rows.map(function (r) {
+      return '<div class="hbar"><span class="nm"><i style="background:' + r.color + '"></i>' + r.name +
+             '</span><span class="track"><span class="fill" style="background:' + r.color + '"></span></span>' +
+             '<span class="val"></span></div>';
+    }).join("");
+    var fills = bars.querySelectorAll(".fill"), vals = bars.querySelectorAll(".val");
+
+    function draw(i) {
+      var max = 0, k;
+      for (k = 0; k < rows.length; k++) if (rows[k].v[i] > max) max = rows[k].v[i];
+      for (k = 0; k < rows.length; k++) {
+        fills[k].style.width = Math.max(1.2, rows[k].v[i] / max * 100) + "%";
+        vals[k].textContent = kfmt(rows[k].v[i]);
+      }
+      out.textContent = "T = " + T[i];
+      slider.setAttribute("aria-valuetext", T[i] + " 步");
+      var worst = Math.max(rows[0].v[i], rows[1].v[i], rows[2].v[i]);
+      var ratio = worst / rows[3].v[i];
+      var accGap = Math.max(rows[0].acc[i], rows[1].acc[i], rows[2].acc[i]) - rows[3].acc[i];
+      var accTxt = accGap <= 0
+        ? "准确率 <b>" + rows[3].acc[i].toFixed(2) + "</b>，不低于任何一条基线"
+        : "准确率 <b>" + rows[3].acc[i].toFixed(2) + "</b>，比最好的基线低 " + accGap.toFixed(2);
+      vd.innerHTML = "T = " + T[i] + " 时，SKILL.state 比最贵的基线省 <span class=\"big\">" +
+        (ratio < 10 ? ratio.toFixed(1) : Math.round(ratio)) + "&times;</span> token；" + accTxt + "。" +
+        (i === 0 ? " <b>这里几乎看不出差别 —— 短程实验测不出压缩策略的好坏。</b>" : "") +
+        (i === 4 ? " <b>差距几乎全是被步数拉开的，不是被方法本身。</b>" : "");
+    }
+    slider.addEventListener("input", function () { draw(+slider.value); });
+    draw(+slider.value);
+  }
+
+  /* ==================== INTERACTIVE: runtime stepper ==================== */
+  function initRuntime() {
+    var rail = document.getElementById("rt-rail");
+    if (!rail) return;
+    var STAGES = ["组装 prompt", "模型生成", "校验并合并", "执行动作"];
+    var SIG1 = '<span class="k">"inventory"</span>: [<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3",<br>&nbsp;&nbsp;<span class="k">"shelf_42"</span>: "item_12"<br>]';
+    var SIG2 = '<span class="k">"inventory"</span>: [<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3"<br>]';
+    var SIG1DEL = '<span class="k">"inventory"</span>: [<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3",<br>&nbsp;&nbsp;<span class="del">"shelf_42": "item_12"</span>&nbsp;&larr; 删<br>]';
+
+    function inBox(sig, obs, sigLabel) {
+      return '<div class="kv" style="margin-bottom:12px"><span style="color:var(--paper-muted)">P &middot; 技能说明书（每步逐字相同）</span><br>' +
+             'Instructions: 你是仓库执行 agent，动作空间 Store / Ship / Move / Wait&hellip;</div>' +
+             '<div class="kv" style="margin-bottom:12px"><span style="color:var(--amber)">&Sigma;_t &middot; ' + (sigLabel || "执行状态") + '</span><br>' + sig + '</div>' +
+             '<div class="kv"><span style="color:var(--paper-muted)">O_t &middot; 最新观测（只有这一条）</span><br>' + obs + '</div>';
+    }
+    var OBS1 = "Customer ordered item_12.";
+    var OBS2 = 'Success: Shipped item_12 from shelf_42.<br><span style="color:var(--paper-muted)">--- BACKGROUND TELEMETRY ---<br>Battery: 85%, Temperature: 45C, CPU Load: 72%</span>';
+
+    var STEPS = [
+      { turn: 1, st: 0, act: "in",
+        in: inBox(SIG1, OBS1),
+        out: '<div class="kv" style="color:var(--paper-muted)">等待模型生成&hellip;</div>',
+        narr: "<b>第 1 轮 &middot; 组装。</b>运行时拼出 prompt，只有三段：不变的 <code>P</code>、当前 <code>&Sigma;</code>、最新一条 <code>O</code>。<b>之前的观测、动作、推理一条都不在这里。</b>" },
+      { turn: 1, st: 1, act: "out",
+        in: inBox(SIG1, OBS1),
+        out: '<div class="kv" style="margin-bottom:12px"><span style="color:var(--rose)">R_t &middot; 推理（步内完整，用完即弃）</span><br><span style="color:var(--paper-dim)">客户订了 item_12，我要发货。<br>查执行状态，item_12 在 shelf_42。<br>需要生成 Ship 动作并把该格清空。</span></div>' +
+             '<div class="kv"><span style="color:var(--amber)">&Delta;&Sigma;_t + a_t &middot; 唯一会存活的输出</span><br>{<br>&nbsp;&nbsp;<span class="k">"state_patch"</span>: [ "inventory": [ <span class="add">"shelf_42": null</span> ] ],<br>&nbsp;&nbsp;<span class="k">"action"</span>: "Ship item_12 shelf_42"<br>}</div>',
+        narr: "<b>第 1 轮 &middot; 生成。</b>模型在这一步里<b>照常做完整的多步推理</b> —— 被丢掉的是<b>跨步携带</b>的推理，不是这一轮的思考能力。注意 <code>null</code>：它表示「把这个 key 删掉」。" },
+      { turn: 1, st: 2, act: "in",
+        in: inBox(SIG1DEL, OBS1, "合并中：&Sigma;_t &oplus; &Delta;&Sigma;_t"),
+        out: '<div class="kv"><span style="color:var(--rose)">R_t &middot; 已永久丢弃</span><br><span class="del">客户订了 item_12，我要发货&hellip;</span><br><br><span style="color:var(--phosphor)">&#10003; schema 校验通过 &rarr; 合并</span></div>',
+        narr: "<b>第 1 轮 &middot; 校验并合并。</b>运行时先按 schema 校验补丁（不合法就回滚重试，模型改不坏持久状态），再执行 <code>null</code> 删除。<b>同一时刻 <code>R</code> 被永久丢弃。</b>" },
+      { turn: 1, st: 3, act: "out",
+        in: inBox(SIG2, OBS1, "执行状态（已更新）"),
+        out: '<div class="kv"><span style="color:var(--phosphor)">a_t &middot; 交给环境</span><br>Ship item_12 shelf_42<br><br><span style="color:var(--paper-muted)">&rarr; 环境返回下一条观测</span></div>',
+        narr: "<b>第 1 轮 &middot; 执行。</b><code>shelf_42</code> 现在<b>真的不在字典里了</b> —— 不是「摘要说它空了」。这就是论文全部信心的来源，也是它全部风险的来源。" },
+      { turn: 2, st: 0, act: "in",
+        in: inBox(SIG2, OBS2),
+        out: '<div class="kv" style="color:var(--paper-muted)">等待模型生成&hellip;</div>',
+        narr: "<b>第 2 轮 &middot; 组装。</b>环境这次在观测里夹了三行背景遥测（论文 Appendix C 的噪声构造）。<b>第 1 轮的一切都不在 prompt 里了 —— prompt 大小没有增长。</b>" },
+      { turn: 2, st: 1, act: "out",
+        in: inBox(SIG2, OBS2),
+        out: '<div class="kv" style="margin-bottom:12px"><span style="color:var(--rose)">R_t &middot; 推理</span><br><span style="color:var(--paper-dim)">发货成功。电量与温度与任务无关，<br>schema 里也没有对应字段，忽略。</span></div>' +
+             '<div class="kv"><span style="color:var(--amber)">&Delta;&Sigma;_t + a_t</span><br>{<br>&nbsp;&nbsp;<span class="k">"state_patch"</span>: [ ]&nbsp;&nbsp;<span style="color:var(--paper-muted)">&larr; 空补丁</span><br>&nbsp;&nbsp;<span class="k">"action"</span>: "Wait"<br>}</div>',
+        narr: "<b>第 2 轮 &middot; 生成。</b>关键在这里：遥测<b>没有对应的 schema 字段，所以它无处可去</b>。摘要器要回答「这段该不该删」，schema 只需要回答「有没有这个字段」。" },
+      { turn: 2, st: 2, act: "in",
+        in: inBox(SIG2, OBS2, "执行状态（不变）"),
+        out: '<div class="kv"><span style="color:var(--phosphor)">&#10003; 空补丁合法，状态不变</span><br><br><span style="color:var(--rose)">R_t &middot; 已丢弃</span><br><span style="color:var(--paper-muted)">遥测三行 &middot; 已随 O_t 一起消失</span></div>',
+        narr: "<b>第 2 轮 &middot; 合并。</b>噪声<b>连进入状态的机会都没有</b>，也不会留在下一次 prompt 里。对比 ReAct：那三行遥测会永久留在历史里，并在<b>剩下每一步</b>继续占注意力。" },
+      { turn: 2, st: 3, act: "out",
+        in: inBox(SIG2, OBS2, "执行状态（不变）"),
+        out: '<div class="kv"><span style="color:var(--phosphor)">a_t</span><br>Wait<br><br><span style="color:var(--paper-muted)">&rarr; 循环回到第 1 步，prompt 大小与第 1 轮相同</span></div>',
+        narr: "<b>两轮走完。</b>回头看：&Sigma; 变小了一格，prompt 大小没变，遥测没留下任何痕迹。<br><b>但请记住第 10 节反驳一 —— 这个「大小不变」是 Warehouse 环境给的，不是方法自动保证的。</b>" }
+    ];
+
+    var i = 0;
+    var railHtml = "";
+    for (var k = 0; k < STAGES.length; k++) railHtml += '<div class="st" data-k="' + k + '"><span class="n">0' + (k + 1) + '</span>' + STAGES[k] + "</div>";
+    rail.innerHTML = railHtml;
+    var stEls = rail.querySelectorAll(".st");
+    var inEl = document.getElementById("rt-in"), outEl = document.getElementById("rt-out");
+    var inB = document.getElementById("rt-in-body"), outB = document.getElementById("rt-out-body");
+    var narr = document.getElementById("rt-narr"), pos = document.getElementById("rt-pos");
+    var prev = document.getElementById("rt-prev"), next = document.getElementById("rt-next"), reset = document.getElementById("rt-reset");
+
+    function draw() {
+      var s0 = STEPS[i];
+      for (var k = 0; k < stEls.length; k++) {
+        stEls[k].className = "st" + (k === s0.st ? " on" : (k < s0.st ? " done" : ""));
+      }
+      inB.innerHTML = s0.in; outB.innerHTML = s0.out;
+      inEl.className = "pane" + (s0.act === "in" ? " act" : "");
+      outEl.className = "pane" + (s0.act === "out" ? " act" : "");
+      narr.innerHTML = s0.narr;
+      pos.textContent = "第 " + s0.turn + " 轮 · 阶段 " + (s0.st + 1) + "/4 · 共 " + STEPS.length + " 步";
+      prev.disabled = i === 0; next.disabled = i === STEPS.length - 1;
+      next.textContent = i === STEPS.length - 1 ? "已走完" : (s0.st === 3 ? "进入下一轮 →" : "下一步 →");
+    }
+    prev.addEventListener("click", function () { if (i > 0) { i--; draw(); } });
+    next.addEventListener("click", function () { if (i < STEPS.length - 1) { i++; draw(); } });
+    reset.addEventListener("click", function () { i = 0; draw(); });
+    draw();
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initHorizon();
+    initRuntime();
+  });
 
   document.addEventListener("DOMContentLoaded", function () {
 
@@ -1877,17 +2223,33 @@ Customer ordered item_12.</code></pre>
     });
 
     /* ---- 9 cache ---- */
+    var thS = [
+      { name: "Prompt (ReAct) 单步 prompt", color: C.s1, values: [0, 1800, 3600, 5400, 7200, 9000, 10800, 12600, 14400, 16200, 18000] },
+      { name: "SKILL.state 单步 prompt", color: C.s4, values: [476, 476, 476, 476, 476, 476, 476, 476, 476, 476, 476], emph: true }
+    ];
+    legend("lg-thresh", thS);
+    lineChart("c-thresh", {
+      x: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], xPrefix: "第 ", xLabel: "执行步 t",
+      yLabel: "单步 prompt（token）",
+      min: 0, max: 19000, ticks: [0, 6000, 12000, 18000], padR: 74,
+      tickFmt: kfmt, tipFmt: function (v) { return fmt(v) + " tok"; }, endFmt: kfmt,
+      rule: { y: 4096, label: "4,096 \u2014 Gemini 3 最小可缓存前缀", color: "#7BE3D7" },
+      marks: [{ at: 2.3, y: 4140, text: "第 24 步：ReAct 越过门槛", color: "#A7F2EA", anchor: "start" }],
+      series: thS, height: 320,
+      alt: "ReAct 的单步 prompt 在第 24 步越过 4096 token 缓存门槛，SKILL.state 恒定在 476 token 始终低于门槛"
+    });
+
     var xFmt = function (v) { return v.toFixed(1) + "\u00d7"; };
     barChart("c-cache", {
       groups: ["论文口径\n裸输入 token 计数", "计入 prompt cache\n我的建模推演"],
       series: [
         { name: "论文口径", color: C.mute, values: [19.1, null] },
-        { name: "计入缓存", color: C.s4, values: [null, 6.8], emph: true }
+        { name: "计入缓存", color: C.s4, values: [null, 3.3], emph: true }
       ],
       max: 21, ticks: [0, 5, 10, 15, 20], tickFmt: function (v) { return v + "\u00d7"; },
       tipFmt: xFmt, valueLabels: true, vlFmt: xFmt, vlSize: 22,
       height: 260, padB: 58, padL: 50,
-      alt: "成本优势倍率：裸 token 口径 19.1 倍，计入 prompt cache 后 6.8 倍"
+      alt: "成本优势倍率：裸 token 口径 19.1 倍，计入 prompt cache 门槛后 3.3 倍"
     });
   });
 })();
