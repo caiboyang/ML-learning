@@ -1,0 +1,1776 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="description" content="SKILL.state 论文可视化精读：从不断增长的对话历史，转向显式、可验证的执行状态。" />
+<title>把历史扔掉，只带当前状态 — SKILL.state 论文精读</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #07090f;
+    --night: #0d1220;
+    --surface: #131a2a;
+    --surface-2: #19223a;
+    --surface-3: #202b47;
+    --rule: #28334e;
+    --rule-soft: #1b2439;
+    --paper: #ece9e1;
+    --paper-dim: #b9b5aa;
+    --paper-muted: #858177;
+    --ghost: #b59bff;
+    --ghost-glow: #d5c7ff;
+    --phosphor: #79e2d5;
+    --phosphor-glow: #a5f3ea;
+    --amber: #ffb678;
+    --rose: #ff8fa6;
+    --sky: #83b9ff;
+    --max: 1120px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-width: 320px;
+    background: var(--void);
+    color: var(--paper);
+    font-family: 'Newsreader', 'Noto Serif SC', serif;
+    font-size: 18px;
+    line-height: 1.72;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 50% -12%, rgba(121, 226, 213, .06), transparent 28%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='1' cy='1' r='1' fill='%2328334e' opacity='0.34'/></svg>");
+    background-size: auto, 36px 36px;
+  }
+
+  a {
+    color: var(--phosphor);
+    text-decoration: underline;
+    text-decoration-color: rgba(121, 226, 213, .38);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--phosphor-glow); text-decoration-color: currentColor; }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--phosphor-glow);
+    outline-offset: 4px;
+    border-radius: 5px;
+  }
+  button, input { font: inherit; }
+  code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(121, 226, 213, .07);
+    color: var(--phosphor-glow);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .83em;
+  }
+
+  .sans { font-family: 'Inter', 'Noto Sans SC', sans-serif; }
+  .display { font-family: 'Inter Tight', 'Noto Sans SC', sans-serif; }
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    min-height: 88vh;
+    overflow: hidden;
+    border-bottom: 1px solid var(--rule);
+    background:
+      radial-gradient(760px 500px at 82% 24%, rgba(181, 155, 255, .12), transparent 62%),
+      radial-gradient(660px 420px at 14% 88%, rgba(121, 226, 213, .09), transparent 62%),
+      linear-gradient(180deg, rgba(13, 18, 32, .98), rgba(7, 9, 15, .94));
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(120deg, transparent 52%, rgba(121, 226, 213, .025) 52.2%, transparent 52.5%);
+  }
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr);
+    gap: 62px;
+    align-items: center;
+    width: min(var(--max), calc(100% - 48px));
+    min-height: 88vh;
+    margin: 0 auto;
+    padding: 72px 0 58px;
+  }
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex-wrap: wrap;
+    color: var(--paper-muted);
+  }
+  .crumbs .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--paper-muted);
+  }
+  .eyebrow { margin-top: 42px; color: var(--phosphor); }
+  .hero h1 {
+    max-width: 680px;
+    margin: 18px 0 24px;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: clamp(46px, 6.3vw, 76px);
+    line-height: 1.03;
+    letter-spacing: -.035em;
+  }
+  .hero h1 .accent {
+    background: linear-gradient(90deg, var(--ghost), var(--ghost-glow));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero .lede {
+    max-width: 660px;
+    margin: 0;
+    color: var(--paper-dim);
+    font-size: 21px;
+    line-height: 1.72;
+  }
+  .hero .lede strong { color: var(--paper); font-weight: 600; }
+  .paper-note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 28px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: rgba(19, 26, 42, .72);
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .chip.fact { color: var(--phosphor-glow); border-color: rgba(121, 226, 213, .38); }
+  .chip.compare { color: var(--ghost-glow); border-color: rgba(181, 155, 255, .4); }
+  .chip.inference { color: var(--amber); border-color: rgba(255, 182, 120, .4); }
+
+  .state-stage {
+    position: relative;
+    min-height: 500px;
+    perspective: 1100px;
+  }
+  .state-stage::before {
+    content: '';
+    position: absolute;
+    inset: 9% 4% 8%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(121, 226, 213, .14), transparent 63%);
+    filter: blur(8px);
+  }
+  .state-card {
+    position: absolute;
+    width: min(390px, 90%);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    background: rgba(19, 26, 42, .92);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, .34);
+    transform-style: preserve-3d;
+    transition: transform .35s ease, border-color .35s ease, opacity .35s ease;
+  }
+  .state-card .card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--rule-soft);
+    color: var(--paper-muted);
+  }
+  .state-card .card-body {
+    padding: 17px 18px 19px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .state-card .key { color: var(--ghost-glow); }
+  .state-card .value { color: var(--amber); }
+  .state-card .muted { color: var(--paper-muted); }
+  .state-card.spec {
+    top: 7%;
+    left: 2%;
+    transform: rotateY(12deg) rotateX(4deg) translateZ(-36px);
+    opacity: .72;
+  }
+  .state-card.state {
+    top: 30%;
+    left: 11%;
+    z-index: 2;
+    border-color: rgba(181, 155, 255, .58);
+    transform: rotateY(-7deg) rotateX(2deg) translateZ(30px);
+  }
+  .state-card.obs {
+    top: 62%;
+    left: 21%;
+    z-index: 3;
+    border-color: rgba(121, 226, 213, .52);
+    transform: rotateY(8deg) rotateX(-2deg) translateZ(72px);
+  }
+  .state-stage-label {
+    position: absolute;
+    right: 4%;
+    bottom: 0;
+    width: 160px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .state-stage-label strong { display: block; color: var(--paper); font-size: 14px; }
+
+  .hero-stats {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 14px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero-stat { padding: 18px 18px 17px; border-right: 1px solid var(--rule); }
+  .hero-stat:first-child { padding-left: 0; }
+  .hero-stat:last-child { border-right: 0; }
+  .hero-stat .label { color: var(--paper-muted); }
+  .hero-stat .value {
+    display: block;
+    margin-top: 5px;
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .hero-stat .value b { color: var(--amber); font-size: 23px; }
+
+  /* Progress nav */
+  .progress-nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-bottom: 1px solid rgba(40, 51, 78, .82);
+    background: rgba(7, 9, 15, .88);
+    backdrop-filter: blur(14px);
+  }
+  .progress-inner {
+    display: flex;
+    align-items: center;
+    width: min(var(--max), calc(100% - 48px));
+    min-height: 54px;
+    margin: 0 auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .progress-inner::-webkit-scrollbar { display: none; }
+  .progress-title { flex: 0 0 auto; margin-right: 24px; color: var(--paper-muted); }
+  .progress-nav a {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 18px 15px 15px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+  .progress-nav a::after {
+    content: '';
+    position: absolute;
+    right: 15px;
+    bottom: 0;
+    left: 15px;
+    height: 2px;
+    transform: scaleX(0);
+    background: var(--phosphor);
+    transition: transform .2s ease;
+  }
+  .progress-nav a.active { color: var(--paper); }
+  .progress-nav a.active::after { transform: scaleX(1); }
+
+  /* Content */
+  main { width: min(var(--max), calc(100% - 48px)); margin: 0 auto; }
+  .chapter {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 54px;
+    padding: 108px 0 26px;
+    scroll-margin-top: 50px;
+  }
+  .chapter-rail { position: relative; }
+  .chapter-rail-inner { position: sticky; top: 92px; }
+  .chapter-num { color: var(--phosphor); }
+  .chapter-kicker {
+    margin-top: 10px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .chapter-body { min-width: 0; }
+  .section-head {
+    margin: 0 0 14px;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: clamp(31px, 4vw, 49px);
+    line-height: 1.08;
+    letter-spacing: -.025em;
+  }
+  .section-deck {
+    max-width: 760px;
+    margin: 0 0 38px;
+    color: var(--paper-dim);
+    font-size: 20px;
+    line-height: 1.7;
+  }
+  .section-deck strong { color: var(--paper); font-weight: 600; }
+  .subhead {
+    margin: 46px 0 14px;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 22px;
+    line-height: 1.3;
+  }
+  p { margin: 0 0 18px; }
+  p strong { color: var(--paper); font-weight: 600; }
+
+  .panel {
+    border: 1px solid var(--rule);
+    border-radius: 15px;
+    background: rgba(19, 26, 42, .86);
+    box-shadow: 0 20px 70px rgba(0, 0, 0, .18);
+  }
+  .panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .panel-title {
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 18px;
+    font-weight: 650;
+  }
+  .panel-sub {
+    margin-top: 3px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .panel-body { padding: 22px; }
+
+  .note {
+    margin: 24px 0;
+    padding: 17px 18px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--amber);
+    border-radius: 9px;
+    background: rgba(255, 182, 120, .055);
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  .note strong { color: var(--paper); }
+  .note.ghost { border-left-color: var(--ghost); background: rgba(181, 155, 255, .06); }
+  .note.mint { border-left-color: var(--phosphor); background: rgba(121, 226, 213, .05); }
+  .source-tag {
+    display: inline-block;
+    margin-right: 7px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(255, 182, 120, .13);
+    color: var(--amber);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .source-tag.fact { background: rgba(121, 226, 213, .11); color: var(--phosphor); }
+  .source-tag.compare { background: rgba(181, 155, 255, .12); color: var(--ghost-glow); }
+
+  /* 1. Runtime comparison */
+  .runtime-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .runtime {
+    min-height: 430px;
+    padding: 22px;
+    overflow: hidden;
+  }
+  .runtime.old { background: linear-gradient(180deg, rgba(255, 143, 166, .04), rgba(19, 26, 42, .9)); }
+  .runtime.new { background: linear-gradient(180deg, rgba(121, 226, 213, .045), rgba(19, 26, 42, .9)); }
+  .runtime-label { color: var(--paper-muted); }
+  .runtime-name {
+    margin: 7px 0 18px;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .runtime.old .runtime-name { color: var(--rose); }
+  .runtime.new .runtime-name { color: var(--phosphor-glow); }
+  .history-stack { display: flex; flex-direction: column; gap: 7px; }
+  .history-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 7px;
+    background: rgba(7, 9, 15, .46);
+    color: var(--paper-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .history-line.obsolete { opacity: .34; }
+  .history-line.latest { border-color: rgba(255, 143, 166, .45); }
+  .history-line .weight { color: var(--paper-muted); }
+  .history-brace {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+    color: var(--rose);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+  }
+  .history-brace::before { content: ''; flex: 1; height: 1px; background: var(--rose); opacity: .45; }
+  .state-triplet { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 30px; }
+  .triplet-row {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 13px;
+    align-items: center;
+    padding: 14px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: rgba(7, 9, 15, .44);
+  }
+  .triplet-row .symbol {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 9px;
+    background: rgba(121, 226, 213, .09);
+    color: var(--phosphor-glow);
+    font-family: 'Newsreader', serif;
+    font-size: 26px;
+    font-style: italic;
+  }
+  .triplet-row strong {
+    display: block;
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+  }
+  .triplet-row small {
+    display: block;
+    margin-top: 2px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+  }
+  .bounded {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 1px solid rgba(121, 226, 213, .35);
+    border-radius: 8px;
+    color: var(--phosphor-glow);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  /* 2. Complexity lab */
+  .formula-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .formula-card {
+    padding: 18px;
+    border: 1px solid var(--rule);
+    border-radius: 11px;
+    background: rgba(7, 9, 15, .48);
+  }
+  .formula-card .formula {
+    margin: 8px 0 3px;
+    font-family: 'Newsreader', serif;
+    font-size: 30px;
+    line-height: 1.25;
+  }
+  .formula-card.old .formula { color: var(--rose); }
+  .formula-card.new .formula { color: var(--phosphor-glow); }
+  .formula-card .desc {
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+  }
+  .range-wrap {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    align-items: center;
+    margin: 24px 0 25px;
+  }
+  .range-wrap input { width: 100%; accent-color: var(--phosphor); }
+  .range-value {
+    min-width: 92px;
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    text-align: right;
+  }
+  .chart { display: grid; gap: 16px; }
+  .chart-row {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr) 88px;
+    gap: 12px;
+    align-items: center;
+  }
+  .chart-label {
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+  }
+  .bar-track {
+    height: 28px;
+    overflow: hidden;
+    border-radius: 5px;
+    background: rgba(7, 9, 15, .66);
+  }
+  .bar {
+    height: 100%;
+    min-width: 3px;
+    border-radius: inherit;
+    transform-origin: left center;
+    transition: width .42s cubic-bezier(.2, .8, .2, 1);
+  }
+  .bar.prompt { background: rgba(255, 143, 166, .72); }
+  .bar.memory { background: rgba(255, 182, 120, .7); }
+  .bar.stateful { background: rgba(131, 185, 255, .72); }
+  .bar.skill { background: linear-gradient(90deg, rgba(121, 226, 213, .72), var(--phosphor)); }
+  .chart-value {
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-align: right;
+  }
+  .ratio-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-top: 22px;
+    padding: 16px 18px;
+    border: 1px solid rgba(121, 226, 213, .3);
+    border-radius: 10px;
+    background: rgba(121, 226, 213, .05);
+  }
+  .ratio-card .big {
+    color: var(--phosphor-glow);
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .ratio-card .txt {
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* 3. Execution cycle */
+  .cycle-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(270px, .8fr);
+    gap: 18px;
+  }
+  .cycle-canvas {
+    position: relative;
+    min-height: 480px;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    background:
+      linear-gradient(rgba(40, 51, 78, .19) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(40, 51, 78, .19) 1px, transparent 1px),
+      rgba(13, 18, 32, .78);
+    background-size: 34px 34px;
+  }
+  .cycle-node {
+    position: absolute;
+    width: 168px;
+    min-height: 94px;
+    padding: 14px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: rgba(19, 26, 42, .96);
+    box-shadow: 0 16px 38px rgba(0, 0, 0, .28);
+    transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+  }
+  .cycle-node.active {
+    border-color: var(--phosphor);
+    box-shadow: 0 0 0 1px rgba(121, 226, 213, .2), 0 18px 45px rgba(0, 0, 0, .34);
+    transform: translateY(-3px);
+  }
+  .cycle-node .n {
+    color: var(--paper-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+  .cycle-node .t {
+    margin-top: 7px;
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 16px;
+    font-weight: 650;
+  }
+  .cycle-node .d {
+    margin-top: 4px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .cycle-node.prompt { top: 34px; left: calc(50% - 84px); }
+  .cycle-node.llm { top: 187px; right: 35px; }
+  .cycle-node.validate { bottom: 35px; left: calc(50% - 84px); }
+  .cycle-node.execute { top: 187px; left: 35px; }
+  .cycle-arrow {
+    position: absolute;
+    color: var(--paper-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .cycle-arrow.a1 { top: 142px; right: 27%; transform: rotate(42deg); }
+  .cycle-arrow.a2 { right: 24%; bottom: 130px; transform: rotate(136deg); }
+  .cycle-arrow.a3 { bottom: 130px; left: 24%; transform: rotate(222deg); }
+  .cycle-arrow.a4 { top: 142px; left: 26%; transform: rotate(316deg); }
+  .discard {
+    position: absolute;
+    top: 174px;
+    left: calc(50% - 70px);
+    width: 140px;
+    padding: 10px;
+    border: 1px dashed rgba(255, 143, 166, .4);
+    border-radius: 999px;
+    color: var(--rose);
+    background: rgba(255, 143, 166, .05);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-align: center;
+  }
+  .cycle-side { display: flex; flex-direction: column; gap: 14px; }
+  .state-monitor {
+    flex: 1;
+    padding: 17px;
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    background: rgba(13, 18, 32, .78);
+  }
+  .monitor-title { color: var(--paper-muted); }
+  .monitor-observation {
+    min-height: 68px;
+    margin: 12px 0 18px;
+    color: var(--paper);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .json-view {
+    min-height: 196px;
+    margin: 0;
+    padding: 14px;
+    overflow-x: auto;
+    border: 1px solid var(--rule-soft);
+    border-radius: 9px;
+    background: rgba(7, 9, 15, .72);
+    color: var(--paper-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.68;
+    white-space: pre-wrap;
+  }
+  .action-line {
+    margin-top: 12px;
+    color: var(--amber);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .primary-button {
+    width: 100%;
+    min-height: 47px;
+    border: 1px solid rgba(121, 226, 213, .48);
+    border-radius: 9px;
+    background: rgba(121, 226, 213, .11);
+    color: var(--phosphor-glow);
+    cursor: pointer;
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background .2s ease, transform .2s ease;
+  }
+  .primary-button:hover { background: rgba(121, 226, 213, .18); transform: translateY(-1px); }
+
+  /* 4. Six-layer compare */
+  .six-map { display: grid; gap: 10px; }
+  .six-row {
+    display: grid;
+    grid-template-columns: 72px 170px minmax(0, 1fr) 120px;
+    gap: 14px;
+    align-items: center;
+    min-height: 68px;
+    padding: 12px 14px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 10px;
+    background: rgba(7, 9, 15, .34);
+  }
+  .six-row .layer-id { color: var(--phosphor); }
+  .six-row .layer-name {
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .six-row .mapping {
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .six-row .verdict {
+    justify-self: end;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-align: center;
+  }
+  .verdict.bypass { background: rgba(121, 226, 213, .11); color: var(--phosphor); }
+  .verdict.replace { background: rgba(181, 155, 255, .13); color: var(--ghost-glow); }
+  .verdict.risk { background: rgba(255, 182, 120, .12); color: var(--amber); }
+
+  .spectrum {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 26px 0 12px;
+  }
+  .spectrum-item {
+    min-height: 130px;
+    padding: 13px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: rgba(19, 26, 42, .75);
+  }
+  .spectrum-item.current {
+    border-color: rgba(121, 226, 213, .58);
+    background: rgba(121, 226, 213, .07);
+  }
+  .spectrum-item .name {
+    min-height: 38px;
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+  .spectrum-item .keeps {
+    margin-top: 9px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .spectrum-axis {
+    display: flex;
+    justify-content: space-between;
+    color: var(--paper-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .spectrum-axis::before {
+    content: '';
+    position: absolute;
+  }
+
+  /* 5. Evidence */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tab-button {
+    padding: 8px 11px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--paper-muted);
+    cursor: pointer;
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+  }
+  .tab-button[aria-selected="true"] {
+    border-color: rgba(121, 226, 213, .48);
+    background: rgba(121, 226, 213, .1);
+    color: var(--phosphor-glow);
+  }
+  .evidence-panel { display: none; padding: 24px 22px 22px; }
+  .evidence-panel.active { display: block; }
+  .evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+  }
+  .metric-card {
+    min-height: 190px;
+    padding: 17px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 11px;
+    background: rgba(7, 9, 15, .4);
+  }
+  .metric-card h3 {
+    margin: 0 0 6px;
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 17px;
+  }
+  .metric-card .context {
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+  }
+  .metric-bars { display: grid; gap: 8px; margin-top: 16px; }
+  .metric-bar-row {
+    display: grid;
+    grid-template-columns: 105px minmax(0, 1fr) 46px;
+    gap: 8px;
+    align-items: center;
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+  }
+  .metric-bar-row .track { height: 8px; overflow: hidden; border-radius: 99px; background: var(--surface-3); }
+  .metric-bar-row .fill { height: 100%; border-radius: inherit; background: rgba(131, 185, 255, .66); }
+  .metric-bar-row.skill .fill { background: var(--phosphor); }
+  .metric-bar-row.skill { color: var(--phosphor-glow); }
+  .metric-bar-row .v { font-family: 'JetBrains Mono', monospace; text-align: right; }
+  .evidence-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .evidence-summary .mini {
+    padding: 14px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 9px;
+    background: rgba(7, 9, 15, .34);
+  }
+  .evidence-summary .mini b {
+    display: block;
+    color: var(--amber);
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 24px;
+    line-height: 1;
+  }
+  .evidence-summary .mini span {
+    display: block;
+    margin-top: 7px;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  /* 6. Limits */
+  .limits {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .limit-card {
+    position: relative;
+    min-height: 260px;
+    overflow: hidden;
+    padding: 21px;
+    border: 1px solid var(--rule);
+    border-radius: 13px;
+    background: linear-gradient(160deg, rgba(255, 143, 166, .07), rgba(19, 26, 42, .88) 58%);
+  }
+  .limit-card::before {
+    content: attr(data-num);
+    position: absolute;
+    right: 13px;
+    top: -22px;
+    color: rgba(255, 143, 166, .08);
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 112px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .limit-card .title {
+    position: relative;
+    margin: 12px 0 14px;
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .limit-card .body {
+    position: relative;
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .error-ring {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 30px;
+    align-items: center;
+  }
+  .donut {
+    position: relative;
+    width: 190px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: conic-gradient(var(--rose) 0 68%, var(--amber) 68% 88%, var(--ghost) 88% 100%);
+  }
+  .donut::after {
+    content: '开放权重模型\\A T = 100';
+    white-space: pre;
+    position: absolute;
+    inset: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--night);
+    color: var(--paper-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1.5;
+    text-align: center;
+  }
+  .legend { display: grid; gap: 14px; }
+  .legend-item {
+    display: grid;
+    grid-template-columns: 11px 45px 1fr;
+    gap: 10px;
+    align-items: baseline;
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+  }
+  .legend-item .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rose); }
+  .legend-item:nth-child(2) .dot { background: var(--amber); }
+  .legend-item:nth-child(3) .dot { background: var(--ghost); }
+  .legend-item b { color: var(--paper); font-family: 'Inter Tight', sans-serif; font-size: 18px; }
+
+  /* 7. Verdict */
+  .hybrid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr 60px 1fr;
+    gap: 10px;
+    align-items: stretch;
+    padding: 26px;
+    overflow: hidden;
+  }
+  .hybrid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(500px 220px at 50% 50%, rgba(121, 226, 213, .07), transparent 70%);
+    pointer-events: none;
+  }
+  .hybrid-card {
+    position: relative;
+    z-index: 1;
+    min-height: 190px;
+    padding: 17px;
+    border: 1px solid var(--rule);
+    border-radius: 11px;
+    background: rgba(13, 18, 32, .92);
+  }
+  .hybrid-card.primary { border-color: rgba(121, 226, 213, .52); }
+  .hybrid-card .id { color: var(--paper-muted); }
+  .hybrid-card .title {
+    margin: 8px 0 11px;
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .hybrid-card .body {
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .hybrid-arrow {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    color: var(--phosphor);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+  }
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .verdict-card { padding: 18px; }
+  .verdict-card .title {
+    margin-bottom: 10px;
+    color: var(--paper);
+    font-family: 'Inter Tight', 'Noto Sans SC', sans-serif;
+    font-size: 17px;
+    font-weight: 650;
+  }
+  .verdict-card ul { margin: 0; padding-left: 19px; }
+  .verdict-card li {
+    margin: 7px 0;
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  /* Sources + footer */
+  .sources { display: grid; gap: 10px; }
+  .source-row {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 16px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .source-row .kind { color: var(--paper-muted); }
+  .source-row .desc {
+    color: var(--paper-dim);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  footer {
+    margin-top: 104px;
+    padding: 40px 24px 68px;
+    border-top: 1px solid var(--rule);
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    width: min(var(--max), 100%);
+    margin: 0 auto;
+    color: var(--paper-muted);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+  }
+
+  @media (max-width: 980px) {
+    .hero-inner { grid-template-columns: 1fr; gap: 20px; }
+    .state-stage { min-height: 440px; width: min(560px, 100%); margin: 0 auto; }
+    .hero-stats { grid-template-columns: 1fr 1fr; }
+    .hero-stat:nth-child(2) { border-right: 0; }
+    .hero-stat:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
+    .chapter { grid-template-columns: 150px minmax(0, 1fr); gap: 34px; }
+    .spectrum { grid-template-columns: repeat(3, 1fr); }
+    .hybrid { grid-template-columns: 1fr; }
+    .hybrid-arrow { min-height: 36px; transform: rotate(90deg); }
+  }
+
+  @media (max-width: 760px) {
+    body { font-size: 17px; }
+    .hero-inner, main, .progress-inner { width: min(100% - 32px, var(--max)); }
+    .hero-inner { padding-top: 48px; }
+    .hero { min-height: auto; }
+    .hero h1 { font-size: clamp(42px, 14vw, 60px); }
+    .hero .lede { font-size: 19px; }
+    .hero-stats { grid-template-columns: 1fr; }
+    .hero-stat, .hero-stat:first-child { padding: 14px 0; border-right: 0; border-bottom: 1px solid var(--rule); }
+    .hero-stat:last-child { border-bottom: 0; }
+    .progress-title { display: none; }
+    .progress-nav a { padding-right: 12px; padding-left: 12px; }
+    .chapter { display: block; padding-top: 78px; }
+    .chapter-rail-inner { position: static; margin-bottom: 15px; }
+    .chapter-kicker { display: none; }
+    .section-head { font-size: 34px; }
+    .section-deck { font-size: 18px; }
+    .runtime-compare, .formula-row, .cycle-layout, .limits, .error-ring, .verdict-grid { grid-template-columns: 1fr; }
+    .runtime { min-height: auto; }
+    .chart-row { grid-template-columns: 95px minmax(0, 1fr) 68px; }
+    .cycle-canvas { min-height: 560px; }
+    .cycle-node.prompt { top: 25px; }
+    .cycle-node.llm { top: 166px; right: 18px; }
+    .cycle-node.validate { bottom: 26px; }
+    .cycle-node.execute { top: 333px; left: 18px; }
+    .discard { top: 260px; }
+    .cycle-arrow { display: none; }
+    .six-row { grid-template-columns: 54px 1fr; gap: 7px 12px; }
+    .six-row .mapping { grid-column: 1 / -1; }
+    .six-row .verdict { grid-column: 2; grid-row: 1; }
+    .spectrum { grid-template-columns: 1fr 1fr; }
+    .evidence-grid, .evidence-summary { grid-template-columns: 1fr; }
+    .donut { margin: 0 auto; }
+    .source-row { grid-template-columns: 1fr; gap: 4px; }
+    .footer-inner { flex-direction: column; }
+  }
+
+  @media (max-width: 460px) {
+    .state-stage { min-height: 410px; }
+    .state-card { width: 92%; }
+    .state-card.spec { left: 0; }
+    .state-card.state { left: 4%; }
+    .state-card.obs { left: 8%; }
+    .state-stage-label { display: none; }
+    .panel-head { flex-direction: column; }
+    .panel-body, .runtime, .evidence-panel, .hybrid { padding: 16px; }
+    .chart-row { grid-template-columns: 1fr 54px; }
+    .chart-row .bar-track { grid-column: 1 / -1; grid-row: 2; }
+    .spectrum { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <div class="crumbs mono">
+        <span>ML Learning Notes</span><span class="dot"></span>
+        <span>Agent Context</span><span class="dot"></span>
+        <span>论文精读</span>
+      </div>
+      <div class="eyebrow mono">SKILL.state · arXiv:2608.26263v3</div>
+      <h1>把历史<span class="accent">扔掉</span><br>只带当前状态</h1>
+      <p class="lede">
+        这篇论文没有发明一个更好的摘要器。它做得更激进：<strong>不再让 Agent 从历史里重建“现在”</strong>，
+        而是每一步只交给模型三样东西——规则、当前状态、最新观察。
+      </p>
+      <div class="paper-note" aria-label="内容标记说明">
+        <span class="chip fact">论文直接支持</span>
+        <span class="chip compare">结合既有 compression research</span>
+        <span class="chip inference">工程推导与质疑</span>
+      </div>
+    </div>
+
+    <div class="state-stage" aria-label="SKILL.state 三层输入立体示意图">
+      <div class="state-card spec">
+        <div class="card-head mono"><span>P</span><span>Immutable</span></div>
+        <div class="card-body"><span class="key">skill_spec</span>: <span class="value">"管理仓库库存"</span><br><span class="muted">// 规则与动作空间</span></div>
+      </div>
+      <div class="state-card state">
+        <div class="card-head mono"><span>Σ<sub>t</sub></span><span>Mutable</span></div>
+        <div class="card-body">{<br>&nbsp;&nbsp;<span class="key">"shelf_42"</span>: <span class="value">"item_12"</span>,<br>&nbsp;&nbsp;<span class="key">"tested"</span>: [<span class="value">"aisle_b"</span>]<br>}</div>
+      </div>
+      <div class="state-card obs">
+        <div class="card-head mono"><span>O<sub>t</sub></span><span>Latest only</span></div>
+        <div class="card-body"><span class="value">Customer ordered item_12.</span></div>
+      </div>
+      <div class="state-stage-label"><strong>每轮固定三层</strong>过去的推理、动作与观察不再叠上来。</div>
+    </div>
+
+    <div class="hero-stats sans">
+      <div class="hero-stat"><span class="label mono">T = 100</span><span class="value"><b>16.2×</b> token reduction</span></div>
+      <div class="hero-stat"><span class="label mono">Recovery</span><span class="value"><b>0</b> 步恢复外部漂移</span></div>
+      <div class="hero-stat"><span class="label mono">Complexity</span><span class="value"><b>O(T)</b> 累计提示开销</span></div>
+      <div class="hero-stat"><span class="label mono">Core bet</span><span class="value">状态是未来的充分统计量</span></div>
+    </div>
+  </div>
+</header>
+
+<nav class="progress-nav" aria-label="论文精读章节导航">
+  <div class="progress-inner">
+    <span class="progress-title mono">Reading map</span>
+    <a href="#thesis">01 核心改写</a>
+    <a href="#complexity">02 复杂度</a>
+    <a href="#runtime">03 跑一轮</a>
+    <a href="#comparison">04 放回六层</a>
+    <a href="#evidence">05 证据</a>
+    <a href="#limits">06 边界</a>
+    <a href="#verdict">07 我的结论</a>
+  </div>
+</nav>
+
+<main>
+
+<section class="chapter" id="thesis">
+  <aside class="chapter-rail"><div class="chapter-rail-inner">
+    <div class="chapter-num mono">Chapter 01</div>
+    <div class="chapter-kicker">先看论文到底改写了哪个问题</div>
+  </div></aside>
+  <div class="chapter-body">
+    <h2 class="section-head">不是更聪明地压历史，<br>而是不再依赖历史</h2>
+    <p class="section-deck">传统 Agent 把“当前状态”散落在整段对话里；SKILL.state 把它提炼成一个<strong>由运行时拥有、由程序校验的结构化对象</strong>。</p>
+
+    <div class="runtime-compare">
+      <div class="runtime old panel">
+        <div class="runtime-label mono">Before · implicit state</div>
+        <div class="runtime-name">对话历史就是状态</div>
+        <div class="history-stack" aria-label="不断增长的传统 Agent 历史">
+          <div class="history-line obsolete"><span>O₁ → R₁ → a₁</span><span class="weight">重读</span></div>
+          <div class="history-line obsolete"><span>O₂ → R₂ → a₂</span><span class="weight">重读</span></div>
+          <div class="history-line obsolete"><span>O₃ → R₃ → a₃</span><span class="weight">重读</span></div>
+          <div class="history-line"><span>… 旧事实与失败假设 …</span><span class="weight">重读</span></div>
+          <div class="history-line latest"><span>O<sub>t</sub> → ?</span><span class="weight">现在</span></div>
+        </div>
+        <div class="history-brace">每一步重新解释整段过去</div>
+      </div>
+
+      <div class="runtime new panel">
+        <div class="runtime-label mono">After · explicit state</div>
+        <div class="runtime-name">状态是一个明确的 API</div>
+        <div class="state-triplet">
+          <div class="triplet-row"><div class="symbol">P</div><div><strong>程序规范</strong><small>不变：目标、规则、动作空间</small></div></div>
+          <div class="triplet-row"><div class="symbol">Σ</div><div><strong>当前执行状态</strong><small>可变：只保留未来决策需要的事实</small></div></div>
+          <div class="triplet-row"><div class="symbol">O</div><div><strong>最新观察</strong><small>只给这一轮，不回放旧观察</small></div></div>
+        </div>
+        <div class="bounded">A<sub>t</sub> = (P, Σ<sub>t</sub>, O<sub>t</sub>)</div>
+      </div>
+    </div>
+
+    <div class="note mint">
+      <span class="source-tag fact">论文事实</span>
+      单步内仍然允许完整的多步推理。被丢弃的是<strong>跨步携带的推理痕迹</strong>，不是模型在这一轮里思考的能力。模型输出
+      <code>(Rₜ, ΔΣₜ, aₜ)</code>；运行时校验并合并 <code>ΔΣₜ</code> 后，只让更新后的 <code>Σₜ₊₁</code> 进入下一轮。
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="complexity">
+  <aside class="chapter-rail"><div class="chapter-rail-inner">
+    <div class="chapter-num mono">Chapter 02</div>
+    <div class="chapter-kicker">拖动步数，直观看见二次增长</div>
+  </div></aside>
+  <div class="chapter-body">
+    <h2 class="section-head">为什么会从 O(T²)<br>掉到 O(T)</h2>
+    <p class="section-deck">如果第 <em>t</em> 步要重读前面 <em>t</em> 步的历史，把所有请求加起来就是三角形面积；若每一步只读固定大小的状态，总量就是一条直线。</p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Warehouse 实验 · 累计 token</div><div class="panel-sub">Gemini-3-Flash · 论文表 1 · 均值，滑杆切换执行 horizon</div></div>
+        <span class="chip fact">原始数据</span>
+      </div>
+      <div class="panel-body">
+        <div class="formula-row">
+          <div class="formula-card old"><div class="mono">History runtime</div><div class="formula">∑ O(t) = O(T²)</div><div class="desc">每一轮都比上一轮背得更多</div></div>
+          <div class="formula-card new"><div class="mono">SKILL.state</div><div class="formula">∑ O(1) = O(T)</div><div class="desc">每一轮只背 P + Σ + O</div></div>
+        </div>
+
+        <label class="range-wrap" for="horizon-range">
+          <span><span class="sr-only">选择执行步数</span><input id="horizon-range" type="range" min="0" max="4" step="1" value="3" aria-describedby="horizon-description"></span>
+          <span class="range-value" id="horizon-description">T = 100</span>
+        </label>
+
+        <div class="chart" id="token-chart" aria-live="polite">
+          <div class="chart-row" data-series="prompt"><div class="chart-label">Prompt / ReAct</div><div class="bar-track"><div class="bar prompt"></div></div><div class="chart-value"></div></div>
+          <div class="chart-row" data-series="memory"><div class="chart-label">Memory / Summary</div><div class="bar-track"><div class="bar memory"></div></div><div class="chart-value"></div></div>
+          <div class="chart-row" data-series="stateful"><div class="chart-label">Stateful + history</div><div class="bar-track"><div class="bar stateful"></div></div><div class="chart-value"></div></div>
+          <div class="chart-row" data-series="skill"><div class="chart-label">SKILL.state</div><div class="bar-track"><div class="bar skill"></div></div><div class="chart-value"></div></div>
+        </div>
+
+        <div class="ratio-card">
+          <div class="big" id="ratio-value">16.2×</div>
+          <div class="txt" id="ratio-copy">在 T = 100 时，相比 Stateful 基线，SKILL.state 的累计 token 少 16.2 倍，同时准确率从 0.91 升到 0.94。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="source-tag inference">关键条件</span>
+      <strong>固定 schema 不等于固定 state 大小。</strong>论文的 O(1) 单步结论要求 <code>|P|</code>、<code>|Σ|</code>、<code>|O|</code> 都不随 T 增长。
+      如果 <code>tested_hypotheses</code> 这样的列表无限追加，状态本身仍会重新长成一段历史。这是公式成立的工程前提，不是自动获得的性质。
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="runtime">
+  <aside class="chapter-rail"><div class="chapter-rail-inner">
+    <div class="chapter-num mono">Chapter 03</div>
+    <div class="chapter-kicker">亲手跑一轮状态转移</div>
+  </div></aside>
+  <div class="chapter-body">
+    <h2 class="section-head">Agent 每一步到底发生什么</h2>
+    <p class="section-deck">运行时不是“相信模型写对了 JSON”。它把模型当作一个<strong>状态补丁提议者</strong>：先校验，再合并，再执行；无效补丁回滚重试。</p>
+
+    <div class="cycle-layout">
+      <div class="cycle-canvas" aria-label="SKILL.state 四阶段执行循环">
+        <div class="cycle-node prompt active" data-cycle="0"><div class="n">01 · Construct</div><div class="t">组装 P + Σ + O</div><div class="d">只使用当前足够信息</div></div>
+        <div class="cycle-node llm" data-cycle="1"><div class="n">02 · Generate</div><div class="t">生成 R + ΔΣ + a</div><div class="d">本轮推理仍然完整</div></div>
+        <div class="cycle-node validate" data-cycle="2"><div class="n">03 · Validate</div><div class="t">校验并合并补丁</div><div class="d">null 代表删除键</div></div>
+        <div class="cycle-node execute" data-cycle="3"><div class="n">04 · Execute</div><div class="t">执行动作</div><div class="d">结果成为下一条 O</div></div>
+        <span class="cycle-arrow a1" aria-hidden="true">────→</span>
+        <span class="cycle-arrow a2" aria-hidden="true">────→</span>
+        <span class="cycle-arrow a3" aria-hidden="true">────→</span>
+        <span class="cycle-arrow a4" aria-hidden="true">────→</span>
+        <div class="discard">Rₜ 用完即丢</div>
+      </div>
+
+      <div class="cycle-side">
+        <div class="state-monitor">
+          <div class="monitor-title mono">Warehouse replay</div>
+          <div class="monitor-observation" id="observation-text">Latest observation: Customer ordered item_12.</div>
+          <pre class="json-view" id="state-json">{
+  "inventory": {
+    "shelf_42": "item_12"
+  },
+  "last_result": "stored"
+}</pre>
+          <div class="action-line" id="action-text">action → Ship item_12 shelf_42</div>
+        </div>
+        <button class="primary-button" type="button" id="next-step">运行下一步状态转移</button>
+      </div>
+    </div>
+
+    <div class="note ghost">
+      <span class="source-tag compare">对照已有研究</span>
+      这里最像你研究里的“结构化摘要”，但权力关系不同：摘要仍是一段由模型自由改写的自然语言；<code>Σ</code> 是有 schema、类型和确定性 validator 的运行时状态。
+      论文表 5 的 budget-matched 对照正是在问：<strong>同样短，结构化状态是否比裁剪/摘要更可靠？</strong>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="comparison">
+  <aside class="chapter-rail"><div class="chapter-rail-inner">
+    <div class="chapter-num mono">Chapter 04</div>
+    <div class="chapter-kicker">把论文放回你的六层坐标系</div>
+  </div></aside>
+  <div class="chapter-body">
+    <h2 class="section-head">SKILL.state 不是第十二种压缩器</h2>
+    <p class="section-deck">你的 compression research 把系统拆成测量、触发、选点、减法、重组、持久化六层。SKILL.state 的特别之处是：<strong>它把“偶尔压一次”改成“每轮投影一次”</strong>。</p>
+
+    <div class="panel">
+      <div class="panel-head"><div><div class="panel-title">六层映射</div><div class="panel-sub">紫色代表替换了传统机制；绿色代表绕过；橙色代表风险仍然存在</div></div><span class="chip compare">研究对照</span></div>
+      <div class="panel-body six-map">
+        <div class="six-row"><div class="layer-id mono">L1</div><div class="layer-name">Measurement 测量</div><div class="mapping">不再等窗口接近上限；每轮输入由 schema 直接决定。</div><div class="verdict bypass">基本绕过</div></div>
+        <div class="six-row"><div class="layer-id mono">L2</div><div class="layer-name">Trigger 触发</div><div class="mapping">没有 75% / 20K reserve / overflow 触发；每一个 step 都做状态投影。</div><div class="verdict replace">改成逐轮</div></div>
+        <div class="six-row"><div class="layer-id mono">L3</div><div class="layer-name">Selection 选点</div><div class="mapping">选择规则极硬：只留 P、Σₜ、Oₜ；过去的 R、a、O 不进入下一轮。</div><div class="verdict replace">固定白名单</div></div>
+        <div class="six-row"><div class="layer-id mono">L4</div><div class="layer-name">Reduction 减法</div><div class="mapping">不是摘要旧文本，而是让模型生成结构化 ΔΣ，再由运行时合并。</div><div class="verdict replace">状态投影</div></div>
+        <div class="six-row"><div class="layer-id mono">L5</div><div class="layer-name">Reassembly 重组</div><div class="mapping">下一轮永远重组为同一个三段式 prompt；tool pair 与角色交替问题消失。</div><div class="verdict bypass">结构更简单</div></div>
+        <div class="six-row"><div class="layer-id mono">L6</div><div class="layer-name">Persistence 持久化</div><div class="mapping">Σ 成为跨步执行记忆；但审计、回捞和来源证明不能只靠 Σ。</div><div class="verdict risk">需额外设计</div></div>
+      </div>
+    </div>
+
+    <h3 class="subhead">它在现有光谱上的位置</h3>
+    <div class="spectrum" aria-label="从完整历史到纯结构化状态的压缩光谱">
+      <div class="spectrum-item"><div class="name">ReAct</div><div class="keeps">P + 全部 O/R/a<br>不丢任何历史</div></div>
+      <div class="spectrum-item"><div class="name">OpenHands / Goose</div><div class="keeps">事件日志保留<br>模型视图可压缩</div></div>
+      <div class="spectrum-item"><div class="name">Codex / kimi-code</div><div class="keeps">阈值后丢 assistant/tool<br>留用户原话 + 摘要</div></div>
+      <div class="spectrum-item"><div class="name">LangGraph-style</div><div class="keeps">结构化状态<br>但仍附完整历史</div></div>
+      <div class="spectrum-item current"><div class="name">SKILL.state</div><div class="keeps">每轮只留 P + Σ + O<br>推理不跨步</div></div>
+    </div>
+    <div class="spectrum-axis"><span>更多原始历史</span><span>更强的状态投影</span></div>
+
+    <div class="note mint">
+      <span class="source-tag compare">最重要的呼应</span>
+      你原研究的结论是“最好的压缩是不压缩，让不该进上下文的信息一开始就别进来”。SKILL.state 把这条从经验建议推进成了一套完整 runtime：
+      <strong>用状态更新能力，替代长上下文记忆能力。</strong>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="evidence">
+  <aside class="chapter-rail"><div class="chapter-rail-inner">
+    <div class="chapter-num mono">Chapter 05</div>
+    <div class="chapter-kicker">结果不只看一张最好看的表</div>
+  </div></aside>
+  <div class="chapter-body">
+    <h2 class="section-head">论文的证据有多强</h2>
+    <p class="section-deck">作者同时测了长程增长、噪声、外部状态漂移、公开交互 benchmark 和同预算压缩。切换下面四组图，不把某一个 headline 当成全部结论。</p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">实验仪表盘</div><div class="panel-sub">所有数值均来自论文 v3；synthetic 结果为 5 个 seed 的均值</div></div>
+        <div class="tabs" role="tablist" aria-label="选择实验组">
+          <button class="tab-button" type="button" role="tab" aria-selected="true" aria-controls="panel-budget" id="tab-budget" data-tab="budget">同预算</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panel-noise" id="tab-noise" data-tab="noise">噪声</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panel-public" id="tab-public" data-tab="public">公开任务</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panel-recovery" id="tab-recovery" data-tab="recovery">状态恢复</button>
+        </div>
+      </div>
+
+      <div class="evidence-panel active" id="panel-budget" role="tabpanel" aria-labelledby="tab-budget">
+        <div class="evidence-grid">
+          <div class="metric-card">
+            <h3>同样约 1,800 提示预算</h3>
+            <div class="context">Warehouse · T = 100 · Gemini-3-Flash</div>
+            <div class="metric-bars">
+              <div class="metric-bar-row"><span>Sliding window</span><span class="track"><span class="fill" style="display:block;width:19%"></span></span><span class="v">0.18</span></div>
+              <div class="metric-bar-row"><span>Summary-capped</span><span class="track"><span class="fill" style="display:block;width:55%"></span></span><span class="v">0.52</span></div>
+              <div class="metric-bar-row"><span>LLMLingua</span><span class="track"><span class="fill" style="display:block;width:23%"></span></span><span class="v">0.22</span></div>
+              <div class="metric-bar-row skill"><span>SKILL.state</span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="v">0.94</span></div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <h3>这张表真正说明什么</h3>
+            <div class="context">短不是充分条件，内容的表示方式才是变量</div>
+            <div class="note mint" style="margin:16px 0 0">随机裁掉“看起来冗余”的 token，会连 shelf ID 这样的低熵、高语义标识符一起删掉；结构化状态则明确知道哪些关系必须留下。</div>
+          </div>
+        </div>
+        <div class="note">
+          <span class="source-tag inference">读表提醒</span>
+          论文的指标定义把 Average Prompt Size 写成<strong>字符数</strong>，但 §5.6 的正文又把约 1,800 写成<strong>tokens</strong>。表 5 的单位表述存在不一致；本页保留为“提示预算”，不替作者消解这个差异。
+        </div>
+      </div>
+
+      <div class="evidence-panel" id="panel-noise" role="tabpanel" aria-labelledby="tab-noise" hidden>
+        <div class="evidence-grid">
+          <div class="metric-card">
+            <h3>低噪声 · 5 events / turn</h3><div class="context">Warehouse · T = 50</div>
+            <div class="metric-bars">
+              <div class="metric-bar-row"><span>Prompt</span><span class="track"><span class="fill" style="display:block;width:68%"></span></span><span class="v">0.68</span></div>
+              <div class="metric-bar-row"><span>Memory</span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="v">1.00</span></div>
+              <div class="metric-bar-row"><span>Stateful</span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="v">1.00</span></div>
+              <div class="metric-bar-row skill"><span>SKILL.state</span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="v">1.00</span></div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <h3>高噪声 · 50 events / turn</h3><div class="context">Warehouse · T = 50</div>
+            <div class="metric-bars">
+              <div class="metric-bar-row"><span>Prompt</span><span class="track"><span class="fill" style="display:block;width:53%"></span></span><span class="v">0.53</span></div>
+              <div class="metric-bar-row"><span>Memory</span><span class="track"><span class="fill" style="display:block;width:96%"></span></span><span class="v">0.96</span></div>
+              <div class="metric-bar-row"><span>Stateful</span><span class="track"><span class="fill" style="display:block;width:98%"></span></span><span class="v">0.98</span></div>
+              <div class="metric-bar-row skill"><span>SKILL.state</span><span class="track"><span class="fill" style="display:block;width:98%"></span></span><span class="v">0.98</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="note ghost"><span class="source-tag inference">诚实解读</span>这组结果证明“别把无关 telemetry 留在未来 prompt 里”很有效，但不是 SKILL.state 独占优势：Memory 与 Stateful 在高噪声下也达到 0.96 / 0.98。论文 Appendix C 也明确说这里只测了 irrelevant context，不是所有类型的 context corruption。</div>
+      </div>
+
+      <div class="evidence-panel" id="panel-public" role="tabpanel" aria-labelledby="tab-public" hidden>
+        <div class="evidence-grid">
+          <div class="metric-card">
+            <h3>InterCode CTF · Pass@1</h3><div class="context">100 tasks · Gemini-3-Flash</div>
+            <div class="metric-bars">
+              <div class="metric-bar-row"><span>Prompt</span><span class="track"><span class="fill" style="display:block;width:72%"></span></span><span class="v">43.2</span></div>
+              <div class="metric-bar-row"><span>Memory</span><span class="track"><span class="fill" style="display:block;width:77%"></span></span><span class="v">46.4</span></div>
+              <div class="metric-bar-row"><span>Stateful</span><span class="track"><span class="fill" style="display:block;width:70%"></span></span><span class="v">41.8</span></div>
+              <div class="metric-bar-row skill"><span>SKILL.state</span><span class="track"><span class="fill" style="display:block;width:90%"></span></span><span class="v">54.2</span></div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <h3>τ-Bench · Pass rate</h3><div class="context">Retail / Airline</div>
+            <div class="metric-bars">
+              <div class="metric-bar-row"><span>Prompt retail</span><span class="track"><span class="fill" style="display:block;width:74%"></span></span><span class="v">48.2</span></div>
+              <div class="metric-bar-row skill"><span>SKILL retail</span><span class="track"><span class="fill" style="display:block;width:90%"></span></span><span class="v">58.3</span></div>
+              <div class="metric-bar-row"><span>Prompt airline</span><span class="track"><span class="fill" style="display:block;width:34%"></span></span><span class="v">21.8</span></div>
+              <div class="metric-bar-row skill"><span>SKILL airline</span><span class="track"><span class="fill" style="display:block;width:50%"></span></span><span class="v">32.4</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="evidence-summary">
+          <div class="mini"><b>−60.4%</b><span>InterCode token，相比 ReAct</span></div>
+          <div class="mini"><b>58.3%</b><span>τ-Bench Retail 通过率</span></div>
+          <div class="mini"><b>2.88M</b><span>τ-Bench Airline 累计 token</span></div>
+        </div>
+        <div class="note"><span class="source-tag inference">别漏掉反例</span>在 τ-Bench Retail，SKILL.state 的平均 prompt 数值是 3,325，高于 ReAct 的 2,819；它赢的是总 token 与任务成功率，不是每个表格单元都最小。</div>
+      </div>
+
+      <div class="evidence-panel" id="panel-recovery" role="tabpanel" aria-labelledby="tab-recovery" hidden>
+        <div class="evidence-grid">
+          <div class="metric-card">
+            <h3>外部世界偷偷变了</h3><div class="context">Secret Audit / Barcode / Move</div>
+            <div class="evidence-summary" style="grid-template-columns:1fr 1fr">
+              <div class="mini"><b>5–8</b><span>Prompt / Memory / Stateful 恢复步数</span></div>
+              <div class="mini"><b style="color:var(--phosphor)">0</b><span>SKILL.state 恢复步数</span></div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <h3>为什么不是魔法</h3><div class="context">新观察能否准确纠正状态</div>
+            <div class="note mint" style="margin:16px 0 0">旧历史仍写着“item 在 A”，会和新告警打架；SKILL.state 只更新当前 Σ，下一轮看不到旧事实。但如果告警没有被识别为相关事实并写入 Σ，它同样会失败。</div>
+          </div>
+        </div>
+        <div class="note ghost"><span class="source-tag fact">论文边界</span>在 Canceled Order 场景里，所有 runtime 都失败。显式状态可以消除旧文本的干扰，却不能弥补环境没有提供、schema 没表达或模型没识别的信息。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="limits">
+  <aside class="chapter-rail"><div class="chapter-rail-inner">
+    <div class="chapter-num mono">Chapter 06</div>
+    <div class="chapter-kicker">什么时候不该用纯 SKILL.state</div>
+  </div></aside>
+  <div class="chapter-body">
+    <h2 class="section-head">“状态是充分统计量”<br>什么时候会破</h2>
+    <p class="section-deck">论文自己给了三个明确反例。它们不是小瑕疵，而是决定这套架构是否适用的入口条件。</p>
+
+    <div class="limits">
+      <div class="limit-card" data-num="1"><div class="mono" style="color:var(--rose)">Schema unknown</div><div class="title">你事先不知道该记什么</div><div class="body">开放式研究、探索性 debug、科学发现里，关键变量本身要在执行中才被发现。固定 schema 可能过早锁死问题空间。</div></div>
+      <div class="limit-card" data-num="2"><div class="mono" style="color:var(--rose)">Deferred relevance</div><div class="title">当时看着没用，后来才关键</div><div class="body">某条旧观察第一次出现时没被写入 Σ，后面再发现它重要也已经捞不回来。纯状态投影没有“回看原文”的机会。</div></div>
+      <div class="limit-card" data-num="3"><div class="mono" style="color:var(--rose)">History is output</div><div class="title">过去本身就是交付物</div><div class="body">审计、溯源、解释“为什么这样做”、复盘失败轨迹时，历史不是开销，而是你要保留和检索的证据。</div></div>
+    </div>
+
+    <h3 class="subhead">新的瓶颈：模型能不能稳定维护结构化状态</h3>
+    <div class="panel">
+      <div class="panel-body error-ring">
+        <div class="donut" role="img" aria-label="开放权重模型错误构成：68% 过早覆盖或删除状态，20% schema 理解或类型转换，12% JSON 语法格式"></div>
+        <div class="legend">
+          <div class="legend-item"><span class="dot"></span><b>68%</b><span>过早覆盖 / 删除既有 key</span></div>
+          <div class="legend-item"><span class="dot"></span><b>20%</b><span>schema 理解 / 类型转换错误</span></div>
+          <div class="legend-item"><span class="dot"></span><b>12%</b><span>JSON 语法与格式错误</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="source-tag fact">论文事实</span>
+      Gemma-4-31B 在 T = 100 的 score 为 0.42。作者把失败主要归因于结构化输出遵从，并建议未来接 grammar-constrained decoding。
+      但 68% 的“错误删除状态”并不只是语法问题：即使 JSON 完全合法，语义上也可能把正确状态覆盖掉。
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="verdict">
+  <aside class="chapter-rail"><div class="chapter-rail-inner">
+    <div class="chapter-num mono">Chapter 07</div>
+    <div class="chapter-kicker">结合既有研究后的工程结论</div>
+  </div></aside>
+  <div class="chapter-body">
+    <h2 class="section-head">我会采用它的“模型视图”，<br>不会采用它的“唯一记忆”</h2>
+    <p class="section-deck">对程序化、长程、可建模的任务，SKILL.state 是比滚动摘要更干净的执行语义；对生产系统，最好再补上你已有研究强调的<strong>可逆性与证据链</strong>。</p>
+
+    <div class="hybrid panel" aria-label="推荐的混合架构">
+      <div class="hybrid-card">
+        <div class="id mono">Layer A · canonical</div>
+        <div class="title">只追加的事件日志</div>
+        <div class="body">保存观察、动作、工具结果、状态版本与验证结果。不给模型常驻读取，但支持审计、回放和定向 recall。</div>
+      </div>
+      <div class="hybrid-arrow" aria-hidden="true">→</div>
+      <div class="hybrid-card">
+        <div class="id mono">Layer B · projector</div>
+        <div class="title">确定性状态投影器</div>
+        <div class="body">校验 ΔΣ、执行 null-delete merge、维护版本号与不变量；必要时从事件重建状态。</div>
+      </div>
+      <div class="hybrid-arrow" aria-hidden="true">→</div>
+      <div class="hybrid-card primary">
+        <div class="id mono">Layer C · model-visible</div>
+        <div class="title">有界 P + Σ + O</div>
+        <div class="body">模型每轮只看当前执行所需的最小视图；缺信息时拿 evidence ref 定向回捞，不把全历史重新塞回来。</div>
+      </div>
+    </div>
+
+    <div class="verdict-grid">
+      <div class="verdict-card panel">
+        <div class="title">适合直接用 SKILL.state</div>
+        <ul>
+          <li>动作空间稳定、状态字段能预先枚举</li>
+          <li>环境每一步都会给出可靠的新观察</li>
+          <li>目标是完成任务，而不是解释完整历史</li>
+          <li>运行时能严格校验 patch 与业务不变量</li>
+        </ul>
+      </div>
+      <div class="verdict-card panel">
+        <div class="title">应该加 history / recall 层</div>
+        <ul>
+          <li>研究与 debug 中，事实价值会延迟显现</li>
+          <li>需要审计、回滚、来源证明与复盘</li>
+          <li>schema 会在任务执行中演化</li>
+          <li>多 Agent 会并发写同一个状态</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note ghost">
+      <span class="source-tag compare">最终定位</span>
+      SKILL.state 不是 compression research 的反例，而是它最上游的一步：<strong>先把“当前执行事实”从对话里独立出来，再决定剩余历史要不要压、怎么存、何时回捞。</strong>
+      它解决的是 working context；canonical trace、provenance 和 evolving intent 仍需要独立机制。
+    </div>
+
+    <h3 class="subhead">来源与陈述边界</h3>
+    <div class="sources">
+      <div class="source-row"><div class="kind mono">Paper</div><div class="desc"><a href="https://arxiv.org/html/2608.26263" target="_blank" rel="noreferrer">SKILL.state: Scalable Long-Horizon Agent Skills</a>，arXiv:2608.26263v3，2026-09-02。公式、runtime、benchmark 数字、错误分类与 limitations 均按此版本。</div></div>
+      <div class="source-row"><div class="kind mono">Prior research</div><div class="desc"><a href="../Agent_Context_Compression_Research.html">开源 Agent 平台的 Context Compression 机制研究</a>。本页的六层映射、与 Codex / kimi-code / OpenHands / Goose 等实现的对照来自该研究。</div></div>
+      <div class="source-row"><div class="kind mono">Learning path</div><div class="desc"><a href="../learn/">把上下文压小而不压坏</a>。如果六层模型、tool-result pruning、持久化与回捞还不熟，建议先读这篇。</div></div>
+      <div class="source-row"><div class="kind mono">Boundary</div><div class="desc">“固定 schema 不保证固定 state size”、三层混合架构和对实验口径的质疑属于本页工程推导，不是论文作者的原句或完整主张。</div></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <span>SKILL.state 论文精读 · Agent Context Compression 系列</span>
+    <span><a href="../../">← 返回 ML Learning Notes</a> · <a href="../learn/">Compression 学习路径</a> · <a href="https://arxiv.org/html/2608.26263" target="_blank" rel="noreferrer">论文原文</a></span>
+  </div>
+</footer>
+
+<script>
+  const horizons = [10, 25, 50, 100, 200];
+  const tokenSeries = {
+    prompt:   [9438, 42689, 171658, 1245413, 2608755],
+    memory:   [9972, 43067, 131455, 1082154, 6175509],
+    stateful: [10337, 41238, 170992, 1062387, 5041164],
+    skill:    [5870, 14714, 30151, 65408, 122384]
+  };
+  const scoreSeries = {
+    prompt:   [0.90, 0.92, 0.88, 0.84, 0.74],
+    memory:   [1.00, 0.99, 0.93, 0.87, 0.84],
+    stateful: [1.00, 1.00, 0.94, 0.91, 0.88],
+    skill:    [1.00, 1.00, 0.96, 0.94, 0.94]
+  };
+
+  const formatTokens = value => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(2)}M`;
+    if (value >= 1000) return `${Math.round(value / 1000)}k`;
+    return String(value);
+  };
+
+  const horizonRange = document.querySelector('#horizon-range');
+  const horizonDescription = document.querySelector('#horizon-description');
+  const ratioValue = document.querySelector('#ratio-value');
+  const ratioCopy = document.querySelector('#ratio-copy');
+
+  function renderTokenChart() {
+    const index = Number(horizonRange.value);
+    const horizon = horizons[index];
+    const values = Object.values(tokenSeries).map(series => series[index]);
+    const max = Math.max(...values);
+    horizonDescription.textContent = `T = ${horizon}`;
+
+    document.querySelectorAll('#token-chart .chart-row').forEach(row => {
+      const key = row.dataset.series;
+      const value = tokenSeries[key][index];
+      const width = Math.max(1.5, (value / max) * 100);
+      const bar = row.querySelector('.bar');
+      bar.style.width = `${width}%`;
+      bar.parentElement.setAttribute('aria-label', `${row.querySelector('.chart-label').textContent}: ${value.toLocaleString()} tokens`);
+      row.querySelector('.chart-value').textContent = formatTokens(value);
+    });
+
+    const ratio = tokenSeries.stateful[index] / tokenSeries.skill[index];
+    ratioValue.textContent = `${ratio.toFixed(1)}×`;
+    ratioCopy.textContent = `在 T = ${horizon} 时，相比 Stateful 基线，SKILL.state 的累计 token 少 ${ratio.toFixed(1)} 倍，同时准确率从 ${scoreSeries.stateful[index].toFixed(2)} 变为 ${scoreSeries.skill[index].toFixed(2)}。`;
+  }
+
+  horizonRange.addEventListener('input', renderTokenChart);
+  renderTokenChart();
+
+  const replay = [
+    {
+      observation: 'Latest observation: Customer ordered item_12.',
+      state: '{\n  "inventory": {\n    "shelf_42": "item_12"\n  },\n  "last_result": "stored"\n}',
+      action: 'action → Ship item_12 shelf_42'
+    },
+    {
+      observation: 'Latest observation: Success: Shipped item_12 from shelf_42.',
+      state: '{\n  "inventory": {\n    "shelf_42": null\n  },\n  "last_result": "shipped item_12"\n}',
+      action: 'action → Wait'
+    },
+    {
+      observation: 'Latest observation: Shipment arrived containing item_31.',
+      state: '{\n  "inventory": {\n    "shelf_42": null,\n    "shelf_07": "item_31"\n  },\n  "last_result": "stored item_31"\n}',
+      action: 'action → Store item_31 shelf_07'
+    }
+  ];
+  let replayIndex = 0;
+  let cycleIndex = 0;
+  const cycleNodes = [...document.querySelectorAll('[data-cycle]')];
+
+  document.querySelector('#next-step').addEventListener('click', () => {
+    cycleIndex = (cycleIndex + 1) % cycleNodes.length;
+    cycleNodes.forEach((node, index) => node.classList.toggle('active', index === cycleIndex));
+
+    if (cycleIndex === 0) {
+      replayIndex = (replayIndex + 1) % replay.length;
+      const item = replay[replayIndex];
+      document.querySelector('#observation-text').textContent = item.observation;
+      document.querySelector('#state-json').textContent = item.state;
+      document.querySelector('#action-text').textContent = item.action;
+    }
+
+    const labels = ['组装 P + Σ + O', '模型生成 R + ΔΣ + a', '运行时校验并合并', '环境执行动作'];
+    document.querySelector('#next-step').textContent = `下一步：${labels[(cycleIndex + 1) % labels.length]}`;
+  });
+
+  const tabButtons = [...document.querySelectorAll('[role="tab"]')];
+  const tabPanels = [...document.querySelectorAll('[role="tabpanel"]')];
+  tabButtons.forEach((button, index) => {
+    button.addEventListener('click', () => activateTab(button));
+    button.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      const delta = event.key === 'ArrowRight' ? 1 : -1;
+      const next = tabButtons[(index + delta + tabButtons.length) % tabButtons.length];
+      next.focus();
+      activateTab(next);
+    });
+  });
+
+  function activateTab(activeButton) {
+    tabButtons.forEach(button => button.setAttribute('aria-selected', String(button === activeButton)));
+    tabPanels.forEach(panel => {
+      const active = panel.id === `panel-${activeButton.dataset.tab}`;
+      panel.classList.toggle('active', active);
+      panel.hidden = !active;
+    });
+  }
+
+  const navLinks = [...document.querySelectorAll('.progress-nav a')];
+  const chapters = [...document.querySelectorAll('.chapter')];
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+    });
+  }, { rootMargin: '-28% 0px -62% 0px', threshold: 0 });
+  chapters.forEach(chapter => observer.observe(chapter));
+</script>
+</body>
+</html>
