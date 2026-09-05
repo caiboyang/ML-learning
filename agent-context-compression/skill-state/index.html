@@ -1,0 +1,109 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="用立体状态图、仓库逐步演示和可切换实验图表学习 SKILL.state，并与 Agent Context Compression 六层模型对照。">
+  <title>SKILL.state · 从压缩历史到维护状态</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="data.js" defer></script>
+  <script src="study.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="topbar"><a class="brand" href="https://caiboyang.github.io/ML-learning/">ML / LEARNING NOTES</a><a href="../learn/">← Context Compression</a><a href="https://arxiv.org/html/2608.26263v3">论文原文 ↗</a></header>
+<main id="main">
+<section class="hero" id="idea">
+  <div class="hero-copy"><p class="eyebrow">PAPER LAB 02 / CONTEXT ENGINEERING</p><h1>SKILL<span>.state</span></h1><h2>把过去，变成现在。</h2><p class="lede">接着你的 compression research 往前走一步：<br>如果下一步只需要“现在是什么状态”，<br>为什么每轮都要重读“之前发生过什么”？</p><div class="hero-links"><a class="button primary" href="#simulator">亲手走一轮 <span>↓</span></a><a class="button" href="#comparison">对照原来的研究 ↗</a></div><p class="meta">arXiv 2608.26263 · v3 · 2026-09-02<br>Sanket Badhe · Priyanka Tiwari · Jonghyun Chung</p></div>
+  <figure class="hero-figure"><div class="figure-top"><span>每一轮，模型只带走三层</span><span class="badge">机制示意</span></div><div class="stack-scene" role="img" aria-label="立体分层图：操作规则 P、当前状态 Σ、最新观察 O 组成下一轮输入；旧对话不进入下一轮。"><div class="stack"><div class="slab slab-p"><span>01 / PROCEDURE</span><b>P · 操作规则</b><small>任务怎么做 / 规则不变</small></div><div class="slab slab-s"><span>02 / CURRENT STATE</span><b>Σ · 当前状态</b><small>shelf_42: item_12</small></div><div class="slab slab-o"><span>03 / OBSERVATION</span><b>O · 最新观察</b><small>顾客刚刚下单</small></div><div class="stack-base"></div></div></div><figcaption><span class="dot mint"></span>规则 + 当前状态 + 新观察 <span class="muted">→ 下一步动作</span></figcaption><p class="note">立体层表示输入的三种职责，不代表内存地址或真实空间结构。<a href="https://arxiv.org/html/2608.26263v3#S3">§3 ↗</a></p></figure>
+</section>
+<nav class="chapter-nav" aria-label="章节"><a href="#idea">01 直觉</a><a href="#simulator">02 状态实验室</a><a href="#cost">03 成本</a><a href="#evidence">04 实验</a><a href="#comparison">05 六层对照</a><a href="#limits">06 边界</a><a href="#practice">07 迁移</a></nav>
+<section class="chapter" id="mechanism">
+ <div class="section-head"><span class="section-no">01</span><div><h2>从“讲一遍经历”到“更新一张表”</h2><p>把 agent 想成仓库管理员。发货时，它需要知道货物现在在哪，而不一定需要重读货物每一次搬家的对话。</p></div></div>
+ <div class="grid3">
+  <div class="panel"><span class="label-chip">完整历史</span><h3>翻工作日记</h3><div class="history-lines"><span>① A 到了 → 放 12 号架</span><span>② 12 号维修 → 搬到 42 号</span><span>③ 又聊了很多其他事情…</span><span>④ 顾客要 A → 重新找位置</span></div><p class="note">旧状态和新状态同时出现，每轮都要重新辨别。</p></div>
+  <div class="panel"><span class="label-chip">摘要 + 最近几轮</span><h3>读一份交接笔记</h3><div class="history-lines"><span>摘要：A 已完成入库和转移</span><span>最近：42 号架仍可用</span><span>最新：顾客要 A</span><span>→ 摘要有没有留下精确位置？</span></div><p class="note">可以压得很好；关键取决于摘要有没有保住将来需要的信息。</p></div>
+  <div class="panel"><span class="label-chip">SKILL.state</span><h3>直接读当前账本</h3><div class="history-lines"><span>规则 P：从所在货架发货</span><span>状态 Σ：A → shelf_42</span><span>观察 O：顾客要 A</span><span>→ 发货，然后删掉库存项</span></div><p class="note">把“现在在哪”显式记下来，不再从旧叙事里推出来。</p></div>
+ </div>
+ <div class="callout"><b>区别不在于 JSON 长得像不像摘要。</b> 区别在执行合同：状态由 runtime 管理，每轮输出增量补丁；后续输入完全依赖规则、状态和最新观察。结构化摘要也可以逐渐接近这种设计，二者不是天然互斥的类别。<a href="https://arxiv.org/html/2608.26263v3#S3">论文 §3 ↗</a></div>
+ <div class="flow"><div><b>P · Procedure</b><p>不变的操作说明、可用动作、环境规则。不是学出来的新技能。</p></div><span class="arrow">+</span><div><b>Σ · State</b><p>运行中不断变化的“账本”。读作 sigma：它只是状态变量的名字。</p></div><span class="arrow">+</span><div><b>O · Observation</b><p>环境刚刚告诉你的事。旧观察里有用的部分应已进入状态。</p></div><span class="arrow">→</span><div><b>LLM · 决策</b><p>这一轮照常推理，产出状态变化与下一步动作。</p></div></div>
+</section>
+<section class="chapter" id="simulator">
+ <div class="section-head"><span class="section-no">02</span><div><h2>走完一次“收到订单 → 发货”</h2><p>点击下一步，观察哪些东西留给下一轮。教学例子改编自附录 B.3；用扁平字典演示补丁，避免把论文未完全展开的嵌套合并语义当成既定实现。</p></div></div>
+ <div class="panel"><div class="step-track" id="step-track" aria-hidden="true"></div><div class="controls"><button id="sim-prev" type="button">← 上一步</button><button id="sim-next" type="button">下一步 →</button><button id="sim-reset" type="button">重置</button><span class="badge" id="sim-count">1 / 6</span></div>
+ <div class="sim-grid"><div><div class="warehouse" role="img" aria-label="示意仓库：12 号与 42 号货架上分别有货物，随后 42 号货架货物被发出。"><div class="warehouse-floor" id="warehouse"></div></div><div class="sim-caption" aria-live="polite"><h3 id="sim-title"></h3><p id="sim-description"></p></div></div><div class="sim-state"><div class="state-box"><div class="label">Σ / 模型保存的当前状态</div><pre id="sim-state"></pre></div><div class="state-box"><div class="label" id="sim-input-label">O / 最新观察</div><pre id="sim-input"></pre></div><div class="state-box"><div class="label">ΔΣ + a / 本轮提出的变化与动作</div><pre id="sim-output"></pre></div></div></div>
+ <p class="note">立体货架仅表示位置关系，显示 500 个货架中的 6 个。此演示是确定性教学动画，不调用模型或真实仓库。<a href="https://arxiv.org/html/2608.26263v3#Ax2.SSx3">附录 B.3 ↗</a></p></div>
+ <div class="flow"><div><b>① 组装输入</b><p>P + Σ<sub>t</sub> + O<sub>t</sub></p></div><span class="arrow">→</span><div><b>② 本轮推理</b><p>产生 ΔΣ<sub>t</sub> 和 a<sub>t</sub></p></div><span class="arrow">→</span><div><b>③ 校验并合并</b><p>Σ<sub>t+1</sub> = Σ<sub>t</sub> ⊕ ΔΣ<sub>t</sub></p></div><span class="arrow">→</span><div><b>④ 执行动作</b><p>环境返回下一条观察</p></div></div>
+ <div class="grid2 wide-gap"><div class="panel"><h3>⊕ 是什么意思？</h3><p>这里是 runtime 的“合并”操作：新值更新指定键；<code>null</code> 表示删除；没提到的键应保留。模型提出补丁，程序决定是否接纳。</p><p class="note">本轮推理用于产出更新，随后被丢弃，不进入后续 prompt。状态里的“失败过哪些假设”可以保留，和保留整段推理不是一回事。</p></div><div class="panel"><h3>校验通过 ≠ 事实正确</h3><p><code>{"shelf_42": null}</code> 可以格式合法却删错货物。类型检查挡住坏 JSON；业务不变量和环境反馈才能发现部分语义错误。</p><p class="note">论文 Algorithm 1 先应用状态补丁再执行动作。工具失败时的事务回滚、部分成功与重试幂等性没有在该算法中完整给出；不能据此声称生产一致性已经解决。</p></div></div>
+</section>
+<section class="chapter" id="cost">
+ <div class="section-head"><span class="section-no">03</span><div><h2>为什么 O(T²) 会变成 O(T)？</h2><p>关键是“每一轮都重发”。如果第 1 轮的信息在后面反复发送，同一段历史就会被累计计算很多次。</p></div></div>
+ <div class="panel"><div class="controls"><label for="turns">拖动执行步数 T</label><input id="turns" type="range" min="10" max="200" step="10" value="100"><output id="turns-value" for="turns">100 步</output><span class="badge">理论示意 / 非论文测量</span></div><div class="chart-title"><h3>到第 T 步，共发出了多少输入？</h3><span class="note">纵轴：累计输入 token（万）</span></div><div class="legend"><span style="--series:var(--orange)">历史累加</span><span style="--series:var(--mint)">固定状态</span></div><svg id="cost-chart" class="chart" viewBox="0 0 850 290" role="img" aria-label="理想模型下，历史累加的累计输入呈二次增长，固定状态呈线性增长"></svg><div class="metrics"><div class="metric"><small>历史累加</small><b id="history-cost"></b></div><div class="metric"><small>固定状态</small><b id="state-cost"></b></div><div class="metric"><small>示意输入量之比</small><b id="cost-ratio"></b></div></div><p class="note">假设：固定规则 1,000 token；每轮新增历史 200 token；固定状态 800 token；新观察 200 token。不含输出、缓存折扣、工具调用或延迟，不能当作实际账单。</p></div>
+ <div class="grid2 wide-gap"><div class="panel"><small>每轮输入越来越长</small><div class="equation">Σ (1,000 + 200t)<br> = 1,000T + 100T(T+1)</div><p>随着 T 增大，T² 那一项占主导。这是全历史重复输入的累计复杂度。</p></div><div class="panel"><small>每轮输入长度固定</small><div class="equation">Σ (1,000 + 800 + 200)<br> = 2,000T</div><p>每轮都只有规则、状态和最新观察，总量随步数线性增加。</p></div></div>
+ <div class="callout warning"><b>“O(1)”有前提：状态和观察的大小不能随着任务无限增长。</b> 固定 5 个字段，不等于固定大小：<code>tested_hypotheses</code> 可以越写越长。若必须保存的实体数量 N 随 T 增长，输入仍可能增长。论文 §3.3 的推导应理解为在 |P|、|Σ|、|O| 有界时成立；固定窗口或固定预算摘要的累计输入也可以是 O(T)。<a href="https://arxiv.org/html/2608.26263v3#S3.SS3">推导 ↗</a></div>
+</section>
+<section class="chapter" id="evidence">
+ <div class="section-head"><span class="section-no">04</span><div><h2>先看证据，再看结论有多远</h2><p>以下数据来自论文 v3，不是我们复现实验。合成任务报告 5 个种子的均值与标准差；公共 benchmark 的重复与聚合细节仍需进一步核验。模型名称沿用论文。</p></div></div>
+ <div class="grid3"><div class="panel"><h3>受控任务</h3><p>仓库：500 个货架的库存。软件仓库：分支、PR、CI 等依赖。测试长程状态维护。</p><p class="note">仓库 Score 是正确动作 / 可执行事件；不要直接读成整任务成功率。</p></div><div class="panel"><h3>公共交互任务</h3><p>InterCode CTF：终端里找 flag。τ-bench：Retail 与 Airline 的用户、工具、业务策略交互。</p><p class="note">CTF 报 pass@1；τ-bench 用最终数据库状态与策略要求判定。</p></div><div class="panel"><h3>预算控制</h3><p>把滑动窗口、封顶摘要和 LLMLingua 的输入压到相近规模，再看谁保住任务信息。</p><p class="note">测试的是特定实现与预算，不是所有摘要器或压缩算法的能力上限。</p></div></div>
+ <div class="panel wide-gap"><div class="controls"><label for="scaling-domain">环境</label><select id="scaling-domain"><option value="warehouse">Warehouse · 表 1</option><option value="software">Software Repository · 表 6</option></select><label for="scaling-metric">观察指标</label><select id="scaling-metric"><option value="score">任务得分（Score）</option><option value="prompt">平均 prompt 大小</option><option value="tokens">累计 token</option></select></div><div class="chart-title"><h3 id="scaling-title">执行越久，会发生什么？</h3><span class="note" id="scaling-unit"></span></div><div class="legend" id="scaling-legend"></div><svg id="scaling-chart" class="chart" viewBox="0 0 850 330" role="img"></svg><p id="scaling-insight" class="callout" aria-live="polite"></p><p class="note">图展示均值；得分图误差棒为 ±1 标准差。其他指标的标准差及全部精确数字可在下方展开。横轴按实际步数绘制，纵轴为线性刻度。<a id="scaling-source" href="https://arxiv.org/html/2608.26263v3#S4.T1">数据来源 ↗</a></p><details><summary>展开当前图的原始数据与标准差</summary><div class="table-wrap" id="scaling-table"></div></details></div>
+ <div class="panel wide-gap"><div class="controls"><label for="public-domain">公共 benchmark</label><select id="public-domain"><option value="ctf">InterCode CTF</option><option value="retail">τ-bench · Retail</option><option value="airline">τ-bench · Airline</option></select><label for="public-metric">指标</label><select id="public-metric"><option value="score">成功率（越高越好）</option><option value="prompt">平均 prompt（原表数值）</option><option value="tokens">累计 token（越低越好）</option></select></div><div id="public-bars" class="bars"></div><p class="callout" id="public-insight" aria-live="polite"></p><p class="note">表 4 的 Prompt 未在表头标单位；§4.3 定义为字符，但 §5.5 Airline 的文字说明又使用 tokens/step。本页保留原表数值，不自行换算。<a href="https://arxiv.org/html/2608.26263v3#S5.T4">表 4 ↗</a></p></div>
+ <div class="grid2 wide-gap"><div class="panel"><h3>相近输入规模，信息组织仍重要</h3><p class="note">Warehouse · T=100 · Gemini-3-Flash · 表 5</p><div class="bars" id="budget-bars"></div><p class="note">条长为 Score，均以 1 为满刻度。Full ReAct 为不限预算参照，其他四组是近预算对照。</p><details><summary>展开输入规模与累计 token</summary><div class="table-wrap"><table><thead><tr><th>方法</th><th>Avg Prompt</th><th>Total Tokens</th></tr></thead><tbody><tr><td>Full ReAct</td><td>36,362</td><td>1,245,413</td></tr><tr><td>Sliding Window</td><td>1,800</td><td>62,100</td></tr><tr><td>Summary-capped</td><td>1,840</td><td>63,400</td></tr><tr><td>LLMLingua</td><td>1,810</td><td>62,350</td></tr><tr><td>SKILL.state</td><td>1,905</td><td>65,408</td></tr></tbody></table></div></details><p class="note">预算单位存在冲突：表 5、11 的题注写 tokens，§5.6 正文写 characters；这里只称“近预算”，不声称严格等 token。<a href="https://arxiv.org/html/2608.26263v3#S5.T5">原表 ↗</a></p></div>
+ <div class="panel"><h3>状态维护也会出错</h3><p class="note">Gemma-4-31B · T=100 · 论文 §5.7 错误分类</p><div class="error-strip" role="img" aria-label="错误分布：过早覆盖或删除 68%，schema 理解或类型转换 20%，JSON 格式 12%"><span style="width:68%;background:var(--orange)">68%</span><span style="width:20%;background:var(--violet)">20%</span><span style="width:12%;background:var(--blue)">12%</span></div><div class="legend"><span style="--series:var(--orange)">覆盖 / 删除</span><span style="--series:var(--violet)">结构 / 类型</span><span style="--series:var(--blue)">JSON 格式</span></div><p>最大一块是更新状态时漏保留旧键。只保证 JSON 可解析，解决不了全部错误。</p><div class="table-wrap"><table><caption>Warehouse，T=100 的 Score（表 1、7、8）</caption><thead><tr><th>模型</th><th>Stateful</th><th>SKILL.state</th></tr></thead><tbody><tr><td>Gemini-3-Flash</td><td>0.91</td><td>0.94</td></tr><tr><td>Gemma-4-31B-it</td><td>0.42</td><td>0.42</td></tr><tr><td>Qwen-3-8B-it</td><td>0.31</td><td>0.34</td></tr></tbody></table></div><p class="note">小模型在长程任务上仍会明显退化。错误日志的分类不足以单独证明“与推理能力无关”；约束解码能防格式错误，也不能自动保证状态语义正确。<a href="https://arxiv.org/html/2608.26263v3#S5.SS7">§5.7 ↗</a></p></div></div>
+ <div class="grid2 wide-gap"><div class="panel"><h3>噪声：清掉无关信息有帮助</h3><div class="table-wrap"><table><caption>Warehouse，T=50，Gemini-3-Flash（表 2）</caption><thead><tr><th>每轮噪声事件</th><th>ReAct</th><th>Memory</th><th>Stateful</th><th>SKILL.state</th></tr></thead><tbody><tr><td>5</td><td>.68</td><td>1.00</td><td>1.00</td><td>1.00</td></tr><tr><td>20</td><td>.61</td><td>1.00</td><td>.98</td><td>.97</td></tr><tr><td>50</td><td>.53</td><td>.96</td><td>.98</td><td>.98</td></tr></tbody></table></div><p class="note">附录 C 明确只测试不改变状态、与任务无关的随机遥测。不能外推为抵抗恶意 prompt injection 或冲突业务规则的证明。<a href="https://arxiv.org/html/2608.26263v3#Ax3">附录 C ↗</a></p></div><div class="panel"><h3>恢复：“0 步”不代表全知</h3><div class="flow"><div><b>外部世界变化</b><p>货物被别人搬走</p></div><span class="arrow">→</span><div><b>收到纠正告警</b><p>更新当前状态</p></div></div><p class="wide-gap">仓库的 Secret Audit / Barcode / Move 场景，论文报告 SKILL.state 的恢复延迟为 0，其他组为 5–8 步。</p><p class="note">前提是收到了纠正观察，不是自动感知未观测的变化。Canceled Order 场景所有组都失败。软件仓库的 PR Closed 场景也全部失败。<a href="https://arxiv.org/html/2608.26263v3#S5.T3">表 3 ↗</a> · <a href="https://arxiv.org/html/2608.26263v3#Ax4.T10">表 10 ↗</a></p></div></div>
+ <details class="panel wide-gap"><summary>论文阅读核查：哪些表述需要保留问号？</summary><p>① §5.2 的“所有 horizon 都匹配或超过基线”适用于表 1 的仓库结果，不能外推到所有环境：表 6 软件仓库 T=25 的 SKILL.state 为 0.88，低于 Stateful 的 0.94。图表保留这个例外。</p><p>② 表 4 的题注泛称 prompt 显著缩小，Retail 的 SKILL.state 却是四组最大（3,325）。总 token 下降与平均 prompt 下降不是同一件事。</p><p>③ CTF 有 100 个任务，却出现 54.2% 等非整数百分比。可能涉及多次运行平均，但不能从表 4 独立重建分母和重复次数；本页不自行补齐。</p><p>④ temperature=0、top-p=1 并不单独保证服务端推理完全确定；合成实验的显著性说明也不能自动覆盖所有公共 benchmark。</p><p>⑤ baseline 的总结频率、摘要预算和 LLMLingua 配置会影响结论；表中总 token 的输入、输出及额外摘要调用细分不足以还原账单。复现前需要补齐。</p></details>
+</section>
+<section class="chapter" id="comparison">
+ <div class="section-head"><span class="section-no">05</span><div><h2>放回你的六层坐标系</h2><p>原研究问“历史太长了，怎么压而不压坏”；SKILL.state 把重点前移到“每一步到底需要留下什么”。点选六层，看变化发生在哪里。</p></div></div>
+ <div class="layer-layout"><div class="layer-buttons" role="group" aria-label="选择六层模型"><button data-layer="0" aria-pressed="true">L1 · 测量 Measurement</button><button data-layer="1" aria-pressed="false">L2 · 触发 Trigger</button><button data-layer="2" aria-pressed="false">L3 · 选点 Selection</button><button data-layer="3" aria-pressed="false">L4 · 减法 Reduction</button><button data-layer="4" aria-pressed="false">L5 · 重组 Reassembly</button><button data-layer="5" aria-pressed="false">L6 · 持久化 Persistence</button></div><div class="panel layer-detail" id="layer-detail" aria-live="polite"></div></div>
+ <div class="table-wrap wide-gap"><table><caption>机制对照：旧研究中的实现快照 × 本文阅读解释；不是跨平台跑分</caption><thead><tr><th>你原来观察到的设计</th><th>与 SKILL.state 的联系</th><th>关键区别 / 还缺什么</th></tr></thead><tbody>
+ <tr><td>Goose：JSON 摘要 + 双可见性</td><td>都用结构帮助模型读当前任务信息</td><td>JSON 输出本身不等于执行状态；还要看逐步 patch、runtime 校验和是否继续携带旧对话</td></tr>
+ <tr><td>OpenHands / ADK / DeepSeek Harness：事件日志与模型视图分离</td><td>“模型只看当前状态”可以作为新的视图策略</td><td>保存日志、UI 能看、模型能检索是三层能力，不能相互推导</td></tr>
+ <tr><td>Hermes / Letta：压缩后保留检索入口</td><td>为状态漏掉的早期细节提供回捞方向</td><td>本文基本循环没有给出等价的通用历史 recall；加上它属于混合方案</td></tr>
+ <tr><td>OpenClaw：摘要质量审计与约定重注入</td><td>重要不变量应由独立机制保护</td><td>检查 section / JSON 形式不等于验证每条状态更新符合事实</td></tr>
+ <tr><td>DeepSeek Harness：压缩调用复用缓存前缀</td><td>提醒我们“少输入”与“实际更便宜”还隔着计费与缓存</td><td>本文没有给出充分的缓存命中、延迟或货币成本实验</td></tr>
+ <tr><td>LangGraph core / LangChain middleware：原语与策略分层</td><td>可以把 SKILL.state 理解为一种可实现的运行策略</td><td>论文 Stateful 只是“状态块 + 历史”的特定对照，不是对整个框架的结论</td></tr>
+ </tbody></table></div>
+ <p class="note">平台机制沿用你已有报告的固定版本快照，本页没有重新审计这些项目的最新源码。<a href="../Agent_Context_Compression_Research.html">原研究 §16.4–16.5、§18、§21 ↗</a></p>
+ <div class="grid3 wide-gap"><div class="panel"><h3>CompactionRL 的问题</h3><p>“怎样学会写对未来动作有用的摘要？”</p><p class="note">与本文的连接：都应该用后续任务表现评价记忆，而不是只看可读性。不是本文已胜过它。</p></div><div class="panel"><h3>ConstraintRot 的问题</h3><p>“压缩时，项目特有约束有没有消失？”</p><p class="note">与本文的连接：把不变规则放进 P 是一种保护方向；执行中新增的约束仍需要可靠写入和持续保留。</p></div><div class="panel"><h3>Slipstream 的问题</h3><p>“换成压缩后的信息，还能做对后续动作吗？”</p><p class="note">与本文的连接：同样应检查状态是否支持正确决策。任务、模型与评测口径不同，不拼成一张跨论文排行榜。</p></div></div>
+</section>
+<section class="chapter" id="limits">
+ <div class="section-head"><span class="section-no">06</span><div><h2>最重要的前提：状态真的“够用”吗？</h2><p>论文把 Σ 当成未来执行的 sufficient statistic（充分统计量）。通俗地说：只看现在这份状态，也不会缺少做下一步决定所需的过去信息。</p></div></div>
+ <div class="panel"><h3>用两段不同历史，测试一份状态</h3><div class="sufficiency"><div class="history-lines"><span>历史 A：货物入库，放到 42 号架</span><span>历史 B：货物先到 12 号，再搬到 42 号</span></div><span class="equals">→</span><div class="state-box"><pre>{ "item_12": "shelf_42" }</pre><p class="note">发货只需要当前位置：这份状态可能够用。</p></div></div><div class="callout warning"><b>现在改一个问题：“这件货是谁搬过去的？”</b> 两段历史投影成了同一份状态，答案却不同。被扔掉的历史突然成了任务本身。失效点是信息没留下，而不只是模型不够聪明。</div></div>
+ <div class="grid3 wide-gap"><div class="panel"><span class="label-chip">边界 1 / schema 未知</span><h3>不知道将来要记什么</h3><p>开放式科研、探索陌生代码库，重要字段可能边做边发现。提前固定 schema 容易装不下新关系。</p></div><div class="panel"><span class="label-chip">边界 2 / 后见之明</span><h3>当时无关，后来关键</h3><p>早期日志里的一个异常字符串，十轮后才发现是根因。没写入状态，又没有回捞入口，就找不回。</p></div><div class="panel"><span class="label-chip">边界 3 / 历史就是目标</span><h3>要解释“为什么这么做”</h3><p>审计、归因、复盘依赖过程证据。最终状态无法替代动作、观察与来源的记录。</p></div></div>
+ <p class="note">这三条是论文 §7 自己列出的限制。多 agent 并发写入也未在本文单 agent 实验中验证；共享状态需要版本与冲突处理。<a href="https://arxiv.org/html/2608.26263v3#S7">Limitations ↗</a></p>
+</section>
+<section class="chapter" id="practice">
+ <div class="section-head"><span class="section-no">07</span><div><h2>对你的 research agent，值得带走什么？</h2><p>保留“每轮显式维护当前工作状态”的思路，再接上你原研究里的日志与 recall。下面是工程推演，不是论文已实现或已验证的架构。</p></div></div>
+ <div class="panel"><span class="label-chip">综合设计建议 / 非论文结果</span><h3>两条通道：当前状态负责推进，证据记录负责追溯</h3><div class="flow"><div><b>当前工作状态</b><p>目标、约束、已证实结论、未决问题、失败假设、下一步</p></div><span class="arrow">→</span><div><b>组装本轮输入</b><p>规则 + 状态 + 最新观察<br>必要时加入检索到的证据</p></div><span class="arrow">→</span><div><b>执行并核对结果</b><p>校验结构与业务不变量<br>更新 verified / pending</p></div></div><div class="flow"><div><b>追加证据日志</b><p>用户要求、工具请求与结果、动作状态、来源链接及版本</p></div><span class="arrow">↔</span><div><b>按引用回捞</b><p>从当前 claim 指向证据 ID；发现矛盾或缺字段时重读原始观察</p></div></div><p class="note">日志增长与 prompt 增长分开管理；不要求存储模型的隐藏推理。加入动态证据后，成本需重新测量，不能自动继承本文 O(1) 输入的结论。</p></div>
+ <div class="grid2 wide-gap"><div class="panel"><h3>一份可讨论的研究状态</h3><pre class="wide-gap">{
+  "goal": "比较两种上下文管理策略",
+  "constraints": ["数字必须带任务和版本"],
+  "claims": [{
+    "text": "Warehouse 的 token 开销下降",
+    "evidence": ["paper:v3:table1:T100"],
+    "status": "verified_from_paper"
+  }],
+  "open_questions": ["预算单位不一致"],
+  "failed_hypotheses": ["所有 benchmark 的 prompt 都更小"],
+  "next_action": "核对 Retail 表格"
+}</pre><p class="note">这是本页拟定的 schema。证据索引不替代证据内容；数组也需要明确的容量、归档与检索策略。</p></div><div class="panel"><h3>先做一个小而有判别力的实验</h3><div class="history-lines"><span>① 固定模型、工具、任务、输出预算</span><span>② 比较：摘要+尾部 / 纯状态 / 状态+回捞</span><span>③ 埋入：晚相关信息、用户新约束、工具失败</span><span>④ 测：成功率、约束保留、证据可追溯</span><span>⑤ 同时报：状态大小、输入/输出、缓存、重试、延迟</span></div><p class="note">用可以重放的轨迹定位第一次丢信息的位置。不要只比较最后摘要读起来是否“清晰”。并发分支与自动 schema 演化可以等单 agent 基线跑通后再考虑。</p></div></div>
+ <div class="callout"><b>值得保留的判断：</b>状态空间明确、动作规则稳定的流程，适合试纯状态循环。开放式 research 更需要给“现在还不知道重要”的信息留一个可寻址的后路。</div>
+</section>
+<section class="chapter" id="check">
+ <div class="section-head"><span class="section-no">08</span><div><h2>用一道题，检查有没有真正理解</h2><p>你把 agent 改成固定 5 个 JSON 字段，其中 <code>all_findings</code> 每轮追加一千字。能宣布它的每轮输入是 O(1) 吗？</p></div></div>
+ <div class="panel"><div class="quiz-options"><button data-answer="wrong" aria-pressed="false">能，字段数量固定就行</button><button data-answer="right" aria-pressed="false">不能，还要看字段内容的大小</button><button data-answer="partial" aria-pressed="false">只要用 JSON 就比摘要可靠</button></div><p class="quiz-result" id="quiz-result" aria-live="polite">先做判断，再展开解释。</p><details><summary>再想两题（含答案）</summary><p><strong>Q：程序拒绝坏 JSON，就能保证库存始终正确吗？</strong><br>A：不能。合法补丁也可能删错键；还需要业务检查和环境反馈。</p><p><strong>Q：这篇论文证明应该在磁盘上删除所有历史吗？</strong><br>A：没有。它的核心比较发生在每轮输入与状态维护；论文明确丢弃中间推理，也明确承认审计与轨迹任务不适用。原始工具观察的审计日志是另一个工程层面的选择。</p></details></div>
+</section>
+<section class="chapter" id="sources">
+ <div class="section-head"><span class="section-no">↗</span><div><h2>带着问题回到原文</h2><p>学习页基于 2026-09-02 的 v3；引用与表值按该版本固定。图解和教学例子为本页重绘，不是论文的原始图片。</p></div></div>
+ <div class="source-list"><div><a href="https://arxiv.org/html/2608.26263v3#S3">机制与复杂度 · §3 / Algorithm 1</a><p>对照三元输入、状态补丁、null 删除、更新与执行的顺序。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#Ax1">对照组到底怎么写 · Appendix A</a><p>特别看 A.3 的 LangGraph-style：状态和历史被一起塞入 prompt。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#S4.T1">主实验与公共任务 · Tables 1–5</a><p>核对 Score、Prompt、Tokens 三个指标，留意字符与 token 的混用。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#Ax4">软件仓库、小模型与控制组 · Appendix D</a><p>看短程例外、小模型退化，以及预算匹配的跨 horizon 结果。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#S7">先读限制，再考虑迁移 · §7</a><p>固定 schema、晚相关信息、轨迹目标与多 agent 冲突。</p></div><div><a href="../Agent_Context_Compression_Research.html">你的 Compression Research</a><p>§1 六层模型；§16.4–16.5 摘要与持久化；§18.5 缓存；§21 评测。本页的平台对照沿用该报告快照，不代表最新实现。</p></div></div>
+ <p class="note wide-gap">论文：<cite>SKILL.state: Scalable Long-Horizon Agent Skills</cite>，Sanket Badhe、Priyanka Tiwari、Jonghyun Chung。原文标注 CC BY 4.0。本页为中文解释、重绘与评议；实验数字归原作者，推演与核查意见不代表作者结论。<a href="https://arxiv.org/abs/2608.26263v3">版本记录 ↗</a></p>
+ <noscript><div class="callout warning">JavaScript 未启用：正文与静态表格仍可阅读。逐步演示和可切换图表需启用 JavaScript；完整数字可通过各图旁的论文链接查阅。</div></noscript>
+</section>
+
+</main>
+<footer><span>ML LEARNING NOTES / PAPER LAB</span><a href="https://arxiv.org/html/2608.26263v3">SKILL.state 原论文 ↗</a></footer>
+</body>
+</html>
