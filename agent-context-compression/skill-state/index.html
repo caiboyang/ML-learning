@@ -470,8 +470,9 @@ layout: null
       <div class="ticks" aria-hidden="true"><span>10</span><span>25</span><span>50</span><span>100</span><span>200</span></div>
       <div class="hbars" id="hz-bars"></div>
       <div class="verdict" id="hz-verdict"></div>
-      <figcaption>把滑杆拖到 <b>10</b>：四种做法的准确率完全一样，token 差距不到 2 倍 —— <b>短程实验里这篇论文根本没有故事</b>。
-      拖到 <b>200</b>：差距变成 50 倍。这就是为什么第 5 节那句「评测必须跑到 T&#8805;50」比它看起来重要得多。</figcaption>
+      <figcaption>把滑杆拖到 <b>10</b>：token 差距不到 2 倍，准确率也只差 0.10（ReAct 0.90，其余三家 1.00）——
+      而论文自己声明<b>显著性只在 T&#8805;50 才成立</b>（paired t-test, p&lt;0.01，5 个 seed）。拖到 <b>200</b>：token 差距变成 50 倍，准确率差 0.20。
+      <b>差距几乎全是步数拉开的</b>，这就是为什么第 5 节那句「评测必须跑到 T&#8805;50」比它看起来重要得多。</figcaption>
     </div>
   </figure>
 
@@ -516,7 +517,7 @@ layout: null
   <figure>
     <div class="fig">
       <p class="fig-title">SKILL.state 的一个执行步</p>
-      <p class="fig-sub">注意三条出边的去向完全不同：一条进垃圾桶，一条进状态，一条进环境。</p>
+      <p class="fig-sub">注意三条出边的去向完全不同：一条进垃圾桶，一条进状态，一条进环境。校验只管结构合法，管不了语义正确。</p>
       <div class="chart-host">
       <svg viewBox="0 0 900 460" role="img" aria-label="SKILL.state 执行循环：状态与观测构成 prompt，模型输出推理、状态补丁与动作，推理被丢弃">
         <defs>
@@ -576,7 +577,7 @@ layout: null
         <path d="M 632 195 L 664 195" stroke="#c98500" stroke-width="1.8" marker-end="url(#ahY)"/>
         <rect x="670" y="172" width="96" height="46" rx="7" fill="#141A2A" stroke="#7BE3D7"/>
         <text x="718" y="190" fill="#A7F2EA" font-family="Inter, Noto Sans SC, sans-serif" font-size="12" font-weight="600" text-anchor="middle">确定性校验</text>
-        <text x="718" y="206" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="10" text-anchor="middle">不合 schema 就重试</text>
+        <text x="718" y="206" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="10" text-anchor="middle">只校验结构，不校验语义</text>
         <path d="M 772 195 L 800 195" stroke="#c98500" stroke-width="1.8" marker-end="url(#ahY)"/>
         <rect x="806" y="168" width="66" height="54" rx="7" fill="#3d2a00" stroke="#c98500" stroke-width="1.6"/>
         <text x="839" y="190" fill="#FFD9A8" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" text-anchor="middle">&#931;_t&#8314;&#185;</text>
@@ -685,6 +686,16 @@ layout: null
   <div class="section-head"><span class="section-num">04</span><h2 class="section-title">数据一：长程扩展</h2></div>
   <div class="section-sub">Table 1 &amp; Table 6 · Gemini-3-Flash · 5 seeds</div>
 
+  <div class="call fact">
+    <span class="tag">先把口径立住：这批合成实验带误差，也带显著性声明</span>
+    论文 &#167;5 有一段容易被跳过的 <i>Statistical Significance</i>：全部合成实验跑 <b>5 个 procedural generator seed</b>，
+    结果按 <b>mean &plusmn; 样本标准差</b> 报告，而 SKILL.state 与基线的差异<b>只在 T&#8805;50 才具统计显著性</b>（paired t-test, <i>p</i>&lt;0.01）。
+    <br><br>
+    这句话有两个方向的后果：<b>它加强了长程结论</b>（T&#8805;50 的差距不是噪声），同时<b>削弱了短程读数</b>——
+    T=10 与 T=25 的排名不该当结论看。本页所有折线图都画了 &plusmn;SD 误差棒，展开的数据表也保留了标准差。
+    <b>本页第一版只报了均值，是一处遗漏，已补。</b>
+  </div>
+
   <p class="deck">先看最核心的那张图。横轴是任务步数，纵轴是整场任务烧掉的 token 总量 —— 注意纵轴是对数刻度，否则黄线会贴在地板上看不见。</p>
 
   <figure>
@@ -734,16 +745,22 @@ layout: null
       <div class="legend" id="lg-repo"></div>
       <div class="chart-host" id="c-repo"></div>
       <details class="data"><summary>数据表 · 论文 Table 6</summary><div id="t-repo"></div></details>
-      <figcaption><b>T=25 处，SKILL.state 的 0.88 低于 Stateful 的 0.94，也低于 Memory 的 0.89</b> —— 这是全文唯一一次落败，论文正文与附录都未提及。它出现在关系最纠缠的环境、中等长度的地方，正好是「状态还不够长到值得丢历史，但已经长到 schema 开始漏信息」的区间。</figcaption>
+      <figcaption><b>T=25 处 SKILL.state 的均值 0.88 低于 Stateful 的 0.94</b>，是全文唯一一次均值落后，论文正文与附录都未提及。
+      <b>但必须按论文自己的口径读：</b>两者是 0.88&plusmn;0.08 与 0.94&plusmn;0.03，误差棒重叠，而论文声明的显著性区间是 <b>T&#8805;50</b> ——
+      <b>所以这不是一次「统计上的落败」，只是一个均值上的凹陷。</b>值得指出的是论文<b>没提</b>，不是它证明了什么。</figcaption>
     </div>
   </figure>
 
   <div class="call mine">
-    <span class="tag">我的读法</span>
-    这个交叉点很有信息量。它说明 SKILL.state 的收益<b>不是从第一步就存在的</b>，而是在 T 大到一定程度后才追上并超过 —— 因为丢掉历史本身有信息代价，只有当历史长到开始伤害模型时，这个代价才转为收益。
+    <span class="tag">我的读法（注意这是解释，不是论文结论）</span>
+    即便把 T=25 那个凹陷算作噪声，两个环境的<b>形状差异仍然是真的</b>：Warehouse 上 SKILL.state 从 T=10 就并列第一，
+    Software Repository 上要到 <b>T=50</b> 才明确领先（0.86&plusmn;0.04 vs 0.74&plusmn;0.08），而这正好是论文显著性区间的起点。
     <br><br>
-    换句话说：<b>存在一个盈亏平衡的 T</b>。Warehouse 上它小于 10（一开始就赢），Software Repository 上它落在 25 到 50 之间。
-    环境的关系纠缠度越高，这个平衡点越靠后。<b>论文没有给出估算这个平衡点的方法，而这恰恰是工程上最需要的那个数。</b>
+    合理的解释是：<b>丢掉历史本身有信息代价，只有当历史长到开始伤害模型时，这个代价才转为收益</b>，所以<b>存在一个盈亏平衡的 T</b>，
+    且环境的关系纠缠度越高，它越靠后。
+    <br><br>
+    <b>论文没有给出估算这个平衡点的方法，而这恰恰是工程上最需要的那个数。</b>
+    我也无法从这两条曲线把它定到一个具体值——只有两个环境、四个 horizon，不足以拟合。这里给的是方向，不是公式。
   </div>
 </section>
 
@@ -991,7 +1008,7 @@ layout: null
         <text x="30" y="46" fill="#8B8378" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1">六层都要实现，且每一层都有失败模式</text>
 
         <text x="530" y="26" fill="#E8E5DD" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="16" font-weight="700">SKILL.state</text>
-        <text x="530" y="46" fill="#c98500" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1">三层删掉，两层搬到设计时，一层改性质</text>
+        <text x="530" y="46" fill="#c98500" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1">一层删掉，两层简化，两层前移到设计期，一层改形态</text>
 
         <!-- rows -->
         <g font-family="Inter, Noto Sans SC, sans-serif">
@@ -1001,10 +1018,10 @@ layout: null
           <text x="76" y="84" fill="#E8E5DD" font-size="14" font-weight="600">测量 Measurement</text>
           <text x="76" y="104" fill="#8B8378" font-size="12">provider usage · 字符估算 · 真 tokenizer · 撞墙学窗口</text>
           <path d="M 474 90 L 512 90" stroke="#6E7994" stroke-width="1.4" stroke-dasharray="4 3"/>
-          <rect x="518" y="62" width="352" height="56" rx="8" fill="#1a1013" stroke="#5c3038"/>
-          <text x="534" y="84" fill="#FF8FA3" font-family="JetBrains Mono, monospace" font-size="11">&#10005;</text>
-          <text x="560" y="84" fill="#FF8FA3" font-size="14" font-weight="600">整层删除</text>
-          <text x="560" y="104" fill="#8B8378" font-size="12">prompt 是常数，不存在「快满了」这个状态</text>
+          <rect x="518" y="62" width="352" height="56" rx="8" fill="#12202e" stroke="#2f5c7a"/>
+          <text x="534" y="84" fill="#7BE3D7" font-family="JetBrains Mono, monospace" font-size="11">&#8595;</text>
+          <text x="560" y="84" fill="#A7F2EA" font-size="14" font-weight="600">简化，但没有消失</text>
+          <text x="560" y="104" fill="#8B8378" font-size="12">不再为触发而测；改为用来断言 |&#931;| 的上界</text>
 
           <!-- L2 -->
           <rect x="30" y="126" width="440" height="56" rx="8" fill="#141A2A" stroke="#B59BFF"/>
@@ -1045,10 +1062,10 @@ layout: null
           <text x="76" y="340" fill="#E8E5DD" font-size="14" font-weight="600">重组 Reassembly</text>
           <text x="76" y="360" fill="#8B8378" font-size="12">角色交替合法性 · call/result 配对修复 · cache 影响</text>
           <path d="M 474 346 L 512 346" stroke="#6E7994" stroke-width="1.4" stroke-dasharray="4 3"/>
-          <rect x="518" y="318" width="352" height="56" rx="8" fill="#1a1013" stroke="#5c3038"/>
-          <text x="534" y="340" fill="#FF8FA3" font-family="JetBrains Mono, monospace" font-size="11">&#10005;</text>
-          <text x="560" y="340" fill="#FF8FA3" font-size="14" font-weight="600">整层删除</text>
-          <text x="560" y="360" fill="#8B8378" font-size="12">prompt 每步重新构造，没有历史要拼回去</text>
+          <rect x="518" y="318" width="352" height="56" rx="8" fill="#12202e" stroke="#2f5c7a"/>
+          <text x="534" y="340" fill="#7BE3D7" font-family="JetBrains Mono, monospace" font-size="11">&#8595;</text>
+          <text x="560" y="340" fill="#A7F2EA" font-size="14" font-weight="600">简化成一个常量级动作</text>
+          <text x="560" y="360" fill="#8B8378" font-size="12">仍要确定性拼 prompt，但没有配对与交替要修</text>
 
           <!-- L6 -->
           <rect x="30" y="382" width="440" height="56" rx="8" fill="#141A2A" stroke="#B59BFF"/>
@@ -1061,17 +1078,25 @@ layout: null
           <text x="560" y="404" fill="#FFD9A8" font-size="14" font-weight="600">变成状态存储</text>
           <text x="560" y="424" fill="#8B8378" font-size="12">&#931; 是唯一真相；轨迹若要留档，是另一套系统的事</text>
         </g>
-        <text x="30" y="460" fill="#8B8378" font-family="JetBrains Mono, monospace" font-size="10">&#9733; = 我的研究里认定「真正拉开各家差距」的三层</text>
+        <text x="30" y="460" fill="#8B8378" font-family="JetBrains Mono, monospace" font-size="10">&#9733; = 我的研究里认定「真正拉开各家差距」的三层  &#183;  &#10005; 删除   &#8595; 简化   &#8631; 前移／改形态</text>
       </svg>
       </div>
-      <figcaption>标 &#9733; 的三层（L2 触发、L4 减法、L6 持久化）是我那篇研究里认定各家分歧最大、最能体现设计哲学的三层。<b>SKILL.state 删掉了其中一层、改写了另外两层。</b></figcaption>
+      <figcaption>标 &#9733; 的三层（L2 触发、L4 减法、L6 持久化）是我那篇研究里认定各家分歧最大、最能体现设计哲学的三层。<b>SKILL.state 删掉了其中一层、改写了另外两层。</b>
+      <br>本图第一版把 L1 与 L5 也画成「整层删除」，<b>那是写过头了</b>：SKILL.state 每一步仍要确定性地把 <code>P + &#931; + O</code> 拼成 prompt（这就是 L5），
+      而 L1 测量在<a href="#s10">反驳一</a>之后反而<b>更需要</b>——你得有办法断言 <code>|&#931;|</code> 没有偷偷长大。已更正。</figcaption>
     </div>
   </figure>
 
   <div class="pullquote">
-    SKILL.state 不是在这六层里做得更好。它是把 L1&#47;L2&#47;L5 整层删掉，把 L3&#47;L4 从<b>运行时决策</b>搬到<b>设计时决策</b>。
+    SKILL.state 不是在这六层里做得更好。它真正取消的只有 <b>L2 触发</b>；L1 与 L5 被<b>简化成常量级的固定动作</b>；
+    而最关键的改变是把 <b>L3&#47;L4</b> 从<b>运行时决策</b>前移成<b>设计期决策</b>。
     <span class="who">这一句是我读完全文最想留下的总结</span>
   </div>
+  <p style="font-size:16px;color:var(--paper-dim);font-family:'Inter','Noto Sans SC',sans-serif">
+    这个区分不是咬文嚼字。<strong>「删掉」意味着你不用再想这件事，「简化」意味着你还得想、只是变简单了。</strong>
+    L1 就是最好的例子：论文因为假定 <code>|&#931;|</code> 有界而不需要测量，但<a href="#s10">反驳一</a>说明这个假定没被验证 ——
+    于是 L1 不但没消失，反而<strong>成了这套架构最该补上的那一层监控</strong>。
+  </p>
 
   <h3 class="sub">两种哲学：事后减法 vs 事前投影</h3>
 
@@ -1205,63 +1230,73 @@ layout: null
     <span class="who">Google ADK · ContextCacheConfig docstring（见配套研究 &#167;12.7）</span>
   </div>
 
-  <p>把这条放到论文的设定上 —— 论文全部主实验都跑在 <strong>Gemini-3-Flash</strong>，门槛就是 <strong>4,096 token</strong>。于是：</p>
+  <p>论文全部主实验都跑在 <strong>Gemini-3-Flash</strong> 上，门槛就是 <strong>4,096 token</strong>。于是：</p>
 
   <figure>
     <div class="fig">
       <p class="fig-title">谁够得着缓存门槛</p>
-      <p class="fig-sub">Warehouse T=100 的单步 prompt（token）。横线是 Gemini 3 的 4,096 token 最小可缓存前缀。</p>
+      <p class="fig-sub">Warehouse T=100 的单步 prompt（token）。横线是 ADK 文档记载的 Gemini 3 最小可缓存前缀。</p>
       <div class="legend" id="lg-thresh"></div>
       <div class="chart-host" id="c-thresh"></div>
-      <figcaption>ReAct 的 prompt 在<b>第 24 步</b>越过门槛，此后每一步都能按 0.1&#215; 命中前一步的全部内容。
+      <figcaption>ReAct 的 prompt 在<b>第 24 步</b>越过门槛，此后每一步都能命中前一步的全部内容。
       SKILL.state 恒定在 ~476 token，<b>整场任务都够不着门槛，一次都缓存不了</b>。</figcaption>
     </div>
   </figure>
 
   <div class="call pit">
-    <span class="tag">这是本页最反直觉的一条，而且是我第一版写错了的一条</span>
-    我最初假设 SKILL.state 的 <code>P</code>（~350 token）能按 0.1&#215; 命中。<b>这在 Gemini 3 上不可能</b> —— 350 远低于 4,096。
+    <span class="tag">这是本页最反直觉的一条，也是我第一版写错了的一条</span>
+    我最初假设 SKILL.state 的 <code>P</code>（~350 token）能拿到缓存折扣。<b>在 Gemini 3 上不可能</b> —— 350 远低于 4,096。
     <br><br>
-    换句话说：<b>让 SKILL.state 便宜的那个性质（prompt 极小），正是让它拿不到十倍缓存折扣的那个性质。</b>
+    换句话说：<b>让 SKILL.state 便宜的那个性质（prompt 极小），正是让它拿不到缓存折扣的那个性质。</b>
     它不是「缓存得差一点」，是<b>结构性地被排除在缓存之外</b>。
-    <br><br>
-    感谢 <a href="https://github.com/caiboyang/ML-learning/pull/22">PR #22</a> 上的 review 指出这一点；下面的数字是据此重算的。
   </div>
+
+  <h3 class="sub">但这个折算算不出一个精确数字 —— 只能给区间</h3>
+  <div class="call fact">
+    <span class="tag">两个无法从论文补齐的缺口</span>
+    <b>缺口一 · 论文没有公开 input / output 拆分。</b>它的指标定义只有一句 <i>Total Token Cost: the cumulative token burn</i>。
+    而缓存只折扣 <b>input</b>，output 永远全价。我原来那两个数（909,000 / 47,600）是拿平均 prompt 字符数按 4 字符&#8776;1 token 反推的<b>输入量</b>，
+    <b>不是论文表里的总量</b> —— 把它们直接当总成本比，等于让 output 从账上消失了。
+    <br><br>
+    <b>缺口二 · 本节没有按任何单一 provider 的完整价目表建模。</b>门槛取自 ADK 文档记载的 Gemini 3 值，
+    而「命中 0.1&#215;、写入 1.25&#215;」是一档<b>通用的缓存计价形态</b>。Gemini 自己的 context caching 另有创建费、按小时的存储费与它自己的 cached-input 单价，
+    <b>与这里的算式不是同一套</b>。所以下面给的是<b>敏感性区间</b>，不是某个 provider 的账单。
+  </div>
+
+  <p>把口径摆正之后重算。锚定在论文<strong>公开的总量</strong>上（T=100：ReAct 1,245,413，SKILL.state 65,408，裸比 <strong>19.0&#215;</strong>），
+  设 <code>f</code> 为总量中属于 input 的比例（未知），ReAct 的 input 在门槛模型下的有效系数是 <strong>0.172</strong>，SKILL.state 拿不到任何折扣：</p>
+
+  <pre><code><span class="c"># 有效成本</span>
+ReAct       = <span class="k">0.172</span> &#215; f &#215; 1,245,413  +  (1 &minus; f) &#215; 1,245,413
+SKILL.state = 65,408                                  <span class="c"># 全程无缓存</span></code></pre>
 
   <figure>
     <div class="fig">
-      <p class="fig-title">SKILL.state 相对 ReAct 的成本优势，按两种口径</p>
-      <p class="fig-sub">纵轴 = ReAct 成本 &#247; SKILL.state 成本。Warehouse T=100；命中 0.1&#215;、写入 1.25&#215;（5 分钟 TTL 档），缓存全程不过期，且遵守 4,096 token 门槛。</p>
+      <p class="fig-title">成本优势倍率：论文口径 vs 计入缓存门槛</p>
+      <p class="fig-sub">纵轴 = ReAct 成本 &#247; SKILL.state 成本。右侧是区间，不是点估计。</p>
       <div class="chart-host" id="c-cache"></div>
-      <figcaption><b>这是我的建模推演，不是论文数据，也不是实测。</b>假设与算式见下表。</figcaption>
+      <figcaption><b>建模推演，不是论文数据，也不是实测。</b>区间下界对应「总量几乎全是 input」，上界对应 4 字符&#8776;1 token 反推出的 input 占比（约 0.73）。</figcaption>
     </div>
   </figure>
 
   <div class="tbl-wrap">
   <table>
-    <tr><th style="width:24%">项</th><th>ReAct（纯追加）</th><th>SKILL.state</th></tr>
-    <tr><td><b>单步 prompt</b></td><td>约 180&#183;t token（拟合自 Table 1）</td><td>恒定 ~476 token</td></tr>
-    <tr><td><b>裸输入 token 合计</b></td><td class="num">909,000</td><td class="num">47,600</td></tr>
-    <tr><td><b>可缓存前缀</b></td><td>前一步的整个 prompt，<b>第 24 步起</b>越过 4,096</td><td><code>P</code> 仅 ~350 token &#8212; <b>永远够不着</b></td></tr>
-    <tr><td><b>第 1&#8211;23 步</b></td><td class="num">49,680（全价）</td><td rowspan="4" style="vertical-align:middle">全程无缓存<br><span style="color:var(--paper-muted)">有效成本 = 裸 token</span></td></tr>
-    <tr><td><b>第 24&#8211;100 步 · 命中</b></td><td class="num">0.1 &#215; 845,460 = 84,546</td></tr>
-    <tr><td><b>增量写入</b></td><td class="num">1.25 &#215; 180 &#215; 77 = 17,325</td></tr>
-    <tr><td><b>首次前缀写入</b></td><td class="num">1.25 &#215; 4,140 = 5,175</td></tr>
-    <tr class="hl"><td><b>有效成本</b></td><td class="num"><b>~156,700</b></td><td class="num"><b>47,600</b></td></tr>
-    <tr><td><b>倍率</b></td><td colspan="2">裸 token <b>19.1&#215;</b> &#8594; 计入缓存后 <b>3.3&#215;</b></td></tr>
+    <tr><th>input 占总量的比例 <code>f</code></th><th class="num">ReAct 有效成本</th><th class="num">SKILL.state</th><th class="num">倍率</th></tr>
+    <tr class="hl"><td><b>1.00</b>（全部是 input，下界）</td><td class="num">214,700</td><td class="num">65,408</td><td class="num"><b>3.3&#215;</b></td></tr>
+    <tr><td>0.90</td><td class="num">317,800</td><td class="num">65,408</td><td class="num">4.9&#215;</td></tr>
+    <tr><td>0.80</td><td class="num">420,900</td><td class="num">65,408</td><td class="num">6.4&#215;</td></tr>
+    <tr class="hl"><td><b>0.73</b>（4 字符&#8776;1 token 反推，上界）</td><td class="num">493,000</td><td class="num">65,408</td><td class="num"><b>7.5&#215;</b></td></tr>
   </table>
   </div>
 
-  <p><strong>结论没有被推翻，但被砍掉了六分之五。</strong>3.3 倍仍然值得做；19 倍是一个不该用来做决策的数字。</p>
-
-  <h3 class="sub">撤回：我此前对 &#964;-Bench Retail 的推断是错的</h3>
-  <div class="call fact">
-    <span class="tag">更正</span>
-    本页第一版写过「把 cache 计入后，&#964;-Bench Retail 上 ReAct 很可能反而更便宜」。<b>加上门槛之后这条不成立</b>：
-    该 benchmark 上 ReAct 单步 prompt 均值 2,819 字符（~705 token）、SKILL.state 3,325 字符（~831 token），
-    <b>两边都远低于 4,096，谁都拿不到缓存</b>。所以在公开 benchmark 那三格上，<b>论文的裸 token 比较基本就是对的</b>。
+  <div class="call mine">
+    <span class="tag">所以正确的说法是</span>
+    <b>裸 token 19.0&#215; &rarr; 计入缓存门槛后大致落在 3&#8211;8&#215;。</b>精确值取决于论文<b>未公开</b>的 input/output 拆分，拿不到原始 usage 就推不出来。
     <br><br>
-    缓存折价只在<b>单步 prompt 本来就很大</b>的场景才咬得动 —— 也就是 Warehouse / Software Repository 这类长程合成任务，正好是论文倍率最亮眼的那几格。
+    值得记一笔的是方向：我上一版报的 <b>3.3&#215; 其实是这个区间的下界</b>，不是中点 —— 因为 output 永远全价、永不缓存，而 ReAct 的 output 绝对量更大，
+    把它算进来<b>反而抬高</b>倍率。<b>两次修订我都把自己的批评做过了头</b>，这次是往回收。
+    <br><br>
+    不受这个不确定性影响的是<b>定性结论</b>：量级从「近二十倍」掉到「个位数倍」，而且下面这条排序反转是稳的。
   </div>
 
   <h3 class="sub">推论一：压缩式系统在这一维上仍然是最差的</h3>
@@ -1276,32 +1311,37 @@ layout: null
     注意这个排序<b>和裸 token 的排序正好相反</b>。SKILL.state 依然总成本最低 —— 但它是靠「少发」赢的，不是靠「发得便宜」赢的，而且它把「发得便宜」这条路<b>整个堵死了</b>。
   </div>
 
-  <h3 class="sub">推论二：想同时要状态语义和缓存，<code>P</code> 就得<em>故意做大</em></h3>
-  <p>这是上面那条反过来读之后得到的设计结论，也是我认为本节最有用的一句：</p>
+  <h3 class="sub">推论二：要越过门槛，动的不一定是 <code>P</code>，而是<em>稳定前缀</em></h3>
+  <p>我第一版从上面那条推出了「<code>P</code> 必须自己超过门槛，所以要故意把说明书写大」。<strong>这个推论下得太急了。</strong>缓存命中要求的是<strong>两次请求之间逐字相同的那段前缀</strong>够长 —— 它不一定在 <code>P</code> 结束的地方就断掉。</p>
+
   <ul class="arrow">
-    <li>缓存前缀必须 <b>&#8805; 门槛</b>（Gemini 3 是 4,096 token）才有意义；</li>
-    <li>SKILL.state 的前缀就是 <code>P</code>，而 <code>&#931;</code> 和 <code>O</code> 每步都变、必须排在 <code>P</code> <b>之后</b>；</li>
-    <li>所以要拿到缓存，<b><code>P</code> 必须自己就超过门槛</b> —— 完整的技能说明书、完整的工具定义、完整的项目约定，全部塞进 <code>P</code> 并保持逐字不变。</li>
+    <li><b>它可以延伸进 <code>&#931;</code> 里不变的那一段。</b>只要序列化时 <b>key 顺序稳定</b>，&#931; 中本轮没被改动的前导字段仍然逐字相同，<b>照样算在公共前缀里</b>。</li>
+    <li><b>所以真正的杠杆是排布，不是体积。</b>把 &#931; 按「几乎不变 / 经常变」分区，不变的那半放前面、易变的放后面，公共前缀就能自然变长 —— 论文那个把整个 <code>inventory</code> 混在一起、每步改一格的序列化方式，恰恰是最坏的一种排布。</li>
+    <li><b>Google 的公开建议也只是「把大而共用的内容放在 prompt 开头」</b>，并没有说 <code>P</code> 自己必须超过门槛。</li>
+    <li><b>刻意 padding 有真实代价</b>：首次写入与未命中时按全价计，而且更长的 prompt 会摊薄注意力、抬高延迟。<b>为了凑门槛去灌水是负收益的。</b></li>
   </ul>
+
   <div class="call mine">
-    <span class="tag">一句反直觉的工程结论</span>
-    在这套架构里，<b>把 <code>P</code> 写大是省钱的，把 <code>P</code> 写小是烧钱的</b>。
-    一份 5,000 token 的说明书按 0.1&#215; 计价，等效 500 token；一份 350 token 的说明书按全价计价，等效 350 token —— 两者几乎持平，
-    但前者<b>顺带把「不可压缩通道」（第 11 节的通道 A）整个塞了进去，而且是免费的</b>。
+    <span class="tag">收敛后的说法</span>
+    不是「<code>P</code> 要写大」，而是：<b>要让 <code>P</code> + <code>&#931;</code> 中逐字不变的前导部分合起来越过门槛</b>。
     <br><br>
-    这与「把 prompt 压小」的直觉正好相反，也正是本页第 11 节把治理约束放进通道 A 的成本依据。
+    落到工程上是三件具体的事：<b>(1)</b> 序列化用确定的 key 顺序，别让 JSON 序列化顺序随机漂；
+    <b>(2)</b> 把 &#931; 显式切成 immutable 区与 mutable 区，immutable 区排在前面；
+    <b>(3)</b> 真正不变的东西（工具定义、项目约定、治理约束）本来就该放进 <code>P</code> —— 它们进去是<b>顺带</b>把前缀撑过门槛，不是为了撑门槛才塞进去。
+    <br><br>
+    第三条正好与第 11 节的「通道 A」重合：<b>那些内容你本来就要每步重发，放进稳定前缀是免费的顺风车</b>。
   </div>
 
   <div class="call fact">
     <span class="tag">口径声明</span>
-    本节全部数字为<b>建模推演</b>，基于：4 字符 &#8776; 1 token；命中 0.1&#215;、写入 1.25&#215;；缓存全程不过期（这对 ReAct 最有利）；
-    单步 prompt 按 Table 1 拟合成 180&#183;t；门槛取 ADK 文档记载的 Gemini 3 的 4,096 token。
+    本节全部数字为<b>建模推演</b>，基于：4 字符 &#8776; 1 token；命中 0.1&#215;、写入 1.25&#215;（一档通用形态，<b>不是任何单一 provider 的完整价目表</b>，Gemini 自己的 context caching 另有创建与存储计费）；
+    缓存全程不过期（对 ReAct 最有利）；单步 prompt 按 Table 1 拟合成 180&#183;t；门槛取 ADK 文档记载的 Gemini 3 的 4,096 token。
     <br><br>
-    <b>门槛是 provider 相关的</b>：若某 provider 的下限低到几百 token，SKILL.state 的 <code>P</code> 就能进缓存，倍率会回升到 6&#8211;7&#215; 一带。
-    真实的 5 分钟 TTL 也常在一次工具调用之间就过期（配套研究 &#167;3 的「软失败」），那会削弱 ReAct 一侧。
-    <b>所以 3.3&#215; 是一个中点估计，不是定论；要紧的是量级，不是小数点。</b>
+    <b>门槛与折扣都是 provider 相关的</b>：若某 provider 的下限低到几百 token，SKILL.state 的前缀就能进缓存，倍率会再往下走。
+    真实的短 TTL 也常在一次工具调用之间就过期（配套研究 &#167;3 的「软失败」），那会削弱 ReAct 一侧。
     <br><br>
-    我写这一节不是为了给出精确数字，而是为了指出：<b>论文用裸 token 作为唯一成本指标，系统性地高估了自己的优势</b>，而且高估的幅度<b>因 benchmark 而异</b> —— 合成长程任务上高估得多，公开交互 benchmark 上几乎没高估。
+    我写这一节不是为了给出精确数字，而是为了指出：<b>论文用裸 token 作为唯一成本指标，并且没有公开 input/output 拆分，读者无法据此推出真实成本</b>，
+    而按任何合理的缓存模型折算，它的成本优势都会从「近二十倍」掉到「个位数倍」。
   </div>
 </section>
 
@@ -1314,23 +1354,33 @@ layout: null
 
   <h4 class="subsub">反驳一 · O(1) 只在 &#931; 自己不增长时成立，而论文从未验证这一点</h4>
   <p>论文的核心公式是 <code>|P_t| = O(|P| + |&#931;| + |O|)</code>，「与 t 无关」。但这个式子成立的前提是 <strong><code>|&#931;|</code> 本身有界</strong> —— 而论文<strong>没有任何一处论证或测量这件事</strong>。</p>
-  <p>看它自己那个最有说服力的例子。InterCode CTF 的五字段 schema 里，有<strong>两个是只增列表</strong>：</p>
+  <p><strong>固定 schema 只约束<em>字段的集合</em>，不约束<em>字段值的长度</em>。</strong>这两件事被论文当成了一件。</p>
+
+  <div class="call fact">
+    <span class="tag">先划清证据边界：下面这张表是推断，不是来源事实</span>
+    论文只公布了 CTF schema 的<b>五个字段名</b>，<b>没有</b>公布字段类型、更新策略，也<b>没有</b>给出 <code>|&#931;|</code> 随 horizon 变化的轨迹。
+    它对 CTF 提升的归因原文是「maintaining explicit <b>hypotheses and discovered flags</b>」—— <b>两个字段一起</b>，而且<b>没有做字段消融</b>。
+    <br><br>
+    所以下表的「增长性」一列是我<b>按字段语义推断的</b>，不是论文陈述。这条反驳的正确形式是<b>条件式</b>：
+    <b>如果</b>这些字段按 append-only 实现，<b>那么</b> O(1) 就不成立；而论文没有提供任何证据让读者排除这种实现。
+  </div>
 
   <figure>
     <div class="fig">
-      <p class="fig-title">CTF schema 的五个字段，哪些有界？</p>
-      <p class="fig-sub">论文 &#167;3.1。有界的字段被新值覆盖；只增的字段每一步都可能变长。</p>
+      <p class="fig-title">CTF schema 的五个字段，按语义推断的增长性</p>
+      <p class="fig-sub">字段名来自论文 &#167;3.1；<b>增长性一列是本页的推断</b>——论文未公布类型与更新策略。</p>
       <div class="tbl-wrap">
       <table>
-        <tr><th style="width:24%">字段</th><th style="width:14%">增长性</th><th>为什么</th></tr>
-        <tr><td><code>working_dir</code></td><td style="color:#199e70"><b>有界</b></td><td>单值，新值覆盖旧值</td></tr>
-        <tr><td><code>active_files</code></td><td style="color:#199e70"><b>准有界</b></td><td>当前打开的文件集合，会进也会出</td></tr>
-        <tr><td><code>cmd_summary</code></td><td style="color:#c98500"><b>取决于实现</b></td><td>「命令历史的压缩形态」—— 如果它只是把命令追加进去，它就是一段历史</td></tr>
-        <tr class="hl"><td><code>discovered_flags</code></td><td style="color:#FF8FA3"><b>只增</b></td><td>找到的 flag 只会越来越多，不会被删</td></tr>
-        <tr class="hl"><td><code>tested_hypotheses</code></td><td style="color:#FF8FA3"><b>只增</b></td><td><b>正是这个字段带来了 CTF 上的提升</b>——它的价值就来自「什么都不忘」，所以它<b>按设计</b>就是单调增长的</td></tr>
+        <tr><th style="width:24%">字段（论文公布）</th><th style="width:20%">推断的增长性</th><th>依据（本页推断）</th></tr>
+        <tr><td><code>working_dir</code></td><td style="color:#199e70">很可能<b>有界</b></td><td>语义上是单值，新值覆盖旧值</td></tr>
+        <tr><td><code>active_files</code></td><td style="color:#199e70">很可能<b>准有界</b></td><td>「当前打开的文件」是一个会进也会出的集合</td></tr>
+        <tr><td><code>cmd_summary</code></td><td style="color:#c98500"><b>取决于实现</b></td><td>名字叫 summary，但若实现成追加命令列表，它就是一段历史</td></tr>
+        <tr class="hl"><td><code>discovered_flags</code></td><td style="color:#FF8FA3">若 append-only 则<b>只增</b></td><td>已找到的 flag 没有被删除的理由</td></tr>
+        <tr class="hl"><td><code>tested_hypotheses</code></td><td style="color:#FF8FA3">若 append-only 则<b>只增</b></td><td>「已试过且失败的假设」要发挥作用就得留着；除非实现里做了归并或封顶，否则会随步数变长</td></tr>
       </table>
       </div>
-      <figcaption>最讽刺的一点：论文归因于 <code>tested_hypotheses</code> 的那份收益（CTF 54.2% vs 46.4%），<b>恰恰来自这个字段的只增性质</b>。它记住的失败假设越多越有用，也就越长。<b>你不能同时要「它记住一切」和「它大小恒定」。</b></figcaption>
+      <figcaption>要点不是「论文一定错了」，而是：<b>论文把「schema 固定」当成了「状态有界」的证明，而这两者之间隔着一个它从未公开的实现细节。</b>
+      张力是真实的 —— 记录「已排除的假设」这类字段，价值来自不忘，而不忘通常意味着变长；<b>除非实现里显式做了归并或封顶，而论文没说它做了。</b></figcaption>
     </div>
   </figure>
 
@@ -1339,7 +1389,7 @@ layout: null
     Warehouse 的 &#931; 之所以恒定（1,775 &#8594; 1,811 字符，T=10 到 T=200 几乎不动），是因为<b>那个环境的真实状态本来就有界</b>：500 个格子，每格一个物品或 null，动作只是覆盖和删除，<b>没有任何一个字段会累积</b>。
     <br><br>
     换句话说，Table 1 里那条漂亮的水平线<b>是 Warehouse 给的，不是 SKILL.state 给的</b>。
-    把同一套方法放到一个需要记住「试过什么」的领域，&#931; 就会重新长成一段历史 —— 只不过是一段<b>结构化的、你自己写 schema 挑出来的</b>历史。
+    论文<b>没有在任何一个需要累积字段的领域测过 <code>|&#931;|</code> 的增长</b> —— CTF 有这样的字段，但那一组只报了 pass@1 与总 token，没报 &#931; 随步数的轨迹。
   </div>
 
   <p>论文自己的数据里就有这个苗头。&#964;-Bench Retail 上，SKILL.state 的单步 prompt 是四种运行时里<strong>最大的</strong>（3,325 字符 vs ReAct 2,819）—— 一个号称 O(1) 的方法，在最接近真实业务的那个 benchmark 上，prompt 比纯追加的 ReAct 还大。</p>
@@ -1390,8 +1440,16 @@ layout: null
     <figcaption>粉色虚线那一格是空的。论文用「全量历史 + 状态」当对手，等于让对手<b>同时背上历史膨胀的全部代价，却拿不到压缩的任何好处</b>。</figcaption>
   </div></figure>
 
-  <h4 class="subsub">反驳三 · 预算对齐实验把对手掐到真实系统的 1/40</h4>
-  <p>已在第 5 节展开：<strong>1,800 字符 &#8776; 450 token</strong>，而 OpenClaw / opencode 的缓冲是 <strong>20,000 token</strong>，Codex CLI 光保留用户原话就给 20,000 token。「Summary-capped = 0.52」测的是 450 token 的摘要，不是生产级 compaction。这个实验证明了「统计式压缩器会毁掉标识符」（这条我完全同意），但没有证明「压缩式路线打不过状态式路线」。</p>
+  <h4 class="subsub">反驳三 · 预算对齐实验的预算远低于任何生产系统的保留量</h4>
+  <p>论文的预算是 <strong>~1,800 字符 &#8776; 450 token</strong>，而且表头写 tokens、正文写 characters、指标定义又说 characters（&#167;5 已列）。</p>
+  <div class="call pit">
+    <span class="tag">这里我上一版做了一个不成立的除法，已删除</span>
+    我原来写「掐到真实系统的 <b>1/40</b>」，用的是 450 token 对 OpenClaw / opencode 的 <b>20,000 token</b>。
+    <b>这两个数不是同一个量</b>：20,000 是<b>压缩触发余量</b>（还剩多少空间就动手），Codex 那个 20,000 是<b>用户原话保留预算</b>；
+    论文那个 450 是<b>压缩之后整个 prompt 的目标大小</b>。分属不同机制层，直接相除得不出「生产系统信息预算多 40 倍」。
+  </div>
+  <p>能站得住的说法是这个，而且它已经够了：<strong>论文把整个 prompt 压到约 450 token，而 Codex CLI 光是<em>逐字保留的用户原话</em>一项就给到 20,000 token 预算</strong> —— 生产系统<strong>单独一个保留项</strong>就比论文压缩基线的<strong>全部预算</strong>大一到两个数量级。</p>
+  <p>所以「Summary-capped = 0.52」告诉我们的是<strong>450 token 的摘要撑不住 100 步</strong>，不是「生产级 compaction 撑不住 100 步」。这个实验确实证明了「统计式压缩器会毁掉精确标识符」（这条我完全同意，见第 5 节），但没有证明「压缩式路线打不过状态式路线」—— 那一格仍然是空的（反驳二）。</p>
 
   <h4 class="subsub">反驳四 · Warehouse 与方法同构</h4>
   <p>Warehouse 的真实世界状态<strong>本身就是一个字典</strong>：500 个互不相干的格子，每格一个字符串或 null。而 SKILL.state 的状态表示<strong>也是一个字典</strong>。这不是「方法在这个任务上表现好」，这是<strong>方法与任务共用同一个数据结构</strong>。</p>
@@ -1400,7 +1458,7 @@ layout: null
   <h4 class="subsub">反驳五 · 正文的措辞覆盖了两处不利结果</h4>
   <div class="tiles two">
     <div class="tile"><div class="lbl">未提及 · 之一</div><div class="body">Gemma-4-31B 在 T=100 时 SKILL.state 与 Stateful <b>同为 0.42</b>；Qwen-3-8B 是 0.34 vs 0.31。正文只写「across both proprietary and open-weight models」，<b>没有一处说明准确率优势在长程 + 小模型上会消失</b>。</div></div>
-    <div class="tile"><div class="lbl">未提及 · 之二</div><div class="body">Software Repository T=25 处 SKILL.state <b>0.88 &lt; Stateful 0.94</b>，是全文唯一落败。这个数据在附录 Table 6 里，正文与附录文字<b>都未提及</b>。</div></div>
+    <div class="tile"><div class="lbl">未提及 · 之二</div><div class="body">Software Repository T=25 处 SKILL.state 均值 <b>0.88 &lt; Stateful 0.94</b>，是全文唯一一次均值落后，正文与附录文字<b>都未提及</b>。<br>&#9888; 但按论文口径这两者误差棒重叠（&plusmn;0.08 / &plusmn;0.03），且低于它声明的 T&#8805;50 显著性区间，<b>所以这是「没提」，不是「输了」</b>。</div></div>
   </div>
   <p style="margin-top:20px">两处都不是造假——数据都在表里。但它们都是<strong>读者需要主动去附录找才会发现的不利证据</strong>，而正文的概括性措辞恰好把它们盖住了。</p>
 
@@ -1412,7 +1470,9 @@ layout: null
   </div>
   <p>把这三条翻译成工程语言：</p>
   <ul class="arrow">
-    <li><b>第 (1) 条 = coding agent</b>。「修复这个仓库里的登录 bug」没有事先可写的 schema——你不知道会碰到哪些文件、哪些框架、哪种错误。而我研究的十五个平台里，<b>OpenClaw、Hermes、Codex CLI、opencode、kimi-code、Cline、Goose、OpenHands 八家的主场就是这个</b>。</li>
+    <li><b>第 (1) 条不等于「coding agent 全都不行」—— 这一点我第一版写窄了。</b>论文自己就在两个 coding 相关环境上跑通了（InterCode CTF、Software Repository），靠的正是<b>预先写好的领域 schema</b>；分支 / PR / CI / issue 这类结构稳定的 workflow，schema 完全写得出来。
+    真正被排除的是<b>「相关状态结构必须在执行中才被发现」的那部分开放式 coding 与 debugging</b> ——「修复这个仓库里的登录 bug」属于这一类：你事先不知道会碰到哪些文件、哪些框架、哪种错误。
+    我研究的十五个平台里，<b>OpenClaw、Hermes、Codex CLI、opencode、kimi-code、Cline、Goose、OpenHands 八家的入口任务恰好偏在这一侧</b> —— 不是它们不能用 schema，而是它们接到的任务通常还没有 schema。</li>
     <li><b>第 (2) 条是最狠的一条</b>，它承认了状态式路线的根本脆弱性：<b>投影是不可逆的</b>。压缩式系统里，一条当时没看出重要性的信息还躺在未压缩的 tail 里，后面可能被用上；SKILL.state 里，它在第一步就被丢了。<b>「事后才知道重要」这件事，是投影范式无解的。</b></li>
     <li><b>第 (3) 条对应我研究 &#167;17.7「压缩不销毁数据」那条共识</b>。十一家都保留原始数据（append-only session tree、soft archive、双可见性、事件溯源）。SKILL.state 的 &#931; <b>不是日志</b>，要留档得另建一套。</li>
   </ul>
@@ -1556,11 +1616,12 @@ layout: null
   <details class="q"><summary>prompt cache 有一条门槛。它为什么恰好卡死 SKILL.state？</summary><div class="a">
     缓存要求<b>可缓存前缀达到最小值</b>（ADK 文档：Gemini 2.5 是 2,048 token，Gemini 3 是 <b>4,096</b>），低于它一个 token 都不缓存。
     <br><br>
-    SKILL.state 的前缀只有 <code>P</code>（~350 token），<b>永远够不着</b>；ReAct 的 prompt 在第 24 步就越过门槛，此后每步按 0.1&#215; 命中。
-    于是 Warehouse T=100 的倍率从裸 token 的 <b>19.1&#215;</b> 掉到约 <b>3.3&#215;</b>。
+    SKILL.state 的稳定前缀只有 <code>P</code>（~350 token），<b>永远够不着</b>；ReAct 的 prompt 在第 24 步就越过门槛，此后每步命中。
+    于是 Warehouse T=100 的倍率从裸 token 的 <b>19.0&#215;</b> 掉到 <b>3&#8211;8&#215;</b> 区间（精确值取决于论文未公开的 input/output 拆分）。
     <br><br>
     反直觉之处：<b>让 SKILL.state 便宜的那个性质（prompt 极小），正是让它拿不到缓存折扣的那个性质。</b>
-    设计上的推论是 <code>P</code> 要<b>故意做大</b>到超过门槛，把不可压缩的项目约定全塞进去 —— 那部分就变成了 0.1&#215; 计价。
+    设计上的推论<b>不是</b>「把 <code>P</code> 灌水到 4,096」，而是：<b>让 <code>P</code> 加上 <code>&#931;</code> 中逐字不变的前导部分合起来越过门槛</b> ——
+    稳定 key 顺序、把 &#931; 切成 immutable / mutable 两区、immutable 区排前面。
   </div></details>
   <details class="q"><summary>论文自己承认的三种失效情形是什么？其中哪一条排除了 coding agent？</summary><div class="a">
     (1) 事先没有固定 schema、结构必须动态发现；(2) 正确的更新依赖某条<b>当时未识别出相关性</b>的更早观测；(3) 任务目标定义在历史轨迹本身之上（审计、provenance）。
@@ -1577,7 +1638,7 @@ layout: null
   <div class="tbl-wrap">
   <table>
     <tr><th style="width:22%">类别</th><th>内容</th></tr>
-    <tr><td><b>论文原文</b></td><td><a href="https://arxiv.org/abs/2608.26263">arXiv:2608.26263</a> &#183; <a href="https://arxiv.org/html/2608.26263">HTML 全文</a>。v1 2026-08-26，v3 2026-09-02。本页所有论文数字均<b>直接核对自 HTML 原文的表格</b>（Table 1&#8211;11），不是二手转述</td></tr>
+    <tr><td><b>论文原文</b></td><td><a href="https://arxiv.org/abs/2608.26263">arXiv:2608.26263</a> &#183; <a href="https://arxiv.org/html/2608.26263">HTML 全文</a>。v1 2026-08-26，v3 2026-09-02。本页所有论文数字均<b>直接核对自 HTML 原文的表格</b>（Table 1&#8211;11），不是二手转述。合成实验为 <b>5 seeds，mean &plusmn; 样本标准差</b>；论文声明差异在 <b>T&#8805;50</b> 显著（paired t-test, <i>p</i>&lt;0.01）</td></tr>
     <tr><td><b>配套研究</b></td><td><a href="../Agent_Context_Compression_Research.html">开源 Agent 平台的 Context Compression 机制研究</a>（十五平台 · 逐文件读源码）与 <a href="../learn/">从零学 Agent Context Compression</a>（十步学习路径）。本页引用的 &#167; 编号均指前者</td></tr>
     <tr><td><b>论文引用的第三方 benchmark</b></td><td>InterCode CTF（Yang et al., 2023）· Sierra &#964;-Bench（Yao et al., 2024）· LLMLingua（Jiang et al., 2023）· Lost in the Middle（Liu et al., 2024）</td></tr>
     <tr><td><b>我此前研究引用的相关实证</b></td><td>CompactionRL（<a href="https://arxiv.org/abs/2607.05378">arXiv:2607.05378</a>）· ConstraintRot / Governance Decay（<a href="https://arxiv.org/abs/2606.22528">arXiv:2606.22528</a>）· Slipstream（<a href="https://arxiv.org/abs/2605.08580">arXiv:2605.08580</a>）</td></tr>
@@ -1598,23 +1659,98 @@ layout: null
   </div>
 
   <h3 class="sub">更正记录</h3>
-  <div class="call pit">
-    <span class="tag">2026-09-04 · 第 9 节重算</span>
-    初版的 prompt cache 折算<b>漏掉了「最小可缓存前缀」这条硬门槛</b>，错误地假设 SKILL.state 的 <code>P</code>（~350 token）能按 0.1&#215; 命中。
-    在论文自己用的 Gemini-3-Flash 上门槛是 <b>4,096 token</b>（ADK 文档，配套研究 &#167;12.7），<code>P</code> 根本够不着。
+  <p>本页经过两轮 review。下面逐条列出改了什么、为什么 —— <strong>其中八条是我原来写错或写过头的</strong>。</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <tr><th style="width:22%">原来的说法</th><th style="width:34%">问题</th><th>现在的说法</th></tr>
+    <tr class="hl">
+      <td><b>缓存折算：19.1&#215; &rarr; 6.8&#215;</b></td>
+      <td>漏掉了<b>最小可缓存前缀</b>门槛。Gemini 3 是 4,096 token（ADK 文档），SKILL.state 的 ~350 token 前缀根本够不着</td>
+      <td>重算为区间；并指出<b>让它便宜的性质正是让它拿不到缓存的性质</b></td>
+    </tr>
+    <tr class="hl">
+      <td><b>重算后的 3.3&#215;</b></td>
+      <td>论文<b>没有公开 input / output 拆分</b>（指标只有 total token burn），而缓存只折扣 input。把输入估算当总成本比，等于让 output 从账上消失</td>
+      <td>改成敏感性区间 <b>3&#8211;8&#215;</b>；3.3&#215; 其实是<b>下界</b>不是中点</td>
+    </tr>
+    <tr class="hl">
+      <td>把 Gemini 门槛与 0.1&#215;&#47;1.25&#215; 计价<b>混用</b></td>
+      <td>不是同一个 provider 的价目表；Gemini 的 context caching 另有创建与存储计费</td>
+      <td>明确声明为<b>通用形态的敏感性分析</b>，不冒充任何单一 provider 的账单</td>
+    </tr>
+    <tr class="hl">
+      <td>「<code>P</code> 必须自己超过门槛，所以要<b>故意写大</b>」</td>
+      <td>公共前缀不一定在 <code>P</code> 末尾断掉，它可以延伸进 <code>&#931;</code> 中逐字不变的前导部分；刻意 padding 还会抬高首次成本与延迟</td>
+      <td>改成<b>稳定前缀</b>：稳定 key 顺序 + immutable&#47;mutable 分区 + 真不变的内容本就该进 <code>P</code></td>
+    </tr>
+    <tr class="hl">
+      <td>「&#964;-Bench Retail 上 ReAct 可能反而更便宜」</td>
+      <td>该 benchmark 两边都够不着门槛（705 &#47; 831 token），谁都拿不到缓存</td>
+      <td><b>已撤回</b>；那三格论文的裸 token 比较基本成立</td>
+    </tr>
+    <tr class="hl">
+      <td>「两个字段<b>只增</b>」「收益<b>恰恰来自</b>只增性质」</td>
+      <td>论文只公布了五个<b>字段名</b>，没公布类型与更新策略；对 CTF 的归因是 hypotheses <b>和</b> flags 两者，且<b>无字段消融</b>。我把推断写成了事实</td>
+      <td>改成<b>条件式</b>：固定 schema 不约束字段值长度；<b>若</b> append-only 实现，<b>则</b> O(1) 不成立</td>
+    </tr>
+    <tr class="hl">
+      <td>「预算被掐到真实系统的 <b>1&#47;40</b>」</td>
+      <td>450 token 是<b>压缩后的目标 prompt</b>，20,000 token 是<b>触发余量</b>或<b>用户原话保留预算</b> —— 不同机制层，不能相除</td>
+      <td>删掉这个比值；改成一个同类可比的陈述（Codex <b>单独一个保留项</b>就大过论文的<b>全部预算</b>）</td>
+    </tr>
+    <tr class="hl">
+      <td>「Limitations 第 (1) 条 <b>= coding agent</b>」</td>
+      <td>论文自己就用固定 schema 跑通了两个 coding 环境；被排除的是<b>状态结构需动态发现</b>的任务，不是 coding 这个类别</td>
+      <td>收窄到<b>开放式 coding&#47;debugging 中 schema 事先写不出来的那部分</b></td>
+    </tr>
+    <tr class="hl">
+      <td>六层图把 <b>L1&#47;L2&#47;L5 都画成「整层删除」</b></td>
+      <td>SKILL.state 每步仍要确定性拼 prompt（就是 L5）；而 L1 测量在「&#931; 可能增长」这条反驳之后<b>反而更需要</b></td>
+      <td>只有 <b>L2 删除</b>；L1&#47;L5 <b>简化</b>；L3&#47;L4 <b>前移到设计期</b></td>
+    </tr>
+    <tr class="hl">
+      <td>图表与数据表<b>只报均值</b></td>
+      <td>论文有一段 <i>Statistical Significance</i>：5 seeds、mean &plusmn; SD、显著性仅在 <b>T&#8805;50</b>。我却声称核对了全部数据</td>
+      <td>折线图加<b>误差棒</b>，数据表补 <b>&plusmn;SD</b>，并单列显著性口径</td>
+    </tr>
+    <tr class="hl">
+      <td>「Software Repo T=25 是<b>唯一一次落败</b>」</td>
+      <td>0.88&plusmn;0.08 vs 0.94&plusmn;0.03，误差棒重叠，且低于论文声明的显著性区间</td>
+      <td>改为<b>均值上的凹陷</b>；可指摘的是论文<b>没提</b>，不是它输了</td>
+    </tr>
+    <tr>
+      <td>滑杆图注「T=10 时四种做法准确率<b>完全一样</b>」</td>
+      <td>ReAct 是 0.90，其余三家 1.00，差 0.10</td>
+      <td>改为如实描述这 0.10 的差，并挂上显著性口径</td>
+    </tr>
+    <tr>
+      <td>交互演示里的 <code>state_patch</code></td>
+      <td>写成了<b>非法 JSON</b>（用方括号包 key-value），下一步却说校验通过</td>
+      <td>改成合法 JSON 对象；空补丁同步</td>
+    </tr>
+    <tr>
+      <td>「不合法就回滚重试，<b>模型改不坏持久状态</b>」</td>
+      <td>schema 校验只挡得住<b>结构</b>错误；删错货架在结构上完全合法 —— 本页自己那 68% 的错误正是这一类</td>
+      <td>限定为<b>结构合法性</b>，并显式说明语义仍需另行校验</td>
+    </tr>
+  </table>
+  </div>
+
+  <div class="call mine">
+    <span class="tag">值得记一笔的一个模式</span>
+    这十三条里，<b>与 SKILL.state 有关的错误几乎全都朝同一个方向偏</b>：我在批评论文夸大自己时，自己也把批评做过了头 ——
+    倍率算得过低、把推断写成事实、把不可比的数相除、把「没提」说成「输了」。
     <br><br>
-    三处随之更正：<b>倍率 6.8&#215; &rarr; 3.3&#215;</b>；<b>缓存维度排序</b>由「ReAct &gt; SKILL.state &gt; 压缩式」改为「ReAct &gt; 压缩式 &gt; SKILL.state」；
-    并<b>撤回</b>了「&#964;-Bench Retail 上 ReAct 可能反而更便宜」的推断（该 benchmark 两边都够不着门槛，裸 token 比较基本成立）。
-    <br><br>
-    由 <a href="https://github.com/caiboyang/ML-learning/pull/22">PR #22</a> 的 review 指出。原始错误的方向是<b>高估了 SKILL.state 的成本优势</b>——与我在同一节批评论文的方向一致，值得记一笔。
+    <b>批评者的偏差和被批评者的偏差方向相反，但性质相同。</b>这一页现在把两边的口径都摊开写在了各自的位置上。
   </div>
 
   <h3 class="sub">与配套研究的一致性说明</h3>
   <ul class="arrow">
     <li>本页<b>不修改</b>那篇研究的任何既有结论。它补充的是「效果评测」一节里此前空着的一格：<b>不压缩（状态外置到底）那条路线的量化证据</b>。</li>
     <li>那篇研究 &#167;20 的设计清单第 23 条「把状态外置而不是压缩」，此前只有 Antigravity 的架构取向与 OpenClaw memory flush 作为间接证据。<b>本页第 5 节的 0.94 vs 0.52 是这条目前最强的实证</b>，但要连同第 10 节的预算口径问题一起读。</li>
-    <li>那篇研究 &#167;2.11「压缩与 prompt cache 的根本张力」与 &#167;12.7（ADK 记录的最小可缓存前缀）在本页第 9 节合并成一条新判断：<b>缓存维度上的排序是 ReAct &gt; 压缩式 &gt; SKILL.state，与裸 token 的排序正好相反</b>。论文未涉及这一维。<b>本页第一版把 SKILL.state 排在第二位，是漏掉了门槛这一条，已更正</b>（更正记录见文末）。</li>
-    <li>本页第 10 节反驳一（<b>O(1) 依赖 <code>|&#931;|</code> 有界，论文未验证</b>）是对那篇研究 &#167;1 六层模型的一条补充：<b>L4「减法」被搬到设计时之后，膨胀风险并没有消失，只是搬进了 schema</b>。相应地第 11 节推荐 <code>tested_hypotheses</code> 时附了封顶策略。</li>
+    <li>那篇研究 &#167;2.11「压缩与 prompt cache 的根本张力」与 &#167;12.7（ADK 记录的最小可缓存前缀）在本页第 9 节合并成一条新判断：<b>缓存维度上的排序是 ReAct &gt; 压缩式 &gt; SKILL.state，与裸 token 的排序正好相反</b>。论文未涉及这一维。<b>这一节经过两轮更正</b>（门槛、input/output 拆分、稳定前缀的构成），最终结论只保留到「量级从近二十倍降到个位数倍」这一层，详见文末更正记录。</li>
+    <li>本页第 10 节反驳一（<b>O(1) 依赖 <code>|&#931;|</code> 有界，论文未验证</b>）是对那篇研究 &#167;1 六层模型的一条补充：<b>L4「减法」前移到设计期之后，膨胀风险并没有消失，只是搬进了 schema</b>；也正因如此 <b>L1 测量不能删</b>，它要用来断言 <code>|&#931;|</code> 的上界。相应地第 11 节推荐 <code>tested_hypotheses</code> 时附了封顶策略。</li>
     <li>那篇研究的十一家共识里，<b>「已排除的假设」这一格是空的</b>（模板都有 Done / In-Progress / Blocked，没有 Excluded）。本页第 11 节把它作为可新增的第 2 条动作提出，依据是 CTF 上 <code>tested_hypotheses</code> 字段带来的提升。</li>
   </ul>
 </section>
@@ -1682,8 +1818,9 @@ layout: null
   function tipRows(series, i, vfmt) {
     var s = "";
     for (var k = 0; k < series.length; k++) {
+      var sd = series[k].sd && series[k].sd[i] ? " ±" + series[k].sd[i].toFixed(2) : "";
       s += '<div class="r"><span><i style="background:' + series[k].color + '"></i>' + series[k].name +
-           "</span><b>" + vfmt(series[k].values[i]) + "</b></div>";
+           "</span><b>" + vfmt(series[k].values[i]) + sd + "</b></div>";
     }
     return s;
   }
@@ -1767,6 +1904,18 @@ layout: null
     }
     // series
     var S = cfg.series;
+    for (var eb = 0; eb < S.length; eb++) {
+      var es = S[eb];
+      if (!es.sd) continue;
+      for (var ek = 0; ek < n; ek++) {
+        var sdv = es.sd[ek];
+        if (!sdv) continue;
+        var ex = X(ek), eyHi = Y(Math.min(cfg.max, es.values[ek] + sdv)), eyLo = Y(Math.max(cfg.min, es.values[ek] - sdv));
+        svg.appendChild(el("line", { x1: ex, y1: eyHi, x2: ex, y2: eyLo, stroke: es.color, "stroke-width": 1.4, opacity: 0.55 }));
+        svg.appendChild(el("line", { x1: ex - 3.5, y1: eyHi, x2: ex + 3.5, y2: eyHi, stroke: es.color, "stroke-width": 1.4, opacity: 0.55 }));
+        svg.appendChild(el("line", { x1: ex - 3.5, y1: eyLo, x2: ex + 3.5, y2: eyLo, stroke: es.color, "stroke-width": 1.4, opacity: 0.55 }));
+      }
+    }
     for (var s = 0; s < S.length; s++) {
       var d = "", ser = S[s];
       for (var k = 0; k < n; k++) d += (k ? " L " : "M ") + X(k) + " " + Y(ser.values[k]);
@@ -1839,11 +1988,13 @@ layout: null
       for (var si = 0; si < S.length; si++) {
         var v = S[si].values[gi];
         if (v === null || v === undefined) continue;
-        var bx = gx + si * (bw + 2), by = Y(v), bh = M.t + ph - by, r = Math.min(4, bw / 2, bh);
-        var d = "M " + bx + " " + (M.t + ph) + " L " + bx + " " + (by + r) +
+        var b0 = S[si].base ? S[si].base[gi] : 0;
+        var y0 = Y(b0 || 0);
+        var bx = gx + si * (bw + 2), by = Y(v), bh = y0 - by, r = Math.min(4, bw / 2, bh);
+        var d = "M " + bx + " " + y0 + " L " + bx + " " + (by + r) +
                 " Q " + bx + " " + by + " " + (bx + r) + " " + by +
                 " L " + (bx + bw - r) + " " + by + " Q " + (bx + bw) + " " + by + " " + (bx + bw) + " " + (by + r) +
-                " L " + (bx + bw) + " " + (M.t + ph) + " Z";
+                " L " + (bx + bw) + " " + y0 + " Z";
         var p = el("path", { d: d, fill: S[si].color, opacity: S[si].emph ? 1 : 0.9 });
         (function (name, val, color, grp) {
           p.addEventListener("mousemove", function (ev) {
@@ -1894,12 +2045,13 @@ layout: null
 
   /* ==================== DATA ==================== */
   var N = { react: "Prompt (ReAct)", mem: "Memory (Summary)", state: "Stateful (LangGraph)", skill: "SKILL.state" };
-  function S4(react, mem, state, skill) {
+  function S4(react, mem, state, skill, sd) {
+    sd = sd || [null, null, null, null];
     return [
-      { name: N.react, color: C.s1, values: react },
-      { name: N.mem, color: C.s2, values: mem },
-      { name: N.state, color: C.s3, values: state },
-      { name: N.skill, color: C.s4, values: skill, emph: true }
+      { name: N.react, color: C.s1, values: react, sd: sd[0] },
+      { name: N.mem, color: C.s2, values: mem, sd: sd[1] },
+      { name: N.state, color: C.s3, values: state, sd: sd[2] },
+      { name: N.skill, color: C.s4, values: skill, emph: true, sd: sd[3] }
     ];
   }
   var pct = function (v) { return v.toFixed(2); };
@@ -1954,9 +2106,9 @@ layout: null
     var rail = document.getElementById("rt-rail");
     if (!rail) return;
     var STAGES = ["组装 prompt", "模型生成", "校验并合并", "执行动作"];
-    var SIG1 = '<span class="k">"inventory"</span>: [<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3",<br>&nbsp;&nbsp;<span class="k">"shelf_42"</span>: "item_12"<br>]';
-    var SIG2 = '<span class="k">"inventory"</span>: [<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3"<br>]';
-    var SIG1DEL = '<span class="k">"inventory"</span>: [<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3",<br>&nbsp;&nbsp;<span class="del">"shelf_42": "item_12"</span>&nbsp;&larr; 删<br>]';
+    var SIG1 = '<span class="k">"inventory"</span>: &#123;<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3",<br>&nbsp;&nbsp;<span class="k">"shelf_42"</span>: "item_12"<br>&#125;';
+    var SIG2 = '<span class="k">"inventory"</span>: &#123;<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3"<br>&#125;';
+    var SIG1DEL = '<span class="k">"inventory"</span>: &#123;<br>&nbsp;&nbsp;<span class="k">"shelf_7"</span>: "item_3",<br>&nbsp;&nbsp;<span class="del">"shelf_42": "item_12"</span>&nbsp;&larr; 删<br>&#125;';
 
     function inBox(sig, obs, sigLabel) {
       return '<div class="kv" style="margin-bottom:12px"><span style="color:var(--paper-muted)">P &middot; 技能说明书（每步逐字相同）</span><br>' +
@@ -1975,12 +2127,12 @@ layout: null
       { turn: 1, st: 1, act: "out",
         in: inBox(SIG1, OBS1),
         out: '<div class="kv" style="margin-bottom:12px"><span style="color:var(--rose)">R_t &middot; 推理（步内完整，用完即弃）</span><br><span style="color:var(--paper-dim)">客户订了 item_12，我要发货。<br>查执行状态，item_12 在 shelf_42。<br>需要生成 Ship 动作并把该格清空。</span></div>' +
-             '<div class="kv"><span style="color:var(--amber)">&Delta;&Sigma;_t + a_t &middot; 唯一会存活的输出</span><br>{<br>&nbsp;&nbsp;<span class="k">"state_patch"</span>: [ "inventory": [ <span class="add">"shelf_42": null</span> ] ],<br>&nbsp;&nbsp;<span class="k">"action"</span>: "Ship item_12 shelf_42"<br>}</div>',
+             '<div class="kv"><span style="color:var(--amber)">&Delta;&Sigma;_t + a_t &middot; 唯一会存活的输出</span><br>&#123;<br>&nbsp;&nbsp;<span class="k">"state_patch"</span>: &#123; "inventory": &#123; <span class="add">"shelf_42": null</span> &#125; &#125;,<br>&nbsp;&nbsp;<span class="k">"action"</span>: "Ship item_12 shelf_42"<br>&#125;</div>',
         narr: "<b>第 1 轮 &middot; 生成。</b>模型在这一步里<b>照常做完整的多步推理</b> —— 被丢掉的是<b>跨步携带</b>的推理，不是这一轮的思考能力。注意 <code>null</code>：它表示「把这个 key 删掉」。" },
       { turn: 1, st: 2, act: "in",
         in: inBox(SIG1DEL, OBS1, "合并中：&Sigma;_t &oplus; &Delta;&Sigma;_t"),
         out: '<div class="kv"><span style="color:var(--rose)">R_t &middot; 已永久丢弃</span><br><span class="del">客户订了 item_12，我要发货&hellip;</span><br><br><span style="color:var(--phosphor)">&#10003; schema 校验通过 &rarr; 合并</span></div>',
-        narr: "<b>第 1 轮 &middot; 校验并合并。</b>运行时先按 schema 校验补丁（不合法就回滚重试，模型改不坏持久状态），再执行 <code>null</code> 删除。<b>同一时刻 <code>R</code> 被永久丢弃。</b>" },
+        narr: "<b>第 1 轮 &middot; 校验并合并。</b>运行时先校验补丁的<b>结构</b>（字段名、类型、JSON 合法性），不合法就回滚重试；再执行 <code>null</code> 删除。<b>同一时刻 <code>R</code> 被永久丢弃。</b><br>&#9888; 校验的边界要说清：它挡得住<b>写坏</b>，挡不住<b>写错</b> —— 一个删掉了正确货架的补丁在结构上完全合法。第 7 节那 68% 的错误正是这一类。" },
       { turn: 1, st: 3, act: "out",
         in: inBox(SIG2, OBS1, "执行状态（已更新）"),
         out: '<div class="kv"><span style="color:var(--phosphor)">a_t &middot; 交给环境</span><br>Ship item_12 shelf_42<br><br><span style="color:var(--paper-muted)">&rarr; 环境返回下一条观测</span></div>',
@@ -1992,7 +2144,7 @@ layout: null
       { turn: 2, st: 1, act: "out",
         in: inBox(SIG2, OBS2),
         out: '<div class="kv" style="margin-bottom:12px"><span style="color:var(--rose)">R_t &middot; 推理</span><br><span style="color:var(--paper-dim)">发货成功。电量与温度与任务无关，<br>schema 里也没有对应字段，忽略。</span></div>' +
-             '<div class="kv"><span style="color:var(--amber)">&Delta;&Sigma;_t + a_t</span><br>{<br>&nbsp;&nbsp;<span class="k">"state_patch"</span>: [ ]&nbsp;&nbsp;<span style="color:var(--paper-muted)">&larr; 空补丁</span><br>&nbsp;&nbsp;<span class="k">"action"</span>: "Wait"<br>}</div>',
+             '<div class="kv"><span style="color:var(--amber)">&Delta;&Sigma;_t + a_t</span><br>&#123;<br>&nbsp;&nbsp;<span class="k">"state_patch"</span>: &#123;&#125;,&nbsp;&nbsp;<span style="color:var(--paper-muted)">&larr; 空补丁（合法，状态不变）</span><br>&nbsp;&nbsp;<span class="k">"action"</span>: "Wait"<br>&#125;</div>',
         narr: "<b>第 2 轮 &middot; 生成。</b>关键在这里：遥测<b>没有对应的 schema 字段，所以它无处可去</b>。摘要器要回答「这段该不该删」，schema 只需要回答「有没有这个字段」。" },
       { turn: 2, st: 2, act: "in",
         in: inBox(SIG2, OBS2, "执行状态（不变）"),
@@ -2051,9 +2203,11 @@ layout: null
       series: tokS, height: 330, alt: "累计 token 消耗随步数增长，SKILL.state 明显低于三条基线"
     });
     table("t-tok", ["T", "ReAct", "Memory", "Stateful", "SKILL.state"], [
-      ["10", "9,438", "9,972", "10,337", "<b>5,870</b>"], ["25", "42,689", "43,067", "41,238", "<b>14,714</b>"],
-      ["50", "171,658", "131,455", "170,992", "<b>30,151</b>"], ["100", "1,245,413", "1,082,154", "1,062,387", "<b>65,408</b>"],
-      ["200", "2,608,755", "6,175,509", "5,041,164", "<b>122,384</b>"]
+      ["10", "9,438 ±371", "9,972 ±204", "10,337 ±299", "<b>5,870 ±131</b>"],
+      ["25", "42,689 ±2,238", "43,067 ±1,948", "41,238 ±3,196", "<b>14,714 ±564</b>"],
+      ["50", "171,658 ±6,978", "131,455 ±6,841", "170,992 ±7,918", "<b>30,151 ±1,231</b>"],
+      ["100", "1,245,413 ±53,241", "1,082,154 ±83,212", "1,062,387 ±53,839", "<b>65,408 ±5,431</b>"],
+      ["200", "2,608,755 ±102,415", "6,175,509 ±294,089", "5,041,164 ±346,925", "<b>122,384 ±4,522</b>"]
     ]);
 
     /* ---- 4.2 prompt size ---- */
@@ -2075,12 +2229,16 @@ layout: null
       min: 0.6, max: 1.02, ticks: [0.6, 0.7, 0.8, 0.9, 1.0], padR: 52, padL: 42,
       tickFmt: pct, tipFmt: pctT, endFmt: pct,
       series: S4([0.90, 0.92, 0.88, 0.84, 0.74], [1.00, 0.99, 0.93, 0.87, 0.84],
-                 [1.00, 1.00, 0.94, 0.91, 0.88], [1.00, 1.00, 0.96, 0.94, 0.94]),
-      height: 270, alt: "任务准确率随步数下降，SKILL.state 下降最少"
+                 [1.00, 1.00, 0.94, 0.91, 0.88], [1.00, 1.00, 0.96, 0.94, 0.94],
+                 [[0.02, 0.02, 0.04, 0.07, 0.14], [0.00, 0.00, 0.03, 0.05, 0.09],
+                  [0.00, 0.00, 0.00, 0.02, 0.03], [0.00, 0.00, 0.01, 0.01, 0.02]]),
+      height: 270, alt: "任务准确率随步数下降，SKILL.state 下降最少；误差棒为 5 个 seed 的样本标准差"
     });
 
     /* ---- 4.4 software repo ---- */
-    var repoS = S4([0.89, 0.84, 0.71, 0.53], [0.93, 0.89, 0.65, 0.57], [1.00, 0.94, 0.74, 0.63], [1.00, 0.88, 0.86, 0.78]);
+    var repoS = S4([0.89, 0.84, 0.71, 0.53], [0.93, 0.89, 0.65, 0.57], [1.00, 0.94, 0.74, 0.63], [1.00, 0.88, 0.86, 0.78],
+                   [[0.11, 0.05, 0.14, 0.16], [0.09, 0.07, 0.12, 0.05],
+                    [0.00, 0.03, 0.08, 0.10], [0.00, 0.08, 0.04, 0.08]]);
     legend("lg-repo", repoS);
     lineChart("c-repo", {
       x: [10, 25, 50, 100], xPrefix: "T = ", xLabel: "任务步数 T", yLabel: "准确率",
@@ -2089,8 +2247,10 @@ layout: null
       alt: "Software Repository 环境准确率，T=25 处 SKILL.state 低于 Stateful"
     });
     table("t-repo", ["T", "Prompt", "Memory", "Stateful", "SKILL.state"], [
-      ["10", "0.89", "0.93", "1.00", "<b>1.00</b>"], ["25", "0.84", "0.89", "<b>0.94</b>", "0.88"],
-      ["50", "0.71", "0.65", "0.74", "<b>0.86</b>"], ["100", "0.53", "0.57", "0.63", "<b>0.78</b>"]
+      ["10", "0.89 ±0.11", "0.93 ±0.09", "1.00 ±0.00", "<b>1.00 ±0.00</b>"],
+      ["25", "0.84 ±0.05", "0.89 ±0.07", "<b>0.94 ±0.03</b>", "0.88 ±0.08"],
+      ["50", "0.71 ±0.14", "0.65 ±0.12", "0.74 ±0.08", "<b>0.86 ±0.04</b>"],
+      ["100", "0.53 ±0.16", "0.57 ±0.05", "0.63 ±0.10", "<b>0.78 ±0.08</b>"]
     ]);
 
     /* ---- 5.1 budget-matched bars ---- */
@@ -2112,11 +2272,11 @@ layout: null
 
     /* ---- 5.2 Table 11 ---- */
     var b11 = [
-      { name: "ReAct (Full, 不限预算)", color: C.s1, values: [0.90, 0.92, 0.88, 0.84] },
-      { name: "Summary-capped", color: C.s2, values: [0.92, 0.76, 0.64, 0.52] },
-      { name: "Truncated (窗口)", color: C.s3, values: [0.90, 0.62, 0.35, 0.18] },
-      { name: "SKILL.state", color: C.s4, values: [1.00, 1.00, 0.96, 0.94], emph: true },
-      { name: "ReAct + LLMLingua", color: C.s5, values: [0.88, 0.60, 0.38, 0.22] }
+      { name: "ReAct (Full, 不限预算)", color: C.s1, values: [0.90, 0.92, 0.88, 0.84], sd: [0.02, 0.02, 0.04, 0.07] },
+      { name: "Summary-capped", color: C.s2, values: [0.92, 0.76, 0.64, 0.52], sd: [0.03, 0.04, 0.05, 0.05] },
+      { name: "Truncated (窗口)", color: C.s3, values: [0.90, 0.62, 0.35, 0.18], sd: [0.04, 0.05, 0.06, 0.05] },
+      { name: "SKILL.state", color: C.s4, values: [1.00, 1.00, 0.96, 0.94], emph: true, sd: [0.00, 0.00, 0.01, 0.01] },
+      { name: "ReAct + LLMLingua", color: C.s5, values: [0.88, 0.60, 0.38, 0.22], sd: [0.04, 0.05, 0.06, 0.05] }
     ];
     legend("lg-b11", b11);
     lineChart("c-b11", {
@@ -2126,8 +2286,10 @@ layout: null
       alt: "预算对齐基线随步数增长而坍缩，SKILL.state 保持稳定"
     });
     table("t-b11", ["T", "SKILL.state", "Summary-capped", "Truncated", "LLMLingua", "ReAct (Full)"], [
-      ["10", "<b>1.00</b>", "0.92", "0.90", "0.88", "0.90"], ["25", "<b>1.00</b>", "0.76", "0.62", "0.60", "0.92"],
-      ["50", "<b>0.96</b>", "0.64", "0.35", "0.38", "0.88"], ["100", "<b>0.94</b>", "0.52", "0.18", "0.22", "0.84"]
+      ["10", "<b>1.00 ±0.00</b>", "0.92 ±0.03", "0.90 ±0.04", "0.88 ±0.04", "0.90 ±0.02"],
+      ["25", "<b>1.00 ±0.00</b>", "0.76 ±0.04", "0.62 ±0.05", "0.60 ±0.05", "0.92 ±0.02"],
+      ["50", "<b>0.96 ±0.01</b>", "0.64 ±0.05", "0.35 ±0.06", "0.38 ±0.06", "0.88 ±0.04"],
+      ["100", "<b>0.94 ±0.01</b>", "0.52 ±0.05", "0.18 ±0.05", "0.22 ±0.05", "0.84 ±0.07"]
     ]);
 
     /* ---- 6.1 noise ---- */
@@ -2241,15 +2403,16 @@ layout: null
 
     var xFmt = function (v) { return v.toFixed(1) + "\u00d7"; };
     barChart("c-cache", {
-      groups: ["论文口径\n裸输入 token 计数", "计入 prompt cache\n我的建模推演"],
+      groups: ["论文口径\n裸 token 计数（含 output）", "计入缓存门槛\n我的建模区间"],
       series: [
-        { name: "论文口径", color: C.mute, values: [19.1, null] },
-        { name: "计入缓存", color: C.s4, values: [null, 3.3], emph: true }
+        { name: "论文口径", color: C.mute, values: [19.0, null] },
+        { name: "计入缓存", color: C.s4, values: [null, 7.5], base: [0, 3.3], emph: true }
       ],
       max: 21, ticks: [0, 5, 10, 15, 20], tickFmt: function (v) { return v + "\u00d7"; },
-      tipFmt: xFmt, valueLabels: true, vlFmt: xFmt, vlSize: 22,
+      tipFmt: xFmt, valueLabels: true, vlSize: 20,
+      vlFmt: function (v) { return v === 7.5 ? "3–8×" : xFmt(v); },
       height: 260, padB: 58, padL: 50,
-      alt: "成本优势倍率：裸 token 口径 19.1 倍，计入 prompt cache 门槛后 3.3 倍"
+      alt: "成本优势倍率：裸 token 口径 19.0 倍，计入 prompt cache 门槛后落在 3 到 8 倍区间"
     });
   });
 })();
