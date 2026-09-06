@@ -68,7 +68,7 @@ function lineChart({xs,series,maxY,yLabel,width=850,height=330,markX}) {
   const n=maxY*i/4,y=Y(n);
   out+=`<line class="gridline" x1="${left}" y1="${y}" x2="${width-right}" y2="${y}"/><text x="${left-10}" y="${y+5}" text-anchor="end">${yLabel(n)}</text>`;
  }
- const ticks=xs.length>8?[0,50,100,150,200]:width<500?xs.filter(x=>x!==25):xs;
+ const ticks=xs.length>8?[0,50,100,150,200]:width<500&&maxX-minX>100?xs.filter(x=>x!==25):xs;
  for(const x of ticks) out+=`<text x="${X(x)}" y="${height-20}" text-anchor="middle">${x}</text>`;
  out+=`<text x="${width-right}" y="${height-1}" text-anchor="end">执行步数 T</text>`;
  if(markX!==undefined) out+=`<line x1="${X(markX)}" y1="${top}" x2="${X(markX)}" y2="${height-bottom}" stroke="#eef3f8" stroke-dasharray="3 5" opacity=".5"/>`;
