@@ -107,7 +107,7 @@ function renderScaling() {
  $('scaling-legend').innerHTML=SERIES.map(s=>`<span style="--series:${s.color}">${s.name}</span>`).join('');
  $('scaling-chart').innerHTML=lineChart({xs,series,...chartSize('scaling-chart'),maxY,yLabel:n=>metric==='score'?n.toFixed(2):metric==='tokens'?(n/1e6).toFixed(1):fmt(n)});
  $('scaling-chart').setAttribute('aria-label',`${domain==='warehouse'?'仓库':'软件仓库'}：${unit}随执行步数的变化；精确数据在下方表格。`);
- const insights={warehouse:{score:'Warehouse：T=200，SKILL.state 的 Score 为 0.94 ± 0.02；它在这组任务里保住了较高的正确动作比例。',prompt:'Warehouse：SKILL.state 的均值保持在约 1,700–1,900 字符；Memory 到 T=200 增长为 84,364 字符。这个摘要对照没有保持有界。',tokens:'Warehouse：T=100，Stateful 1,062,387 ÷ SKILL.state 65,408 ≈ 16.2 倍。这是特定模型与任务的累计 token 比值，不是通用省钱倍数。'},software:{score:'反例也要看：Software 的 T=25，SKILL.state 为 0.88，低于 Stateful 的 0.94；T=100 则为 0.78，高于其他对照。并非每个场景都占优。',prompt:'Software：SKILL.state 在 T=25–100 的平均 prompt 都是 2,545；Stateful 在 T=100 达 62,330。单位按 §4.3 的字符定义读取。',tokens:'Software：T=100，SKILL.state 累计 90,200 token，Stateful 为 2,308,000；省 token 的幅度需要连同任务得分一起看。'}};
+ const insights={warehouse:{score:'Warehouse：T=200，SKILL.state 的 Score 为 0.94 ± 0.02；它在这组任务里保住了较高的正确动作比例。',prompt:'Warehouse：SKILL.state 的均值保持在约 1,700–1,900 字符；Memory 到 T=200 增长为 84,364 字符。这个摘要对照没有保持有界。',tokens:'Warehouse：T=100，Stateful 1,062,387 ÷ SKILL.state 65,408 ≈ 16.2 倍。这是特定模型与任务的累计 token 比值，不是通用省钱倍数。'},software:{score:'Software：T=25，SKILL.state 为 0.88 ± 0.08，Stateful 为 0.94 ± 0.03；这是均值较低的一点，仅凭均值与 SD 不能判断差异显著。T=100，SKILL.state 的均值为 0.78，高于其他对照。',prompt:'Software：SKILL.state 在 T=25–100 的平均 prompt 都是 2,545；Stateful 在 T=100 达 62,330。单位按 §4.3 的字符定义读取。',tokens:'Software：T=100，SKILL.state 累计 90,200 token，Stateful 为 2,308,000；省 token 的幅度需要连同任务得分一起看。'}};
  $('scaling-insight').textContent=insights[domain][metric];
  $('scaling-source').href=PAPER+data.source;
  $('scaling-table').innerHTML=`<table><caption>${domain==='warehouse'?'Table 1 · Warehouse':'Table 6 · Software Repository'} · Gemini-3-Flash · 均值 ± SD</caption><thead><tr><th>T</th><th>Runtime</th><th>Score</th><th>Prompt（字符）</th><th>Tokens</th></tr></thead><tbody>${data.rows.map(r=>`<tr><td>${r.t}</td><td>${SERIES[r.series].name}</td><td>${r.score.toFixed(2)} ± ${r.scoreSD.toFixed(2)}</td><td>${fmt(r.prompt)} ± ${fmt(r.promptSD)}</td><td>${fmt(r.tokens)} ± ${fmt(r.tokensSD)}</td></tr>`).join('')}</tbody></table>`;
@@ -133,10 +133,38 @@ $('turns').addEventListener('input',renderCost);
 ['scaling-domain','scaling-metric'].forEach(id=>$(id).addEventListener('change',renderScaling));
 ['public-domain','public-metric'].forEach(id=>$(id).addEventListener('change',renderPublic));
 document.querySelectorAll('[data-layer]').forEach(button=>button.addEventListener('click',()=>renderLayer(Number(button.dataset.layer))));
-document.querySelectorAll('[data-answer]').forEach(button=>button.addEventListener('click',()=>{
- document.querySelectorAll('[data-answer]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
- const answers={right:'答对了。固定字段数不等于固定信息量。all_findings 持续增长，|Σ| 就会增长，O(1) 的前提不成立。',wrong:'再想一步：一个字段也能装下一整本书。要有界的是序列化后的状态大小，而不是字段数量。',partial:'JSON 只限定表示形式。内容仍可能遗漏事实、覆盖错误，或者无限增长。可靠性还需要语义检查和任务评测。'};
- $('quiz-result').textContent=answers[button.dataset.answer];
+const QUIZZES = [
+ {question:'固定 5 个 JSON 字段，all_findings 每轮追加一千字。每轮输入是 O(1) 吗？',
+  options:['是，字段数固定就行','不能这样判断，内容大小在增长'],correct:1,
+  explanation:'固定字段数不等于固定信息量。要有界的是序列化后的状态与观察大小；一个字段也能装下一整本书。'},
+ {question:'patch 是合法 JSON，并通过类型检查。真实库存一定正确吗？',
+  options:['不一定，合法补丁也可能删错键','是，runtime 校验已经保证正确'],correct:0,
+  explanation:'schema 检查只能挡住一部分错误。还要检查业务不变量和动作反馈；演示第 4 步账本已更新，真实货物还没发出。'},
+ {question:'某组实验累计 token 少了 16 倍，实际费用也必然少 16 倍吗？',
+  options:['是，同一个模型价格相同','不一定，还缺输入/输出与缓存口径'],correct:1,
+  explanation:'需要分别核对输入、输出、缓存命中、重试与价格。图上报告的是 token 量，不能直接当作账单；也不要混用字符与 token。'},
+ {question:'一段原文后来才变得重要，之前没写入状态。做 research agent 时怎么办？',
+  options:['有当前状态就一定能重建原文','给原始证据留可寻址、可回捞的入口'],correct:1,
+  explanation:'纯状态无法保证恢复没有保存的信息。状态中留来源索引、证据库保留原文，再用晚相关问题验证 recall；这是待评估的混合设计。'}
+];
+$('quiz-list').innerHTML=QUIZZES.map((q,i)=>`<div class="panel"><span class="label-chip">${i+1} / ${QUIZZES.length}</span><h3 id="question-${i}">${escapeHTML(q.question)}</h3><div class="quiz-options" role="group" aria-labelledby="question-${i}">${q.options.map((option,j)=>`<button type="button" data-quiz="${i}" data-option="${j}" aria-pressed="false">${escapeHTML(option)}</button>`).join('')}</div><p class="quiz-result" id="quiz-result-${i}" aria-live="polite">先做判断，再看解释。</p></div>`).join('');
+document.querySelectorAll('[data-quiz]').forEach(button=>button.addEventListener('click',()=>{
+ const index=Number(button.dataset.quiz),quiz=QUIZZES[index];
+ document.querySelectorAll(`[data-quiz="${index}"]`).forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+ $(`quiz-result-${index}`).textContent=(Number(button.dataset.option)===quiz.correct?'答对了。':'再想一步。')+quiz.explanation;
+}));
+document.querySelectorAll('[data-reading]').forEach(button=>button.addEventListener('click',()=>{
+ const preset=button.dataset.reading;
+ let target;
+ if(preset==='retail') {
+  $('public-domain').value='retail';$('public-metric').value='prompt';renderPublic();
+  target=$('public-experiment');
+ } else {
+  $('scaling-domain').value=preset==='tokens'?'warehouse':'software';
+  $('scaling-metric').value=preset;renderScaling();
+  target=$('scaling-experiment');
+ }
+ target.focus({preventScroll:true});target.scrollIntoView({block:'start'});
 }));
 renderSim();renderCost();renderScaling();renderPublic();renderLayer(0);
 window.addEventListener('resize',()=>{renderCost();renderScaling();});

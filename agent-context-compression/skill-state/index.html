@@ -257,17 +257,26 @@ layout: null
       之前的推理、动作、工具输出<strong>全部不进下一次 prompt</strong>。
       这不是「把历史压小」，是<strong>不让历史存在</strong>。本文逐图拆解它的方法与全部实验数据，
       并把它放回<a href="../Agent_Context_Compression_Research.html">我此前十五平台压缩机制研究</a>的坐标系里，看它到底证实了什么、又绕开了什么。
+      <br><br>
+      <strong>这是参考文档。</strong>第一次接触这篇论文，建议先走<a href="learn/">配套学习页</a> —— 它用仓库管理员的比喻、立体 P&#47;&#931;&#47;O 状态图和一个可单步的模拟器把机制讲清楚；
+      读完再拿本页查数字、核口径、看反驳。
     </p>
     <div class="meta-grid">
       <div><div class="label">论文</div><div class="value"><a href="https://arxiv.org/abs/2608.26263">SKILL.state: Scalable Long-Horizon Agent Skills</a></div></div>
       <div><div class="label">作者</div><div class="value">Badhe, Tiwari, Chung</div></div>
       <div><div class="label">配套研究</div><div class="value"><a href="../Agent_Context_Compression_Research.html">十五平台 Context Compression</a> · <a href="../learn/">十步学习路径</a></div></div>
-      <div><div class="label">读法</div><div class="value">第 2、3 节可交互：拖滑杆、单步走完执行循环</div></div>
+      <div><div class="label">先读哪篇</div><div class="value"><a href="learn/">学习页</a>建立直觉 &rarr; 本页查数字与论断</div></div>
     </div>
   </div>
 </header>
 
 <article>
+
+<div class="call key" style="margin:0 0 18px">
+  <span class="tag">这个专题有两篇，分工是清楚的</span>
+  <a href="learn/"><b>学习页</b></a>：仓库管理员比喻、立体 P&#47;&#931;&#47;O 状态图、可单步的执行模拟器、点击式六层对照、二十个回原文的深链。<b>建立直觉用。</b><br>
+  <b>本页（参考手册）</b>：论文 Table 1&#8211;11 全部成图、六条反驳、prompt cache 门槛分析、逐条挂 &#167; 编号的结论&#8596;证据表、十三条更正记录。<b>查数字与核论断用。</b>
+</div>
 
 <nav class="toc">
   <ol>
@@ -606,6 +615,19 @@ layout: null
     </div>
   </figure>
 
+  <div class="call pit">
+    <span class="tag">Algorithm 1 有一个顺序问题，论文没有讨论</span>
+    注意第 7 行与第 8 行的先后：<code>&#931;_t&#8314;&#185; &larr; &#931;_t &#8853; &#916;&#931;_t</code> 在前，<code>Execute a_t</code> 在后。
+    <b>状态先落定，动作后执行。</b>
+    <br><br>
+    于是「发货动作失败了」这种情况下，&#931; 里已经写着货发出去了 —— 而论文<b>没有给出事务回滚、部分成功、重试幂等的任何语义</b>。
+    对 Warehouse 这种动作必然成功的确定性模拟器无所谓，但真实工具会超时、会半成功。
+    <br><br>
+    这跟前面那个 schema 校验是<b>两回事</b>：校验挡的是「模型写出的补丁不合法」，这里的问题是「补丁合法、状态也更新了，但世界没跟上」。
+    <b>要用在生产上，&#8853; 必须和动作执行放进同一个事务，或者引入 pending&#47;confirmed 两阶段状态。</b>
+    这一条同样由<a href="learn/">配套学习页</a>指出。
+  </div>
+
   <h3 class="sub">状态怎么改：字典合并 + null 即删除</h3>
   <p>更新规则只有一条：<code>&#931;_t&#8314;&#185; = &#931;_t &#8853; &#916;&#931;_t</code>，其中 <code>&#8853;</code> 是<strong>带 null 删除语义的字典合并</strong>。把一个 key 设成 <code>null</code> 就等于把它从状态里抹掉。</p>
 
@@ -685,6 +707,19 @@ layout: null
 <section class="essay" id="s4">
   <div class="section-head"><span class="section-num">04</span><h2 class="section-title">数据一：长程扩展</h2></div>
   <div class="section-sub">Table 1 &amp; Table 6 · Gemini-3-Flash · 5 seeds</div>
+
+  <div class="call pit">
+    <span class="tag">先纠正一个我自己用松了的词</span>
+    SkillExecBench 的 <b>Score 不是任务成功率</b>。论文 &#167;4.3 的定义是
+    <code>Score = Successful Actions &#247; Total Actionable Events</code> —— <b>逐个动作算对错的比例</b>，
+    一场任务里错几步仍然可以得到 0.9。
+    <br><br>
+    所以 T=100 的「0.94」意思是<b>94% 的动作做对了</b>，<b>不是</b>「94% 的任务完成了」。
+    本页后文为了顺口仍会写「准确率」，<b>请一律按这个定义读</b>；真正的任务级成功率只有 InterCode CTF（pass@1）和
+    &#964;-Bench（官方评测器判最终数据库状态）那两组才有。
+    <br><br>
+    这一条是<a href="learn/">配套学习页</a>指出来的，本页初版只在一处图注里印了公式，没有提醒这个误读。
+  </div>
 
   <div class="call fact">
     <span class="tag">先把口径立住：这批合成实验带误差，也带显著性声明</span>
@@ -974,7 +1009,10 @@ layout: null
       <p class="fig-title">开源权重模型的错误构成（Gemma-4-31B，T=100）</p>
       <p class="fig-sub">全部是结构化输出问题，没有一类是推理问题</p>
       <div class="chart-host" id="c-err"></div>
-      <figcaption>论文的结论：<i>small-model degradation stems from structured output adherence rather than reasoning capacity</i> —— 小模型不是想不明白，是<b>写不对那个 JSON</b>。因此建议上 grammar-constrained decoding。</figcaption>
+      <figcaption>论文的结论：<i>small-model degradation stems from structured output adherence rather than reasoning capacity</i> —— 小模型不是想不明白，是<b>写不对那个 JSON</b>。因此建议上 grammar-constrained decoding。
+      <br><br>&#9888; <b>这个推论我不接受。</b>只有第三类（12%，JSON 语法）是纯格式问题；占 68% 的「误删&#47;提前覆盖 key」<b>在 JSON 完全合法时照样会发生</b> ——
+      模型知道格式，但没想清楚「合并」和「替换」的区别，或者没意识到那个 key 还要留着。<b>那是语义推理，不是格式遵从。</b>
+      所以约束解码大概能吃掉 12%，剩下的 88% 它一个都碰不到。<b>用错误日志的分类去论证「与推理能力无关」，这个推理本身不成立。</b></figcaption>
     </div>
   </figure>
 
@@ -1659,7 +1697,7 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
   </div>
 
   <h3 class="sub">更正记录</h3>
-  <p>本页经过两轮 review。下面逐条列出改了什么、为什么 —— <strong>其中八条是我原来写错或写过头的</strong>。</p>
+  <p>本页经过两轮 review，外加一轮与<a href="learn/">配套学习页</a>的相互校对。下面逐条列出改了什么、为什么 —— <strong>其中多数是我原来写错或写过头的</strong>。</p>
 
   <div class="tbl-wrap">
   <table>
@@ -1729,6 +1767,21 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
       <td>写成了<b>非法 JSON</b>（用方括号包 key-value），下一步却说校验通过</td>
       <td>改成合法 JSON 对象；空补丁同步</td>
     </tr>
+    <tr class="hl">
+      <td>全篇用「<b>准确率</b>」称呼 SkillExecBench 的 Score</td>
+      <td>&#167;4.3 定义是 <code>Successful Actions &#247; Total Actionable Events</code>，是<b>逐动作正确率</b>，不是任务成功率。初版只在一处图注印了公式，没提醒误读</td>
+      <td>第 4 节开头单列口径纠正，说明 0.94 = 94% 的动作做对，不是 94% 的任务完成</td>
+    </tr>
+    <tr class="hl">
+      <td>照抄 Algorithm 1，<b>没注意第 7、8 行的顺序</b></td>
+      <td><code>&#931;&#8592;&#931;&#8853;&#916;&#931;</code> 在 <code>Execute a_t</code> <b>之前</b>——动作失败时状态已经落定，而论文对事务回滚、部分成功、重试幂等<b>一字未提</b></td>
+      <td>第 3 节新增一条，并指出它与 schema 校验是两回事、生产上需要两阶段状态</td>
+    </tr>
+    <tr class="hl">
+      <td>接受论文 &#167;5.7「退化<b>与推理能力无关</b>」</td>
+      <td>只有 12% 的 JSON 语法错属于格式问题；68% 的误删 key <b>在 JSON 合法时照样发生</b>，那是语义推理。约束解码只能吃掉 12%</td>
+      <td>图注改为明确反驳这个推论</td>
+    </tr>
     <tr>
       <td>「不合法就回滚重试，<b>模型改不坏持久状态</b>」</td>
       <td>schema 校验只挡得住<b>结构</b>错误；删错货架在结构上完全合法 —— 本页自己那 68% 的错误正是这一类</td>
@@ -1738,11 +1791,15 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
   </div>
 
   <div class="call mine">
-    <span class="tag">值得记一笔的一个模式</span>
+    <span class="tag">值得记一笔的两个模式</span>
     这十三条里，<b>与 SKILL.state 有关的错误几乎全都朝同一个方向偏</b>：我在批评论文夸大自己时，自己也把批评做过了头 ——
     倍率算得过低、把推断写成事实、把不可比的数相除、把「没提」说成「输了」。
     <br><br>
     <b>批评者的偏差和被批评者的偏差方向相反，但性质相同。</b>这一页现在把两边的口径都摊开写在了各自的位置上。
+    <br><br>
+    第二个模式：最后三条<b>全都不是 review 提的，是<a href="learn/">配套学习页</a>独立读同一篇论文时先看见的</b> ——
+    Score 的口径、Algorithm 1 的顺序、&#167;5.7 那个不成立的推论。
+    <b>两篇独立读同一篇论文，比一篇读两遍更能发现问题</b>，这也是这个专题保留两篇的理由之一。
   </div>
 
   <h3 class="sub">与配套研究的一致性说明</h3>
@@ -1759,7 +1816,7 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
 
 <footer>
   <div class="foot-inner">
-    <p style="margin-bottom:14px"><b style="color:var(--paper)">SKILL.state 论文精读</b> &#183; 隶属 <a href="../Agent_Context_Compression_Research.html">Agent Context Compression</a> 专题 &#183; <a href="../../">返回 ML Learning Notes</a></p>
+    <p style="margin-bottom:14px"><b style="color:var(--paper)">SKILL.state 参考手册</b> &#183; 配套 <a href="learn/">SKILL.state 学习页</a> &#183; 隶属 <a href="../Agent_Context_Compression_Research.html">Agent Context Compression</a> 专题 &#183; <a href="../../">返回 ML Learning Notes</a></p>
     <p style="margin:0">论文数据核对自 <a href="https://arxiv.org/html/2608.26263">arXiv:2608.26263</a> HTML 全文（v3, 2026-09-02）。第 9 节的 prompt cache 折算为本页作者的建模推演，非论文数据。</p>
   </div>
 </footer>

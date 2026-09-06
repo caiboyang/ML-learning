@@ -29,21 +29,17 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *十步学习路径，从零基础起步。假设你只知道「LLM 有上下文窗口」，读完能自己设计并评估一套压缩策略。先看一次 agent 被撑爆的死亡现场，再讲窗口这堵墙的三个反直觉性质（每轮重发全部历史、装得下≠用得好、墙的位置未必是文档写的那个）；然后建立六层坐标系，手把手走完最小可用实现的六步，逐个拆解五个必踩的坑；最后是三个决定系统形态的设计选择、压缩解决不了的边界，以及怎么验证自己压对了。*
   * *与下面的知识库配套：**这篇给取舍和顺序，那篇给源码和常量**。建议先读这篇建立坐标系，再拿那篇当参考手册查。*
 
-* 🧪 [SKILL.state：从压缩历史到维护状态 — 可视化论文学习页](https://caiboyang.github.io/ML-learning/agent-context-compression/skill-state/learn/)
-  * *接着 Compression Research 学习 arXiv:2608.26263v3。通过立体状态分层、仓库逐步演示、成本滑块与可切换实验图表理解执行状态；对应原研究六层模型，区分结构化摘要、状态补丁、日志和 recall，并标注实验口径冲突与适用边界。*
-
 * 📚 [开源 Agent 平台的 Context Compression 机制研究](https://caiboyang.github.io/ML-learning/agent-context-compression/Agent_Context_Compression_Research.html)（含 19 张 Mermaid 图；[Markdown 原文](agent-context-compression/Agent_Context_Compression_Research.md)）
   * *十五个平台的横向对照。十一个开源平台有可核实的内建压缩策略：OpenClaw、Hermes Agent、OpenHands SDK、Codex CLI、opencode、kimi-code、Cline、Goose、Letta、Google ADK、DeepSeek Harness；另纳入压缩算法未公开的闭源 Antigravity，以及代表三种责任划分的框架生态：LangGraph core / LangChain agent middleware（原语 + 可选内建策略）、AutoGen（确定性视图）、CrewAI（overflow-only）。已弃用的 Gemini CLI 移入附录保留设计分析，不计入统计（个人账户 2026-06-18 停服，企业与付费 API key 路径仍可用）。逐文件读源码 + 官方文档交叉验证，附版本快照矩阵；冲突处以源码为准，结尾单列一致性说明。*
   * *另设一节**效果评测**，梳理 2026 年的实证工作：CompactionRL（只换摘要器就有 6.5 分区间）、ConstraintRot（压缩把治理约束违规率从 0% 抬到 30%，最高 59%）、Slipstream（按轨迹而非文本判定保真度），并逐条对应回设计清单。*
   * *先建立统一的六层参照模型（测量/触发/选点/减法/重组/持久化）解决各家术语打架的问题；再用一整节讲**设计理念**——头尾保留中间压缩在利用长上下文检索的 U 形曲线（Lost in the Middle）、迭代更新在规避有损压缩的级联失真、保留用户原话背后的信息论不对称、为什么不能告诉模型"上下文快满了"、摘要器为何是一个信任降级点、压缩与 prompt cache 的根本张力（含 DeepSeek Harness 那条「让摘要调用本身成为缓存前缀的延长」的解法）；然后逐家深挖，最后横向对比触发哲学（绝对余量 vs 百分比 vs cadence）、减法哲学、持久化模型，以及 OpenClaw × Hermes 逐项对照与可借鉴设计清单。*
 
-* 📄 [把历史扔掉，只留一份可改写的状态 — SKILL.state 论文精读](https://caiboyang.github.io/ML-learning/agent-context-compression/skill-state/)
-  * *对 [arXiv:2608.26263](https://arxiv.org/abs/2608.26263)（EMNLP，2026-08）的逐图精读，并与上面那篇十五平台压缩研究**逐项对照**。SKILL.state 用「不变的技能说明书 + 结构化执行状态 Σ + 最新一条观测」替代 append-only 历史，推理产出状态补丁 ΔΣ 后即被永久丢弃。全部论文数据核对自 HTML 原文的 Table 1–11，配 15 张交互图表（悬停查数、可展开数据表）与 6 张手绘架构图。*
-  * *第 2、3 节可交互：拖 horizon 滑杆看步数怎么把差距从 1.8× 拉到 50×，或单步走完两轮执行循环（含 `null` 删除、推理丢弃、噪声被 schema 挡在外面）。*
-  * *核心对照：把 SKILL.state 放进那篇研究的六层坐标系，会发现它**不是在六层里做得更好，而是把 L1 测量 / L2 触发 / L5 重组整层删掉，把 L3 选点 / L4 减法从运行时决策搬到设计时决策**；配套给出「事后减法 vs 事前投影」的框架，以及 kimi-code、Goose、Codex CLI、ADK 四家其实已在做的「半个 SKILL.state」。同预算下的 0.94 vs 0.52，是那篇研究第 23 条建议「把状态外置而不是压缩」目前最强的实证；LLMLingua 掉到 0.22 则是 §17.2「保留精确标识符」那条焦虑第一次有了价格。*
-  * *另含六条反驳，第一条针对论文的核心公式：**O(1) 只在 |Σ| 有界时成立，而论文从未验证这一点**——它自己的 CTF schema 里 `discovered_flags` 与 `tested_hypotheses` 都是只增列表，而后者恰恰是论文归因 CTF 提升的那个字段。其余五条：最该有的「状态 + 生产级压缩历史」基线不存在、预算被掐到真实系统的 1/40、Warehouse 与方法同构、正文措辞盖住了两处不利结果、论文自己的前提排除了 coding agent。*
-  * *还有一节**论文完全没测的维度**——prompt cache。关键是它有一条**最小可缓存前缀**门槛（ADK 文档：Gemini 3 为 4,096 token），SKILL.state 恒定 ~476 token 的 prompt **结构性地够不着**，而 ReAct 在第 24 步就越过：让它便宜的那个性质，正是让它拿不到缓存折扣的那个性质。折算后倍率从 19.0× 降到 **3–8× 区间**（论文未公开 input/output 拆分，只能给敏感性区间；建模推演，口径已单列）。最后给出可今天就抄的**三通道混合架构**与六条按投入产出比排序的动作。*
-  * *文末有一份**更正记录**：本页经两轮 review，逐条列出十三处改动，其中多数是我自己写错或写过头的——包括把推断写成来源事实、把不可比的数相除、把「论文没提」说成「论文输了」。批评者的偏差和被批评者的偏差方向相反，但性质相同。*
+* 🎓 [SKILL.state：从压缩历史到维护状态 — 可视化学习页](https://caiboyang.github.io/ML-learning/agent-context-compression/skill-state/learn/)
+  * *用立体状态图、仓库逐步演示、三组读图练习和四道自测建立直觉；接着 Compression Research 的六层模型，判断自己的 agent 适合纯状态还是状态与证据回捞的混合设计。*
+  * *与下面的参考文档配套：**学习页给顺序、图解和练习；参考页给完整实验、研究对照与批判分析**。两页可以直接互跳。*
+
+* 📄 [SKILL.state 参考与批判文档 — 与十五平台压缩研究对照](https://caiboyang.github.io/ML-learning/agent-context-compression/skill-state/)
+  * *逐项拆解论文方法与 Tables 1–11，展开长程执行、噪声、恢复、公开 benchmark、预算和小模型结果；对照已有压缩机制研究，讨论状态有界、基线设计、缓存成本建模与工程迁移。实验结果、建模假设和批判意见应分别核对来源。*
 
 * 🎓 [把「感觉变好了」变成一个数字 — 从零学 Agent Evals](https://caiboyang.github.io/ML-learning/agent-evals/learn/)
   * *十步学习路径，从零基础起步。假设你写过 agent 但没系统做过 eval，读完能自己设计、实现并校准一套评测。先算一笔账：真实成功率 75% 的 agent 什么都不改重跑一遍，**35.5% 看起来更好、29.0% 打平、35.5% 看起来更差**——噪声本身是对称的，方向是流程给的（只在上涨时宣布改进、重跑到满意为止、确认偏误），所以「把观察到的上涨当证据」等于把那 35.5% 全收成假阳性。然后讲 agent 为什么不能像软件那样测（没有 stack trace，因为失败的是推理；trace 才是事实来源），建立 run / trace / thread 三层坐标系与 task / trial / grader / outcome 的词汇表，拆解三种打分器的死角，讲透 **pass@k 与 pass^k** 和被普遍跳过的误差棒（50 个任务的 95% 区间有 ±13.6 分；配对比较、加题优先于加重复、聚类标准误可达朴素值 3 倍）。*
