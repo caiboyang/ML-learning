@@ -14,7 +14,7 @@ layout: null
 </head>
 <body>
 <a class="skip" href="#main">跳到正文</a>
-<header class="topbar"><a class="brand" href="https://caiboyang.github.io/ML-learning/">ML / LEARNING NOTES</a><a href="../learn/">← Context Compression</a><a href="https://arxiv.org/html/2608.26263v3">论文原文 ↗</a></header>
+<header class="topbar"><a class="brand" href="https://caiboyang.github.io/ML-learning/">ML / LEARNING NOTES</a><a href="../../learn/">← Context Compression</a><a href="https://arxiv.org/html/2608.26263v3">论文原文 ↗</a></header>
 <main id="main">
 <section class="hero" id="idea">
   <div class="hero-copy"><p class="eyebrow">PAPER LAB 02 / CONTEXT ENGINEERING</p><h1>SKILL<span>.state</span></h1><h2>把过去，变成现在。</h2><p class="lede">接着你的 compression research 往前走一步：<br>如果下一步只需要“现在是什么状态”，<br>为什么每轮都要重读“之前发生过什么”？</p><div class="hero-links"><a class="button primary" href="#simulator">亲手走一轮 <span>↓</span></a><a class="button" href="#comparison">对照原来的研究 ↗</a></div><p class="meta">arXiv 2608.26263 · v3 · 2026-09-02<br>Sanket Badhe · Priyanka Tiwari · Jonghyun Chung</p></div>
@@ -66,7 +66,7 @@ layout: null
  <tr><td>DeepSeek Harness：压缩调用复用缓存前缀</td><td>提醒我们“少输入”与“实际更便宜”还隔着计费与缓存</td><td>本文没有给出充分的缓存命中、延迟或货币成本实验</td></tr>
  <tr><td>LangGraph core / LangChain middleware：原语与策略分层</td><td>可以把 SKILL.state 理解为一种可实现的运行策略</td><td>论文 Stateful 只是“状态块 + 历史”的特定对照，不是对整个框架的结论</td></tr>
  </tbody></table></div>
- <p class="note">平台机制沿用你已有报告的固定版本快照，本页没有重新审计这些项目的最新源码。<a href="../Agent_Context_Compression_Research.html">原研究 §16.4–16.5、§18、§21 ↗</a></p>
+ <p class="note">平台机制沿用你已有报告的固定版本快照，本页没有重新审计这些项目的最新源码。<a href="../../Agent_Context_Compression_Research.html">原研究 §16.4–16.5、§18、§21 ↗</a></p>
  <div class="grid3 wide-gap"><div class="panel"><h3>CompactionRL 的问题</h3><p>“怎样学会写对未来动作有用的摘要？”</p><p class="note">与本文的连接：都应该用后续任务表现评价记忆，而不是只看可读性。不是本文已胜过它。</p></div><div class="panel"><h3>ConstraintRot 的问题</h3><p>“压缩时，项目特有约束有没有消失？”</p><p class="note">与本文的连接：把不变规则放进 P 是一种保护方向；执行中新增的约束仍需要可靠写入和持续保留。</p></div><div class="panel"><h3>Slipstream 的问题</h3><p>“换成压缩后的信息，还能做对后续动作吗？”</p><p class="note">与本文的连接：同样应检查状态是否支持正确决策。任务、模型与评测口径不同，不拼成一张跨论文排行榜。</p></div></div>
 </section>
 <section class="chapter" id="limits">
@@ -98,7 +98,7 @@ layout: null
 </section>
 <section class="chapter" id="sources">
  <div class="section-head"><span class="section-no">↗</span><div><h2>带着问题回到原文</h2><p>学习页基于 2026-09-02 的 v3；引用与表值按该版本固定。图解和教学例子为本页重绘，不是论文的原始图片。</p></div></div>
- <div class="source-list"><div><a href="https://arxiv.org/html/2608.26263v3#S3">机制与复杂度 · §3 / Algorithm 1</a><p>对照三元输入、状态补丁、null 删除、更新与执行的顺序。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#Ax1">对照组到底怎么写 · Appendix A</a><p>特别看 A.3 的 LangGraph-style：状态和历史被一起塞入 prompt。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#S4.T1">主实验与公共任务 · Tables 1–5</a><p>核对 Score、Prompt、Tokens 三个指标，留意字符与 token 的混用。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#Ax4">软件仓库、小模型与控制组 · Appendix D</a><p>看短程例外、小模型退化，以及预算匹配的跨 horizon 结果。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#S7">先读限制，再考虑迁移 · §7</a><p>固定 schema、晚相关信息、轨迹目标与多 agent 冲突。</p></div><div><a href="../Agent_Context_Compression_Research.html">你的 Compression Research</a><p>§1 六层模型；§16.4–16.5 摘要与持久化；§18.5 缓存；§21 评测。本页的平台对照沿用该报告快照，不代表最新实现。</p></div></div>
+ <div class="source-list"><div><a href="https://arxiv.org/html/2608.26263v3#S3">机制与复杂度 · §3 / Algorithm 1</a><p>对照三元输入、状态补丁、null 删除、更新与执行的顺序。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#Ax1">对照组到底怎么写 · Appendix A</a><p>特别看 A.3 的 LangGraph-style：状态和历史被一起塞入 prompt。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#S4.T1">主实验与公共任务 · Tables 1–5</a><p>核对 Score、Prompt、Tokens 三个指标，留意字符与 token 的混用。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#Ax4">软件仓库、小模型与控制组 · Appendix D</a><p>看短程例外、小模型退化，以及预算匹配的跨 horizon 结果。</p></div><div><a href="https://arxiv.org/html/2608.26263v3#S7">先读限制，再考虑迁移 · §7</a><p>固定 schema、晚相关信息、轨迹目标与多 agent 冲突。</p></div><div><a href="../../Agent_Context_Compression_Research.html">你的 Compression Research</a><p>§1 六层模型；§16.4–16.5 摘要与持久化；§18.5 缓存；§21 评测。本页的平台对照沿用该报告快照，不代表最新实现。</p></div></div>
  <p class="note wide-gap">论文：<cite>SKILL.state: Scalable Long-Horizon Agent Skills</cite>，Sanket Badhe、Priyanka Tiwari、Jonghyun Chung。原文标注 CC BY 4.0。本页为中文解释、重绘与评议；实验数字归原作者，推演与核查意见不代表作者结论。<a href="https://arxiv.org/abs/2608.26263v3">版本记录 ↗</a></p>
  <noscript><div class="callout warning">JavaScript 未启用：正文与静态表格仍可阅读。逐步演示和可切换图表需启用 JavaScript；完整数字可通过各图旁的论文链接查阅。</div></noscript>
 </section>
