@@ -57,5 +57,19 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 * 📚 [从 MCP 1.0 到 MCP 2.0：协议模型与迁移参考手册](https://caiboyang.github.io/ML-learning/mcp-2.0/MCP_2_0_Research.html)（[Markdown 原文](mcp-2.0/MCP_2_0_Research.md)）
   * *从 API / RPC / JSON-RPC 与 MCP 1.0 的协议基础，逐层深挖 MCP 2.0 的 stateless 请求、MRTR、显式状态 handle、缓存、extensions、auth 和兼容迁移；配套时序图、状态机、线级示例与官方日期版本来源，适合作为查阅手册。*
 
+### 5. Quantitative Trading
+
+* 🎓 [一个很小的优势，重复很多次 — 从零学量化交易](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/)
+  * *十步学习路径，从零基础起步（只要求均值/方差/回归的直觉 + 一点 Python）。开场先摆两个都为真、却互相打脸的事实：Medallion 基金 1988–2018 年化毛收益 **66%**，而 452 个已发表的市场异象里 **65%** 用规范口径重做后连 t &gt; 1.96 都过不了。整页围绕这条张力展开——量化确实有效，而寻找量化策略的过程会系统性地生产假象。*
+  * *主线是唯一那条真正的核心公式 **IR = TC × IC × √BR**（Grinold 1989 + Clarke-de Silva-Thorley 2002 的约束修正），以及它推出的行业分工：量化选择牺牲单次准度（IC 只有 0.02–0.06，比抛硬币好一点点）换取重复次数。然后拆开黑箱的六个模块，说明 alpha 模型只是六分之一。*
+  * ***三个成熟算法逐行拆解**：截面动量（Jegadeesh-Titman 1993，含跳过一个月、行业中性化、动量崩溃的左偏分布）、统计套利（Avellaneda-Lee 2010 的 PCA → 残差 → OU → s-score 全流程，以及那组 Sharpe **1.44 → 0.90** 的衰减数字为什么比 1.44 本身更重要）、做市（Avellaneda-Stoikov 2008 的保留价格与最优价差，以及模型没建模的逆向选择）。后半程走完组合构建（Markowitz 为什么是「误差最大化器」、Black-Litterman、HRP、分数 Kelly）与执行成本（Almgren-Chriss 的 U 型曲线、冲击成本按 √规模 增长如何构成策略容量的硬上限）。*
+  * *第 09 步是全页最重要的一节：**5 年日线 + 45 个独立配置就能凭空造出样本内 Sharpe = 1 的假策略**（Bailey et al. 2014），配上 Harvey-Liu-Zhu 的 t &gt; 3.0 门槛、Hou-Xue-Zhang 的 65%/82% 复制失败率、McLean-Pontiff 的发表后 −58%，串成「发现→发表→套利」三段衰减。另附回测偏差七条查表、Purged K-Fold + Embargo、以及一套可直接执行的七步验证流程。*
+  * *面向图表型学习者设计：**10 张手绘 SVG 图 + 20 张对照表**，每节开头有「一句话」摘要，配可展开的自测题、按难度标注的书单与论文表（每篇标了「读到什么程度」），以及一份每周有交付物的 90 天计划。*
+* 📚 [量化交易研究笔记：算法族谱、验证方法与来源账本](https://caiboyang.github.io/ML-learning/quantitative-trading/Quant_Trading_Research.html)（[Markdown 原文](quantitative-trading/Quant_Trading_Research.md)）
+  * *与上面的学习页配套：**那篇给取舍和顺序，这篇给公式、参数表和来源边界**。含 5 张 Mermaid 图：系统流程、alpha 四家族族谱、统计套利完整流程、组合构建方法谱系、以及 alpha 三段衰减链。*
+  * *每条陈述标注 **【来源事实】/【综合解释】/【实践建议】**；文末单列「本文没有覆盖什么」（衍生品定价、交易系统工程、各市场制度细节、加密货币特殊机制）、一份数字一致性说明（哪些数值有确切出处、哪些是跨文献的数量级归纳），以及与学习页的十二条一致性检查。*
+  * *附完整学习材料账本：8 本书（标了该读哪几章）、4 个数学前置主题（含「随机微积分不做期权可以先跳过」这条省时判断）、24 篇论文分四组（地基 / 三个算法 / 组合与仓位 / 验证方法论），以及工具选型表。*
+  * *⚠️ 本专题为技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，用于说明方法的性质与局限，不代表未来表现。*
+
 ---
 *More notes will be added here soon...*
