@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>量化学习附录：术语速查</title>
+<style>
+
+:root{color-scheme:light;--bg:#f7f5ee;--paper:#fffef9;--ink:#182f2b;--muted:#536762;--line:#d4ded5;--green:#176957;--soft:#e5eee5;--orange:#b34824;--blue:#296898;--rose:#a13a4c;--yellow:#f0df9f}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}a{color:var(--green);text-underline-offset:4px}a:hover{color:var(--orange)}button,select,input{font:inherit}button,select{min-height:44px}button{cursor:pointer;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:7px;padding:8px 14px}button:hover{background:var(--soft)}button:disabled{cursor:default;opacity:.45}button[aria-pressed=true],button.primary{background:var(--green);border-color:var(--green);color:#fff}a:focus-visible,button:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--orange);outline-offset:4px}h1,h2,h3,p{margin-top:0}h1{font-size:clamp(34px,5.8vw,66px);line-height:1.18;letter-spacing:-.045em;font-weight:650;margin-bottom:24px}h2{font-size:clamp(28px,3.6vw,40px);line-height:1.3;letter-spacing:-.025em;margin-bottom:16px}h3{font-size:21px;line-height:1.45;margin:26px 0 12px}p{margin-bottom:16px}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);font-weight:650}.muted,figcaption,.source{color:var(--muted);font-size:14px}.source{margin-top:20px}.source a{overflow-wrap:anywhere}strong{font-weight:650}.shell{max-width:1320px;margin:auto;padding:0 36px}.top{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:24px 0;border-bottom:1px solid var(--line);font-size:13px}.brand{font-weight:700;letter-spacing:.05em}.hero{padding:55px 0 42px;display:grid;grid-template-columns:1.3fr 1fr;gap:55px;align-items:center}.hero p{max-width:600px}.hero-map{padding:26px;background:var(--soft);border-radius:14px;position:relative}.map-row{display:grid;grid-template-columns:36px 1fr;gap:15px;align-items:center;padding:12px 0}.map-row+.map-row{border-top:1px solid #cbd8cd}.map-no{font:22px/1.2 Georgia,serif;color:var(--green)}.map-row strong{display:block;font-size:19px}.map-row span{font-size:13px;color:var(--muted)}.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}.tag{font-size:12px;padding:4px 9px;border:1px solid var(--line);border-radius:4px}.layout{display:grid;grid-template-columns:225px minmax(0,1fr);gap:45px;border-top:1px solid var(--line);padding-top:32px;padding-bottom:55px}.sidebar{align-self:start;position:sticky;top:20px}.sidebar .eyebrow{margin:0 0 14px}.stepnav{display:flex;flex-direction:column;gap:4px}.stepnav button{display:flex;gap:12px;border:0;background:transparent;text-align:left;padding:9px 10px;font-size:14px;border-radius:5px}.stepnav button[aria-current=step]{background:var(--green);color:#fff}.stepnav .num{font-variant-numeric:tabular-nums;opacity:.7}.nav-extra{margin-top:18px;border-top:1px solid var(--line);padding-top:15px}.mobile-nav{display:none}.lesson{scroll-margin-top:25px;max-width:900px}.lesson[hidden]{display:none}.chapter-meta{display:flex;justify-content:space-between;gap:18px;font-size:13px;color:var(--muted);margin-bottom:18px}.thesis{font-size:20px;line-height:1.7;max-width:760px}.note{background:var(--soft);padding:18px 22px;border-left:3px solid var(--green);margin:24px 0}.note.warm{background:#f8ebdf;border-color:var(--orange)}.note p:last-child{margin-bottom:0}.figure{margin:27px 0;padding:24px 0;border-block:1px solid var(--line)}.figure-title{font-size:16px;font-weight:650;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}.figure-title small{font-size:12px;font-weight:400;color:var(--muted)}figure{margin:0}figcaption{margin-top:12px}.controls{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 18px}.controls button{font-size:14px}.control-label{display:block;margin:18px 0 6px}.range{width:100%;accent-color:var(--green);min-height:35px}.chart{width:100%;min-height:230px}.chart svg{width:100%;display:block;overflow:visible}.chart text{font-family:inherit;fill:var(--muted);font-size:12px}.legend{display:flex;gap:20px;flex-wrap:wrap;font-size:13px;margin:8px 0}.swatch{display:inline-block;width:22px;vertical-align:middle;border-top:3px solid var(--green);margin-right:6px}.swatch.blue{border-color:var(--blue)}.swatch.rose{border-color:var(--rose)}.swatch.dash{border-top-style:dashed}.result{font-size:16px;margin-top:15px;min-height:27px;font-variant-numeric:tabular-nums}.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:20px}.flow>div{padding:16px;background:var(--soft);border-radius:5px;position:relative}.flow b{display:block;font-size:16px}.flow span{display:block;font-size:13px;color:var(--muted);margin-top:6px}.flow .stage{display:block;font:12px/1.3 monospace;color:var(--green);margin-bottom:12px}.flow>div:not(:last-child)::after{content:'→';position:absolute;right:-12px;top:30px;z-index:1;font-weight:700}.table-wrap{overflow-x:auto;margin:20px 0}table{width:100%;border-collapse:collapse;font-size:15px;text-align:left}th,td{border-bottom:1px solid var(--line);padding:13px 12px;vertical-align:top}th{font-weight:650;background:var(--soft)}td:first-child{font-weight:550}caption{text-align:left;font-size:13px;color:var(--muted);padding:0 0 8px}details{margin:20px 0;border:1px solid var(--line);border-radius:7px;background:var(--paper)}summary{cursor:pointer;padding:15px 18px;font-weight:550}details>div{padding:0 18px 18px}details>div p:last-child{margin-bottom:0}.quiz{border-color:#b2c8b4}.quiz summary::marker{color:var(--green)}.formula{display:block;white-space:normal;overflow-wrap:anywhere;font:15px/1.8 ui-monospace,SFMono-Regular,monospace;padding:17px;background:var(--soft);border-radius:5px;margin:12px 0}code{font-size:.9em;overflow-wrap:anywhere}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}.compare{padding:18px;border-top:3px solid var(--green);background:var(--paper)}.compare.warn{border-color:var(--orange)}.compare h3{margin:0 0 8px}.comparison-value{font:38px/1.2 Georgia,serif;margin:10px 0}.bars{margin:20px 0}.bar-row{display:grid;grid-template-columns:110px 1fr 76px;gap:12px;align-items:center;margin:18px 0;font-size:14px}.track{background:#e1e8df;height:23px}.bar{height:100%;background:var(--green);transition:width .18s ease}.bar.alt{background:var(--blue)}.bar-row output{font-variant-numeric:tabular-nums;text-align:right}.time-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:24px 0}.time-grid>div{padding:18px 14px;background:var(--soft);border-top:4px solid var(--green)}.time-grid b,.time-grid span{display:block}.time-grid span{font-size:14px;margin-top:8px}.time-grid .holdout{background:#f5ecd1;border-color:var(--orange)}.books{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:25px 0}.book{background:var(--paper);border:1px solid var(--line);padding:22px;border-radius:8px;overflow-wrap:anywhere}.book .eyebrow{font-size:11px}.book h3{margin:10px 0;font-size:22px;font-family:Georgia,"PingFang SC",serif}.book p{font-size:14px;margin-bottom:10px}.book .author{font-size:13px;color:var(--muted)}.book a{font-size:13px}.paper-table{min-width:610px}.paper-table td:nth-child(2){min-width:240px}.lesson-footer{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-top:32px;padding-top:22px;border-top:1px solid var(--line)}.lesson-footer small{color:var(--muted);font-size:12px}.endnote{padding:24px 0 32px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:25px}ul,ol{padding-left:24px}li+li{margin-top:8px}.route{font-size:16px;line-height:2.2}.route b{background:var(--soft);padding:5px 8px;border-radius:4px}.focus-line{padding:13px 18px;background:var(--green);color:white;border-radius:5px;font-size:15px}.skip{position:absolute;top:-100px;left:20px;background:var(--paper);padding:10px;z-index:5}.skip:focus{top:10px}
+@media(max-width:1000px){.layout{grid-template-columns:190px minmax(0,1fr);gap:25px}.shell{padding:0 24px}.hero{gap:28px}.hero-map{padding:18px}.flow{grid-template-columns:1fr 1fr}.flow>div:nth-child(2)::after{display:none}}
+@media(max-width:730px){.mobile-break{display:block}body{font-size:16px}.shell{padding:0 20px}.hero{grid-template-columns:1fr;padding-top:35px;gap:18px}.hero-map{display:none}.hero h1{font-size:39px}.layout{display:block;padding-top:22px}.sidebar{display:none}.mobile-nav{display:block;margin-bottom:25px}.mobile-nav select{width:100%;background:var(--paper);color:var(--ink);border:1px solid var(--line);padding:10px;border-radius:6px}.top{font-size:11px;gap:10px}.chapter-meta{font-size:12px}.thesis{font-size:18px}.two-col,.books{grid-template-columns:1fr}.figure{padding:18px 0}.flow{gap:9px}.flow>div{padding:12px}.flow b{font-size:15px}.time-grid{grid-template-columns:1fr}.time-grid>div{border-top:0;border-left:4px solid var(--green)}.time-grid .holdout{border-left-color:var(--orange)}th,td{padding:10px 9px;font-size:14px}.bar-row{grid-template-columns:83px 1fr 65px;font-size:12px;gap:8px}.lesson-footer small{display:none}.endnote{display:block}.endnote p{margin-bottom:10px}.figure-title{font-size:15px}.note{padding:15px 16px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+@media print{.sidebar,.mobile-nav,.lesson-footer,.top,.controls,.range{display:none!important}.layout,.hero{display:block}.lesson[hidden]{display:block!important}.lesson{break-before:page}.hero-map{display:none}.shell{padding:0}.books{grid-template-columns:1fr 1fr}body{font-size:11pt;background:white}.chart{min-height:0}h2{font-size:24pt}details{break-inside:avoid}.endnote{display:block}}
+
+.start{padding:19px 22px;background:var(--soft);border-radius:10px;margin-bottom:24px}.start p:last-child{margin:0}
+.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0}.metric{padding:17px;background:var(--soft);border-radius:8px}.metric strong{display:block;font-size:27px;line-height:1.35}.metric span{font-size:13px;color:var(--muted)}
+.slider-grid{display:grid;gap:12px;margin:18px 0}.slider-grid label{display:flex;justify-content:space-between;gap:10px}.slider-grid input{width:100%;accent-color:var(--green);min-height:30px}.slider-grid output{font-variant-numeric:tabular-nums}
+.mini-flow{display:flex;gap:12px;align-items:stretch;margin:22px 0}.mini-flow>div{flex:1;padding:16px;background:var(--soft);border-radius:8px}.mini-flow strong,.mini-flow span{display:block}.mini-flow span{font-size:14px}.arrow{align-self:center;font-size:24px;color:var(--green)}
+.chart svg{width:100%;height:auto;display:block}.chart text{font:12px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;fill:var(--muted)}.math-note{border-left:3px solid var(--orange);padding:5px 0 5px 18px;margin:22px 0}.math-note p:last-child{margin:0}
+.risk-plot text{font-size:18px}.risk-plot .large{font-size:23px;fill:var(--ink);font-weight:600}.read-next{display:block;padding:18px;background:var(--soft);border-radius:8px;margin-top:24px}.stepnav a{display:block;padding:10px 12px}.scenario{padding:20px;border:1px solid var(--line);border-radius:8px}.scenario p:last-child{margin-bottom:0}.big-equation{font-size:clamp(18px,2.4vw,26px);line-height:1.8;overflow-wrap:anywhere}.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:13px}.green-key{color:var(--green)}.rose-key{color:var(--rose)}
+@media(max-width:730px){.metric-grid{grid-template-columns:1fr}.metric{display:flex;align-items:baseline;gap:14px}.metric strong{min-width:84px}.mini-flow{flex-direction:column}.mini-flow .arrow{transform:rotate(90deg)}.hero h1{font-size:36px}.top{align-items:flex-start;gap:14px}.top a{max-width:130px;text-align:right}.scenario{padding:15px}}
+@media print{.slider-grid,.start button,.read-next{display:none}.metric-grid{grid-template-columns:repeat(3,1fr)}.chart{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#lesson-content">跳到学习内容</a>
+<div class="shell">
+<header class="top"><span class="brand">QUANT / REFERENCE APPENDIX</span><a href="index.html">返回量化学习主线 ↗</a></header>
+<header class="hero">
+<div><p class="eyebrow">Reference appendix · 按需查阅</p><h1>量化术语速查</h1><p>学习策略时遇到不熟悉的术语，可以在这里查定义、看算例，再回到量化学习主线。</p><div class="tags"><span class="tag">6 组术语</span><span class="tag">问题 → 图 → 手算 → 用途</span><span class="tag">推导可展开</span></div></div>
+<div class="hero-map"><div class="map-row"><div class="map-no">r</div><div><strong>归一化</strong><span>赚了多少钱 → 每单位本金赚多少</span></div></div><div class="map-row"><div class="map-no">β</div><div><strong>响应系数</strong><span>市场改变 → 策略的拟合值改变多少</span></div></div><div class="map-row"><div class="map-no">α</div><div><strong>截距</strong><span>扣除模型因子部分 → 平均还剩多少</span></div></div><div class="map-row"><div class="map-no">σ</div><div><strong>波动幅度</strong><span>每期收益 → 围绕均值偏离多远</span></div></div></div>
+</header>
+<div class="layout">
+<aside class="sidebar"><p class="eyebrow">Reference index</p><nav class="stepnav" aria-label="术语分类">
+<button data-go="0" aria-current="step"><span class="num">01</span>收益率：归一化</button>
+<button data-go="1"><span class="num">02</span>Beta：回归斜率</button>
+<button data-go="2"><span class="num">03</span>Alpha：模型截距</button>
+<button data-go="3"><span class="num">04</span>风险：波动与回撤</button>
+<button data-go="4"><span class="num">05</span>Sharpe：按波动比较</button>
+<button data-go="5"><span class="num">06</span>把行业术语翻译回来</button>
+<a href="index.html">→ 成熟策略 · 书籍 · 论文</a></nav><p class="muted" style="margin-top:24px">先解释图，再看公式。<br>每节只带走一个判断。</p></aside>
+<main id="lesson-content">
+<div class="mobile-nav"><label for="chapter-select">选择一节</label><select id="chapter-select"><option value="0">01 · 收益率：归一化</option><option value="1">02 · Beta：回归斜率</option><option value="2">03 · Alpha：模型截距</option><option value="3">04 · 风险：波动与回撤</option><option value="4">05 · Sharpe：按波动比较</option><option value="5">06 · 把行业术语翻译回来</option></select></div>
+
+<section class="lesson" id="returns">
+<div class="chapter-meta"><span>01 / 06 · RETURN</span><span>约 5 分钟</span></div>
+<h2>先把钱，变成能比较的量。</h2>
+<p class="thesis">赚 1 万和赚 100，谁更厉害？缺少本金和时间，问题还没定义完整。</p>
+<figure class="figure"><div class="figure-title">同一个月、同一种货币、无存取款</div><div class="table-wrap"><table><thead><tr><th>账户</th><th>起点 → 终点</th><th>赚到的钱</th><th>收益率</th></tr></thead><tbody><tr><td>A</td><td>1,000 → 1,100</td><td>100</td><td><strong>10%</strong></td></tr><tr><td>B</td><td>1,000,000 → 1,010,000</td><td>10,000</td><td><strong>1%</strong></td></tr></tbody></table></div><figcaption>除以起始本金，就消除了规模差异。这是一个无量纲的比值；时间周期仍必须注明。</figcaption></figure>
+<code class="formula">本期收益率 r = 本期盈亏 / 期初价值<br>= (期末价值 − 期初价值) / 期初价值</code>
+<p>若单独收到现金分红，也要计入收益。这里先假设没有外部存取款；真实账户的入金不能当成盈利。</p>
+<h3>为什么还要减去一个基准？</h3>
+<p>测试一个系统时，你会先定义 baseline。金融里至少有两种不同的对照，不能看到“超额”两个字就把它们混在一起。</p>
+<div class="table-wrap"><table><thead><tr><th>要回答的问题</th><th>算哪个差</th><th>本月教学例子</th></tr></thead><tbody><tr><td>承担投资风险，比短期无风险参照多赚多少？</td><td>r − r<sub>f</sub>，本文称无风险超额收益</td><td>3.2% − 0.2% = 3.0 个百分点</td></tr><tr><td>比选定的大盘或对照策略多赚多少？</td><td>r − r<sub>b</sub>，主动收益</td><td>3.2% − 2.2% = 1.0 个百分点</td></tr></tbody></table></div>
+<p class="muted">r 是本期资产收益；r<sub>f</sub> 是同币种、匹配周期的无风险参照收益；r<sub>b</sub> 是所选基准收益。“无风险”是模型参照口径，不能把任意期限的国债都当成持有期内价格不变。</p>
+<details><summary>两个常见单位错误：复利与 bp</summary><div><p><strong>两期收益要相乘：</strong>100 先涨 10% 到 110，再跌 10% 到 99。累计是 −1%，不是 0%。</p><code class="formula">累计收益 = (1 + r₁)(1 + r₂)…(1 + rₙ) − 1<br>CAGR = (期末价值 / 期初价值)^(1 / 年数) − 1</code><p>CAGR 是把实际路径折算成恒定年增长率，不保留中途的颠簸。算式仍假设没有外部现金流。</p><p><strong>1 bp（基点）= 0.01 个百分点 = 0.0001。</strong>收益从 5% 到 6%，提高 1 个百分点，也就是 100 bp；相对原来的 5% 则增加了 20%。写代码时，10% 通常输入为 0.10。</p></div></details>
+<details class="quiz"><summary>自测：策略赚 3.2%，大盘赚 2.2%，alpha 就是 1% 吗？</summary><div>只能先算出主动收益 1 个百分点。还不知道策略承担了多少市场暴露；先看下一节的 beta，再计算模型调整后的 alpha。</div></details>
+<p class="source">基础阅读：<a href="https://oyc.yale.edu/economics/econ-252-11/lecture-2">Shiller：Risk and Financial Crises</a>；无风险参照与超额收益口径参见 <a href="https://pages.stern.nyu.edu/~adamodar/pdfiles/acf3E/book/ch1thru4.pdf#page=174">Damodaran，第 4 章</a>。本节算例为原创。</p>
+</section>
+
+<section class="lesson" id="beta">
+<div class="chapter-meta"><span>02 / 06 · BETA β</span><span>约 7 分钟</span></div>
+<h2>Beta：市场动一格，<br>拟合的收益动几格？</h2>
+<p class="thesis">把每个月的市场超额收益当输入 x，把策略超额收益当输出 y，先拟合一条直线。beta 就是斜率。</p>
+<div class="mini-flow"><div><strong>输入 x</strong><span>市场收益 − 无风险收益</span></div><span class="arrow" aria-hidden="true">→</span><div><strong>线性模型</strong><span>y 的拟合值 = α + βx</span></div><span class="arrow" aria-hidden="true">→</span><div><strong>观察到的 y</strong><span>拟合值 + 当期残差 ε</span></div></div>
+<p>这和工程里的增益很像：<strong>β = 1.5</strong>，表示 x 增加 1 个百分点，直线上的 y 增加 1.5 个百分点。它描述数据中的线性关系；不是每次都精确跟随，也不是市场对个股的因果传递函数。</p>
+<figure class="figure"><div class="figure-title">动手转三个旋钮 <small>7 个合成月份 · 单位均为 %</small></div>
+<div class="slider-grid"><div><label for="beta-slider">β：转动直线 <output id="beta-label">1.5</output></label><input id="beta-slider" type="range" min="-2" max="2" step="0.1" value="1.5"></div><div><label for="alpha-slider">α：上下移动直线 <output id="alpha-label">+0.5% / 月</output></label><input id="alpha-slider" type="range" min="-2" max="2" step="0.1" value="0.5"></div><div><label for="noise-slider">残差幅度：让点偏离直线 <output id="noise-label">0.8</output></label><input id="noise-slider" type="range" min="0" max="2" step="0.1" value="0.8"></div></div>
+<div id="beta-chart" class="chart"></div><div class="legend"><span class="green-key">━━ 线性拟合</span><span>● 观察到的收益</span><span class="rose-key">┊ 当月残差</span></div>
+<div class="metric-grid" aria-live="polite"><div class="metric"><strong id="fit-beta">1.50</strong><span>β：斜率，无量纲</span></div><div class="metric"><strong id="fit-alpha">+0.50%</strong><span>α：月度截距</span></div><div class="metric"><strong id="fit-r2">97.5%</strong><span>R²：样本内解释的变动比例</span></div></div>
+<figcaption>横轴 x：市场月度超额收益；纵轴 y：策略月度超额收益。残差被特意构造成均值为 0、与 x 正交，因此可单独演示三个旋钮。真实样本改变时，估计的 α、β 往往也会变化。</figcaption>
+<details><summary>展开 7 个点，核对手算</summary><div class="table-wrap"><table><thead><tr><th>月份</th><th>x（%）</th><th>α + βx（%）</th><th>ε（%）</th><th>y（%）</th></tr></thead><tbody id="sample-rows"></tbody></table></div></details>
+</figure>
+<p class="muted"><a href="alpha-beta.png">查看／保存 alpha 与 beta 静态对照图 ↗</a></p>
+<h3>人们为什么要用 beta？</h3>
+<div class="table-wrap"><table><thead><tr><th>实际问题</th><th>beta 提供的信息</th><th>仍然缺什么</th></tr></thead><tbody><tr><td>组合会不会太依赖市场上涨？</td><td>市场敏感度；固定权重下组合 β 是各资产 β 的加权和</td><td>个股事件、非线性风险、估计误差</td></tr><tr><td>这个经理只是把市场放大了吗？</td><td>把 β × 市场超额收益单独算出来</td><td>其他风格、成本与真正的样本外表现</td></tr><tr><td>“高 beta 股”是什么意思？</td><td>通常指相对所选市场基准 β 较高；β &gt; 1 常用作直观界线</td><td>采用什么指数、多久窗口、日频还是月频</td></tr></tbody></table></div>
+<p><strong>“高 beta 股”是敏感度描述，不是 A 股、B 股那样的市场分类。</strong>β = 0 只说明没有这条线性暴露；公司仍可能因自身事件暴涨暴跌。负 β 表示拟合关系方向相反。</p>
+<details><summary>工程推导：为什么是 Cov(x,y) / Var(x)？</summary><div><p>从最小二乘开始：选择截距 a 和斜率 b，让所有点到直线的<strong>纵向残差平方和</strong>最小。</p><code class="formula">L(a,b) = Σ[yₜ − a − bxₜ]²<br>∂L/∂a = 0 → a = 平均 y − b·平均 x<br>∂L/∂b = 0 → b = Σ[(xₜ−平均 x)(yₜ−平均 y)] / Σ(xₜ−平均 x)²<br>所以 β̂ = Cov(x,y) / Var(x)<br>α̂ = 平均 y − β̂·平均 x</code><p>分子统计“输入偏大时，输出是否也偏大”；分母除去输入自己的变化幅度。用同一分母定义样本协方差和方差，n−1 会约掉。如果 x 完全不动，分母为 0，无法辨认斜率。帽子 ^ 表示从样本估计。</p><code class="formula">β = ρ(x,y) × σ_y / σ_x</code><p><strong>相关系数 ρ</strong> 衡量线性同步程度，范围 −1 到 1；<strong>β</strong> 还包含输出／输入的波动幅度比，所以可以大于 1。若 σ_y = 30%、σ_x = 20%、ρ = 0.5，则 β = 0.75；不能直接用 30/20 得到 1.5。</p><p>本页含截距的单变量 OLS 中，R² = 1 − 残差平方和 / y 的离均差平方和。它说明这条线在<strong>这批样本</strong>中解释了多少变动，不是预测准确率，也不是赚钱概率。</p></div></details>
+<details class="quiz"><summary>自测：β = 2，大盘的超额收益为 −3%，意味着什么？</summary><div>模型里的市场暴露项是 2 × (−3%) = −6%。实际策略收益还要加回无风险收益、alpha 和当期残差，不能断言实际一定亏 6%。</div></details>
+<p class="source">定义核对：<a href="https://pages.stern.nyu.edu/~adamodar/pdfiles/acf3E/book/ch1thru4.pdf#page=114">Damodaran：beta 的归一化与市场风险</a>；<a href="https://pages.stern.nyu.edu/~adamodar/pdfiles/acf3E/book/ch1thru4.pdf#page=174">回归、截距与估计误差</a>。旋钮、数据与推导编排为本教程原创。</p>
+</section>
+
+<section class="lesson" id="alpha">
+<div class="chapter-meta"><span>03 / 06 · ALPHA α</span><span>约 6 分钟</span></div>
+<h2>Alpha：解释完共同来源，<br>平均还剩多少？</h2>
+<p class="thesis">“策略涨得比市场多”只是现象。先问它承担了多少市场敏感度，才能进一步讨论额外表现。</p>
+<div class="scenario"><p><strong>一个月的教学账本：</strong>无风险收益 0.2%，市场总收益 2.2%，策略总收益 3.2%。假设此前拟合的 β = 1.5。</p><div class="mini-flow"><div><strong>市场超额：2.0%</strong><span>2.2% − 0.2%</span></div><span class="arrow" aria-hidden="true">→</span><div><strong>市场暴露项：3.0%</strong><span>1.5 × 2.0%</span></div><span class="arrow" aria-hidden="true">→</span><div><strong>加回现金：3.2%</strong><span>0.2% + 3.0%</span></div></div><p>策略比市场多赚了 1 个百分点，但它的 3.2% 已可由“现金参照 + 市场暴露”解释。这一期模型调整后的剩余收益是 0。</p></div>
+<h3>四个部件，拼出实际收益</h3>
+<code class="formula big-equation">rₜ = r<sub>f,t</sub> + β(r<sub>m,t</sub> − r<sub>f,t</sub>) + α + εₜ</code>
+<div class="table-wrap"><table><thead><tr><th>部件</th><th>工程直觉</th><th>在比较什么</th></tr></thead><tbody><tr><td>r<sub>f,t</sub></td><td>基线</td><td>同一期的无风险参照收益</td></tr><tr><td>β × 市场超额收益</td><td>输入乘响应系数</td><td>市场暴露能解释的部分</td></tr><tr><td>α</td><td>截距</td><td>这套模型未解释的平均收益部分</td></tr><tr><td>εₜ</td><td>当次误差</td><td>这个月相对拟合值的偏离</td></tr></tbody></table></div>
+<p><strong>一个月的剩余是 α + εₜ，不能直接当成稳定的 alpha。</strong>有多期数据后，含截距 OLS 的样本残差平均为 0，于是 α̂ = 平均策略超额收益 − β̂ × 平均市场超额收益。</p>
+<div class="math-note"><p>如果月度回归得到 α̂ = +0.5%，它是这段样本、这个市场模型下的月度截距估计。它不表示每个月必赚 0.5%，也不表示下个月的 alpha 已知。</p></div>
+<h3>为什么业界喜欢讨论 alpha？</h3>
+<p>因为要区分“持有某类市场风险带来的收益”和“模型调整后还剩的表现”。这会影响是否值得付管理费、一个新策略是否增加了不同的收益来源。它把“我很厉害”变成可检验的主张。</p>
+<details><summary>进一层：alpha 为什么会随模型改变？</summary><div><p>假设一个策略偏爱便宜的小公司。只放市场收益进回归，这种风格的平均收益可能进入截距；再加入规模和价值因子的收益，部分原来的 alpha 可能被解释掉。</p><code class="formula">单因子：y = α + β_M·市场因子 + ε<br>多因子：y = α + β_M·市场因子 + β_S·规模因子 + β_H·价值因子 + ε</code><p>因此正 alpha 可能来自能力，也可能来自遗漏因素、运气、漏算成本或选择了漂亮样本。它是模型相对量；不是经过鉴定的“纯技术收益”。<a href="index.html#factors">继续看因子三层图 →</a></p></div></details>
+<details><summary>再进一层：回归模型与 CAPM 不是同一种结论</summary><div><p><strong>回归</strong>是在历史散点上拟合关系。<strong>CAPM（资本资产定价模型）</strong>则在特定市场与投资者假设下，讨论预期收益应如何补偿市场风险：E[r] − r_f = β(E[r_m] − r_f)。E 表示期望，不是已实现的某个月结果。</p><p>在这套定价基准下评估截距，就是常说的 Jensen’s alpha。拟合得出 β 并不证明 CAPM 的假设成立。若直接用原始收益拟合 r = a + βr_m，a 也不能不作无风险调整就叫这里的 alpha；本页统一先减 r_f，避免这个混淆。</p></div></details>
+<details class="quiz"><summary>自测：某月策略跌 2%，市场跌 3%，就能说 alpha 为正吗？</summary><div>还不够。需要无风险收益、所选模型与 beta。即使算出当月模型调整后的剩余为正，也只有一个 α + ε 的观察值；需要更长样本和不确定性评估。</div></details>
+<p class="source">Jensen’s alpha 及原始／超额收益回归的区别：<a href="https://pages.stern.nyu.edu/~adamodar/pdfiles/acf3E/book/ch1thru4.pdf#page=174">Damodaran，第 4 章，4.29–4.30</a>。多因子入口：<a href="https://www.sciencedirect.com/science/article/pii/0304405X93900235">Fama–French（1993）</a>。账本为原创示意。</p>
+</section>
+
+<section class="lesson" id="risk">
+<div class="chapter-meta"><span>04 / 06 · VOLATILITY &amp; DRAWDOWN</span><span>约 5 分钟</span></div>
+<h2>同样的平均收益，<br>走过去的路可能完全不同。</h2>
+<p class="thesis">波动率压缩“每期收益围绕均值偏多远”；回撤保留“从之前的最高点跌下来多少”。它们回答不同问题。</p>
+<figure class="figure"><div class="figure-title">四期的平均收益都为 +1%</div><div class="table-wrap"><table><thead><tr><th>序列</th><th>第 1 期</th><th>第 2 期</th><th>第 3 期</th><th>第 4 期</th><th>样本标准差</th></tr></thead><tbody><tr><td>A</td><td>0%</td><td>2%</td><td>0%</td><td>2%</td><td>1.15%</td></tr><tr><td>B</td><td>−9%</td><td>11%</td><td>−9%</td><td>11%</td><td>11.55%</td></tr></tbody></table></div><figcaption>B 的偏离幅度是 A 的 10 倍；它们算术平均相同，但复利累计结果并不相同。</figcaption></figure>
+<details><summary>为什么要平方再开根号？</summary><div><p>直接平均“收益 − 均值”，正负会抵消成 0。平方先把大小留下，再求平均；最后开根号，把单位从“收益率的平方”变回收益率。</p><code class="formula">样本均值 r̄ = Σrₜ / n<br>样本方差 s² = Σ(rₜ − r̄)² / (n − 1)<br>样本标准差 s = √s²</code><p>这里使用样本标准差：均值也来自这 n 个观察值，所以常用 n−1 校正样本方差。A 的离均差是 −1、+1、−1、+1 个百分点，s = √(4/3) ≈ 1.15 个百分点。</p><p>用绝对值也能定义离散度；平方不是唯一可能的选择。方差便于代数运算和组合风险分解，因而使用广泛。收益率的标准差是这里的波动率，不能拿价格水平的标准差替代。</p></div></details>
+<figure class="figure"><div class="figure-title">回撤看路径：账户价值从 120 跌到 90</div><svg class="risk-plot" viewBox="0 0 640 235" role="img" aria-label="教学净值路径100、120、90、108，从120跌到90的最大回撤为25%，末期回撤仍为10%"><line x1="45" x2="595" y1="55" y2="55" stroke="#a13a4c" stroke-dasharray="6 5"/><path d="M60 120 L230 55 L400 153 L570 94" fill="none" stroke="#176957" stroke-width="5"/><g fill="#176957"><circle cx="60" cy="120" r="5"/><circle cx="230" cy="55" r="5"/><circle cx="400" cy="153" r="5"/><circle cx="570" cy="94" r="5"/></g><text x="60" y="103" text-anchor="middle">100</text><text x="230" y="35" text-anchor="middle">峰值 120</text><text x="400" y="183" text-anchor="middle">谷值 90</text><text x="570" y="80" text-anchor="middle">108</text><text class="large" x="60" y="222">最大回撤 = 1 − 90 / 120 = 25%</text></svg><figcaption>最后恢复到 108，仍比历史高点低 10%。这里不是用最初的 100 作回撤分母。</figcaption></figure>
+<code class="formula">到 t 为止的峰值 Hₜ = max(V₀,…,Vₜ)<br>当期回撤 Dₜ = 1 − Vₜ / Hₜ<br>最大回撤 MDD = max(Dₜ)</code>
+<div class="table-wrap"><table><thead><tr><th>指标</th><th>为什么用</th><th>它没有告诉你</th></tr></thead><tbody><tr><td>波动率 σ</td><td>比较收益的颠簸程度；调整仓位；计算组合风险</td><td>上下波动都计入；不能单独刻画尾部、流动性或永久损失</td></tr><tr><td>最大回撤 MDD</td><td>了解样本内从峰到谷的资金压力</td><td>历史最坏值不等于未来损失上限；还要看回撤持续多久</td></tr></tbody></table></div>
+<details class="quiz"><summary>自测：亏 20% 后，涨 20% 能回本吗？</summary><div>100 → 80 → 96，还没回本。需要 (100−80)/80 = 25% 的上涨。百分比的分母变了。</div></details>
+<p class="source">方差与组合的原始入口：<a href="https://onlinelibrary.wiley.com/doi/10.1111/j.1540-6261.1952.tb01525.x">Markowitz（1952）</a>；统计入门：<a href="https://oyc.yale.edu/economics/econ-252-11/lecture-2">Shiller 的风险课程</a>。序列、图与手算均为原创。</p>
+</section>
+
+<section class="lesson" id="sharpe">
+<div class="chapter-meta"><span>05 / 06 · SHARPE RATIO</span><span>约 6 分钟</span></div>
+<h2>多赚一点，<br>付出了多少波动？</h2>
+<p class="thesis">Sharpe 把超过无风险参照的平均收益，除以这条超额收益序列的标准差。它用于在共同波动尺度下比较策略。</p>
+<code class="formula">先逐期算 dₜ = rₜ − r<sub>f,t</sub><br>历史 Sharpe = 平均(dₜ) / 样本标准差(dₜ)</code>
+<p>像一种“平均信号 / 波动幅度”，但金融里的波动并不全是测量噪声。这是帮助理解的类比，不应把随机收益和电子噪声等同。</p>
+<figure class="figure"><div class="figure-title">为什么不能只比较总收益？ <small>假设的年度均值与波动率</small></div><div class="table-wrap"><table><thead><tr><th>策略</th><th>平均收益</th><th>无风险参照</th><th>超额收益波动率</th><th>Sharpe</th></tr></thead><tbody><tr><td>A</td><td>12%</td><td>4%</td><td>16%</td><td>(12−4)/16 = 0.50</td></tr><tr><td>B</td><td>10%</td><td>4%</td><td>8%</td><td>(10−4)/8 = 0.75</td></tr><tr><td>A 各半配现金</td><td>8%</td><td>4%</td><td>8%</td><td>(8−4)/8 = 0.50</td></tr></tbody></table></div><figcaption>教学中无风险收益固定，A 与现金各占一半，则超额收益和波动都减半。调到同样 8% 波动，B 的假设平均收益是 10%，A 的混合组合是 8%。</figcaption></figure>
+<h3>为什么它不是“杠杆越大，成绩越好”？</h3>
+<p>在以同一无风险利率融资、无额外成本且正倍数缩放的理想条件下，超额收益乘 k，标准差也乘 k，所以比值不变。仅把仓位放大，不会凭空改善 Sharpe。</p>
+<details><summary>手算一次：从一列数据到 Sharpe</summary><div><p>假设四个月的超额收益依次为 0%、2%、0%、2%。均值 1%，样本标准差 √(4/3)% ≈ 1.1547%，所以<strong>月度 Sharpe ≈ 0.866</strong>。</p><code class="formula">在稳定、零序列相关的加总近似下：<br>年化均值 ≈ 12 × 月均值<br>年化标准差 ≈ √12 × 月标准差<br>年化 Sharpe ≈ √12 × 月度 Sharpe</code><p>收益相加时，均值按期数累加；若不同期不相关，方差也按期数相加，标准差就按平方根增长。四个点只为手算，不足以评价真实策略。存在自相关、时变波动或复利效应时，机械乘 √12 可能误导。</p></div></details>
+<div class="table-wrap"><table><thead><tr><th>看到一个 Sharpe 数字，追问什么？</th><th>为什么</th></tr></thead><tbody><tr><td>周期、样本长度、净收益还是毛收益？</td><td>不同口径无法直接比较；短样本容易碰巧很漂亮</td></tr><tr><td>收益分布有什么形状？</td><td>偶尔巨亏的策略，平时也可能显示很高 Sharpe</td></tr><tr><td>试了多少次才选出它？</td><td>反复筛选会挑到幸运样本</td></tr><tr><td>是回测、留出测试还是实际交易？</td><td>这些数字承担的证据强度不同</td></tr></tbody></table></div>
+<details class="quiz"><summary>自测：Sharpe = 1，是不是说明“100% 能盈利”？</summary><div>不是。它只是平均超额收益与标准差的比值；既不是胜率，也不是未来盈利概率。标准差为 0 时也不能照常除；数值未定义不能当成无限可靠。</div></details>
+<p class="source">优先读原作者：<a href="https://web.stanford.edu/~wfsharpe/art/sr/SR.htm">William F. Sharpe，《The Sharpe Ratio》（1994）</a>，重点是 The Ratio、Time Dependence、Scale Independence。表格与算例为本教程原创。</p>
+</section>
+
+<section class="lesson" id="dictionary">
+<div class="chapter-meta"><span>06 / 06 · TRANSLATION MAP</span><span>随时查阅</span></div>
+<h2>把术语，翻译成操作。</h2>
+<p class="thesis">遇到一个新词，先问：它是一个输入特征、一条时间序列、一个模型参数，还是一项操作？</p>
+<div class="table-wrap"><table><thead><tr><th>术语</th><th>工程语言 / 定义</th><th>为什么用 / 易错点</th></tr></thead><tbody>
+<tr><td>股票 / 股</td><td>对公司权益的一份所有权；“一股”是持有数量单位</td><td>看清持有什么权益；股价高不自动代表公司更贵</td></tr>
+<tr><td>指数 Index</td><td>按既定样本与权重汇总的一篮子资产表现</td><td>作为市场参照；不同指数对应不同资产池</td></tr>
+<tr><td>ETF</td><td>在交易所买卖的基金份额；很多用于跟踪指数</td><td>便于持有一篮子资产；ETF 与指数不是同一个对象</td></tr>
+<tr><td>做多 / 做空</td><td>上涨受益 / 下跌受益的方向；典型股票做空是借入卖出、以后买回</td><td>表达方向判断；做空涉及借券、费用与追缴等约束</td></tr>
+<tr><td>头寸 Position</td><td>当前持有的数量与方向</td><td>信号必须转成数量，才会形成账户盈亏</td></tr>
+<tr><td>仓位 / 权重 w</td><td>某资产头寸价值 / 账户净资产；做空权重可为负</td><td>把信号强弱转成资金配置；权重口径要明确</td></tr>
+<tr><td>杠杆 Leverage</td><td>用本教程的总暴露口径：Σ|头寸价值| / 净资产</td><td>控制放大倍数；100 净资产持有 150 多头、50 空头，总暴露 2 倍，净暴露 1 倍</td></tr>
+<tr><td>对冲 Hedge</td><td>用另一个头寸抵消某种敏感度</td><td>降低选定风险；β 接近 0 不等于所有风险消失</td></tr>
+<tr><td>因子 Factor</td><td>依上下文可能是选股特征、组合收益序列或模型中的解释变量</td><td>组织信息、解释收益；先确认说的是哪个对象</td></tr>
+<tr><td>暴露 Exposure</td><td>对某种资产／因子的敏感程度；回归语境常由系数 β 表示</td><td>看清收益来源与风险集中在哪里</td></tr>
+<tr><td>Signal / Alpha signal</td><td>对未来收益的打分或交易方向；业界口语也会把它简称 alpha</td><td>用于排序／持仓；这个用法不是已估计的回归截距</td></tr>
+<tr><td>动量 Momentum</td><td>用过去的相对强弱或自身收益方向构造信号</td><td>检验延续性；须写清比较对象与观察窗口</td></tr>
+<tr><td>均值回归 Mean reversion</td><td>假设变量偏离某中心后倾向回归</td><td>构造反向信号；均值可能漂移，便宜不保证反弹</td></tr>
+<tr><td>价差 Spread</td><td>两个价格的差，或带对冲比例的组合 P_A − hP_B</td><td>研究相对价格；h 也常写成 β，但不自动等于市场 beta</td></tr>
+<tr><td>z-score</td><td>z = (当前值 − 历史均值) / 历史标准差</td><td>把偏离归一化；z = 2 表示高出两个标准差，不是有 95% 概率回归</td></tr>
+<tr><td>市值 / P/E / B/M</td><td>价格×股数 / 股价÷每股盈利 / 账面权益÷市场权益</td><td>规模与估值输入；负盈利时 P/E 的简单比较会失去通常含义</td></tr>
+<tr><td>流动性 Liquidity</td><td>在多大规模与多小价格影响下，能完成交易</td><td>决定规则能否按预期成交</td></tr>
+<tr><td>滑点 Slippage</td><td>实际成交价相对计划／基准价格的偏离</td><td>把“纸面机会”换成可成交结果；基准口径必须说明</td></tr>
+<tr><td>换手 Turnover</td><td>一段时期交易金额相对账户规模；单边／双边定义需标明</td><td>把每笔小成本累积成总成本</td></tr>
+<tr><td>回测 Backtest</td><td>按历史时序重放规则与成交假设</td><td>检验假设；结果依赖数据与执行模拟</td></tr>
+<tr><td>样本外 OOS</td><td>没有参与这轮模型与参数选择的数据</td><td>检查泛化；反复看测试集调参后，它就不再是干净留出</td></tr>
+<tr><td>过拟合 / 泄漏</td><td>记住历史偶然性 / 使用决策当时无法得到的信息</td><td>两者都可制造漂亮但不可交易的结果</td></tr>
+</tbody></table></div>
+<h3>现在可以读成熟算法了</h3>
+<div class="table-wrap"><table><thead><tr><th>你刚懂的概念</th><th>接下来打开</th><th>第一轮只回答</th></tr></thead><tbody><tr><td>收益率、时间顺序</td><td><a href="index.html#trend">趋势策略</a></td><td>信号何时出现、何时才能成交？</td></tr><tr><td>价差、z-score</td><td><a href="index.html#pairs">配对与均值回归</a></td><td>哪种关系必须持续，策略才有道理？</td></tr><tr><td>alpha、beta</td><td><a href="index.html#factors">因子解释</a></td><td>赚到的收益，是哪种暴露带来的？</td></tr><tr><td>波动、相关性</td><td><a href="index.html#portfolio">组合配置</a></td><td>为什么资金各一半，风险未必各一半？</td></tr><tr><td>Sharpe、样本外</td><td><a href="index.html#overfit">过拟合与论文证据</a></td><td>这个指标是如何被选出来的？</td></tr></tbody></table></div>
+<details class="quiz"><summary>综合自测：某策略回测年化 30%、β=2、Sharpe=1.5。足够证明好吗？</summary><div>还不够。要问：相对什么市场、哪个时间窗、是否同一数据口径、有没有扣成本、alpha 的估计与不确定性、回撤、杠杆、试验次数和样本外表现。先恢复数字被压缩前的上下文。</div></details>
+<p class="source">术语表是本教程的操作性词典。对应原始研究、作者书籍与访问边界集中在 <a href="index.html#library">书架与论文路线</a>、<a href="../Quant_Research_Guide.md">研究导读</a>。附录补充的原作者阅读入口为 Damodaran 的回归章节与 Sharpe 1994 原文，未要求额外购买书籍。</p>
+<a class="read-next" href="index.html">进入 10 节策略图解 →</a>
+</section>
+<footer class="lesson-footer"><button id="prev">← 上一节</button><small id="lesson-position">第 1 / 6 节</small><button id="next" class="primary">下一节 →</button></footer>
+</main></div>
+<footer class="muted" style="padding-bottom:28px">原理、手算与反例 · 2026-09-07 更新 · 公式的单位、样本与模型和数字本身同样重要。</footer>
+</div>
+<script src="foundations.js"></script>
+</body>
+</html>
