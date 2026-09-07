@@ -647,13 +647,14 @@ layout: null
   <div class="section-head"><span class="section-num">04</span><h2 class="section-title">算法① 截面动量 — 三十年不倒的最简样本</h2></div>
   <div class="section-sub">Cross-sectional momentum · Jegadeesh &amp; Titman 1993</div>
 
-  <div class="oneline"><span class="k">一句话</span><span class="v">买过去 12 个月涨得最多的、卖跌得最多的，<b>跳过最近 1 个月</b>，每月再平衡一次。三十年来无数人试图否掉它，至今仍在。</span></div>
+  <div class="oneline"><span class="k">一句话</span><span class="v">买过去一段时间涨得最多的、卖跌得最多的，定期再平衡。三十年来无数人试图否掉它，至今仍在。<b>下面写的是今天的标准做法（12-2），不是 1993 年论文的原始算法</b>——两者的差别见本节末尾。</span></div>
 
   <p>
     先做这一个，因为它<strong>五十行代码能写完、数据免费、结论可复现</strong>，
     而且它踩过的所有坑（前视偏差、幸存者偏差、成本、崩溃风险）你都会遇到。
     Jegadeesh &amp; Titman 在 1993 年的论文里报告：按过去 1–4 个季度收益排序，
-    做多赢家、做空输家的组合，<strong>月均收益约 1.5%</strong>——这在当时是对有效市场假说的一记重击。
+    做多赢家、做空输家的组合能获得显著的正收益。论文自己最详细考察的那个设定——<strong>按过去 6 个月收益排序、持有 6 个月</strong>——报告的是
+    <strong>年均约 12.01% 的复合超额收益</strong>（折合月均约 1%）。这在当时是对有效市场假说的一记重击。
   </p>
 
   <figure>
@@ -724,7 +725,7 @@ layout: null
 
 <span class="k">for</span> t <span class="k">in</span> rebalance_dates:
     universe = liquid_names_as_of(t)              <span class="c"># ① 只保留当时可交易、成交额够的票</span>
-    score    = R[t-<span class="n">12</span> : t-<span class="n">1</span>][universe].sum()      <span class="c"># ② 跳过最近 1 个月（短期反转）</span>
+    score    = R[t-<span class="n">12</span> : t-<span class="n">1</span>][universe].sum()      <span class="c"># ② 跳过最近 1 个月（短期反转）—— 后世惯例，非 1993 原文</span>
     score    = score / vol[t-<span class="n">12</span>:t-<span class="n">1</span>][universe]    <span class="c"># ③ 按波动率缩放 = 风险调整后动量</span>
 
     ranks    = score.rank(pct=<span class="k">True</span>)
@@ -766,6 +767,20 @@ layout: null
     <br><br><b>标准缓解手段：</b>用<b>波动率目标</b>（realized vol 上升就自动降杠杆）
     和<b>动态调整</b>（熊市中降低动量暴露）。这不是"加个止损"，而是承认这个策略的收益分布是<b>左偏</b>的：
     平时小赚、偶尔巨亏，跟卖保险是同一个形状。
+  </div>
+
+  <div class="call src">
+    <span class="tag">读论文时请分清三层</span>
+    这一节给的是<b>今天通行的教学规则</b>，它和 1993 年那篇论文并不是同一个东西。三者必须分开引用：
+    <br><br>
+    <b>① 原文结论：</b>按过去 3–12 个月收益排序、持有 3–12 个月，能获得显著正收益；最详细考察的 6/6 设定报告<b>年均约 12.01% 的复合超额收益</b>。
+    <br>
+    <b>② 原文设定：</b>形成期与持有期之间<b>跳过一周</b>，用于规避买卖价差、价格压力与滞后反应。
+    <br>
+    <b>③ 后世惯例：</b>今天说的 <b>12-2 动量</b>（跳过最近一个月）是后续文献标准化的结果，常与 Fama-French (1996)、Carhart (1997) 一并引用，<b>不是 1993 年论文的算法</b>。二级资料里流传的「月均 1.5%」也不是原文的头条口径。
+    <br><br>
+    <b>为什么专门讲这个：</b>把「后人的改进」当成「原作者的结论」是读量化文献最常见的失真方式。
+    它会让你在复现时对不上数，然后误以为是自己代码写错了。<b>看到一个规则，先问它是论文里的，还是教材里的。</b>
   </div>
 
   <details class="q"><summary>自测：为什么要「跳过最近 1 个月」？不跳会怎样？</summary>
@@ -1709,7 +1724,7 @@ layout: null
     <table>
       <thead><tr><th>年</th><th>论文 / 作者</th><th>一句话</th><th>难度</th><th>读到什么程度</th></tr></thead>
       <tbody>
-        <tr><td>1993</td><td class="g"><b>★ Returns to Buying Winners and Selling Losers</b><br>Jegadeesh &amp; Titman, <i>JF</i></td><td class="g">动量的原始论文。多空组合月均约 1.5%</td><td class="g">★★☆☆☆</td><td class="g"><b>逐字读</b>，它是范式模板</td></tr>
+        <tr><td>1993</td><td class="g"><b>★ Returns to Buying Winners and Selling Losers</b><br>Jegadeesh &amp; Titman, <i>JF</i></td><td class="g">动量的原始论文。6/6 设定年均约 12.01% 复合超额收益</td><td class="g">★★☆☆☆</td><td class="g"><b>逐字读</b>，它是范式模板</td></tr>
         <tr><td>1997</td><td><b>On Persistence in Mutual Fund Performance</b><br>Carhart, <i>JF</i></td><td>把动量加进因子模型，成为第四因子</td><td>★★☆☆☆</td><td>知道存在即可</td></tr>
         <tr><td>2000</td><td class="g"><b>★ Optimal Execution of Portfolio Transactions</b><br>Almgren &amp; Chriss, <i>Journal of Risk</i></td><td class="g">冲击成本 vs 时间风险的最优权衡，有闭式解</td><td class="a">★★★☆☆</td><td class="g">读到能画出第 08 步那张 U 型图</td></tr>
         <tr><td>2006</td><td><b>Pairs Trading: Performance of a Relative-Value Arbitrage Rule</b><br>Gatev, Goetzmann &amp; Rouwenhorst, <i>RFS</i></td><td>配对交易的第一个大规模严谨实证</td><td class="g">★★☆☆☆</td><td>看方法与衰减趋势</td></tr>
@@ -1829,7 +1844,7 @@ layout: null
     以及最重要的一节——如何验证一个策略不是自欺。全部结论标注了出处。
   </p>
   <p>
-    <b>关于数字：</b>文中引用的历史业绩（Medallion 66% / 1.44 Sharpe / 1.5% 月收益等）
+    <b>关于数字：</b>文中引用的历史业绩（Medallion 66% / 1.44 Sharpe / 12.01% 年超额等）
     均来自公开发表的论文与书籍，用于说明方法的性质。<b>它们不代表未来，且多数在公开后已明显衰减</b>——
     第 09 步专门量化了这件事。示意图中标注为「示意」的图形用于说明机制，不是实测数据。
   </p>
