@@ -57,5 +57,16 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 * 📚 [从 MCP 1.0 到 MCP 2.0：协议模型与迁移参考手册](https://caiboyang.github.io/ML-learning/mcp-2.0/MCP_2_0_Research.html)（[Markdown 原文](mcp-2.0/MCP_2_0_Research.md)）
   * *从 API / RPC / JSON-RPC 与 MCP 1.0 的协议基础，逐层深挖 MCP 2.0 的 stateless 请求、MRTR、显式状态 handle、缓存、extensions、auth 和兼容迁移；配套时序图、状态机、线级示例与官方日期版本来源，适合作为查阅手册。*
 
+### 5. Quantitative Investing
+
+* 🌐 [远程打开量化图解学习页](https://quant-learning-notes-20260907.inmercy.chatgpt.site)（私有访问，使用创建资料的同一 ChatGPT 账号登录）
+* 🎓 [量化：从一个想法，到一份证据](quantitative-investing/learn/index.html)
+  * *中文图解学习页：10 个短单元，覆盖趋势、横截面动量、均值回归、因子、组合配置、回测与金融机器学习。包含 5 组互动示意与逐节自测，先看直觉，再展开公式；所有曲线均明确标为合成教学数据。*
+* 📚 [量化投资研究导读：书籍、论文与实验](quantitative-investing/Quant_Research_Guide.md)
+  * *6 本经典书、8 篇核心论文及做市／执行进阶入口，附推荐阅读顺序、方法区别、证据与访问边界。配套 [Python 趋势概念实验](quantitative-investing/lab_trend.py)，用合成数据练习信号、成交、收益的时间顺序与成本计算。*
+
+* 📖 [附录：量化术语速查](quantitative-investing/learn/foundations.html)
+  * *随正文按需查阅 alpha、beta、收益率、波动率和 Sharpe 的原理、算例与定义。*
+
 ---
 *More notes will be added here soon...*
