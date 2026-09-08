@@ -134,6 +134,7 @@ w[ranks &gt; <span class="s">0.9</span>] = +<span class="n">1.0</span>          
 <span class="c">#   跳过      月 m —— 12-2 惯例（后世标准化，非 JT1993 原文）</span>
 <span class="c">#   持有      月 m+1，赚取该月收益</span>
 FORMATION, SKIP, TOP = <span class="n">11</span>, <span class="n">1</span>, <span class="s">0.10</span>
+WARMUP = FORMATION + SKIP - <span class="n">1</span>          <span class="c"># = 11，第一个能真正决策的月份</span>
 
 <span class="k">def</span> target_weights(R, m_idx, universe):
     lo = m_idx - FORMATION - SKIP + <span class="n">1</span>
@@ -165,17 +166,45 @@ FORMATION, SKIP, TOP = <span class="n">11</span>, <span class="n">1</span>, <spa
 
 
 <span class="c"># ── 回测循环：成交与收益的时点必须显式写出来 ─────────────────</span>
-prev = pd.Series(<span class="s">0.0</span>, index=R.columns)
-<span class="k">for</span> m_idx <span class="k">in</span> range(len(R) - <span class="n">1</span>):
+<span class="c"># 口径：w 是相对「期初、扣费前 NAV」的目标权重，费用从现金支付。</span>
+held = pd.Series(<span class="s">0.0</span>, index=R.columns)          <span class="c"># 交易前的**实际**持仓权重</span>
+<span class="k">for</span> m_idx <span class="k">in</span> range(WARMUP, len(R) - <span class="n">1</span>):        <span class="c"># ← 跳过形成窗口不足的热身期</span>
     uni = liquid_names_as_of(R.index[m_idx])         <span class="c"># 当时可交易、成交额达标</span>
     w   = target_weights(R, m_idx, uni).reindex(R.columns).fillna(<span class="s">0.0</span>)
 
-    turnover = (w - prev).abs().sum()
+    <span class="c"># ⑤ 换手要对着「漂移后的实际持仓」算，不是对着「上期的目标」</span>
+    turnover = (w - held).abs().sum()
     cost     = turnover * (half_spread + impact_bp) / <span class="n">10_000</span>
-    gross    = (w * R.iloc[m_idx + <span class="n">1</span>]).sum()      <span class="c"># ← 赚的是 m+1 的收益</span>
-    net.append(gross - cost)
-    prev = w
+
+    <span class="c"># ⑥ 持有期收益缺失不能默认跳过：pandas 的 sum() 会把 NaN 当 0，</span>
+    <span class="c">#    而 NaN 恰恰最常出现在退市、停牌、数据缺口 —— 也就是最该亏钱的时候。</span>
+    r_next = R.iloc[m_idx + <span class="n">1</span>]
+    missing = r_next[w != <span class="n">0</span>].isna()
+    <span class="k">if</span> missing.any():
+        <span class="k">raise</span> ValueError(<span class="s">f"持仓标的缺少 m+1 收益：{list(missing[missing].index)}"</span>)
+        <span class="c"># 生产环境应改为显式填入退市收益，而不是让它静默变成 0</span>
+
+    gross = (w * r_next).sum()                       <span class="c"># ← 赚的是 m+1 的收益</span>
+    net_r = gross - cost
+    net.append(net_r)
+
+    <span class="c"># ⑦ 下一期开盘前，权重已经被价格和费用一起推走了</span>
+    held = w * (<span class="n">1</span> + r_next) / (<span class="n">1</span> + net_r)
 </code></pre>
+
+  <div class="call key">
+    <span class="tag">第 ⑤ ⑦ 步：为什么不能写 <code>held = w</code></span>
+    持有一期之后，即使<b>目标权重一个字没改</b>，实际持仓也已经不是 <code>w</code> 了——
+    价格涨的那些仓位占比变大，跌的变小，同时扣掉的费用还让 NAV 缩了一点。
+    回到目标<b>需要真实交易</b>，而写 <code>held = w</code> 会把这段换手记成 0，系统性低估成本。
+    <br><br>
+    <b>两个手算（本页配套实验把它们做成了断言）：</b><br>
+    · 目标 <code>[0.5, −0.5]</code>，本期收益 <code>[+20%, −10%]</code>，零成本 →
+      漂移后约 <code>[0.5217, −0.3913]</code>，回到目标需换手 <b>0.1304</b>。<br>
+    · 目标不变、<b>价格完全不动</b>、换手 1.0、成本 100bp → NAV 变成 0.99，
+      持仓权重变成 ±0.5/0.99，回到目标仍需换手 <b>0.0101</b>。
+      <b>所以漂移的分母必须用净收益 <code>1+gross−cost</code>，不是 <code>1+gross</code>。</b>
+  </div>
 
   <details class="term">
     <summary>为什么<b>简单收益不能直接相加</b>？（点开，30 秒）</summary>
