@@ -60,22 +60,8 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 ### 5. Quantitative Trading
 
 * 🎓 [一个很小的优势，重复很多次 — 从零学量化交易](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/)
-  * ***唯一入口**：一条八步主线 + 三个 deep dive 子页 + 一个可运行实验。从零基础起步，只要求均值/方差/回归的直觉和一点 Python。*
-  * *开场先摆两个都为真、却互相打脸的事实：Medallion 基金 1988–2018 年化毛收益 **66%**，而 452 个已发表的市场异象里 **65%** 用规范口径重做后连 t &gt; 1.96 都过不了。整页围绕这条张力展开——量化确实有效，而寻找量化策略的过程会系统性地生产假象。*
-  * *主线围绕 **IR = TC × IC × √BR**（Grinold 1989 + Clarke-de Silva-Thorley 2002 的约束修正）组织：量化的取舍是牺牲单次准度（IC 只有 0.02–0.06，比抛硬币好一点点）换取重复次数。配一个**可拖动的交互控件**——把相关性 ρ 从 0 拨到 0.05，2000 次名义下注就塌到不足 20 次，IR 从 1.34 掉到 0.13。公式旁另附「用它之前先确认五件事」的适用条件框。*
-  * *然后是量化系统的六个模块（alpha 模型只占六分之一）、alpha 的四个来源、第一个能自己写出来的算法（截面动量），以及组合构建（Markowitz 为何是「误差最大化器」、Black-Litterman、HRP、分数 Kelly）与执行成本（Almgren-Chriss 的 U 型曲线；冲击成本按 √规模 增长如何构成策略容量的硬上限）。*
-* 🔬 [Deep dive · 三个算法的完整拆解](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/algorithms/)
-  * *截面动量（时间轴图、**一段会报错的参考代码 vs 修正版**、中性化对照实验）、统计套利（Avellaneda-Lee 的 PCA → 残差 → OU → s-score 全流程，以及 Sharpe **1.44 → 0.90** 的衰减为何比 1.44 本身更重要）、做市（Avellaneda-Stoikov 的保留价格与最优价差，以及模型未建模的逆向选择）。每个算法配就地折叠的术语解释：κ 与半衰期怎么估、γ 和 k 实盘怎么定，都带一个手算。*
-* 🔬 [Deep dive · 验证与自欺](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/validation/)
-  * *全专题最重要的一页。**5 年日线 + 45 个独立配置就能凭空造出样本内 Sharpe = 1 的假策略**（Bailey et al. 2014），配 Harvey-Liu-Zhu 的 t &gt; 3.0 门槛、Hou-Xue-Zhang 的 65%/82% 复制失败率、McLean-Pontiff 的发表后 −58%，串成「发现→发表→套利」三段衰减链。另含回测偏差七条查表、**Deflated Sharpe Ratio 的六项最小记录清单**（试验日志是必要条件而非充分条件）、Purged K-Fold + Embargo、七步验证流程。*
-* 🔬 [Deep dive · 书单与论文表](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/library/)
-  * *24 篇论文 + 8 本书，**每条都有可直接打开的链接**，并标注两件通常被省略的事：正式版与免费工作稿的年份差异（PBO 2015 作者稿 vs 2017 正式版、配对交易 1999 早稿 vs 2006 版本），以及**本次核对到了哪一层**（全文关键节 / 摘要+结论 / 仅出版页）。另含 4 项数学前置（含「随机微积分不做期权可以先跳过」这条省时判断）、工具选型、以及适合图像型学习者的免费入口。*
-* 🧪 可运行实验：[`quantitative-trading/lab_momentum.py`](quantitative-trading/lab_momentum.py)
-  * *纯 Python 标准库，一条命令跑完，无需第三方包、账户或网络。**默认模式的合成数据里故意不含任何动量**——先看框架在纯噪声上交出什么，才有理由相信它在有信号时给的数字。含五项自检（未来函数检查、权重形状、成本单调性、打乱检验、信号取反）。*
-  * *最有价值的是最后一步：把 **240 个月与 60 个月的 Sharpe 分布并排画出来**。真实 Sharpe = 0 的策略，长样本里最幸运的种子能跑到 +0.43，短样本能跑到 +1.19 以上。把「种子」换成「你调过的参数」，这就是那条 45 次尝试的机制在你自己机器上的重现。*
-* 🔎 页面代码检查：[`quantitative-trading/check_page_code.py`](quantitative-trading/check_page_code.py)
-  * *把学习页上**实际展示的代码**从 HTML 里抽回来，逐块 `compile()`，再把主线的选股片段真正执行一遍，在 N = 2/3/7/10/100 上断言多空只数相同、净敞口 0、总敞口 1。这两项各抓到过一个真实缺陷：顶层示例里出现 `return`，以及分位阈值在 10 只标的时选出「1 多 0 空」的纯多头仓位。*
-  * *⚠️ 本专题为技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，用于说明方法的性质与局限，不代表未来表现。*
+  * *八步主线，围绕 **IR = TC × IC × √BR** 组织；三个 deep dive 子页（[三个算法](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/algorithms/)、[验证与自欺](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/validation/)、[书单与论文表](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/library/)）与一个纯标准库的可运行实验 [`lab_momentum.py`](quantitative-trading/lab_momentum.py) 都从这里进。*
+  * *⚠️ 技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，不代表未来表现。*
 
 ---
 *More notes will be added here soon...*
