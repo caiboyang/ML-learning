@@ -330,13 +330,31 @@ def self_checks(rets):
 
 # --------------------------------------------------------------------------
 def main():
+    def positive_int(v):
+        try:
+            n = int(v)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"需要一个正整数，收到 {v!r}")
+        if n < 1:
+            raise argparse.ArgumentTypeError(f"需要一个正整数，收到 {n}")
+        return n
+
+    def nonneg_float(v):
+        try:
+            x = float(v)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"需要一个非负数，收到 {v!r}")
+        if x < 0:
+            raise argparse.ArgumentTypeError(f"成本不能为负，收到 {x}")
+        return x
+
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--signal", action="store_true",
                     help="在合成数据里注入真实动量（默认不注入）")
-    ap.add_argument("--cost", type=float, default=10.0,
+    ap.add_argument("--cost", type=nonneg_float, default=10.0,
                     help="每单位换手的成本，单位 bp（默认 10）")
-    ap.add_argument("--sweep", type=int, default=40,
+    ap.add_argument("--sweep", type=positive_int, default=40,
                     help="用多少个随机种子重跑，观察结果分布（默认 40）")
     ap.add_argument("--seed", type=int, default=SEED)
     args = ap.parse_args()
