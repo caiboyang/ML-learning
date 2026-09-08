@@ -646,11 +646,11 @@ score = mom / sigma
 <span class="c">#    归一化后会变成净敞口 +1 的纯多头仓位，而且不报错。</span>
 valid = score.dropna().sort_values()
 k = max(<span class="n">1</span>, int(round(len(valid) * <span class="s">0.10</span>)))
-<span class="k">if</span> len(valid) &lt; <span class="n">2</span> * k:
-    <span class="k">return</span> pd.Series(<span class="s">0.0</span>, index=universe)   <span class="c"># 有效标的不足，本期不交易</span>
-w = pd.Series(<span class="s">0.0</span>, index=universe)
-w[valid.index[-k:]] = +<span class="s">0.5</span> / k              <span class="c"># 多头腿合计 +0.5</span>
-w[valid.index[:k]]  = -<span class="s">0.5</span> / k              <span class="c"># 空头腿合计 −0.5 → 净敞口 0、总敞口 1</span>
+
+w = pd.Series(<span class="s">0.0</span>, index=universe)          <span class="c"># 默认空仓</span>
+<span class="k">if</span> len(valid) &gt;= <span class="n">2</span> * k:                      <span class="c"># 有效标的够，才建两条腿</span>
+    w[valid.index[-k:]] = +<span class="s">0.5</span> / k          <span class="c"># 多头腿合计 +0.5</span>
+    w[valid.index[:k]]  = -<span class="s">0.5</span> / k          <span class="c"># 空头腿合计 −0.5 → 净敞口 0、总敞口 1</span>
 
 <span class="c"># ⑤ 收益来自 m+1，成本按「新目标 − 漂移后的实际持仓」扣，别只扣手续费</span>
 </code></pre>

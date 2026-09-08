@@ -313,6 +313,18 @@ def self_checks(rets):
     checks.append((f"价格不动、仅扣费也产生换手 {need1:.6f}（应 ≈ 0.010101）",
                    abs(need1 - 0.010101) < 1e-5))
 
+    # (i) 从空仓首次买入某标的，开仓换手必须被**完整**计入。
+    #     页面参考代码曾在这里出错：未持仓标的若收益缺失，pandas 的
+    #     0 * NaN = NaN 会让它的 held 变成 NaN，而 .sum() 又跳过 NaN，
+    #     于是下一期首次买入这只票的换手被整笔吞掉。
+    w_a = [0.5, -0.5, 0.0]                     # 第一期：C 未持仓
+    net_a = -1.0 * 100 / 10_000.0              # 换手 1.0、100bp、价格不动
+    held_a = drift(w_a, [0.0, 0.0, 0.0], net_a)
+    w_b = [0.0, -0.5, 0.5]                     # 第二期：首次买入 C
+    turn_b = sum(abs(w_b[i] - held_a[i]) for i in range(3))
+    checks.append((f"首次开仓的换手被完整计入 {turn_b:.6f}（应 ≈ 1.010101）",
+                   abs(turn_b - 1.010101) < 1e-5))
+
     return checks
 
 

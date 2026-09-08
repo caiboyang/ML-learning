@@ -73,6 +73,8 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 * 🧪 可运行实验：[`quantitative-trading/lab_momentum.py`](quantitative-trading/lab_momentum.py)
   * *纯 Python 标准库，一条命令跑完，无需第三方包、账户或网络。**默认模式的合成数据里故意不含任何动量**——先看框架在纯噪声上交出什么，才有理由相信它在有信号时给的数字。含五项自检（未来函数检查、权重形状、成本单调性、打乱检验、信号取反）。*
   * *最有价值的是最后一步：把 **240 个月与 60 个月的 Sharpe 分布并排画出来**。真实 Sharpe = 0 的策略，长样本里最幸运的种子能跑到 +0.43，短样本能跑到 +1.19 以上。把「种子」换成「你调过的参数」，这就是那条 45 次尝试的机制在你自己机器上的重现。*
+* 🔎 页面代码检查：[`quantitative-trading/check_page_code.py`](quantitative-trading/check_page_code.py)
+  * *把学习页上**实际展示的代码**从 HTML 里抽回来，逐块 `compile()`，再把主线的选股片段真正执行一遍，在 N = 2/3/7/10/100 上断言多空只数相同、净敞口 0、总敞口 1。这两项各抓到过一个真实缺陷：顶层示例里出现 `return`，以及分位阈值在 10 只标的时选出「1 多 0 空」的纯多头仓位。*
   * *⚠️ 本专题为技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，用于说明方法的性质与局限，不代表未来表现。*
 
 ---
