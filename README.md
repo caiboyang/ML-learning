@@ -60,8 +60,11 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 ### 5. Quantitative Trading
 
 * 🎓 [一个很小的优势，重复很多次 — 从零学量化交易](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/)
-  * *八步主线，围绕 **IR = TC × IC × √BR** 组织；三个 deep dive 子页（[三个算法](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/algorithms/)、[验证与自欺](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/validation/)、[书单与论文表](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/library/)）与一个纯标准库的可运行实验 [`lab_momentum.py`](quantitative-trading/lab_momentum.py) 都从这里进。*
-  * *⚠️ 技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，不代表未来表现。*
+  * *从零基础起步，只要求均值/方差/回归的直觉和一点 Python。开场摆两个都为真却互相打脸的事实：Medallion 基金 1988–2018 年化毛收益 **66%**，而 452 个已发表的市场异象里 **65%** 用规范口径重做后连 t &gt; 1.96 都过不了。整个专题围绕这条张力展开——量化确实有效，而寻找量化策略的过程会系统性地生产假象。*
+  * *八步主线围绕唯一一条核心公式 **IR = TC × IC × √BR**（Grinold 1989 + Clarke-de Silva-Thorley 2002 的约束修正）组织：量化的取舍是牺牲单次准度（真实 IC 只有 0.02–0.06，方向正确率约 50.6%–51.9%）换取重复次数。配一个可拖动的交互控件——相关性 ρ 从 0 拨到 0.05，2000 次名义下注就塌到不足 20 次。随后是量化系统的六个模块（alpha 模型只占六分之一）、alpha 的四个来源、第一个能自己写出来的算法，以及组合构建（Markowitz 为何是「误差最大化器」、Black-Litterman、HRP、分数 Kelly）与执行成本（Almgren-Chriss 的 U 型曲线；冲击成本按 √规模 增长如何构成策略容量的硬上限）。*
+  * *三个 deep dive 子页从主线进入：**三个算法**逐行拆解（截面动量含一段会报错的参考代码 vs 修正版；统计套利的 PCA → 残差 → OU → s-score 全流程，及 Sharpe **1.44 → 0.90** 的衰减为何比 1.44 本身更重要；做市的保留价格与最优价差，及模型未建模的逆向选择）；**验证与自欺**是全专题最重要的一页（5 年日线 + 45 个独立配置，最好那个的样本内 Sharpe 期望就到 1，配 Harvey-Liu-Zhu 的 t &gt; 3.0、Hou-Xue-Zhang 的 65%/82% 复制失败率、McLean-Pontiff 的发表后 −58%，串成「发现→发表→套利」三段衰减链，另含回测偏差七条查表与 DSR 的六项最小记录清单）；**书单与论文表**给 24 篇论文 + 8 本书的直达链接，逐条标注正式版与工作稿的年份差异、以及本次核对到了哪一层。*
+  * *另附一个纯标准库的可运行实验：**默认模式的合成数据里故意不含任何动量**，先看框架在纯噪声上交出什么。它把 240 个月与 60 个月的 Sharpe 分布并排画出来——毛期望为 0 的策略，短样本里最幸运的种子仍能跑到 Sharpe +1.19。把「种子」换成「你调过的参数」，就是那条 45 次尝试的机制在你自己机器上的重现。*
+  * *⚠️ 技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，用于说明方法的性质与局限，不代表未来表现。*
 
 ---
 *More notes will be added here soon...*
