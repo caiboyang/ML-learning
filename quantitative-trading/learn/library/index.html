@@ -1,0 +1,472 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>书单与论文表 — 量化交易 deep dive</title>
+<meta name="description" content="24 篇论文与 8 本书的直达入口，逐条标注正式版/工作稿、本次核对到哪一层、以及第一轮该读哪一节。" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<div class="subnav"><div class="subnav-in">
+  <a href="../">← 回到主线</a><span class="sep">/</span><span class="here">DEEP DIVE · 书单与论文表</span>
+</div></div>
+
+<header class="hero"><div class="hero-inner">
+  <div class="eyebrow mono">Deep dive · 阅读入口</div>
+  <h1 class="kicker">读<span class="accent">哪一节</span>，<br>以及我核到了哪一层</h1>
+  <p class="lede">
+    每一条都给了<strong>可直接打开的入口</strong>，并标注两件通常被省略的事：
+    <strong>①</strong> 正式出版版本与免费工作稿的区别（年份常常不同，引用时会出错）；
+    <strong>②</strong> 我这次<strong>核对到了哪一层</strong>——是读了全文、只读了摘要与图表、还是仅核对了出版页。
+  </p>
+  <div class="meta-grid">
+    <div><div class="label">论文</div><div class="value">24 篇 · 分四组</div></div>
+    <div><div class="label">书</div><div class="value">8 本 · 标了读哪几章</div></div>
+    <div><div class="label">数学前置</div><div class="value">4 项 · 含可跳过判断</div></div>
+    <div><div class="label">工具</div><div class="value">6 类 · 含换用时机</div></div>
+  </div>
+</div></header>
+
+<article>
+
+<section class="essay" id="howto">
+  <div class="section-head"><span class="section-num">读法</span><h2 class="section-title">先说怎么用这两张表</h2></div>
+  <div class="section-sub">How to use these tables</div>
+
+  <div class="oneline"><span class="k">一句话</span><span class="v">论文<b>不要通读</b>。第一轮只花 15 分钟填五格：<b>问题 / 规则 / 样本 / 对照 / 失效条件</b>。填得出来就够了，填不出来说明这篇现在还不该读。</span></div>
+
+  <div class="call key">
+    <span class="tag">关于「核对层级」这一列</span>
+    这一列写的是<b>我这次实际做到哪一步</b>，不是这篇论文的质量评价。三种取值：
+    <br><br>
+    <b>【全文关键节】</b> 读了方法与结果的关键段落，文中引用的数字直接来自这些段落。<br>
+    <b>【摘要+结论】</b> 读了摘要、结论与主要图表，未逐页核对推导。<br>
+    <b>【出版页】</b> 只核对了标题、作者、年份、卷期与 DOI，未读正文。
+    <br><br>
+    <b>为什么要标：</b>本专题此前就在这里出过错——把后世的 12-2 惯例当成 Jegadeesh-Titman 1993 的原始算法，
+    把二级资料里的「月均 1.5%」当成论文头条口径。原因正是引用依赖了搜索摘要而不是原文。
+    标出层级，你才知道哪些结论需要自己回原文复核。
+  </div>
+
+  <div class="call pit">
+    <span class="tag">引用时最容易出错的三个地方</span>
+    <b>① 工作稿年份 ≠ 出版年份。</b>PBO 的作者稿是 2015、正式版是 2017（<i>Journal of Computational Finance</i>）；
+    配对交易有 1999 年 NBER 早稿与 2006 年 RFS 版本，样本不同。<br>
+    <b>② 教学惯例 ≠ 论文算法。</b>12-2 动量、s-score 的 ±1.25 阈值、配对的 z 阈值，都是后来标准化的教学设定。<br>
+    <b>③ 二级摘要的数字常被改写。</b>写进你自己笔记之前，至少核对一次论文摘要里的原始表述。
+  </div>
+</section>
+
+<section class="essay" id="papers-a">
+  <div class="section-head"><span class="section-num">A</span><h2 class="section-title">地基：不读会一直隔靴搔痒</h2></div>
+  <div class="section-sub">Foundations</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>年</th><th>论文</th><th>只带走一个问题</th><th>第一轮读哪</th><th>核对层级</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1952</td>
+          <td><a href="https://onlinelibrary.wiley.com/doi/10.1111/j.1540-6261.1952.tb01525.x">Portfolio Selection</a><br>Markowitz, <i>JF</i> 7(1):77–91</td>
+          <td>为什么一堆好资产不一定组成好组合？</td><td>全文很短，直接读</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>1956</td>
+          <td><a href="https://www.princeton.edu/~wbialek/rome/refs/kelly_56.pdf">A New Interpretation of Information Rate</a><br>Kelly, <i>Bell System Technical Journal</i></td>
+          <td>下多大注才能让长期增长率最大？</td><td>结论部分；实操看 Thorp 的科普</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>1985</td>
+          <td><a href="https://www.jstor.org/stable/1913210">Continuous Auctions and Insider Trading</a><br>Kyle, <i>Econometrica</i> 53(6):1315–1335</td>
+          <td>知情交易者如何把信息藏进订单流？</td><td>只读直觉部分，跳过推导</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>1987</td>
+          <td><a href="https://www.jstor.org/stable/1913236">Co-integration and Error Correction</a><br>Engle &amp; Granger, <i>Econometrica</i> 55(2):251–276</td>
+          <td>协整和相关有什么区别？</td><td>定义部分即可</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>1989</td>
+          <td class="g"><b>★</b> <a href="https://www.pm-research.com/content/iijpormgmt/15/3/30">The Fundamental Law of Active Management</a><br>Grinold, <i>JPM</i> 15(3):30–37</td>
+          <td class="g"><b>IR = IC × √BR。整个主线的出处</b></td><td class="g">全文，很短</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>1993</td>
+          <td><a href="https://www.sciencedirect.com/science/article/pii/0304405X93900235">Common Risk Factors in the Returns on Stocks and Bonds</a><br>Fama &amp; French, <i>JFE</i> 33(1):3–56</td>
+          <td>我的收益有多少来自共同风险？</td><td>方法与表 1</td><td>【摘要+结论】</td>
+        </tr>
+        <tr>
+          <td>1997</td>
+          <td><a href="https://onlinelibrary.wiley.com/doi/10.1111/j.1540-6261.1997.tb03808.x">On Persistence in Mutual Fund Performance</a><br>Carhart, <i>JF</i> 52(1):57–82</td>
+          <td>动量作为第四个因子</td><td>知道存在即可</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>2002</td>
+          <td><a href="https://www.tandfonline.com/doi/abs/10.2469/faj.v58.n5.2468">Portfolio Constraints and the Fundamental Law</a><br>Clarke, de Silva &amp; Thorley, <i>FAJ</i> 58(5)</td>
+          <td>约束吃掉了我多少纸面 alpha？</td><td class="g">值得细读，非常实用</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>2015</td>
+          <td><a href="https://www.sciencedirect.com/science/article/pii/S0304405X14002323">A Five-Factor Asset Pricing Model</a><br>Fama &amp; French, <i>JFE</i> 116(1):1–22</td>
+          <td>加入盈利与投资之后还剩什么</td><td>结论表</td><td class="a">【出版页】</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="call src">
+    <span class="tag">一个常见的引用混淆</span>
+    Fama-French <b>1993</b> 的标题是「股票<b>与债券</b>收益中的共同风险因子」，讲的是<b>五个</b>因子——
+    股票三个（市场、SMB、HML）加债券两个。今天说的「FF5 五因子」是 <b>2015</b> 年那篇，
+    在股票三因子上加了盈利能力 RMW 与投资 CMA，<b>动量不在标准 FF5 里</b>（动量是 Carhart 1997 加的第四因子）。
+    这两组「五」完全不是一回事。
+  </div>
+</section>
+
+<section class="essay" id="papers-b">
+  <div class="section-head"><span class="section-num">B</span><h2 class="section-title">三个算法的原始出处</h2></div>
+  <div class="section-sub">The three algorithms</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>年</th><th>论文</th><th>只带走一个问题</th><th>第一轮读哪</th><th>核对层级</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1993</td>
+          <td class="g"><b>★</b> <a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1993.tb04702.x">Returns to Buying Winners and Selling Losers</a><br>Jegadeesh &amp; Titman, <i>JF</i> 48(1):65–91</td>
+          <td class="g">相对赢家为什么可能继续领先？</td>
+          <td class="g">全文，它是范式模板</td><td>【摘要+结论】</td>
+        </tr>
+        <tr>
+          <td>2000/01</td>
+          <td class="g"><b>★</b> <a href="https://www.smallake.kr/wp-content/uploads/2016/03/optliq.pdf">Optimal Execution of Portfolio Transactions</a>（作者稿 PDF）<br>Almgren &amp; Chriss, <i>Journal of Risk</i> 3(2)</td>
+          <td class="g">交易太快冲击大、太慢价格风险大，怎么平衡？</td>
+          <td class="g">读到能自己画出 U 型成本曲线</td><td>【摘要+结论】</td>
+        </tr>
+        <tr>
+          <td>2006</td>
+          <td><a href="https://depot.som.yale.edu/icf/papers/fileuploads/2573/original/08-03.pdf">Pairs Trading: Performance of a Relative-Value Arbitrage Rule</a>（Yale 作者稿）<br>Gatev, Goetzmann &amp; Rouwenhorst, <i>RFS</i> 19(3):797–827</td>
+          <td>配对怎么选、何时进场、分母怎么定义？</td>
+          <td>方法节与成本段落</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>2008</td>
+          <td class="g"><b>★</b> <a href="https://math.nyu.edu/inmemoriam/avellaneda/HighFrequencyTrading.pdf">High-frequency Trading in a Limit Order Book</a>（NYU 作者稿）<br>Avellaneda &amp; Stoikov, <i>Quantitative Finance</i> 8(3):217–224</td>
+          <td class="g">怎样一边赚价差、一边管住库存？</td>
+          <td class="g">读到能默写保留价格与最优价差</td><td>【摘要+结论】</td>
+        </tr>
+        <tr>
+          <td>2010</td>
+          <td class="g"><b>★</b> <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1153505">Statistical Arbitrage in the U.S. Equities Market</a>（SSRN）<br>Avellaneda &amp; Lee, <i>Quantitative Finance</i> 10(7):761–782</td>
+          <td class="g">怎样把配对交易升级成全市场方法？</td>
+          <td class="g">全文，然后复现</td><td class="g">【全文关键节】</td>
+        </tr>
+        <tr>
+          <td>2012</td>
+          <td><a href="https://docs.lhpedersen.com/TimeSeriesMomentum.pdf">Time Series Momentum</a>（作者稿）<br>Moskowitz, Ooi &amp; Pedersen, <i>JFE</i> 104(2):228–250</td>
+          <td>自身收益方向与相对排名有什么区别？</td>
+          <td>图 1–3 就够</td><td>【摘要+结论】</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="call pit">
+    <span class="tag">Jegadeesh-Titman 1993 的三层，务必分开</span>
+    <b>① 原文结论：</b>按过去 3–12 个月收益排序、持有 3–12 个月获得显著正收益；
+    最详细考察的 6/6 设定报告<b>年均约 12.01% 的复合超额收益</b>。<br>
+    <b>② 原文设定：</b>形成期与持有期之间<b>跳过一周</b>，用于规避买卖价差、价格压力与滞后反应。<br>
+    <b>③ 后世惯例：</b>今天通行的 <b>12-2 动量</b>（跳过最近<b>一个月</b>）是后续文献标准化的结果，
+    常与 Fama-French (1996)、Carhart (1997) 一并引用，<b>不是 1993 年论文的算法</b>；
+    二级资料里流传的「月均 1.5%」也不是原文头条口径。
+    <br><br>
+    本专题最初版本就搞混了 ② 和 ③，并采用了 ③ 的那个数字。这是读量化文献最常见的失真方式：
+    <b>把后人的改进当成原作者的结论</b>。它的代价是你复现时对不上数，然后误以为是自己代码写错了。
+  </div>
+</section>
+
+<section class="essay" id="papers-c">
+  <div class="section-head"><span class="section-num">C</span><h2 class="section-title">组合构建与仓位</h2></div>
+  <div class="section-sub">Portfolio construction &amp; sizing</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>年</th><th>论文</th><th>只带走一个问题</th><th>第一轮读哪</th><th>核对层级</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1992</td>
+          <td><a href="https://www.tandfonline.com/doi/abs/10.2469/faj.v48.n5.28">Global Portfolio Optimization</a><br>Black &amp; Litterman, <i>FAJ</i> 48(5):28–43</td>
+          <td>不想自己猜预期收益，能用什么代替？</td><td>思想部分，公式可查</td><td class="a">【出版页】</td>
+        </tr>
+        <tr>
+          <td>2009</td>
+          <td><a href="https://doi.org/10.1093/rfs/hhm075">Optimal Versus Naive Diversification</a><br>DeMiguel, Garlappi &amp; Uppal, <i>RFS</i> 22(5):1915–1953<br><span style="font-size:12.5px;color:var(--paper-muted)">2007 年在线发表，2009 年卷期</span></td>
+          <td class="a"><b>估计误差能不能吃掉优化带来的全部好处？</b></td>
+          <td class="g">摘要 + 结果表。<b>必读的反证</b></td><td>【摘要+结论】</td>
+        </tr>
+        <tr>
+          <td>2016</td>
+          <td class="g"><b>★</b> <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2708678">Building Diversified Portfolios that Outperform Out of Sample</a>（SSRN）<br>López de Prado, <i>JPM</i> 42(4):59–69</td>
+          <td class="g">不求逆协方差矩阵，能不能做得更好？</td>
+          <td class="g">全文，附完整 Python 代码</td><td class="g">【全文关键节】</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="call key">
+    <span class="tag">DeMiguel 等 (2009) 值得单独强调</span>
+    他们在所研究的 <b>14 种模型、7 组数据</b>上，没有发现任何一种优化模型在其评价指标上持续胜过朴素的 <b>1/N 等权</b>。
+    <br><br>
+    <b>正确的读法：</b>这不是「优化永远没用」，结论受样本与模型范围约束。
+    它说的是——<b>当资产多、样本短时，估计误差造成的损失可以超过优化带来的收益</b>。
+    直接推论：任何复杂方法都必须在<b>样本外</b>打败 1/N 才值得上线。先把 1/N 跑出来当基线。
+  </div>
+</section>
+
+<section class="essay" id="papers-d">
+  <div class="section-head"><span class="section-num">D</span><h2 class="section-title">怎么不骗自己</h2></div>
+  <div class="section-sub">Validation methodology · 这一组最该先读</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>年</th><th>论文</th><th>只带走一个问题</th><th>第一轮读哪</th><th>核对层级</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>2014</td>
+          <td class="g"><b>★</b> <a href="https://www.ams.org/notices/201405/rnoti-p458.pdf">Pseudo-Mathematics and Financial Charlatanism</a><br>Bailey, Borwein, López de Prado &amp; Zhu, <i>Notices of the AMS</i> 61(5):458–471</td>
+          <td class="g">试几次就能凭空造出一个漂亮回测？</td>
+          <td class="g"><b>今晚就读</b>，只有十几页</td><td class="g">【全文关键节】</td>
+        </tr>
+        <tr>
+          <td>2014</td>
+          <td><a href="https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf">The Deflated Sharpe Ratio</a>（作者稿）<br>Bailey &amp; López de Prado, <i>JPM</i> 40(5):94–107</td>
+          <td>报告一个 Sharpe 需要同时报告什么？</td>
+          <td class="g">式 (2) 与 A Numerical Example</td><td>【摘要+结论】</td>
+        </tr>
+        <tr>
+          <td>2015/17</td>
+          <td><a href="https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf">The Probability of Backtest Overfitting</a>（2015 作者稿）<br>Bailey, Borwein, López de Prado &amp; Zhu, <i>Journal of Computational Finance</i> 20(4):39–69（2017 正式版）</td>
+          <td>样本内的冠军，样本外会排到第几？</td>
+          <td>PBO 定义与 CSCV 方法</td><td>【摘要+结论】</td>
+        </tr>
+        <tr>
+          <td>2016</td>
+          <td class="g"><b>★</b> <a href="https://people.duke.edu/~charvey/Research/Published_Papers/P118_and_the_cross.PDF">…and the Cross-Section of Expected Returns</a>（Duke 作者页）<br>Harvey, Liu &amp; Zhu, <i>RFS</i> 29(1):5–68</td>
+          <td class="g">一个新因子的显著性门槛应该定在哪？</td>
+          <td class="g">引言 + 图 1–4</td><td class="g">【全文关键节】</td>
+        </tr>
+        <tr>
+          <td>2016</td>
+          <td><a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/jofi.12365">Does Academic Research Destroy Stock Return Predictability?</a><br>McLean &amp; Pontiff, <i>JF</i> 71(1):5–32</td>
+          <td>一个策略被公开之后会发生什么？</td>
+          <td>摘要 + 表 1</td><td class="g">【全文关键节】</td>
+        </tr>
+        <tr>
+          <td>2020</td>
+          <td><a href="https://global-q.org/uploads/1/2/2/6/122679606/houxuezhang2020rfs.pdf">Replicating Anomalies</a>（作者站 PDF）<br>Hou, Xue &amp; Zhang, <i>RFS</i> 33(5):2019–2133</td>
+          <td>已发表的异象有多少能复制出来？</td>
+          <td>摘要 + 分类别失败率表</td><td class="g">【全文关键节】</td>
+        </tr>
+        <tr>
+          <td>2020</td>
+          <td><a href="https://academic.oup.com/rfs/article/33/5/2223/5758276">Empirical Asset Pricing via Machine Learning</a><br>Gu, Kelly &amp; Xiu, <i>RFS</i> 33(5):2223–2273<br><span style="font-size:12.5px;color:var(--paper-muted)">免费入口：<a href="https://www.nber.org/papers/w25398">NBER w25398</a></span></td>
+          <td>ML 的非线性增益经得住时间外推吗？</td>
+          <td>方法概览 + 变量重要性图</td><td class="g">【全文关键节】</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="essay" id="books">
+  <div class="section-head"><span class="section-num">书</span><h2 class="section-title">八本书：标了该读哪几章</h2></div>
+  <div class="section-sub">Books · with chapter-level entry points</div>
+
+  <div class="oneline"><span class="k">读法</span><span class="v"><b>不要求读完任何一本。</b>只读表里标的那几章，剩下当参考书查。读完一章就写一次代码，比读三本有用。</span></div>
+
+  <div class="call src">
+    <span class="tag">关于这份书单的边界</span>
+    按<b>英文原名</b>检索，避免中文译名与重印版本混淆。难度与顺序是<b>教学判断</b>，不是权威排序。
+    <b>我没有通读其中任何一本的全文</b>：选题与章节结构依据出版社页面、作者目录与公开介绍核对；
+    出版宣传里的盈利表述不作为证据。
+  </div>
+
+  <div class="tbl-wrap">
+    <p class="tbl-cap">第一梯队 · 建立世界观</p>
+    <table>
+      <thead><tr><th>书</th><th>解决什么</th><th>怎么打开</th><th>难度</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><a href="https://www.wiley.com/en-us/Inside+the+Black+Box%3A+A+Simple+Guide+to+Systematic+Investing%2C+3rd+Edition-p-9781394268573"><b>Inside the Black Box</b></a><br>Rishi K. Narang（Wiley）</td>
+          <td class="g">几乎没有公式，却把量化机构的完整结构讲清楚了。主线第 02 步那张六模块图来自这本</td>
+          <td>全书（很薄）</td><td class="g">★☆☆☆☆</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.penguinrandomhouse.com/books/572051/the-man-who-solved-the-market-by-gregory-zuckerman/"><b>The Man Who Solved the Market</b></a><br>Gregory Zuckerman（Portfolio, 2019）</td>
+          <td>Renaissance 与 Jim Simons 的故事。不教技术，但给你这个行业的真实质感</td>
+          <td>当小说读</td><td class="g">★☆☆☆☆</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.mhprofessional.com/active-portfolio-management-a-quantitative-approach-for-producing-superior-returns-and-controlling-risk-9780070248823-usa"><b>Active Portfolio Management</b></a><br>Grinold &amp; Kahn（McGraw-Hill）</td>
+          <td class="a">主动管理的理论基准。IR / IC / breadth / transfer coefficient 这套行业共同语言定义在这里</td>
+          <td>第 1–7 章，尤其第 6 章</td><td class="a">★★★☆☆</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tbl-wrap">
+    <p class="tbl-cap">第二梯队 · 动手做（按方向选一到两本）</p>
+    <table>
+      <thead><tr><th>书</th><th>解决什么</th><th>怎么打开</th><th>难度</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><a href="https://www.wiley.com/en-us/Advances+in+Financial+Machine+Learning-p-9781119482086"><b>Advances in Financial Machine Learning</b></a><br>Marcos López de Prado（Wiley, 2018）</td>
+          <td class="g">有 ML 背景的话这是第一必读。三元障碍标注、meta-labeling、Purged K-Fold、DSR、分数差分都在这</td>
+          <td>2–4、7–8、11–14 章</td><td class="r">★★★★☆</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.harriman-house.com/authors/robert-carver/systematic-trading/9780857194459"><b>Systematic Trading</b></a><br>Robert Carver（Harriman House, 2015）</td>
+          <td class="g">前 AHL 交易员写的，最诚实的一本实操书。大量篇幅讲仓位管理、成本、为什么简单规则往往更好</td>
+          <td>全书，Part 2 优先</td><td>★★☆☆☆</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.aqr.com/Insights/Research/Book/Expected-Returns"><b>Expected Returns</b></a><br>Antti Ilmanen（Wiley, 2011）</td>
+          <td>收益来源的百科：风险溢价、价值、动量、carry 的机制</td>
+          <td class="g">查字典式读：先挑一个收益来源</td><td class="a">★★★☆☆</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.wiley.com/en-us/Quantitative+Trading%3A+How+to+Build+Your+Own+Algorithmic+Trading+Business%2C+2nd+Edition-p-9781119800064"><b>Quantitative Trading</b></a>（2nd ed., 2021）<br>+ <a href="https://www.wiley.com/en-us/Algorithmic+Trading%3A+Winning+Strategies+and+Their+Rationale-p-9781118746912"><b>Algorithmic Trading</b></a>（2013）<br>Ernest P. Chan</td>
+          <td>零售视角入门与进阶，有完整可跑代码。<span class="r">缺点是对过拟合的警惕不足</span>——配<a href="../validation/">验证那一页</a>一起读</td>
+          <td>各挑 3–4 章</td><td class="g">★★☆☆☆</td>
+        </tr>
+        <tr>
+          <td><b>Statistical Arbitrage</b><br>Andrew Pole（Wiley, 2007）</td>
+          <td>统计套利的专门著作，从业者视角，讲了很多论文里不会写的细节</td>
+          <td>前半部分</td><td class="a">★★★☆☆</td>
+        </tr>
+        <tr>
+          <td><a href="https://global.oup.com/academic/product/trading-and-exchanges-9780195144703"><b>Trading and Exchanges</b></a><br>Larry Harris（OUP, 2002）</td>
+          <td class="g">市场微观结构百科。想理解做市那一节、想知道订单簿和交易所怎么运转，这是唯一一本</td>
+          <td>当字典查</td><td class="a">★★★☆☆</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="essay" id="math">
+  <div class="section-head"><span class="section-num">数学</span><h2 class="section-title">前置知识：不要按顺序读，需要时再查</h2></div>
+  <div class="section-sub">Math prerequisites · with one time-saving call</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>主题</th><th>推荐</th><th>真正需要的深度</th><th>什么时候需要</th></tr></thead>
+      <tbody>
+        <tr><td><b>线性代数</b></td><td>Gilbert Strang, <i>Introduction to Linear Algebra</i><br><a href="https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/">MIT OCW 18.06 免费课</a></td><td class="g">会矩阵运算、理解特征值与 PCA 在干什么</td><td class="g"><b>马上</b>。统计套利的 PCA、组合构建的协方差都要用</td></tr>
+        <tr><td><b>概率统计</b></td><td>Casella &amp; Berger, <i>Statistical Inference</i></td><td class="g">分布、假设检验、<b>多重检验</b>、贝叶斯基本思想</td><td class="g"><b>马上</b>。这是量化的母语</td></tr>
+        <tr><td><b>时间序列</b></td><td>Tsay, <i>Analysis of Financial Time Series</i></td><td>AR/MA、平稳性、协整、GARCH</td><td>做统计套利之前</td></tr>
+        <tr><td><b>随机微积分</b></td><td>Shreve 卷 I / II</td><td class="r">只有做<b>衍生品定价</b>才必需</td><td class="r">不做期权就<b>先跳过</b>。这是最常见的时间陷阱</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="essay" id="tools">
+  <div class="section-head"><span class="section-num">工具</span><h2 class="section-title">工具与免费数据</h2></div>
+  <div class="section-sub">Tools &amp; free data · 别在这上面纠结超过一小时</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>需求</th><th>选它</th><th>为什么</th><th>什么时候换</th></tr></thead>
+      <tbody>
+        <tr><td><b>快速试想法</b></td><td class="g"><b>pandas + numpy</b>，自己写循环</td><td class="g">前 3 个月完全够用。<b>不要一上来学框架</b>——你会把学习框架误当成学习量化</td><td>实验超过 20 个、开始复制粘贴代码时</td></tr>
+        <tr><td><b>参数扫描</b></td><td><a href="https://vectorbt.dev/">vectorbt</a></td><td>整块数组运算，扫参数极快，Jupyter 出图方便</td><td>需要真实撮合逻辑时</td></tr>
+        <tr><td><b>事件驱动回测</b></td><td><a href="https://www.backtrader.com/">backtrader</a></td><td>生态成熟、例子多、逐 bar 推进更接近真实</td><td>要做订单簿级建模时</td></tr>
+        <tr><td><b>接近生产</b></td><td><a href="https://nautilustrader.io/">NautilusTrader</a></td><td>订单类型、延迟、撮合顺序都建模了</td><td>准备接真实账户时</td></tr>
+        <tr><td><b>ML 流程</b></td><td>scikit-learn + <b>手写 Purged K-Fold</b></td><td class="a">别用现成的 <code>cross_val_score</code>——它在金融数据上会泄漏</td><td>—</td></tr>
+        <tr>
+          <td><b>免费数据</b></td>
+          <td><a href="https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html">Kenneth French Data Library</a><br>yfinance；交易所公开 API</td>
+          <td class="g">French 库是练手因子数据的最佳免费入口。<span class="a">yfinance 有幸存者偏差，练手够用、做结论不够</span></td>
+          <td class="a">要产出结论或投真钱之前，必须换含退市记录的付费数据</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="call pit">
+    <span class="tag">用 French 数据库时的一个坑</span>
+    该库说明自 2025 年起改用 <b>CRSP CIZ</b>，月度收益与分红复投的计算口径与旧的 FIZ 有差异。
+    <b>做实验一定要保存下载日期、原始文件和当时的数据说明</b>——否则半年后重跑对不上数，
+    你会花几天去查一个根本不存在的代码 bug。
+    <br><br>
+    另外：因子是<b>研究组合的收益序列</b>，不是基金净值，也不是扣完个人费用后的可得收益。
+  </div>
+</section>
+
+<section class="essay" id="free">
+  <div class="section-head"><span class="section-num">免费</span><h2 class="section-title">适合图像型学习者的免费入口</h2></div>
+  <div class="section-sub">Free, visual-first entry points</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>入口</th><th>怎么用</th><th>不要误用</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><a href="https://oyc.yale.edu/economics/econ-252">Robert Shiller · 耶鲁金融市场公开课</a>（2011，全免费，有视频+文字稿+讲义）</td>
+          <td class="g">优先第 2 讲（风险）、第 4 讲（分散）、第 7 讲（有效市场）、第 11 讲（行为金融）。<b>先挑一段，不必按顺序</b></td>
+          <td>历史课程用于概念，不用于核对现行市场规则</td>
+        </tr>
+        <tr>
+          <td><a href="https://www.aqr.com/Insights/Datasets">AQR 公开数据集</a></td>
+          <td>用已发表研究的收益序列练指标计算</td>
+          <td class="a">不是合约级数据，不能据此声称复现了交易过程；AQR 是资产管理机构，其研究有利益相关背景</td>
+        </tr>
+        <tr>
+          <td><a href="https://arxiv.org/list/q-fin.TR/recent">arXiv q-fin.TR</a> / <a href="https://arxiv.org/list/q-fin.PM/recent">q-fin.PM</a></td>
+          <td>每周扫一遍标题即可，不用每篇都读</td>
+          <td>预印本未经同行评审</td>
+        </tr>
+        <tr>
+          <td><a href="https://papers.ssrn.com/">SSRN</a> · <a href="https://www.nber.org/papers">NBER</a> · 作者个人主页</td>
+          <td class="g">上面表格里大部分论文的工作稿都免费。Google Scholar 搜标题，点右侧 [PDF]，命中率很高</td>
+          <td class="a">工作稿与正式版可能在样本、结论上有差异，引用时注明版本</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="essay" id="next">
+  <div class="section-head"><span class="section-num">→</span><h2 class="section-title">回到主线</h2></div>
+  <div class="section-sub">Back to the main path</div>
+  <div class="dd">
+    <a class="ddcard" href="../"><div class="k">主线</div><div class="t">十步学习路径</div><div class="d">从核心公式到验证，本专题的唯一入口</div></a>
+    <a class="ddcard" href="../algorithms/"><div class="k">Deep dive</div><div class="t">三个算法的完整拆解</div><div class="d">动量 / 统计套利 / 做市，含可运行代码</div></a>
+    <a class="ddcard" href="../validation/"><div class="k">Deep dive</div><div class="t">验证与自欺</div><div class="d">偏差查表、DSR 记录清单、七步流程</div></a>
+    <a class="ddcard" href="../#plan"><div class="k">行动</div><div class="t">90 天计划</div><div class="d">每周一个能跑起来的交付物</div></a>
+  </div>
+</section>
+
+</article>
+
+<footer>
+  <p><b>本页是什么：</b>量化交易专题的阅读入口清单。24 篇论文、8 本书、4 项数学前置、6 类工具，逐条给出可直接打开的链接，并标注版本差异与本次核对层级。</p>
+  <p class="disclaimer" style="margin-top:20px">
+    <b>免责声明：</b>本页为学习材料索引，<b>不构成投资建议</b>。所有第三方链接的内容由其作者与出版方负责；
+    引用的数字请以原始文献为准。部分出版社页面可能因地区或订阅限制无法打开，此时请改用表中标注的作者稿或免费入口。
+  </p>
+  <p style="margin-top:24px">返回 <a href="../">量化交易主线</a>　·　<a href="../../../">ML-Learning 索引</a></p>
+</footer>
+</body>
+</html>
