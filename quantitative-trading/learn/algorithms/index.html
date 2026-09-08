@@ -119,6 +119,13 @@ w[ranks &gt; <span class="s">0.9</span>] = +<span class="n">1.0</span>          
     <br><br>
     <b>这类错误不会报错，只会安静地把一个多空策略变成带方向暴露的策略</b>，
     然后你在回测里看到的其实是市场 beta。修正版改成<b>两端各取相同数量</b>，并用两条 assert 守住。
+    <br><br>
+    <b>第五个，同一类毛病：</b><code>prod()</code> 和 <code>std()</code> 也默认跳过 NaN。
+    一只刚上市两个月的新股会用 <b>2 个观测</b>算出动量与波动，然后和有 11 个月历史的票排进同一张榜——
+    分数根本不可比，而且同样不报错。修正版先要求<b>形成窗口完整</b>再打分。
+    <br>
+    <b>规律：pandas 里所有「默认跳过缺失值」的聚合，在回测里都是隐患</b>，
+    因为缺失恰恰集中在退市、停牌、新上市这些最影响结论的地方。
   </div>
 
   <h3 class="sub">修正版</h3>
@@ -144,14 +151,22 @@ WARMUP = FORMATION + SKIP - <span class="n">1</span>          <span class="c"># 
 
     win = R.iloc[lo:hi][universe]           <span class="c"># DataFrame：11 个月 × 标的</span>
 
-    mom   = (<span class="s">1.0</span> + win).prod() - <span class="s">1.0</span>      <span class="c"># ① 简单收益要复利 → Series</span>
-    sigma = win.std()                       <span class="c"># ② 先收敛成每标的一个数 → Series</span>
-    score = mom / sigma.replace(<span class="s">0.0</span>, np.nan)
+    <span class="c"># ① 先要求形成窗口**完整**。pandas 的 prod() 和 std() 默认跳过 NaN，</span>
+    <span class="c">#    所以一只上市两个月的新股会拿 2 个观测算出分数，然后和有 11 个月</span>
+    <span class="c">#    历史的票排在一起 —— 分数不可比，而且不会报错。</span>
+    complete = win.notna().all()            <span class="c"># → 每个标的一个 bool</span>
+    win = win.loc[:, complete]
+    <span class="k">if</span> win.shape[<span class="n">1</span>] == <span class="n">0</span>:
+        <span class="k">return</span> pd.Series(<span class="s">0.0</span>, index=universe)
 
-    <span class="c"># ③ 一条便宜的护栏：形状错了立刻炸，而不是安静地给出错误结果</span>
+    mom   = (<span class="s">1.0</span> + win).prod() - <span class="s">1.0</span>      <span class="c"># ② 简单收益要复利 → Series</span>
+    sigma = win.std()                       <span class="c"># ③ 先收敛成每标的一个数 → Series</span>
+    score = (mom / sigma.replace(<span class="s">0.0</span>, np.nan)).reindex(universe)
+
+    <span class="c"># ④ 一条便宜的护栏：形状错了立刻炸，而不是安静地给出错误结果</span>
     <span class="k">assert</span> isinstance(score, pd.Series), <span class="s">"score 必须是标的维度的 Series"</span>
 
-    <span class="c"># ④ 两端各取「相同数量」，而不是各取一个分位阈值</span>
+    <span class="c"># ⑤ 两端各取「相同数量」，而不是各取一个分位阈值</span>
     valid = score.dropna().sort_values()         <span class="c"># 升序；并列由 sort 的稳定顺序决定</span>
     k = max(<span class="n">1</span>, int(round(len(valid) * TOP)))
     <span class="k">if</span> len(valid) &lt; <span class="n">2</span> * k:                       <span class="c"># 有效标的不足以两端各取 k 只</span>
@@ -390,7 +405,7 @@ held = pd.Series(<span class="s">0.0</span>, index=R.columns)          <span cla
   <div class="section-head"><span class="section-num">③</span><h2 class="section-title">做市</h2></div>
   <div class="section-sub">Optimal market making · Avellaneda &amp; Stoikov 2008</div>
 
-  <div class="oneline"><span class="k">一句话</span><span class="v">同时挂买单和卖单赚价差。技术含量不在报价，在<b>库存管理</b>——你手上攒下的仓位是唯一的风险来源。</span></div>
+  <div class="oneline"><span class="k">一句话</span><span class="v">同时挂买单和卖单赚价差。技术含量不在报价，在<b>库存管理</b>——不过库存只是这个模型<b>显式定价</b>的那一种风险，成交的随机性和逆向选择都在它之外。</span></div>
 
   <p>前两个算法都在猜方向，做市不猜。但有两件事会杀死你：</p>
   <ul class="arrow">
@@ -421,7 +436,7 @@ held = pd.Series(<span class="s">0.0</span>, index=R.columns)          <span cla
   <details class="term">
     <summary><b>q</b>、<b>γ</b>、<b>k</b> 分别是什么，实盘里怎么定？（点开）</summary>
     <div class="tbody">
-      <div class="row"><span class="lab">q · 库存</span><div>你当前净持有多少。<b>它是这个策略唯一的风险来源</b>——价差收入是确定的，库存的价格变动不是。q 出现在保留价格里，符号决定了报价往哪边偏。</div></div>
+      <div class="row"><span class="lab">q · 库存</span><div>你当前净持有多少。q 出现在保留价格里，符号决定了报价往哪边偏。<br><b>但别把它当成唯一风险</b>：库存只是<b>这个模型显式定价的那一种</b>风险。另外两种它没管——<b>①</b> 成交本身是随机的（订单以 <code>A·exp(−k·δ)</code> 的强度到达，你不知道会成交多少、哪一边成交），所以<b>价差收入是期望值而不是确定收入</b>；<b>②</b> 逆向选择完全在模型之外，而它不能被归约成库存的价格波动。本页下面「这个模型没有告诉你的事」那一节讲的就是第 ②。</div></div>
       <div class="row"><span class="lab">γ · 风险厌恶</span><div>调大 → 价差变宽、库存压得很紧 → 成交少但安全；调小 → 价差窄、敢攒库存 → 成交多，但大行情时会很痛。<b>怎么定：</b>从你能承受的最大库存 q<sub>max</sub> 反推——让 q 接近 q<sub>max</sub> 时，报价偏移大到足以强制平仓。</div></div>
       <div class="row"><span class="lab">k · 订单流敏感度</span><div>描述「报差一点，成交少多少」。k 大 = 稍微报差就没人跟你成交 → 必须报窄；k 小 = 报宽也有人成交 → 可以多赚价差。<b>怎么估：</b>从历史订单簿数据拟合 <code>成交率 ≈ A·exp(−k·δ)</code>，对 δ 分桶回归。</div></div>
       <div class="row"><span class="lab">σ · 波动率</span><div>用<b>短窗口实现波动</b>而不是长期均值。波动突变时必须能立刻反应——这是活下去的关键，也是把这个模型用坏的最常见方式。</div></div>
