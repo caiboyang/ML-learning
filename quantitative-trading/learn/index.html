@@ -74,7 +74,7 @@ layout: null
   <div class="stat-row">
     <div class="stat g"><div class="num">66%</div><div class="note">文艺复兴 Medallion 基金 1988–2018 年化<b>毛</b>收益（扣 5/44 费后净约 39%）</div></div>
     <div class="stat r"><div class="num">65%</div><div class="note">452 个已发表的市场异象，用规范方法重做后<b>连 t &gt; 1.96 都过不了</b></div></div>
-    <div class="stat a"><div class="num">45</div><div class="note">在 5 年日线上，只要试<b>45 个</b>参数配置，就能凑出 Sharpe = 1 的策略——哪怕真实 Sharpe 是 0</div></div>
+    <div class="stat a"><div class="num">45</div><div class="note">5 年日线、<b>45 个</b>独立配置，最好那个的样本内 Sharpe <b>期望</b>就到 1——哪怕真实 Sharpe 是 0</div></div>
   </div>
 
   <p>
@@ -84,8 +84,9 @@ layout: null
   <p>
     中间和右边这两个数字，是同一枚硬币的背面。Hou–Xue–Zhang (2020) 把学术界几十年发表的 452 个"异象"
     用统一口径重做一遍，<strong>65% 复制不出来</strong>；把多重检验的门槛提到 t &gt; 2.78，失败率升到 82%。
-    而 Bailey 等人 (2014) 证明了为什么：<strong>回测过拟合太容易了</strong>——5 年数据、45 次尝试，
-    你几乎必然会挖出一个纸面 Sharpe = 1 但真实期望为 0 的策略。
+    而 Bailey 等人 (2014) 说明了为什么：<strong>回测过拟合太容易了</strong>——在 5 年数据上做 45 次独立尝试，
+    <strong>这批尝试里「最好那个」的样本内 Sharpe 期望值就会达到 1</strong>，而它的样本外期望是 0。
+    （注意口径：这说的是<strong>最大值的期望</strong>，不是「必然出现」。）
   </p>
 
   <div class="call key">
@@ -640,13 +641,18 @@ mom   = (<span class="n">1</span> + win).prod() - <span class="n">1</span>      
 sigma = win.std()                          <span class="c"># ③ 先收敛成「每标的一个数」，否则会广播成二维</span>
 score = mom / sigma
 
-ranks = score.rank(pct=<span class="k">True</span>)              <span class="c"># 横截面排序</span>
+<span class="c"># ④ 两端各取「相同数量」。别用 ranks &gt; 0.9 / ranks &lt; 0.1 这种分位阈值：</span>
+<span class="c">#    rank(pct=True) 的最小值是 1/N 不是 0，10 只票时空头一只都选不出来，</span>
+<span class="c">#    归一化后会变成净敞口 +1 的纯多头仓位，而且不报错。</span>
+valid = score.dropna().sort_values()
+k = max(<span class="n">1</span>, int(round(len(valid) * <span class="s">0.10</span>)))
+<span class="k">if</span> len(valid) &lt; <span class="n">2</span> * k:
+    <span class="k">return</span> pd.Series(<span class="s">0.0</span>, index=universe)   <span class="c"># 有效标的不足，本期不交易</span>
 w = pd.Series(<span class="s">0.0</span>, index=universe)
-w[ranks &gt; <span class="s">0.9</span>] = +<span class="n">1</span>                        <span class="c"># 最高一档做多</span>
-w[ranks &lt; <span class="s">0.1</span>] = -<span class="n">1</span>                        <span class="c"># 最低一档做空</span>
-w = w / w.abs().sum()                      <span class="c"># 总敞口归一到 1</span>
+w[valid.index[-k:]] = +<span class="s">0.5</span> / k              <span class="c"># 多头腿合计 +0.5</span>
+w[valid.index[:k]]  = -<span class="s">0.5</span> / k              <span class="c"># 空头腿合计 −0.5 → 净敞口 0、总敞口 1</span>
 
-<span class="c"># ④ 收益来自 m+1，成本按 |Δw| 扣，别只扣手续费</span>
+<span class="c"># ⑤ 收益来自 m+1，成本按「新目标 − 漂移后的实际持仓」扣，别只扣手续费</span>
 </code></pre>
 
   <div class="call pit">
@@ -853,8 +859,12 @@ w = w / w.abs().sum()                      <span class="c"># 总敞口归一到 
     <b>下注过大，即使你有真实的正期望，长期增长率也会归零甚至变负。</b>
     这不是运气问题，是几何平均和算术平均的差异：亏 50% 需要赚 100% 才能回本。
     <br><br>
-    所以在实务里，Kelly 的真正用法<b>不是</b>算出一个精确的最优比例（你的 μ 和 σ 估计误差太大了），
-    而是提供一个<b>上界</b>：任何超过全 Kelly 的杠杆都是在自毁，无论回测多好看。
+    准确一点说：超过全 Kelly 之后<b>增长率开始下降但仍为正</b>，一路降到大约 <b>2× Kelly 才归零</b>
+    （上表最后一行就是这个点），再往上才转负。所以「超过 1× 就等于自毁」是过头的说法——
+    真正的硬边界在 <b>2×</b>，而 1× 到 2× 之间是「多冒了风险却换不到增长」的纯亏区。
+    <br><br>
+    实务里 Kelly 的用法<b>不是</b>算出一个精确最优比例（μ 和 σ 的估计误差太大），
+    而是提供一个<b>量级上的天花板</b>：算出来的 Kelly 分数应该让你知道自己离那条归零线还有多远。
     分数 Kelly（0.25–0.5×）之所以流行，正是因为它对参数误差有很强的稳健性——
     <b>低估杠杆的代价很小，高估的代价是毁灭性的，这个不对称决定了你该往哪边错</b>。
   </div>
@@ -1047,9 +1057,9 @@ w = w / w.abs().sum()                      <span class="c"># 总敞口归一到 
     <p class="swipe">← 左右滑动查看完整图形 →</p>
     <figcaption>
       曲线为示意形状；<b>「5 年数据、45 个独立配置」这个结论来自 Bailey、Borwein、López de Prado 与 Zhu
-      发表在《美国数学会通报》(2014) 的论文</b>。他们的表述是：如果你只有五年数据，
-      尝试超过 45 个独立模型配置，你几乎必然能得到一个样本内年化 Sharpe = 1、
-      而样本外期望 Sharpe = 0 的策略。
+      发表在《美国数学会通报》(2014) 的论文</b>。<b>请注意它的准确口径</b>：说的是当独立配置数达到约 45 个时，
+      <b>这批尝试中「最好那个」的样本内年化 Sharpe 期望值达到 1</b>，而其样本外期望 Sharpe 为 0。
+      这是<b>最大值的期望，不是「必然出现」</b>——但对研究流程而言后果一样：你只会报告最好的那个。
     </figcaption>
   </figure>
 
@@ -1270,7 +1280,7 @@ w = w / w.abs().sum()                      <span class="c"># 总敞口归一到 
     <span class="tag">关于 ③ 的一个直接推论</span>
     如果 Bailey 等人证明了「45 次尝试就能凑出 Sharpe = 1」，
     那么一个每天自动生成并测试 <b>10 000 个</b>因子的 LLM 系统，
-    在没有极其严格的多重检验修正的前提下，<b>它的产出几乎必然全是噪声</b>。
+    在没有极其严格的多重检验修正的前提下，<b>它报告出来的「最佳因子」将主要由噪声构成</b>。
     <br><br>
     这不是说这个方向没价值——而是说<b>这个方向的全部价值，取决于筛选机制而不是生成机制</b>。
     生成一万个因子是容易的部分。谁能证明其中哪一个是真的，才是难的部分。

@@ -7,7 +7,8 @@
     python3 quantitative-trading/lab_momentum.py --help
 
 为什么默认「没有动量」？
-    因为一个诚实的回测框架，在无信号的数据上必须交出接近零的结果。
+    因为一个诚实的回测框架，在无信号的数据上必须交出接近零的**毛**收益
+    （扣掉换手成本后的净收益还会更低）。
     先看到它交白卷，你才有理由相信它在 --signal 模式下给出的正收益。
     这就是学习页第 09 步说的「破坏性检验」，只是把顺序倒过来做。
 
@@ -103,70 +104,67 @@ def decide(rets, m, n_assets):
 # --------------------------------------------------------------------------
 # 3. 回测
 # --------------------------------------------------------------------------
-def drift(w, r):
-    """持有一期之后，权重会被价格推走。返回下一期交易前的实际权重。
+# 热身期：m < WARMUP 时形成窗口还不够长，decide() 只能返回空仓。
+# 这些月份必须从**策略和基线两边**同时排除，否则：
+#   · 一串恰好为 0 的月度收益会压低波动、稀释收益，Sharpe 与 CAGR 都失真；
+#   · 基线在这些月份是满仓的，「同区间对比」就不成立了。
+WARMUP = FORMATION + SKIP - 1                  # = 11，第一个能真正决策的月份
 
-    组合收益 r_p = Σ w_i r_i；仓位 i 的价值变成 w_i(1+r_i)，NAV 变成 (1+r_p)。
-    所以交易前权重 = w_i(1+r_i) / (1+r_p)。
-    **即使目标权重一模一样，回到目标也需要交易** —— 漏掉这一段会低估换手。
+
+def drift(w, r, net):
+    """持有一期之后，权重会被价格和费用一起推走。返回下一期交易前的实际权重。
+
+    口径（全文件统一）：w 是相对**期初、扣费前** NAV 的目标权重，费用从现金支付。
+      仓位 i 期末价值 = w_i(1+r_i)·NAV₀
+      期末 NAV       = (1 + gross − cost)·NAV₀ = (1 + net)·NAV₀
+      → 交易前权重  = w_i(1+r_i) / (1+net)
+    分母必须用 **net** 而不是 gross：否则「价格没动、只扣了费」这种情形会被算成零换手。
     """
-    rp = sum(w[i] * r[i] for i in range(len(w)))
-    denom = 1.0 + rp
+    denom = 1.0 + net
     if abs(denom) < 1e-9:                      # NAV 归零，退化处理
         return [0.0] * len(w)
     return [w[i] * (1.0 + r[i]) / denom for i in range(len(w))]
 
 
-def backtest(rets, cost_bp, invert=False):
-    """按前面的时间口径跑一遍，返回每月净收益序列。
+def backtest(rets, cost_bp, invert=False, warmup=None):
+    """按前面的时间口径跑一遍，返回每月净收益序列（从 WARMUP 之后开始）。
 
-    invert=True 时把目标权重整体取反，用于自检 (e)。
+    invert=True 时把目标权重整体取反 —— 自检 (e) 用它走**这条同样的路径**。
     换手按「新目标 − 漂移后的交易前权重」计算，而不是「新目标 − 上期目标」。
     """
     n_months, n_assets = len(rets), len(rets[0])
+    warmup = WARMUP if warmup is None else warmup
     held = [0.0] * n_assets                    # 交易前的实际权重
     monthly = []
-    for m in range(n_months - 1):
+    for m in range(warmup, n_months - 1):
         w = decide(rets, m, n_assets)
         if invert:
             w = [-x for x in w]
         turnover = sum(abs(w[i] - held[i]) for i in range(n_assets))
         cost = turnover * cost_bp / 10_000.0
         gross = sum(w[i] * rets[m + 1][i] for i in range(n_assets))   # 赚 m+1 的收益
-        monthly.append(gross - cost)
-        held = drift(w, rets[m + 1])           # 下一期开盘前，权重已经漂走了
+        net = gross - cost
+        monthly.append(net)
+        held = drift(w, rets[m + 1], net)      # 下一期开盘前，权重已经漂走了
     return monthly
 
 
-def backtest_gross(rets, invert=False):
-    """零成本的逐期毛收益，用于自检 (e) 的反号不变量。"""
-    n_months, n_assets = len(rets), len(rets[0])
-    out = []
-    for m in range(n_months - 1):
-        w = decide(rets, m, n_assets)
-        if invert:
-            w = [-x for x in w]
-        out.append(sum(w[i] * rets[m + 1][i] for i in range(n_assets)))
-    return out
+def buy_and_hold(rets, cost_bp, warmup=None):
+    """**真正的**买入持有：在 WARMUP 月末等权建仓，之后权重随价格自由漂移，不再交易。
 
-
-def buy_and_hold(rets, cost_bp):
-    """**真正的**买入持有：第一个月等权建仓，之后权重随价格自由漂移，不再交易。
-
-    注意区别：每月都用固定 1/N 权重算收益，等于每月再平衡回等权，
-    那是另一个策略（而且会漏收再平衡成本）。两者结果可以差很多。
+    与策略同起点、同区间、同成本口径 —— 否则这个基线是不公平的。
+    注意区别：每月都用固定 1/N 权重算收益，等于每月再平衡回等权，那是另一个策略。
     """
     n_months, n_assets = len(rets), len(rets[0])
-    value = [1.0 / n_assets] * n_assets        # 建仓后各仓位的价值
-    nav = 1.0 - (1.0 * cost_bp / 10_000.0)     # 建仓换手 = 1.0，只在这里收一次成本
-    value = [v * nav for v in value]
-    monthly = []
-    for m in range(n_months - 1):
-        prev = sum(value)
+    warmup = WARMUP if warmup is None else warmup
+    nav0 = 1.0 - (1.0 * cost_bp / 10_000.0)    # 建仓换手 = 1.0，只在这里收一次
+    value = [nav0 / n_assets] * n_assets
+    monthly, prev_nav = [], 1.0                # 与策略一致：第一期收益含建仓成本
+    for m in range(warmup, n_months - 1):
         value = [value[i] * (1.0 + rets[m + 1][i]) for i in range(n_assets)]
-        monthly.append(sum(value) / prev - 1.0 if prev else 0.0)
-        if m == 0:                             # 把建仓成本折进第一期收益
-            monthly[0] = sum(value) / 1.0 - 1.0
+        nav = sum(value)
+        monthly.append(nav / prev_nav - 1.0 if prev_nav else 0.0)
+        prev_nav = nav
     return monthly
 
 
@@ -182,6 +180,8 @@ def equity(monthly):
 
 
 def stats(monthly):
+    if not monthly:
+        return {"total": 0.0, "cagr": 0.0, "sharpe": 0.0, "mdd": 0.0, "curve": [1.0]}
     curve = equity(monthly)
     n = len(monthly)
     total = curve[-1] - 1.0
@@ -278,27 +278,40 @@ def self_checks(rets):
     checks.append((f"打乱时间顺序后 Sharpe = {r_shuf:+.2f}（应接近 0）",
                    abs(r_shuf) < 0.75))
 
-    # (e) 真正反转权重后重跑，零成本下**逐期毛收益**必须互为相反数。
-    #     注意：复利总收益并不反号 —— [+10%,-10%] 与 [-10%,+10%] 都是 -1%，
-    #     所以不能拿总收益做这个不变量。
-    g_base = backtest_gross(rets, invert=False)
-    g_flip = backtest_gross(rets, invert=True)
-    worst = max((abs(a + b) for a, b in zip(g_base, g_flip)), default=0.0)
-    checks.append((f"反转权重重跑，逐期毛收益互为相反数（最大偏差 {worst:.2e}）",
-                   worst < 1e-12))
+    # (e) 反转权重后走**同一个 backtest()**（也就是产出报告业绩的那条路径）重跑，
+    #     零成本下逐期收益必须互为相反数。
+    #     两个易错点：
+    #       · 复利总收益并不反号 —— [+10%,-10%] 与 [-10%,+10%] 都是 -1%，不能拿它做不变量；
+    #       · 如果这项检查另起一条简化路径，它就检验不到真实回测里的持有期与收益计算。
+    base = backtest(rets, 0, invert=False)
+    flip = backtest(rets, 0, invert=True)
+    worst = max((abs(a + b) for a, b in zip(base, flip)), default=float("inf"))
+    ok = (len(base) == len(flip) and len(base) > 0 and worst < 1e-12)
+    checks.append((f"反转权重走同一个 backtest() 重跑，逐期收益互为相反数"
+                   f"（{len(base)} 期，最大偏差 {worst:.2e}）", ok))
 
     # (f) 手算：真正的买入持有不会因为中途涨跌而凭空生出收益
     #     A 先 +100% 再 −50%、B 不动，各买一半 → 应当正好回到 0%
     hand = [[0.0, 0.0], [1.0, 0.0], [-0.5, 0.0]]
-    bh = stats(buy_and_hold(hand, 0.0))["total"]
+    bh = stats(buy_and_hold(hand, 0.0, warmup=0))["total"]
     checks.append((f"买入持有手算：A +100% 再 −50%、B 不动 → {bh:+.2%}（应为 0.00%）",
                    abs(bh) < 1e-12))
 
     # (g) 手算：目标权重不变、但价格动了，仍然需要再平衡交易
     w0 = [0.5, -0.5]
-    drifted = drift(w0, [0.20, -0.10])
-    need = sum(abs(w0[i] - drifted[i]) for i in range(2))
-    checks.append((f"目标不变、价格变动仍产生换手 {need:.4f}（应 > 0）", need > 1e-6))
+    r0 = [0.20, -0.10]
+    net0 = sum(w0[i] * r0[i] for i in range(2))          # 零成本
+    need = sum(abs(w0[i] - x) for i, x in enumerate(drift(w0, r0, net0)))
+    checks.append((f"目标不变、价格变动仍产生换手 {need:.4f}（应 ≈ 0.1304）",
+                   abs(need - 0.130435) < 1e-5))
+
+    # (h) 手算：价格**完全不动**、只扣了费，权重同样会漂 —— drift 的分母必须含 cost
+    #     目标 ±0.5、换手 1.0、100bp → 净收益 −0.01，NAV 变 0.99，持仓权重变 ±0.5/0.99
+    w1, r1 = [0.5, -0.5], [0.0, 0.0]
+    net1 = 0.0 - 1.0 * 100 / 10_000.0
+    need1 = sum(abs(w1[i] - x) for i, x in enumerate(drift(w1, r1, net1)))
+    checks.append((f"价格不动、仅扣费也产生换手 {need1:.6f}（应 ≈ 0.010101）",
+                   abs(need1 - 0.010101) < 1e-5))
 
     return checks
 
@@ -350,6 +363,7 @@ def main():
     print(spark(s_mom["curve"]))
 
     print(f"\n【五】换 {args.sweep} 个随机种子重跑 —— 单次结果到底说明了什么")
+    print(f"  （以下都是扣 {args.cost:.0f}bp 成本后的**净** Sharpe；无信号时毛期望为 0、净期望为负）")
 
     def sweep(months):
         out = []
@@ -379,10 +393,12 @@ def main():
     print("\n【六】怎么读这个结果")
     if not args.signal:
         best_l, best_s = long_s[-1], short_s[-1]
-        print("  数据里**没有**任何动量结构，策略的真实期望收益是 0。")
-        print(f"  但单跑做出了 {s_mom['total']:+.2%}，Sharpe {s_mom['sharpe']:+.2f}。这不是 bug，")
+        print("  数据里**没有**任何动量结构，所以策略的**毛**期望收益是 0；")
+        print(f"  但【二】【五】用的是扣了 {args.cost:.0f}bp 成本的净收益，换手要一直付钱，")
+        print("  所以**净**期望是严格为负的 —— 分布的中心本来就该落在 0 左边。")
+        print(f"  即便如此，单跑仍做出了 {s_mom['total']:+.2%}，Sharpe {s_mom['sharpe']:+.2f}。这不是 bug，")
         print("  这就是噪声本来的样子 —— 【五】的两个分布是它的证据：")
-        print(f"    · 真实 Sharpe = 0，长样本里最幸运的一个种子仍跑出 {best_l:+.2f}；")
+        print(f"    · 毛期望为 0、净期望为负，长样本里最幸运的种子仍跑出 {best_l:+.2f}；")
         print(f"    · 样本缩到 60 个月，最幸运的种子跑到 {best_s:+.2f}，分布明显更宽。")
         print("  把「种子」换成「你调过的参数」，这就是学习页第 09 步那条")
         print("  「5 年数据 + 45 次尝试 = 一个假 Sharpe 1」的机制，在你自己的机器上重现。")
