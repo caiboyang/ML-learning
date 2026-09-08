@@ -103,29 +103,70 @@ def decide(rets, m, n_assets):
 # --------------------------------------------------------------------------
 # 3. 回测
 # --------------------------------------------------------------------------
-def backtest(rets, cost_bp):
-    """按上面的时间口径跑一遍，返回每月净收益序列。"""
+def drift(w, r):
+    """持有一期之后，权重会被价格推走。返回下一期交易前的实际权重。
+
+    组合收益 r_p = Σ w_i r_i；仓位 i 的价值变成 w_i(1+r_i)，NAV 变成 (1+r_p)。
+    所以交易前权重 = w_i(1+r_i) / (1+r_p)。
+    **即使目标权重一模一样，回到目标也需要交易** —— 漏掉这一段会低估换手。
+    """
+    rp = sum(w[i] * r[i] for i in range(len(w)))
+    denom = 1.0 + rp
+    if abs(denom) < 1e-9:                      # NAV 归零，退化处理
+        return [0.0] * len(w)
+    return [w[i] * (1.0 + r[i]) / denom for i in range(len(w))]
+
+
+def backtest(rets, cost_bp, invert=False):
+    """按前面的时间口径跑一遍，返回每月净收益序列。
+
+    invert=True 时把目标权重整体取反，用于自检 (e)。
+    换手按「新目标 − 漂移后的交易前权重」计算，而不是「新目标 − 上期目标」。
+    """
     n_months, n_assets = len(rets), len(rets[0])
-    prev_w = [0.0] * n_assets
+    held = [0.0] * n_assets                    # 交易前的实际权重
     monthly = []
     for m in range(n_months - 1):
         w = decide(rets, m, n_assets)
-        turnover = sum(abs(w[i] - prev_w[i]) for i in range(n_assets))
+        if invert:
+            w = [-x for x in w]
+        turnover = sum(abs(w[i] - held[i]) for i in range(n_assets))
         cost = turnover * cost_bp / 10_000.0
         gross = sum(w[i] * rets[m + 1][i] for i in range(n_assets))   # 赚 m+1 的收益
         monthly.append(gross - cost)
-        prev_w = w
+        held = drift(w, rets[m + 1])           # 下一期开盘前，权重已经漂走了
     return monthly
 
 
-def buy_and_hold(rets, cost_bp):
-    """同区间、同成本口径的等权买入持有基线。只在第一个月建仓。"""
+def backtest_gross(rets, invert=False):
+    """零成本的逐期毛收益，用于自检 (e) 的反号不变量。"""
     n_months, n_assets = len(rets), len(rets[0])
-    w = 1.0 / n_assets
+    out = []
+    for m in range(n_months - 1):
+        w = decide(rets, m, n_assets)
+        if invert:
+            w = [-x for x in w]
+        out.append(sum(w[i] * rets[m + 1][i] for i in range(n_assets)))
+    return out
+
+
+def buy_and_hold(rets, cost_bp):
+    """**真正的**买入持有：第一个月等权建仓，之后权重随价格自由漂移，不再交易。
+
+    注意区别：每月都用固定 1/N 权重算收益，等于每月再平衡回等权，
+    那是另一个策略（而且会漏收再平衡成本）。两者结果可以差很多。
+    """
+    n_months, n_assets = len(rets), len(rets[0])
+    value = [1.0 / n_assets] * n_assets        # 建仓后各仓位的价值
+    nav = 1.0 - (1.0 * cost_bp / 10_000.0)     # 建仓换手 = 1.0，只在这里收一次成本
+    value = [v * nav for v in value]
     monthly = []
     for m in range(n_months - 1):
-        cost = (1.0 * cost_bp / 10_000.0) if m == 0 else 0.0
-        monthly.append(sum(w * rets[m + 1][i] for i in range(n_assets)) - cost)
+        prev = sum(value)
+        value = [value[i] * (1.0 + rets[m + 1][i]) for i in range(n_assets)]
+        monthly.append(sum(value) / prev - 1.0 if prev else 0.0)
+        if m == 0:                             # 把建仓成本折进第一期收益
+            monthly[0] = sum(value) / 1.0 - 1.0
     return monthly
 
 
@@ -213,12 +254,15 @@ def self_checks(rets):
     ok = all(abs(a - b) < 1e-12 for a, b in zip(w_before, w_after))
     checks.append(("改掉月 60 及以后的全部数据，月 60 的决策不变（无未来函数）", ok))
 
-    # (b) 权重是资产维度、多空对冲、总敞口为 1
+    # (b) 权重是资产维度、多空对冲、总敞口为 1；两端选取数量相同
     w = decide(rets, 120, n_assets)
+    n_long = sum(1 for x in w if x > 0)
+    n_short = sum(1 for x in w if x < 0)
     ok = (len(w) == n_assets
           and abs(sum(w)) < 1e-12
-          and abs(sum(abs(x) for x in w) - 1.0) < 1e-12)
-    checks.append(("权重长度 = 资产数，净敞口 = 0，总敞口 = 1", ok))
+          and abs(sum(abs(x) for x in w) - 1.0) < 1e-12
+          and n_long == n_short)
+    checks.append((f"权重长度=资产数，净敞口=0，总敞口=1，多头 {n_long} 只 = 空头 {n_short} 只", ok))
 
     # (c) 成本越高，净结果不可能越好
     r0 = stats(backtest(rets, 0))["total"]
@@ -234,10 +278,28 @@ def self_checks(rets):
     checks.append((f"打乱时间顺序后 Sharpe = {r_shuf:+.2f}（应接近 0）",
                    abs(r_shuf) < 0.75))
 
-    # (e) 信号取反，收益应大致对称地翻号
-    flipped = stats([-r for r in backtest(rets, 0)])["total"]
-    base = stats(backtest(rets, 0))["total"]
-    checks.append((f"信号取反 {flipped:+.2%} 与原策略 {base:+.2%} 反号", True))
+    # (e) 真正反转权重后重跑，零成本下**逐期毛收益**必须互为相反数。
+    #     注意：复利总收益并不反号 —— [+10%,-10%] 与 [-10%,+10%] 都是 -1%，
+    #     所以不能拿总收益做这个不变量。
+    g_base = backtest_gross(rets, invert=False)
+    g_flip = backtest_gross(rets, invert=True)
+    worst = max((abs(a + b) for a, b in zip(g_base, g_flip)), default=0.0)
+    checks.append((f"反转权重重跑，逐期毛收益互为相反数（最大偏差 {worst:.2e}）",
+                   worst < 1e-12))
+
+    # (f) 手算：真正的买入持有不会因为中途涨跌而凭空生出收益
+    #     A 先 +100% 再 −50%、B 不动，各买一半 → 应当正好回到 0%
+    hand = [[0.0, 0.0], [1.0, 0.0], [-0.5, 0.0]]
+    bh = stats(buy_and_hold(hand, 0.0))["total"]
+    checks.append((f"买入持有手算：A +100% 再 −50%、B 不动 → {bh:+.2%}（应为 0.00%）",
+                   abs(bh) < 1e-12))
+
+    # (g) 手算：目标权重不变、但价格动了，仍然需要再平衡交易
+    w0 = [0.5, -0.5]
+    drifted = drift(w0, [0.20, -0.10])
+    need = sum(abs(w0[i] - drifted[i]) for i in range(2))
+    checks.append((f"目标不变、价格变动仍产生换手 {need:.4f}（应 > 0）", need > 1e-6))
+
     return checks
 
 

@@ -109,6 +109,16 @@ w[ranks &gt; <span class="s">0.9</span>] = +<span class="n">1.0</span>          
     三个独立的错误叠在一起：<b>①</b> 简单收益直接 <code>sum()</code> 而没有复利；
     <b>②</b> 波动率没有先收敛成「每个标的一个数」，导致广播成二维；
     <b>③</b> <code>.loc</code> 的标签切片<b>包含右端点</b>，和整数偏移混用时窗口边界会悄悄错一格。
+    <br><br>
+    <b>还有第四个，更隐蔽：</b>用 <code>ranks &gt; 0.9</code> 和 <code>ranks &lt; 0.1</code> 选两端，
+    看起来对称，其实不是。<code>rank(pct=True)</code> 的最小值是 <code>1/N</code> 而不是 0，所以：
+    <br><br>
+    · <b>N = 10</b>：分位是 0.1, 0.2 … 1.0 → 多头选中 <b>1 只</b>，空头 <b>0 只</b>（0.1 不满足 &lt; 0.1）。
+      归一化之后<b>净敞口 = +1，这是一个纯多头仓位</b>，和注释里写的「净敞口 0」正好相反。<br>
+    · <b>N = 100</b>：多头 10 只、空头 9 只，仍然是偏的。
+    <br><br>
+    <b>这类错误不会报错，只会安静地把一个多空策略变成带方向暴露的策略</b>，
+    然后你在回测里看到的其实是市场 beta。修正版改成<b>两端各取相同数量</b>，并用两条 assert 守住。
   </div>
 
   <h3 class="sub">修正版</h3>
@@ -140,12 +150,18 @@ FORMATION, SKIP, TOP = <span class="n">11</span>, <span class="n">1</span>, <spa
     <span class="c"># ③ 一条便宜的护栏：形状错了立刻炸，而不是安静地给出错误结果</span>
     <span class="k">assert</span> isinstance(score, pd.Series), <span class="s">"score 必须是标的维度的 Series"</span>
 
-    ranks = score.rank(pct=<span class="k">True</span>)           <span class="c"># 横截面排序</span>
+    <span class="c"># ④ 两端各取「相同数量」，而不是各取一个分位阈值</span>
+    valid = score.dropna().sort_values()         <span class="c"># 升序；并列由 sort 的稳定顺序决定</span>
+    k = max(<span class="n">1</span>, int(round(len(valid) * TOP)))
+    <span class="k">if</span> len(valid) &lt; <span class="n">2</span> * k:                       <span class="c"># 有效标的不足以两端各取 k 只</span>
+        <span class="k">return</span> pd.Series(<span class="s">0.0</span>, index=universe)   <span class="c"># 本期不交易，而不是勉强建一个偏的仓</span>
+
     w = pd.Series(<span class="s">0.0</span>, index=universe)
-    w[ranks &gt; <span class="n">1</span> - TOP] = +<span class="s">1.0</span>
-    w[ranks &lt;     TOP] = -<span class="s">1.0</span>
-    gross = w.abs().sum()
-    <span class="k">return</span> w / gross <span class="k">if</span> gross <span class="k">else</span> w    <span class="c"># 总敞口归一到 1，多空净敞口 0</span>
+    w[valid.index[-k:]] = +<span class="s">0.5</span> / k              <span class="c"># 多头腿合计 +0.5</span>
+    w[valid.index[:k]]  = -<span class="s">0.5</span> / k              <span class="c"># 空头腿合计 −0.5</span>
+    <span class="k">assert</span> abs(w.sum()) &lt; <span class="n">1e-12</span>                <span class="c"># 净敞口 0</span>
+    <span class="k">assert</span> abs(w.abs().sum() - <span class="n">1.0</span>) &lt; <span class="n">1e-12</span>   <span class="c"># 总敞口 1</span>
+    <span class="k">return</span> w
 
 
 <span class="c"># ── 回测循环：成交与收益的时点必须显式写出来 ─────────────────</span>
@@ -365,7 +381,13 @@ prev = pd.Series(<span class="s">0.0</span>, index=R.columns)
       <div class="row"><span class="lab">γ · 风险厌恶</span><div>调大 → 价差变宽、库存压得很紧 → 成交少但安全；调小 → 价差窄、敢攒库存 → 成交多，但大行情时会很痛。<b>怎么定：</b>从你能承受的最大库存 q<sub>max</sub> 反推——让 q 接近 q<sub>max</sub> 时，报价偏移大到足以强制平仓。</div></div>
       <div class="row"><span class="lab">k · 订单流敏感度</span><div>描述「报差一点，成交少多少」。k 大 = 稍微报差就没人跟你成交 → 必须报窄；k 小 = 报宽也有人成交 → 可以多赚价差。<b>怎么估：</b>从历史订单簿数据拟合 <code>成交率 ≈ A·exp(−k·δ)</code>，对 δ 分桶回归。</div></div>
       <div class="row"><span class="lab">σ · 波动率</span><div>用<b>短窗口实现波动</b>而不是长期均值。波动突变时必须能立刻反应——这是活下去的关键，也是把这个模型用坏的最常见方式。</div></div>
-      <div class="row"><span class="lab">一个手算</span><div>σ = 2%/天、γ = 0.1、T−t = 0.5 天、库存 q = +5 手：偏移 = 5 × 0.1 × 0.02² × 0.5 = <b>0.00001</b>，相对中间价约 <b>0.1 bp</b>。<b>结论：在这组参数下库存对报价的推动非常小</b>——这说明 γ 必须按你真实的库存承受力校准，照抄论文参数会得到一个几乎不管库存的做市商。</div></div>
+      <div class="row"><span class="lab">单位约定</span><div><b>先把单位说清楚，否则这个公式很容易算错一个数量级。</b>原论文的价格过程是 <code>dS = σ dW</code>，所以 <b>σ 是「价格单位 / √时间」，不是收益率</b>；<b>q 是股数</b>；<code>qγσ²(T−t)</code> 的结果是<b>价格单位的偏移</b>，要再除以中间价才得到相对偏移（bp）。γ 的单位必须与你选的财富/库存口径一致。</div></div>
+      <div class="row"><span class="lab">一个手算</span><div>取中间价 <b>S = $100</b>、<b>σ = $2/√天</b>（即日价格波动约为价格的 2%）、<b>T−t = 0.5 天</b>、库存 <b>q = +5 股</b>：
+        <br><code>偏移 = q·γ·σ²·(T−t) = 5 × γ × ($2)² × 0.5 = 10γ 美元</code>
+        <br>· γ = 0.01 → 偏移 <b>$0.10</b>，相对 $100 是 <b>10 bp</b>
+        <br>· γ = 0.10 → 偏移 <b>$1.00</b>，相对 $100 是 <b>100 bp</b>（1%）
+        <br><b>结论：偏移对 q 和 γ 都是线性的，而绝对量级完全由 γ 决定。</b>所以 γ 必须从你真实能承受的最大库存反推，照抄论文里的数字会得到一个要么完全不管库存、要么一有仓位就疯狂报偏的做市商。</div></div>
+      <div class="row"><span class="lab">易错点</span><div>把 σ 当成「日收益率标准差 2%」直接代入，得到的偏移会小几个数量级——本页早先的版本就犯过这个错。<b>波动率的时间单位也要分清</b>：「日收益标准差」与「每 √天 的价格波动」不是一回事。</div></div>
     </div>
   </details>
 
