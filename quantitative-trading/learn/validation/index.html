@@ -98,7 +98,18 @@ layout: null
   <div class="section-head"><span class="section-num">02</span><h2 class="section-title">Deflated Sharpe Ratio：它到底要什么输入</h2></div>
   <div class="section-sub">DSR · 这一节修正了本专题此前的一个错误</div>
 
-  <div class="oneline"><span class="k">一句话</span><span class="v">试验日志是<b>必要</b>的研究记录，但<b>不足以</b>单独算出 DSR——它还需要样本长度、收益的偏度峰度，以及试验之间的相关性处理。</span></div>
+  <div class="oneline"><span class="k">一句话</span><span class="v">两件事最容易搞错：<b>①</b> 试验日志是<b>必要非充分</b>的输入；<b>②</b> DSR 的输出是<b>一个概率</b>，不是「打完折的 Sharpe」。</span></div>
+
+  <div class="call pit">
+    <span class="tag">先纠正一处更要紧的</span>
+    <b>DSR 不是把你的 Sharpe 乘一个折扣系数。</b>它输出的是一个<b>概率</b>：
+    在考虑了你试了多少次、各次结果多分散、样本多长、收益分布多不正态之后，
+    <b>「观察到的这个 Sharpe 显著高于纯运气所能达到的水平」的置信度</b>。
+    <br><br>
+    所以「原始 Sharpe 1.2，折算后只剩 0.4」这种说法是错的——0.4 如果是 DSR，那它是个概率，
+    不能拿去和 1.2 比大小，更不能拿去算经济收益。<b>正确做法是三个数分开报告</b>：
+    原始 Sharpe、经选择偏差调整后的显著性门槛、以及超过门槛的置信度。
+  </div>
 
   <div class="call pit">
     <span class="tag">先纠正一处</span>
@@ -115,7 +126,7 @@ layout: null
     <div class="tbody">
       <div class="row"><span class="lab">问题</span><div>你报告了一个 Sharpe = 1.2。但这个 1.2 是从 <b>1 个</b>候选里挑的，还是从 <b>500 个</b>里挑出来的最大值？这两种情况下同一个数字的含义完全不同，而通常没人告诉你。</div></div>
       <div class="row"><span class="lab">思路</span><div>如果你试了 N 次，那么即使所有策略的真实 Sharpe 都是 0，最大值也会因为纯粹的运气而明显大于 0。这个「靠运气能到多高」的期望值可以算出来，它取决于 <b>N</b> 和<b>各次试验 Sharpe 的离散度</b>。</div></div>
-      <div class="row"><span class="lab">输出</span><div>把你观察到的 Sharpe 与那条运气基准做比较，得到一个概率：<b>「这个 Sharpe 显著大于纯运气」的可信度</b>。</div></div>
+      <div class="row"><span class="lab">输出</span><div>把你观察到的 Sharpe 与那条运气基准比较，得到<b>一个概率</b>：「这个 Sharpe 显著大于纯运气」的置信度。<br><b>它不是一个 Sharpe 值</b>，不要和原始 Sharpe 放在同一把尺子上比较，也不要用它推算收益。</div></div>
       <div class="row"><span class="lab">还修了</span><div>收益的<b>非正态性</b>。负偏 + 厚尾（大多数策略的形状）会让普通 Sharpe 系统性高估，DSR 一并修正。</div></div>
       <div class="row"><span class="lab">出处</span><div><a href="https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf">Bailey &amp; López de Prado (2014)</a>，看式 (2) 与 A Numerical Example 一节。</div></div>
     </div>
@@ -168,7 +179,7 @@ layout: null
         <tr>
           <td><b class="a">多重检验 / 过拟合</b></td><td>参数稍微一动收益就崩</td>
           <td>试了 N 次只报最好的那次</td>
-          <td>记录尝试次数；用 DSR 折算；看参数<b>高原</b>而非尖峰</td>
+          <td>记录尝试次数与收益序列；用 <b>DSR</b> 判断显著性（它给的是概率，不是折后 Sharpe）；看参数<b>高原</b>而非尖峰</td>
         </tr>
         <tr>
           <td><b class="a">数据窥探</b></td><td>样本外也不错，但实盘不行</td>
