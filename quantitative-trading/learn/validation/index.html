@@ -1,0 +1,300 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>验证与自欺 — 量化交易 deep dive</title>
+<meta name="description" content="回测偏差七条查表、Deflated Sharpe Ratio 的完整输入清单、Purged K-Fold + Embargo、七步验证流程，以及复制危机的四个量化证据。" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<div class="subnav"><div class="subnav-in">
+  <a href="../">← 回到主线</a><span class="sep">/</span><span class="here">DEEP DIVE · 验证与自欺</span>
+</div></div>
+
+<header class="hero"><div class="hero-inner">
+  <div class="eyebrow mono">Deep dive · 全专题最重要的一页</div>
+  <h1 class="kicker">回测不是验证工具，<br>它是<span class="accent">生产工具</span></h1>
+  <p class="lede">
+    而任何生产工具用多了都会开始生产废品。你的任务是<strong>知道自己已经生产了多少</strong>。
+    <br><br>
+    这一页是主线第 09 步的完整展开：<strong>偏差七条查表</strong>、
+    <strong>Deflated Sharpe Ratio 到底需要哪些输入</strong>（这一条本专题此前写错过）、
+    <strong>Purged K-Fold + Embargo</strong>、一套七步流程，以及复制危机的四个数字。
+  </p>
+  <div class="meta-grid">
+    <div><div class="label">偏差查表</div><div class="value">7 条 · 症状→修法</div></div>
+    <div><div class="label">DSR</div><div class="value">最小记录清单 6 项</div></div>
+    <div><div class="label">流程</div><div class="value">7 步 · 含通过标准</div></div>
+    <div><div class="label">可运行</div><div class="value">1 个实验</div></div>
+  </div>
+</div></header>
+
+<article>
+
+<section class="essay" id="numbers">
+  <div class="section-head"><span class="section-num">01</span><h2 class="section-title">四个数字，一条衰减链</h2></div>
+  <div class="section-sub">The replication evidence</div>
+
+  <div class="oneline"><span class="k">一句话</span><span class="v">「发现时就有很多是假的 → 用严格方法重做大部分复制不出来 → 就算是真的公开后也被套利掉大半」。三段都被量化过。</span></div>
+
+  <div class="stat-row four">
+    <div class="stat a"><div class="num">45</div><div class="note">5 年日线上，试 <b>45 个独立配置</b>就几乎必然造出样本内 Sharpe = 1、样本外期望 0 的策略</div></div>
+    <div class="stat a"><div class="num">t &gt; 3.0</div><div class="note">考虑 <b>316 个</b>已发表因子的多重检验后，新因子的门槛应从 2.0 提到 3.0 以上</div></div>
+    <div class="stat r"><div class="num">65%</div><div class="note"><b>452 个</b>异象用规范口径重做，65% 连 t &gt; 1.96 都过不了；门槛提到 2.78 则 <b>82%</b></div></div>
+    <div class="stat r"><div class="num">−58%</div><div class="note"><b>97 个</b>已发表预测变量，发表后收益平均下降 58%（样本外但发表前只降 26%）</div></div>
+  </div>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="alpha 三段衰减链">
+      <defs><marker id="vd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#FF7B8A"/></marker></defs>
+      <rect x="20" y="52" width="176" height="76" rx="10" fill="#121826" stroke="#FFBE6E" stroke-width="1.4"/>
+      <text x="108" y="80" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#FFBE6E">① 发现阶段</text>
+      <text x="108" y="102" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">搜索本身制造假阳性</text>
+      <text x="108" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74">Harvey 2016 · t&gt;3.0</text>
+
+      <line x1="200" y1="90" x2="238" y2="90" stroke="#FF7B8A" stroke-width="1.8" marker-end="url(#vd)"/>
+
+      <rect x="242" y="52" width="176" height="76" rx="10" fill="#121826" stroke="#FF7B8A" stroke-width="1.4"/>
+      <text x="330" y="80" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#FF7B8A">② 复制阶段</text>
+      <text x="330" y="102" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">65% 复制失败</text>
+      <text x="330" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74">Hou 2020 · 452 个异象</text>
+
+      <line x1="422" y1="90" x2="460" y2="90" stroke="#FF7B8A" stroke-width="1.8" marker-end="url(#vd)"/>
+
+      <rect x="464" y="52" width="176" height="76" rx="10" fill="#121826" stroke="#FF7B8A" stroke-width="1.4"/>
+      <text x="552" y="80" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#FF7B8A">③ 套利阶段</text>
+      <text x="552" y="102" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">发表后再降 58%</text>
+      <text x="552" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74">McLean 2016 · 97 个变量</text>
+
+      <line x1="644" y1="90" x2="682" y2="90" stroke="#4ADE9B" stroke-width="1.8" marker-end="url(#vd)"/>
+      <rect x="686" y="52" width="114" height="76" rx="10" fill="#0C1119" stroke="#4ADE9B" stroke-width="1.6"/>
+      <text x="743" y="82" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#4ADE9B">你今天</text>
+      <text x="743" y="102" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#4ADE9B">能拿到的</text>
+      <text x="743" y="120" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12" fill="#857F74">远小于论文数字</text>
+
+      <text x="410" y="172" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="13.5" fill="#B4B0A5">
+        可操作的先验：<tspan font-weight="700" fill="#E9E6DE">任何公开渠道读到的策略，真实期望都显著低于文中报告值</tspan>
+      </text>
+    </svg>
+    </div>
+    <p class="swipe">← 左右滑动查看完整图形 →</p>
+    <figcaption>
+      这不是怀疑论，是对三段已被量化的衰减做直接应用。出处见
+      <a href="../library/#papers-d">书单页 D 组</a>，每篇都标了核对层级。
+    </figcaption>
+  </figure>
+</section>
+
+<section class="essay" id="dsr">
+  <div class="section-head"><span class="section-num">02</span><h2 class="section-title">Deflated Sharpe Ratio：它到底要什么输入</h2></div>
+  <div class="section-sub">DSR · 这一节修正了本专题此前的一个错误</div>
+
+  <div class="oneline"><span class="k">一句话</span><span class="v">试验日志是<b>必要</b>的研究记录，但<b>不足以</b>单独算出 DSR——它还需要样本长度、收益的偏度峰度，以及试验之间的相关性处理。</span></div>
+
+  <div class="call pit">
+    <span class="tag">先纠正一处</span>
+    本专题早先的版本把「日期 / 改动 / 样本内 Sharpe」这样一个 CSV 称为
+    <b>「DSR 的唯一输入」</b>。<b>这是错的。</b>
+    那份日志能提供试验次数和各次 Sharpe 的分布，但恢复不出被选中策略的<b>收益序列</b>，
+    因而算不出偏度、峰度与样本长度这三个 DSR 必需的量。
+    <br><br>
+    正确说法：<b>试验日志是必要条件，不是充分条件。</b>下面给出最小记录清单。
+  </div>
+
+  <details class="term">
+    <summary><b>DSR</b> 想解决什么问题？（点开）</summary>
+    <div class="tbody">
+      <div class="row"><span class="lab">问题</span><div>你报告了一个 Sharpe = 1.2。但这个 1.2 是从 <b>1 个</b>候选里挑的，还是从 <b>500 个</b>里挑出来的最大值？这两种情况下同一个数字的含义完全不同，而通常没人告诉你。</div></div>
+      <div class="row"><span class="lab">思路</span><div>如果你试了 N 次，那么即使所有策略的真实 Sharpe 都是 0，最大值也会因为纯粹的运气而明显大于 0。这个「靠运气能到多高」的期望值可以算出来，它取决于 <b>N</b> 和<b>各次试验 Sharpe 的离散度</b>。</div></div>
+      <div class="row"><span class="lab">输出</span><div>把你观察到的 Sharpe 与那条运气基准做比较，得到一个概率：<b>「这个 Sharpe 显著大于纯运气」的可信度</b>。</div></div>
+      <div class="row"><span class="lab">还修了</span><div>收益的<b>非正态性</b>。负偏 + 厚尾（大多数策略的形状）会让普通 Sharpe 系统性高估，DSR 一并修正。</div></div>
+      <div class="row"><span class="lab">出处</span><div><a href="https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf">Bailey &amp; López de Prado (2014)</a>，看式 (2) 与 A Numerical Example 一节。</div></div>
+    </div>
+  </details>
+
+  <div class="tbl-wrap">
+    <p class="tbl-cap">最小记录清单 · 想事后算 DSR，这六项当时就得存下来</p>
+    <table>
+      <thead><tr><th>#</th><th>记录什么</th><th>为什么 DSR 需要它</th><th>只存日志会怎样</th></tr></thead>
+      <tbody>
+        <tr><td><b>1</b></td><td><b>每次试验的收益序列</b>（或足够统计量：均值、标准差、偏度、峰度、期数）</td><td>偏度与峰度直接进 DSR 的修正项</td><td class="r">恢复不出来，DSR 算不了</td></tr>
+        <tr><td><b>2</b></td><td><b>样本长度</b>（观测期数）与<b>采样频率</b>（日 / 周 / 月）</td><td>Sharpe 的估计误差 ∝ 1/√T；年化换算也依赖频率</td><td class="r">同上</td></tr>
+        <tr><td><b>3</b></td><td><b>试验次数 N</b>，以及每次的配置与数据版本</td><td>运气基准随 N 上升</td><td class="g">日志能给</td></tr>
+        <tr><td><b>4</b></td><td><b>各次试验 Sharpe 的方差</b></td><td>与 N 一起决定「最大值的期望」有多高</td><td class="g">日志能给</td></tr>
+        <tr><td><b>5</b></td><td><b>试验相关性 / 有效独立次数</b>的处理方法</td><td class="a">试验通常高度相关（改一个参数不算一次全新尝试）。原作者建议用无监督方法估计<b>有效独立试验数</b>，直接用 N 会低估膨胀</td><td class="r">日志不含这个判断</td></tr>
+        <tr><td><b>6</b></td><td><b>费用与无风险参照口径</b>、样本区间起止</td><td>决定这个 Sharpe 是毛的还是净的、超额相对谁</td><td class="r">最容易漏，也最容易让两个数字不可比</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="call try">
+    <span class="tag">最低限度的可执行版本</span>
+    如果你只肯做一件事：<b>每次回测把收益序列存成一个 parquet/csv，文件名带上配置哈希与日期。</b>
+    <br><br>
+    这一个动作同时满足了第 1、2、3、6 项。剩下的第 4 项可以事后从这些文件算出来，
+    第 5 项是一个需要你自己判断的方法选择。<br>
+    对 ADHD 友好的退化版本：至少记下<b>「今天试了几次」</b>这一个数字——它远好过不记，
+    虽然不足以算 DSR，但足以让你在报告 Sharpe 时诚实地加一句「这是从 N 个里挑的」。
+  </div>
+</section>
+
+<section class="essay" id="biases">
+  <div class="section-head"><span class="section-num">03</span><h2 class="section-title">按症状查表：七种回测偏差</h2></div>
+  <div class="section-sub">Bias lookup table · 每做一个策略过一遍</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>偏差</th><th>症状</th><th>怎么发生的</th><th>修法</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b class="r">前视 / 未来函数</b></td><td>Sharpe 高得离谱（&gt; 3），回撤极小</td>
+          <td>用了当时还不存在的数据：财报按报告期而非发布日；复权因子含未来信息；标准化时用了全样本统计量</td>
+          <td>全部改成<b>时点数据</b>；任何 <code>fit</code> 只能用截至 t 的信息</td>
+        </tr>
+        <tr>
+          <td><b class="r">幸存者偏差</b></td><td>长期回测收益系统性偏高</td>
+          <td>标的池只含<b>今天还活着</b>的标的，退市、破产、下架的全被剔除</td>
+          <td>用含退市记录的数据库；标的池必须是<b>当时</b>的成分股</td>
+        </tr>
+        <tr>
+          <td><b class="a">多重检验 / 过拟合</b></td><td>参数稍微一动收益就崩</td>
+          <td>试了 N 次只报最好的那次</td>
+          <td>记录尝试次数；用 DSR 折算；看参数<b>高原</b>而非尖峰</td>
+        </tr>
+        <tr>
+          <td><b class="a">数据窥探</b></td><td>样本外也不错，但实盘不行</td>
+          <td>你的「样本外」其实已被反复使用——每次失败后你就回去改模型</td>
+          <td>留一段<b>从未看过</b>的数据，只在最后用一次，用完作废</td>
+        </tr>
+        <tr>
+          <td><b>成本低估</b></td><td>高换手策略特别好看</td>
+          <td>只扣手续费，没扣价差和冲击</td>
+          <td>按 <code>|Δw| × (半价差 + 冲击估计)</code> 扣；做成本 ×2 / ×3 压力测试</td>
+        </tr>
+        <tr>
+          <td><b>成交假设过于乐观</b></td><td>回测能在最高/最低价成交</td>
+          <td>假设限价单一定成交、涨停板能买到、忽略排队</td>
+          <td>成交按<b>下一根 bar</b> 的价格或更差；限价单按保守成交概率</td>
+        </tr>
+        <tr>
+          <td><b>标签泄漏</b>（ML 特有）</td><td>交叉验证准确率异常高，样本外骤降</td>
+          <td>训练/测试随机切分，但金融标签<b>在时间上高度重叠</b>——测试集的答案部分写在训练集里</td>
+          <td class="g"><b>Purged K-Fold + Embargo</b>，见下节</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <details class="term">
+    <summary><b>Purged K-Fold + Embargo</b> 在解决什么？（点开）</summary>
+    <div class="tbody">
+      <div class="row"><span class="lab">问题</span><div>金融标签通常<b>跨越多天</b>。比如标签是「未来 5 日收益」，那么第 1 天和第 3 天的样本共享了 3 天的价格路径。随机切分时第 1 天进训练集、第 3 天进测试集，<b>测试集的答案已经部分写在训练集里了</b>。</div></div>
+      <div class="row"><span class="lab">Purging</span><div>切分时<b>删掉</b>训练集里与测试集在时间上重叠的样本。</div></div>
+      <div class="row"><span class="lab">Embargo</span><div>在测试集<b>之后</b>再留一段隔离期不用于训练。因为序列相关会让信息往后泄，紧贴着测试集末尾的训练样本仍然受污染。</div></div>
+      <div class="row"><span class="lab">直接后果</span><div><code>sklearn.model_selection.cross_val_score</code> 的默认行为在这个场景下是<b>错的</b>。必须换成 purged 版本。</div></div>
+      <div class="row"><span class="lab">出处</span><div>López de Prado,《Advances in Financial Machine Learning》第 7 章。</div></div>
+    </div>
+  </details>
+</section>
+
+<section class="essay" id="flow">
+  <div class="section-head"><span class="section-num">04</span><h2 class="section-title">七步流程：可以直接照着做</h2></div>
+  <div class="section-sub">A runnable checklist</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>步骤</th><th>通过标准</th></tr></thead>
+      <tbody>
+        <tr><td><b>1</b></td><td>先写下假设，再碰数据</td><td class="g">能用一句话说清<b>谁在亏钱给你、为什么他愿意</b>。写不出来就别做</td></tr>
+        <tr><td><b>2</b></td><td>切三段：训练 / 验证 / <b>留出</b></td><td class="a">留出段覆盖多个市场状态；<b>并且你事先承诺「结果不好就放弃」</b></td></tr>
+        <tr><td><b>3</b></td><td>记录每一次尝试</td><td>见上面的<a href="#dsr">最小记录清单</a>。至少存下收益序列</td></tr>
+        <tr><td><b>4</b></td><td>看参数<b>高原</b>，不看参数尖峰</td><td class="g">扫成热力图；真信号是<b>一片</b>连续好区域，过拟合是<b>一个</b>孤立亮点</td></tr>
+        <tr><td><b>5</b></td><td>破坏性检验</td><td>收益序列打乱后策略应归零；信号取反后收益应大致对称变负</td></tr>
+        <tr><td><b>6</b></td><td>纸上交易 1–3 个月</td><td>暴露回测里看不见的：数据延迟、断线、涨跌停、流动性消失、你自己在亏损时的行为</td></tr>
+        <tr><td><b>7</b></td><td>上线后按模块归因</td><td>实盘与回测的差异能拆成 <b>alpha / 风险 / 成本 / 执行</b> 四项。拆不开就永远在猜</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="call key">
+    <span class="tag">第 2 步的括号才是全部</span>
+    留出集的有效性<b>完全依赖那句事先承诺</b>。
+    如果留出段表现不好时你的反应是「回去继续改」，那它<b>已经不是留出段了</b>，
+    只是第二个验证段，统计意义归零。
+    <br><br>
+    这是流程里唯一<b>无法用代码强制</b>的一环——它是纪律问题，不是技术问题。
+    所以请把承诺<b>写下来</b>，写在实验日志的第一行，而不是留在脑子里。
+  </div>
+</section>
+
+<section class="essay" id="lab">
+  <div class="section-head"><span class="section-num">05</span><h2 class="section-title">在你自己的机器上看一遍</h2></div>
+  <div class="section-sub">Runnable · 纯标准库，无需联网或账户</div>
+
+  <div class="oneline"><span class="k">一句话</span><span class="v">这个实验的<b>默认模式故意不含任何信号</b>。先看它在纯噪声上交出什么，你才有理由相信它在有信号时给的数字。</span></div>
+
+<pre><code>python3 quantitative-trading/lab_momentum.py            <span class="c"># 数据里没有动量</span>
+python3 quantitative-trading/lab_momentum.py --signal   <span class="c"># 数据里有动量</span></code></pre>
+
+  <p>
+    它会做五件事：<strong>①</strong> 跑五项自检（含「改掉未来数据不影响过去决策」的未来函数检查）；
+    <strong>②</strong> 成本 0 / 10 / 30bp 三档对比；<strong>③</strong> 与同区间同成本口径的买入持有基线对比；
+    <strong>④</strong> 画出净值曲线；<strong>⑤</strong> 换 40 个随机种子重跑，把
+    <strong>长样本（240 个月）与短样本（60 个月）的 Sharpe 分布并排画出来</strong>。
+  </p>
+
+  <div class="call try">
+    <span class="tag">最重要的是第 ⑤ 步的输出</span>
+    数据里<b>没有任何动量结构</b>，策略的真实期望收益是 <b>0</b>。但你会看到：
+    <br><br>
+    · 单跑仍然可能做出正收益和正 Sharpe——<b>这不是 bug，这就是噪声的样子</b>；<br>
+    · 长样本分布窄，短样本分布<b>宽得多</b>，最幸运的种子能跑到 Sharpe 1 以上。
+    <br><br>
+    把「种子」换成「你调过的参数」，这就是主线第 09 步那条
+    <b>「5 年数据 + 45 次尝试 = 一个假 Sharpe 1」</b>的机制，在你自己机器上重现一遍。
+    <br><br>
+    两条直接可用的推论：<b>样本越短，你越容易骗到自己</b>；<b>单次回测结果不是证据，分布才是</b>。
+    <br><br>
+    然后加 <code>--signal</code> 再跑一次，看同一套代码能不能把真信号和这团噪声分开。
+  </div>
+
+  <div class="call pit">
+    <span class="tag">这个实验不是什么</span>
+    它用的是<b>固定种子的合成数据</b>，生成规则已知。它验证的是<b>回测流程本身</b>——
+    时间顺序对不对、成本扣没扣、基线公不公平——<b>不是任何论文的复现，也不构成样本外业绩证据</b>。
+    真正的研究任务是：预选资产池与区间、冻结规则、在时点正确的真实数据上做时间外推、审计成本与基线。
+  </div>
+</section>
+
+<section class="essay" id="next">
+  <div class="section-head"><span class="section-num">→</span><h2 class="section-title">继续</h2></div>
+  <div class="section-sub">Where to go next</div>
+  <div class="dd">
+    <a class="ddcard" href="../"><div class="k">主线</div><div class="t">十步学习路径</div><div class="d">回到本专题唯一入口</div></a>
+    <a class="ddcard" href="../algorithms/"><div class="k">Deep dive</div><div class="t">三个算法的完整拆解</div><div class="d">动量 / 统计套利 / 做市，含可运行代码</div></a>
+    <a class="ddcard" href="../library/#papers-d"><div class="k">Deep dive</div><div class="t">这一页引用的论文</div><div class="d">D 组七篇，含免费入口与核对层级</div></a>
+    <a class="ddcard" href="../#plan"><div class="k">行动</div><div class="t">90 天计划</div><div class="d">第 5 周就是本页的内容</div></a>
+  </div>
+</section>
+
+</article>
+
+<footer>
+  <p><b>本页是什么：</b>量化交易专题「验证」部分的完整展开。包含回测偏差查表、DSR 的完整输入要求、Purged K-Fold + Embargo、七步验证流程，以及一个可直接运行的实验。</p>
+  <p><b>关于数字：</b>45 / t&gt;3.0 / 65% / −58% 四个数字均来自公开论文，出处与核对层级见<a href="../library/#papers-d">书单页 D 组</a>。示意图为机制说明，非实测数据。</p>
+  <p class="disclaimer" style="margin-top:20px">
+    <b>免责声明：</b>本页为研究方法学习材料，<b>不构成投资建议</b>。合成数据实验的任何输出都不代表真实市场表现。
+  </p>
+  <p style="margin-top:24px">返回 <a href="../">量化交易主线</a>　·　<a href="../../../">ML-Learning 索引</a></p>
+</footer>
+</body>
+</html>
