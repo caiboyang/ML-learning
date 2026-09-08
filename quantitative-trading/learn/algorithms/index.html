@@ -1,0 +1,502 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>三个算法的完整拆解 — 量化交易 deep dive</title>
+<meta name="description" content="截面动量、统计套利、做市三个成熟算法的机制展开：完整公式、可运行参考代码、术语就地解释与各自的失效模式。" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<div class="subnav"><div class="subnav-in">
+  <a href="../">← 回到主线</a><span class="sep">/</span><span class="here">DEEP DIVE · 三个算法</span>
+  <span class="sep">/</span><a href="#mom">动量</a><span class="sep">·</span><a href="#stat">统计套利</a><span class="sep">·</span><a href="#mm">做市</a>
+</div></div>
+
+<header class="hero"><div class="hero-inner">
+  <div class="eyebrow mono">Deep dive · 机制与代码</div>
+  <h1 class="kicker">三个算法，<br><span class="accent">拆到能自己写出来</span></h1>
+  <p class="lede">
+    主线给的是<strong>为什么</strong>和<strong>什么时候用</strong>。这一页给<strong>怎么写</strong>：
+    完整公式、可运行的参考代码、每个希腊字母的就地解释，以及各自确切的失效模式。
+    <br><br>
+    三个算法覆盖了 alpha 四家族里的前三类，选它们是因为都有<strong>公开原始论文</strong>、
+    <strong>可复现</strong>、并且<strong>踩的坑互不重复</strong>。
+  </p>
+  <div class="meta-grid">
+    <div><div class="label">算法</div><div class="value">3 个 · 各有原始论文</div></div>
+    <div><div class="label">代码</div><div class="value">参考实现 + 可运行实验</div></div>
+    <div><div class="label">术语</div><div class="value">就地折叠解释</div></div>
+    <div><div class="label">前置</div><div class="value">读完主线 01–03 步</div></div>
+  </div>
+</div></header>
+
+<article>
+
+<!-- ============ 动量 ============ -->
+<section class="essay" id="mom">
+  <div class="section-head"><span class="section-num">①</span><h2 class="section-title">截面动量</h2></div>
+  <div class="section-sub">Cross-sectional momentum · Jegadeesh &amp; Titman 1993</div>
+
+  <div class="oneline"><span class="k">一句话</span><span class="v">同一时点给所有标的排序，买相对最强、卖相对最弱，定期重排。<b>先做这个</b>——五十行能写完，数据免费，而且它踩的坑你之后都会再遇到。</span></div>
+
+  <div class="call pit">
+    <span class="tag">开始之前：把三层分清楚</span>
+    <b>① 原文结论：</b>按过去 3–12 个月收益排序、持有 3–12 个月获得显著正收益；最详细考察的
+    <b>6 个月排序 / 6 个月持有</b>设定报告<b>年均约 12.01% 的复合超额收益</b>。<br>
+    <b>② 原文设定：</b>形成期与持有期之间<b>跳过一周</b>，用于规避买卖价差、价格压力与滞后反应。<br>
+    <b>③ 下面写的：</b>今天通行的 <b>12-2 教学惯例</b>（跳过最近<b>一个月</b>），
+    是后续文献标准化的结果，常与 Fama-French (1996)、Carhart (1997) 一并引用——<b>不是 1993 年论文的算法</b>。
+    <br><br>
+    本专题最初版本混淆了 ② 和 ③。<b>看到一个规则，先问它是论文里的，还是教材里的。</b>
+  </div>
+
+  <h3 class="sub">时间口径：先把它画出来，再写代码</h3>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 820 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="12-2 动量的时间轴：形成窗口、跳过月、持有月">
+      <line x1="30" y1="120" x2="790" y2="120" stroke="#232C3E" stroke-width="1.5"/>
+      <rect x="60" y="96" width="450" height="48" rx="6" fill="rgba(74,222,155,.16)" stroke="#4ADE9B" stroke-width="1.4"/>
+      <text x="285" y="118" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#4ADE9B">形成窗口 · 月 m−11 … 月 m−1</text>
+      <text x="285" y="137" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">共 11 个月，用来打分</text>
+
+      <rect x="514" y="96" width="112" height="48" rx="6" fill="rgba(255,190,110,.14)" stroke="#FFBE6E" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="570" y="118" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#FFBE6E">月 m</text>
+      <text x="570" y="136" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12" fill="#B4B0A5">跳过 · 不用</text>
+
+      <rect x="630" y="96" width="150" height="48" rx="6" fill="rgba(143,168,255,.16)" stroke="#8FA8FF" stroke-width="1.4"/>
+      <text x="705" y="118" text-anchor="middle" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#8FA8FF">月 m+1</text>
+      <text x="705" y="136" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">持有并赚取收益</text>
+
+      <line x1="626" y1="72" x2="626" y2="168" stroke="#FF7B8A" stroke-width="2"/>
+      <text x="626" y="62" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700" fill="#FF7B8A">决策时点</text>
+      <text x="626" y="46" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12" fill="#FF7B8A">月 m 收盘</text>
+
+      <text x="30" y="196" font-family="Inter, Noto Sans SC, sans-serif" font-size="13" fill="#857F74">
+        跳过月 m 是为了规避<tspan font-weight="700" fill="#B4B0A5">短期反转</tspan>：最近一个月的大涨很大一部分来自流动性冲击，下月往往回吐
+      </text>
+      <text x="30" y="216" font-family="Inter, Noto Sans SC, sans-serif" font-size="13" fill="#857F74">
+        这条红线是整套代码唯一的不变量：<tspan font-weight="700" fill="#FF7B8A">红线右边的任何数据都不允许进入打分</tspan>
+      </text>
+    </svg>
+    </div>
+    <p class="swipe">← 左右滑动查看完整图形 →</p>
+    <figcaption>
+      <b>先画时间轴，再写代码。</b>绝大多数「回测好得离谱」的根因，都能在这张图上指出来是哪一段越界了。
+      本页的<a href="../validation/#lab">可运行实验</a>把这条口径写死在 <code>decide()</code> 里，并用一个断言守住它。
+    </figcaption>
+  </figure>
+
+  <h3 class="sub">参考实现：先看一个会报错的版本</h3>
+
+  <div class="call pit">
+    <span class="tag">这段代码是坏的 —— 本专题此前就写成了这样</span>
+<pre><code><span class="c"># ✗ 形状错误：第二行把 Series 变成了 DataFrame</span>
+score = R.loc[t-<span class="n">12</span> : t-<span class="n">1</span>, universe].sum()          <span class="c"># → Series，索引是标的　✓</span>
+score = score / vol.loc[t-<span class="n">12</span> : t-<span class="n">1</span>, universe]     <span class="c"># → Series ÷ DataFrame</span>
+                                                 <span class="c">#   = DataFrame（月 × 标的）✗</span>
+ranks = score.rank(pct=<span class="k">True</span>)                       <span class="c"># 在 DataFrame 上按列排 → 跨月排序，语义也错了</span>
+w[ranks &gt; <span class="s">0.9</span>] = +<span class="n">1.0</span>                             <span class="c"># 用 DataFrame 掩码索引 Series → 直接报错</span>
+</code></pre>
+    三个独立的错误叠在一起：<b>①</b> 简单收益直接 <code>sum()</code> 而没有复利；
+    <b>②</b> 波动率没有先收敛成「每个标的一个数」，导致广播成二维；
+    <b>③</b> <code>.loc</code> 的标签切片<b>包含右端点</b>，和整数偏移混用时窗口边界会悄悄错一格。
+    <br><br>
+    <b>还有第四个，更隐蔽：</b>用 <code>ranks &gt; 0.9</code> 和 <code>ranks &lt; 0.1</code> 选两端，
+    看起来对称，其实不是。<code>rank(pct=True)</code> 的最小值是 <code>1/N</code> 而不是 0，所以：
+    <br><br>
+    · <b>N = 10</b>：分位是 0.1, 0.2 … 1.0 → 多头选中 <b>1 只</b>，空头 <b>0 只</b>（0.1 不满足 &lt; 0.1）。
+      归一化之后<b>净敞口 = +1，这是一个纯多头仓位</b>，和注释里写的「净敞口 0」正好相反。<br>
+    · <b>N = 100</b>：多头 10 只、空头 9 只，仍然是偏的。
+    <br><br>
+    <b>这类错误不会报错，只会安静地把一个多空策略变成带方向暴露的策略</b>，
+    然后你在回测里看到的其实是市场 beta。修正版改成<b>两端各取相同数量</b>，并用两条 assert 守住。
+    <br><br>
+    <b>第五个，同一类毛病：</b><code>prod()</code> 和 <code>std()</code> 也默认跳过 NaN。
+    一只刚上市两个月的新股会用 <b>2 个观测</b>算出动量与波动，然后和有 11 个月历史的票排进同一张榜——
+    分数根本不可比，而且同样不报错。修正版先要求<b>形成窗口完整</b>再打分。
+    <br>
+    <b>规律：pandas 里所有「默认跳过缺失值」的聚合，在回测里都是隐患</b>，
+    因为缺失恰恰集中在退市、停牌、新上市这些最影响结论的地方。
+  </div>
+
+  <h3 class="sub">修正版</h3>
+
+<pre><code><span class="k">import</span> pandas <span class="k">as</span> pd
+<span class="k">import</span> numpy <span class="k">as</span> np
+
+<span class="c"># ── 约定写死在这里，不要靠记忆 ──────────────────────────────</span>
+<span class="c">#   R         月频「简单收益」DataFrame，index=月末时间戳，columns=标的</span>
+<span class="c">#             必须是 point-in-time：含已退市标的，成分股用当时的名单</span>
+<span class="c">#   决策时点  月 m 收盘（m_idx 是 R.index 上的位置下标）</span>
+<span class="c">#   形成窗口  月 m-11 … m-1，共 11 个月</span>
+<span class="c">#   跳过      月 m —— 12-2 惯例（后世标准化，非 JT1993 原文）</span>
+<span class="c">#   持有      月 m+1，赚取该月收益</span>
+FORMATION, SKIP, TOP = <span class="n">11</span>, <span class="n">1</span>, <span class="s">0.10</span>
+WARMUP = FORMATION + SKIP - <span class="n">1</span>          <span class="c"># = 11，第一个能真正决策的月份</span>
+
+<span class="k">def</span> target_weights(R, m_idx, universe):
+    lo = m_idx - FORMATION - SKIP + <span class="n">1</span>
+    hi = m_idx - SKIP + <span class="n">1</span>                  <span class="c"># iloc 右端不含 → 最后一个月正好是 m-1</span>
+    <span class="k">if</span> lo &lt; <span class="n">0</span>:
+        <span class="k">return</span> pd.Series(<span class="s">0.0</span>, index=universe)
+
+    win = R.iloc[lo:hi][universe]           <span class="c"># DataFrame：11 个月 × 标的</span>
+
+    <span class="c"># ① 先要求形成窗口**完整**。pandas 的 prod() 和 std() 默认跳过 NaN，</span>
+    <span class="c">#    所以一只上市两个月的新股会拿 2 个观测算出分数，然后和有 11 个月</span>
+    <span class="c">#    历史的票排在一起 —— 分数不可比，而且不会报错。</span>
+    complete = win.notna().all()            <span class="c"># → 每个标的一个 bool</span>
+    win = win.loc[:, complete]
+    <span class="k">if</span> win.shape[<span class="n">1</span>] == <span class="n">0</span>:
+        <span class="k">return</span> pd.Series(<span class="s">0.0</span>, index=universe)
+
+    mom   = (<span class="s">1.0</span> + win).prod() - <span class="s">1.0</span>      <span class="c"># ② 简单收益要复利 → Series</span>
+    sigma = win.std()                       <span class="c"># ③ 先收敛成每标的一个数 → Series</span>
+    score = (mom / sigma.replace(<span class="s">0.0</span>, np.nan)).reindex(universe)
+
+    <span class="c"># ④ 一条便宜的护栏：形状错了立刻炸，而不是安静地给出错误结果</span>
+    <span class="k">assert</span> isinstance(score, pd.Series), <span class="s">"score 必须是标的维度的 Series"</span>
+
+    <span class="c"># ⑤ 两端各取「相同数量」，而不是各取一个分位阈值</span>
+    valid = score.dropna().sort_values()         <span class="c"># 升序；并列由 sort 的稳定顺序决定</span>
+    k = max(<span class="n">1</span>, int(round(len(valid) * TOP)))
+    <span class="k">if</span> len(valid) &lt; <span class="n">2</span> * k:                       <span class="c"># 有效标的不足以两端各取 k 只</span>
+        <span class="k">return</span> pd.Series(<span class="s">0.0</span>, index=universe)   <span class="c"># 本期不交易，而不是勉强建一个偏的仓</span>
+
+    w = pd.Series(<span class="s">0.0</span>, index=universe)
+    w[valid.index[-k:]] = +<span class="s">0.5</span> / k              <span class="c"># 多头腿合计 +0.5</span>
+    w[valid.index[:k]]  = -<span class="s">0.5</span> / k              <span class="c"># 空头腿合计 −0.5</span>
+    <span class="k">assert</span> abs(w.sum()) &lt; <span class="n">1e-12</span>                <span class="c"># 净敞口 0</span>
+    <span class="k">assert</span> abs(w.abs().sum() - <span class="n">1.0</span>) &lt; <span class="n">1e-12</span>   <span class="c"># 总敞口 1</span>
+    <span class="k">return</span> w
+
+
+<span class="c"># ── 回测循环：成交与收益的时点必须显式写出来 ─────────────────</span>
+<span class="c"># 口径：w 是相对「期初、扣费前 NAV」的目标权重，费用从现金支付。</span>
+held = pd.Series(<span class="s">0.0</span>, index=R.columns)          <span class="c"># 交易前的**实际**持仓权重</span>
+<span class="k">for</span> m_idx <span class="k">in</span> range(WARMUP, len(R) - <span class="n">1</span>):        <span class="c"># ← 跳过形成窗口不足的热身期</span>
+    uni = liquid_names_as_of(R.index[m_idx])         <span class="c"># 当时可交易、成交额达标</span>
+    w   = target_weights(R, m_idx, uni).reindex(R.columns).fillna(<span class="s">0.0</span>)
+
+    <span class="c"># ⑤ 换手要对着「漂移后的实际持仓」算，不是对着「上期的目标」</span>
+    turnover = (w - held).abs().sum()
+    cost     = turnover * (half_spread + impact_bp) / <span class="n">10_000</span>
+
+    <span class="c"># ⑥ 持有期收益缺失不能默认跳过：pandas 的 sum() 会把 NaN 当 0，</span>
+    <span class="c">#    而 NaN 恰恰最常出现在退市、停牌、数据缺口 —— 也就是最该亏钱的时候。</span>
+    r_next = R.iloc[m_idx + <span class="n">1</span>]
+    missing = r_next[w != <span class="n">0</span>].isna()
+    <span class="k">if</span> missing.any():
+        <span class="k">raise</span> ValueError(<span class="s">f"持仓标的缺少 m+1 收益：{list(missing[missing].index)}"</span>)
+        <span class="c"># 生产环境应改为显式填入退市收益，而不是让它静默变成 0</span>
+
+    gross = (w * r_next).sum()                       <span class="c"># ← 赚的是 m+1 的收益</span>
+    net_r = gross - cost
+    net.append(net_r)
+
+    <span class="c"># ⑦ 下一期开盘前，权重已经被价格和费用一起推走了。</span>
+    <span class="c">#    只对**有持仓**的标的算漂移：未持仓标的若收益是 NaN，</span>
+    <span class="c">#    0 * NaN 会变成 NaN，而 (w-held).abs().sum() 又会跳过 NaN，</span>
+    <span class="c">#    结果下一期首次买入这只票的换手会被整笔吞掉。</span>
+    held = pd.Series(<span class="s">0.0</span>, index=R.columns)
+    pos  = w != <span class="n">0</span>
+    held.loc[pos] = w[pos] * (<span class="n">1</span> + r_next[pos]) / (<span class="n">1</span> + net_r)
+</code></pre>
+
+  <div class="call key">
+    <span class="tag">第 ⑤ ⑦ 步：为什么不能写 <code>held = w</code></span>
+    持有一期之后，即使<b>目标权重一个字没改</b>，实际持仓也已经不是 <code>w</code> 了——
+    价格涨的那些仓位占比变大，跌的变小，同时扣掉的费用还让 NAV 缩了一点。
+    回到目标<b>需要真实交易</b>，而写 <code>held = w</code> 会把这段换手记成 0，系统性低估成本。
+    <br><br>
+    <b>三个手算（前两个在本页配套实验里是断言）：</b><br>
+    · 目标 <code>[0.5, −0.5]</code>，本期收益 <code>[+20%, −10%]</code>，零成本 →
+      漂移后约 <code>[0.5217, −0.3913]</code>，回到目标需换手 <b>0.1304</b>。<br>
+    · 目标不变、<b>价格完全不动</b>、换手 1.0、成本 100bp → NAV 变成 0.99，
+      持仓权重变成 ±0.5/0.99，回到目标仍需换手 <b>0.0101</b>。
+      <b>所以漂移的分母必须用净收益 <code>1+gross−cost</code>，不是 <code>1+gross</code>。</b><br>
+    · <b>NaN 会吞掉整笔开仓换手。</b>三只票 A/B/C，第一期目标 <code>[0.5, −0.5, 0]</code>，
+      A/B 收益 0、<b>C 收益缺失但本期本来就没持仓</b>；第二期目标 <code>[0, −0.5, 0.5]</code>、
+      三只收益均为 0、成本 100bp。
+      <br>　正确：第一期净 −1%，漂移后 <code>[0.5051, −0.5051, 0]</code>；
+      第二期换手 <b>1.0101</b>、净 <b>−1.0101%</b>。
+      <br>　若对全列算漂移：C 的 held 变成 <code>0 × NaN = NaN</code>，
+      <code>.abs().sum()</code> 又会跳过它 → 第二期换手只剩 <b>0.5101</b>、净 <b>−0.5101%</b>，
+      <b>C 那笔开仓的成本凭空消失了</b>。
+      <br>　注意：这不能靠「把所有缺失收益填 0」绕过——那会把退市当成没涨没跌。
+      持仓标的缺收益必须报错，未持仓标的的 held 保持 0。
+  </div>
+
+  <details class="term">
+    <summary>为什么<b>简单收益不能直接相加</b>？（点开，30 秒）</summary>
+    <div class="tbody">
+      <p>两个月分别 +50% 和 −50%。</p>
+      <div class="row"><span class="lab">相加</span><div><code>0.5 + (−0.5) = 0</code> → 结论「打平」</div></div>
+      <div class="row"><span class="lab">复利</span><div><code>1.5 × 0.5 − 1 = −0.25</code> → 实际<b>亏了 25%</b></div></div>
+      <p><b>什么时候可以相加：</b>用<b>对数收益</b> <code>ln(1+r)</code> 时可以直接求和，
+      因为 <code>ln(ab) = ln a + ln b</code>。所以两条路都对，但<b>必须写明用的是哪一条</b>——
+      混用是回测里非常隐蔽的一类错误，幅度小到不会报错，大到足以改变结论。</p>
+    </div>
+  </details>
+
+  <h3 class="sub">中性化：当作对照实验做，不要当作定义</h3>
+
+  <div class="call key">
+    <span class="tag">修正一处过强的表述</span>
+    本专题此前写过「不做行业中性化，你测的就只是行业轮动」。<b>这话说得太绝对了。</b>
+    行业暴露占多大比重是个<b>经验问题</b>，取决于市场、时期与标的池，应当用数据回答而不是靠断言。
+    <br><br>
+    <b>正确做法是跑一组对照：</b>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>变体</th><th>怎么构造</th><th>它回答什么</th></tr></thead>
+      <tbody>
+        <tr><td><b>A · 原始动量</b></td><td>只按 <code>mom</code> 排序</td><td>基线</td></tr>
+        <tr><td><b>B · 波动率缩放</b></td><td><code>mom / sigma</code></td><td>风险调整贡献了多少</td></tr>
+        <tr><td><b>C · 行业中性</b></td><td>在每个行业<b>内部</b>排序，或对行业哑变量回归取残差</td><td class="g">扣掉行业后还剩多少</td></tr>
+        <tr><td><b>D · 全因子中性</b></td><td>再回归掉 beta、市值</td><td class="g">扣掉全部已知因子后还剩多少</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    把 A→D 的收益、Sharpe、换手<strong>并排列出来</strong>。如果 C 相对 A 损失了大部分收益，
+    那么<em>对这个市场、这段样本而言</em>，你的信号确实主要是行业暴露——这是一个<strong>被数据支持的结论</strong>，
+    而不是一句先验的断言。如果 C、D 依然稳健，那你手上的东西更可能是真的。
+  </p>
+
+  <div class="call key">
+    <span class="tag">已知失效模式 · 动量崩溃</span>
+    动量的收益分布是<b>左偏</b>的：平时小额稳定盈利，在市场从极度恐慌急速反转时
+    （典型如 2009 年 3 月起的数月），你做空的「输家」是被打到低位的高 beta 股票，反弹最猛，空头端集中亏损。
+    <b>这个形状和卖保险是同构的。</b>
+    <br><br>
+    标准缓解手段是<b>波动率目标</b>（实现波动上升就自动降杠杆）与<b>状态相关的暴露调整</b>。
+    注意这不是「加个止损」——止损处理单笔仓位，这里处理的是整个策略的尾部形状。
+  </div>
+
+  <div class="call try">
+    <span class="tag">动手</span>
+    <a href="../validation/#lab">可运行实验</a>实现的正是这个算法（纯标准库，无需 pandas）。
+    它把上面的时间口径写死并用断言守住，然后展示一件更重要的事：
+    <b>在完全没有动量的合成数据上，这个策略单跑仍然可能做出正收益</b>。
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============ 统计套利 ============ -->
+<section class="essay" id="stat">
+  <div class="section-head"><span class="section-num">②</span><h2 class="section-title">统计套利</h2></div>
+  <div class="section-sub">Statistical arbitrage · Avellaneda &amp; Lee 2010</div>
+
+  <div class="oneline"><span class="k">一句话</span><span class="v">不去猜哪只票会涨，而是<b>先把所有共同因素扣掉</b>，只交易剩下的残差——因为残差才是真正有理由均值回复的东西。</span></div>
+
+  <p>
+    配对交易的直觉人人都懂，但它有个致命弱点：<strong>你怎么知道该配哪一对？</strong>
+    500 只股票有 124 750 个配对，按历史协整强度排序选出的头部，绝大部分是多重检验的产物。
+    <strong>问题不在配对交易这个想法，在于「遍历筛选」这个发现机制本身就在制造假阳性。</strong>
+  </p>
+  <p>
+    Avellaneda &amp; Lee 给的工业级答案是：<strong>不要找配对，去找共同因子。</strong>
+  </p>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 820 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="统计套利四步流程">
+      <defs><marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8FA8FF"/></marker></defs>
+      <rect x="20" y="24" width="780" height="86" rx="10" fill="#0C1119" stroke="#232C3E"/>
+      <text x="40" y="48" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74" letter-spacing="1.3">STEP 1 · 把收益拆成「大家一起动的」+「只有它自己动的」</text>
+      <text x="40" y="84" font-family="JetBrains Mono, monospace" font-size="18" fill="#E9E6DE">
+        R<tspan font-size="11" dy="4">i</tspan><tspan dy="-4">(t)</tspan><tspan fill="#857F74">  =  </tspan><tspan fill="#8FA8FF">β</tspan><tspan fill="#8FA8FF" font-size="11" dy="4">i1</tspan><tspan dy="-4" fill="#8FA8FF">F</tspan><tspan fill="#8FA8FF" font-size="11" dy="4">1</tspan><tspan dy="-4" fill="#857F74"> + … + </tspan><tspan fill="#8FA8FF">β</tspan><tspan fill="#8FA8FF" font-size="11" dy="4">ik</tspan><tspan dy="-4" fill="#8FA8FF">F</tspan><tspan fill="#8FA8FF" font-size="11" dy="4">k</tspan><tspan dy="-4" fill="#857F74">  +  </tspan><tspan fill="#4ADE9B">X</tspan><tspan fill="#4ADE9B" font-size="11" dy="4">i</tspan><tspan dy="-4" fill="#4ADE9B">(t)</tspan>
+      </text>
+      <text x="250" y="103" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5" fill="#8FA8FF">共同因子（PCA 主成分 或 行业 ETF）· 不交易</text>
+      <text x="600" y="103" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5" fill="#4ADE9B">残差 · 唯一要交易的东西</text>
+
+      <line x1="410" y1="112" x2="410" y2="134" stroke="#8FA8FF" stroke-width="1.5" marker-end="url(#sa)"/>
+
+      <rect x="20" y="138" width="382" height="112" rx="10" fill="#121826" stroke="#4ADE9B" stroke-width="1.3"/>
+      <text x="40" y="162" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74" letter-spacing="1.3">STEP 2 · 给残差的累计值建 OU 模型</text>
+      <text x="40" y="192" font-family="JetBrains Mono, monospace" font-size="16" fill="#E9E6DE">dX = <tspan fill="#FFBE6E">κ</tspan>(<tspan fill="#B79BFF">m</tspan> − X)dt + <tspan fill="#FF7B8A">σ</tspan>dW</text>
+      <text x="40" y="216" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#FFBE6E">κ 回复速度 → 半衰期 = ln2 / κ</text>
+      <text x="40" y="234" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B79BFF">m 它「应该在」的水平　<tspan fill="#FF7B8A">σ 噪声大小</tspan></text>
+
+      <rect x="418" y="138" width="382" height="112" rx="10" fill="#121826" stroke="#FFBE6E" stroke-width="1.3"/>
+      <text x="438" y="162" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74" letter-spacing="1.3">STEP 3 · 标准化成一个可比的分数</text>
+      <text x="438" y="198" font-family="JetBrains Mono, monospace" font-size="21" fill="#FFBE6E">s = (X − m) / σ<tspan font-size="12" dy="5">eq</tspan></text>
+      <text x="438" y="228" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">和 z-score 一个意思：现在偏离了几个标准差</text>
+      <text x="438" y="245" font-family="Inter, Noto Sans SC, sans-serif" font-size="12" fill="#857F74">好处：全市场可比 → 只交易最极端的那些</text>
+
+      <text x="20" y="278" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74" letter-spacing="1.3">STEP 4 · 交易规则就是四条线（示例阈值，不要照抄）</text>
+      <rect x="24" y="288" width="182" height="26" rx="5" fill="rgba(74,222,155,.16)" stroke="#4ADE9B"/>
+      <text x="115" y="306" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#4ADE9B">s &lt; −1.25 → 开多</text>
+      <rect x="214" y="288" width="182" height="26" rx="5" fill="rgba(133,127,116,.14)" stroke="#857F74"/>
+      <text x="305" y="306" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">s &gt; −0.50 → 平多</text>
+      <rect x="404" y="288" width="182" height="26" rx="5" fill="rgba(133,127,116,.14)" stroke="#857F74"/>
+      <text x="495" y="306" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">s &lt; +0.75 → 平空</text>
+      <rect x="594" y="288" width="182" height="26" rx="5" fill="rgba(255,123,138,.16)" stroke="#FF7B8A"/>
+      <text x="685" y="306" text-anchor="middle" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#FF7B8A">s &gt; +1.25 → 开空</text>
+    </svg>
+    </div>
+    <p class="swipe">← 左右滑动查看完整图形 →</p>
+    <figcaption>
+      开仓与平仓阈值<b>不对称</b>是有意的：开仓要等偏离足够大以覆盖成本；平仓不必等回到 0，
+      因为等待有时间成本、且关系可能已经断裂。<b>这四个数字是论文中的示例值，不要照抄</b>——
+      它们依赖你的成本结构和 κ 的量级。
+    </figcaption>
+  </figure>
+
+  <details class="term">
+    <summary><b>OU 过程</b>、<b>κ</b>、<b>半衰期</b>、<b>s-score</b> 分别是什么？（点开）</summary>
+    <div class="tbody">
+      <div class="row"><span class="lab">先问</span><div>「这个偏离会回来吗？多久回来？现在偏得算多还是算少？」——四个符号各回答其中一问。</div></div>
+      <div class="row"><span class="lab">OU 过程</span><div>连续时间版的「均值回复」。<code>dX = κ(m − X)dt + σdW</code> 读作：<b>X 每一刻都被往 m 拉，拉力正比于它离 m 有多远，同时被随机噪声推来推去</b>。离得越远，拉力越大。</div></div>
+      <div class="row"><span class="lab">κ</span><div><b>回复速度</b>，单位是 1/时间。κ 越大，拉回得越快。<b>怎么估：</b>对残差的累计和做一个 AR(1) 回归 <code>X<sub>t</sub> = a + b·X<sub>t−1</sub> + ε</code>，则 <code>κ ≈ −ln(b) / Δt</code>。</div></div>
+      <div class="row"><span class="lab">半衰期</span><div><code>ln2 / κ</code>。含义是「当前偏离缩小一半平均需要多久」。<b>这是最实用的一个数</b>：它直接告诉你持仓期该设多长，也给了时间止损的标尺（超过 2–3 倍半衰期还没回来，说明模型对它已经不成立）。</div></div>
+      <div class="row"><span class="lab">s-score</span><div><code>s = (X − m) / σ<sub>eq</sub></code>，就是 z-score。<b>它的价值不在单个数字，在于可比</b>：标准化之后，一只银行股和一只矿业股的偏离程度可以直接放在一起排序。这正好提高了主线那条公式里的 <b>BR（广度）</b>。</div></div>
+      <div class="row"><span class="lab">一个手算</span><div>某股残差累计 X = 6，历史 m = 0、σ<sub>eq</sub> = 2 → <b>s = 3</b>，偏离 3 个标准差，触发开空。若 b = 0.9（月频），则 κ ≈ 0.105/月，<b>半衰期 ≈ 6.6 个月</b>——这个持仓期长得超出多数人预期，也说明为什么必须配时间止损。</div></div>
+    </div>
+  </details>
+
+  <h3 class="sub">论文报告的结果，以及最该记住的那一部分</h3>
+  <div class="stat-row">
+    <div class="stat g"><div class="num">1.44</div><div class="note">PCA 版本，扣成本后年化 Sharpe<br><b>1997 – 2007</b> 全期</div></div>
+    <div class="stat a"><div class="num">0.90</div><div class="note">同一个策略<br><b>2003 – 2007</b> 子区间</div></div>
+    <div class="stat b"><div class="num">1.10</div><div class="note">用行业 ETF 代替 PCA<br>1997 – 2007 全期</div></div>
+  </div>
+
+  <div class="call key">
+    <span class="tag">重点是中间那个箭头</span>
+    别只记住 1.44。真正重要的是 <b>1.44 → 0.90</b>：同一套方法、同一个市场，只是往后推了几年，收益就腰斩了。
+    <br><br>
+    <b>这就是 alpha 衰减的真实样子</b>——不是某天突然失效，而是随着更多人做同一件事，
+    价差被压薄、窗口变短、要更快才抢得到。任何你在 2026 年读到的策略，
+    默认假设都应该是「它在被写进论文的那一刻就开始衰减了」。量化证据见<a href="../validation/#numbers">验证页</a>。
+  </div>
+
+  <div class="tbl-wrap">
+    <p class="tbl-cap">必须加的三道护栏</p>
+    <table>
+      <thead><tr><th>护栏</th><th>触发条件</th><th>为什么</th></tr></thead>
+      <tbody>
+        <tr><td><b>止损</b></td><td>s 继续走到 ±4</td><td class="r">承认模型可能已失效，<b>禁止在此加仓</b>——「偏离更大 = 机会更好」是这个策略最贵的错觉</td></tr>
+        <tr><td><b>事件过滤</b></td><td>并购、退市、重大公告、停牌</td><td>这些情形下均值回复的假设根本不成立</td></tr>
+        <tr><td><b>时间止损</b></td><td>持仓超过 2–3 倍 OU 半衰期</td><td>κ 的估计已被这段实际走势证伪</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============ 做市 ============ -->
+<section class="essay" id="mm">
+  <div class="section-head"><span class="section-num">③</span><h2 class="section-title">做市</h2></div>
+  <div class="section-sub">Optimal market making · Avellaneda &amp; Stoikov 2008</div>
+
+  <div class="oneline"><span class="k">一句话</span><span class="v">同时挂买单和卖单赚价差。技术含量不在报价，在<b>库存管理</b>——不过库存只是这个模型<b>显式定价</b>的那一种风险，成交的随机性和逆向选择都在它之外。</span></div>
+
+  <p>前两个算法都在猜方向，做市不猜。但有两件事会杀死你：</p>
+  <ul class="arrow">
+    <li><b>库存风险</b>：如果只有卖方来找你，你会不断买入、越攒越多，然后价格继续跌。价差利润远小于库存亏损。</li>
+    <li><b>逆向选择</b>（Kyle 1985 的核心洞察）：<b>愿意立刻跟你成交的人，往往是知道得比你多的人。</b>你的对手方里混着知情交易者，他们会系统性地在你报错价时来吃你的单。</li>
+  </ul>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 820 172" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="做市的保留价格与最优价差公式">
+      <rect x="20" y="20" width="382" height="132" rx="10" fill="#0C1119" stroke="#FFBE6E" stroke-width="1.3"/>
+      <text x="40" y="46" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74" letter-spacing="1.3">① 保留价格 · 你心里真正的「公允价」</text>
+      <text x="40" y="86" font-family="JetBrains Mono, monospace" font-size="17" fill="#E9E6DE">r = s − <tspan fill="#FF7B8A">q</tspan> <tspan fill="#FFBE6E">γ</tspan> σ² (T−t)</text>
+      <text x="40" y="114" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5"><tspan fill="#FF7B8A" font-weight="700">q</tspan> 当前库存（多为正、空为负）</text>
+      <text x="40" y="136" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5"><tspan fill="#FFBE6E" font-weight="700">γ</tspan> 风险厌恶　σ 波动率　T−t 剩余时间</text>
+
+      <rect x="418" y="20" width="382" height="132" rx="10" fill="#0C1119" stroke="#8FA8FF" stroke-width="1.3"/>
+      <text x="438" y="46" font-family="JetBrains Mono, monospace" font-size="11" fill="#857F74" letter-spacing="1.3">② 最优总价差 · 报多宽</text>
+      <text x="438" y="86" font-family="JetBrains Mono, monospace" font-size="16" fill="#E9E6DE">δ = <tspan fill="#FFBE6E">γ</tspan>σ²(T−t) + (2/<tspan fill="#FFBE6E">γ</tspan>)·ln(1+<tspan fill="#FFBE6E">γ</tspan>/<tspan fill="#8FA8FF">k</tspan>)</text>
+      <text x="438" y="114" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5">左项 补偿库存风险　右项 补偿成交概率</text>
+      <text x="438" y="136" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" fill="#B4B0A5"><tspan fill="#8FA8FF" font-weight="700">k</tspan> 订单流强度，来自 A·exp(−k·δ) 的成交率模型</text>
+    </svg>
+    </div>
+    <p class="swipe">← 左右滑动查看完整图形 →</p>
+    <figcaption>整个策略可以浓缩成一句话：<b>你不是在预测价格，你是在用报价的不对称把库存推回零。</b></figcaption>
+  </figure>
+
+  <details class="term">
+    <summary><b>q</b>、<b>γ</b>、<b>k</b> 分别是什么，实盘里怎么定？（点开）</summary>
+    <div class="tbody">
+      <div class="row"><span class="lab">q · 库存</span><div>你当前净持有多少。q 出现在保留价格里，符号决定了报价往哪边偏。<br><b>但别把它当成唯一风险</b>：库存只是<b>这个模型显式定价的那一种</b>风险。另外两种它没管——<b>①</b> 成交本身是随机的（订单以 <code>A·exp(−k·δ)</code> 的强度到达，你不知道会成交多少、哪一边成交），所以<b>价差收入是期望值而不是确定收入</b>；<b>②</b> 逆向选择完全在模型之外，而它不能被归约成库存的价格波动。本页下面「这个模型没有告诉你的事」那一节讲的就是第 ②。</div></div>
+      <div class="row"><span class="lab">γ · 风险厌恶</span><div>调大 → 价差变宽、库存压得很紧 → 成交少但安全；调小 → 价差窄、敢攒库存 → 成交多，但大行情时会很痛。<b>怎么定：</b>从你能承受的最大库存 q<sub>max</sub> 反推——让 q 接近 q<sub>max</sub> 时，报价偏移大到足以强制平仓。</div></div>
+      <div class="row"><span class="lab">k · 订单流敏感度</span><div>描述「报差一点，成交少多少」。k 大 = 稍微报差就没人跟你成交 → 必须报窄；k 小 = 报宽也有人成交 → 可以多赚价差。<b>怎么估：</b>从历史订单簿数据拟合 <code>成交率 ≈ A·exp(−k·δ)</code>，对 δ 分桶回归。</div></div>
+      <div class="row"><span class="lab">σ · 波动率</span><div>用<b>短窗口实现波动</b>而不是长期均值。波动突变时必须能立刻反应——这是活下去的关键，也是把这个模型用坏的最常见方式。</div></div>
+      <div class="row"><span class="lab">T−t · 剩余时间</span><div><b>方向和直觉相反，容易实现反。</b>偏移项是 <code>qγσ²(T−t)</code>，<b>越接近收盘 T−t 越小，偏移就越小</b>——在这个模型里，临近收盘时报价反而回归对称。<br>为什么：模型的库存惩罚来自「剩下这段时间里库存还要承受多少价格风险」，时间越短、风险越小。<b>它没有建模「收盘必须平掉库存」这件事</b>。<br>如果你要的是「临近收盘更急着甩货」，那得<b>另外加一个终端库存惩罚或强制平仓规则</b>，而不是指望这一项。照着这个公式实现却期待收盘加速，会把时间依赖写反。</div></div>
+      <div class="row"><span class="lab">单位约定</span><div><b>先把单位说清楚，否则这个公式很容易算错一个数量级。</b>原论文的价格过程是 <code>dS = σ dW</code>，所以 <b>σ 是「价格单位 / √时间」，不是收益率</b>；<b>q 是股数</b>；<code>qγσ²(T−t)</code> 的结果是<b>价格单位的偏移</b>，要再除以中间价才得到相对偏移（bp）。γ 的单位必须与你选的财富/库存口径一致。</div></div>
+      <div class="row"><span class="lab">一个手算</span><div>取中间价 <b>S = $100</b>、<b>σ = $2/√天</b>（即日价格波动约为价格的 2%）、<b>T−t = 0.5 天</b>、库存 <b>q = +5 股</b>：
+        <br><code>偏移 = q·γ·σ²·(T−t) = 5 × γ × ($2)² × 0.5 = 10γ 美元</code>
+        <br>· γ = 0.01 → 偏移 <b>$0.10</b>，相对 $100 是 <b>10 bp</b>
+        <br>· γ = 0.10 → 偏移 <b>$1.00</b>，相对 $100 是 <b>100 bp</b>（1%）
+        <br><b>结论：偏移对 q 和 γ 都是线性的，而绝对量级完全由 γ 决定。</b>所以 γ 必须从你真实能承受的最大库存反推，照抄论文里的数字会得到一个要么完全不管库存、要么一有仓位就疯狂报偏的做市商。</div></div>
+      <div class="row"><span class="lab">易错点</span><div>把 σ 当成「日收益率标准差 2%」直接代入，得到的偏移会小几个数量级——本页早先的版本就犯过这个错。<b>波动率的时间单位也要分清</b>：「日收益标准差」与「每 √天 的价格波动」不是一回事。</div></div>
+    </div>
+  </details>
+
+  <div class="call pit">
+    <span class="tag">这个模型没有告诉你的事</span>
+    <b>它假设订单流是外生的、与价格无关的泊松流。现实里不是。</b>
+    真实市场中成交与后续价格变动是<b>相关</b>的——这就是逆向选择。
+    模型里没有「知情交易者」这个角色，所以它<b>系统性低估了做市风险</b>。
+    <br><br>
+    <b>把它当骨架，不要当完整答案。</b>真实做市系统还需要：微观价格（按买卖量交叉加权，而非简单中间价）、
+    订单流不平衡信号、有毒流检测、以及能在亚毫秒内撤单的基础设施。
+    <br><br>
+    <b>诚实提醒：</b>做市是三个算法里<b>最不适合个人做的</b>。它对延迟、费率返佣、交易所直连的依赖，
+    使它本质上是一门基础设施生意。学它是为了理解市场怎么运转（这对做前两类策略极有帮助），
+    而不是明天去和专业做市商抢单。
+  </div>
+
+  <details class="q"><summary>自测：为什么要用「微观价格 microprice」而不是简单中间价 (bid+ask)/2？</summary>
+  <div class="ans">
+    <p>因为<b>买卖两边的挂单量携带方向信息</b>。假设买一有 10000 股、卖一只有 100 股，中间价说「公允价在正中间」，
+    但常识告诉你：卖方的量马上会被吃光，价格下一刻更可能<b>向上</b>走。</p>
+    <p>微观价格用两边的量做<b>交叉</b>加权：<code>(P_bid × V_ask + P_ask × V_bid) / (V_bid + V_ask)</code>
+    ——量大的那一边把价格往对面拉。</p>
+    <p>为什么这对做市至关重要：如果你用中间价当锚，在订单簿严重失衡时你的买单会被系统性地「选中」成交，
+    然后价格立刻朝不利方向走。<b>这就是逆向选择的具体表现形式</b>，换用微观价格是最便宜的第一层防御。</p>
+  </div></details>
+</section>
+
+<section class="essay" id="next">
+  <div class="section-head"><span class="section-num">→</span><h2 class="section-title">继续</h2></div>
+  <div class="section-sub">Where to go next</div>
+  <div class="dd">
+    <a class="ddcard" href="../"><div class="k">主线</div><div class="t">十步学习路径</div><div class="d">回到本专题唯一入口</div></a>
+    <a class="ddcard" href="../validation/"><div class="k">Deep dive</div><div class="t">验证与自欺</div><div class="d">偏差查表、DSR 记录清单、可运行实验</div></a>
+    <a class="ddcard" href="../library/#papers-b"><div class="k">Deep dive</div><div class="t">这三篇论文的入口</div><div class="d">含免费作者稿与核对层级</div></a>
+    <a class="ddcard" href="../#s7"><div class="k">主线</div><div class="t">组合构建</div><div class="d">信号有了，仓位怎么定</div></a>
+  </div>
+</section>
+
+</article>
+
+<footer>
+  <p><b>本页是什么：</b>量化交易专题三个成熟算法的机制展开——截面动量、统计套利、做市。含完整公式、参考实现、术语就地解释与各自的失效模式。</p>
+  <p><b>关于数字：</b>12.01% / 1.44 / 0.90 / 1.10 均来自公开论文，出处与核对层级见<a href="../library/">书单页</a>。代码为教学参考实现，不是论文复现。</p>
+  <p class="disclaimer" style="margin-top:20px">
+    <b>免责声明：</b>本页为技术学习材料，<b>不构成投资建议</b>。文中阈值与参数为教学示例，
+    直接用于真实交易可能造成损失。历史业绩不代表未来表现。
+  </p>
+  <p style="margin-top:24px">返回 <a href="../">量化交易主线</a>　·　<a href="../../../">ML-Learning 索引</a></p>
+</footer>
+</body>
+</html>
