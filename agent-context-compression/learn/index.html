@@ -6,7 +6,7 @@ layout: null
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>把上下文压小 — 从零学 Agent Context Compression</title>
+<title>把上下文压小而不压坏 — 像整理办公桌一样学 Agent 记忆压缩</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
@@ -189,19 +189,21 @@ layout: null
     <div class="crumbs mono">
       <span>ML Learning Notes</span><span class="dot"></span>
       <span>Agent Engineering</span><span class="dot"></span>
-      <span>学习路径</span>
+      <span>从零实战</span>
     </div>
-    <div class="eyebrow mono">从零开始 · 十一个开源平台的实证</div>
+    <div class="eyebrow mono">通俗易懂的思维链推导 · 十一个开源平台的避坑经验</div>
     <h1 class="kicker">把上下文<span class="accent">压小</span><br>而不压坏</h1>
     <p class="lede">
-      每一个能连续工作几小时的 AI agent，背后都有一套上下文压缩机制。它不是优化项，是<strong>让 agent 存在的前提</strong>。
-      这篇从「为什么必须压」讲到「怎么知道自己压对了」，每一步都有十一个开源平台的真实做法作参照。
+      如果把大模型比作破案侦探，上下文窗口就是它的办公桌。任何一个能连续办案几个小时的 AI Agent，背后都必然有一套极为讲究的<strong>“桌面收纳法”</strong>。
+      桌上如果堆满了几百页的旧案卷和冗长日志，它不是把桌子压塌报错，就是抓起新线索转头就忘。
+      上下文压缩绝不是锦上添花的算力省流技巧，而是<strong>让 Agent 能够持续存活并把复杂长程任务做完的前提</strong>。
+      本文摒弃空洞的口号与公式，用最贴近日常的生活类比和步步递进的思维链，带你轻松搞懂：怎么把越来越厚的历史记录压得足够小，却丝毫不伤及核心推理线索。
     </p>
     <div class="meta-grid">
-      <div><div class="label">读者假设</div><div class="value">知道 LLM 有上下文窗口即可</div></div>
-      <div><div class="label">读完能做到</div><div class="value">设计并评估一套压缩策略</div></div>
+      <div><div class="label">预备知识</div><div class="value">知道大模型有上下文窗口即可</div></div>
+      <div><div class="label">学完收获</div><div class="value">能亲手设计一套抗造的压缩系统</div></div>
       <div><div class="label">配套知识库</div><div class="value"><a href="../Agent_Context_Compression_Research.html">十五平台横向对照</a> · <a href="../skill-state/learn/">SKILL.state 学习页</a> · <a href="../skill-state/">参考与批判</a></div></div>
-      <div><div class="label">章节</div><div class="value">10 步</div></div>
+      <div><div class="label">学习路径</div><div class="value">10 步轻松通关</div></div>
     </div>
   </div>
 </header>
@@ -210,496 +212,435 @@ layout: null
 
 <!-- ============ 1 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 01</span><h2 class="section-title">先看一次死亡现场</h2></div>
-  <div class="section-sub">问题长什么样</div>
+  <div class="section-head"><span class="section-num">STEP 01</span><h2 class="section-title">最真实的“翻车现场”：Agent 是怎么被撑爆的？</h2></div>
+  <div class="section-sub">直击长程任务的瓶颈根源</div>
 
-  <p class="deck">在理解任何机制之前，你得先亲眼看见它要解决的问题。</p>
+  <p class="deck">在琢磨怎么收纳之前，我们得先看一眼没做收拾的案发现场到底有多惨烈。</p>
 
-  <p>假设你写了个 coding agent，让它「修复这个仓库里的登录 bug」。它开始工作：</p>
+  <p>想象一下，你招了一位极其聪明的新助理帮你修一个复杂的登录 Bug。你对它下达了第一道任务指令：</p>
 
   <pre><code><span class="c"># 第 1 轮</span>
-用户: 修复登录 bug                                    <span class="c">~20 token</span>
-agent: 我先看看项目结构                                <span class="c">~30 token</span>
-工具: ls -R                     → 返回 800 个文件路径   <span class="c">~9,000 token</span>
+User: 修复登录 bug                                    <span class="c">~20 token</span>
+Agent: 我先看看项目结构                                <span class="c">~30 token</span>
+Tool: ls -R                     → 返回 800 个文件路径   <span class="c">~9,000 token</span>
 
 <span class="c"># 第 2 轮</span>
-agent: 读一下 auth 模块
-工具: read auth/session.ts      → 返回整个文件         <span class="c">~14,000 token</span>
+Agent: 读取认证模块核心代码
+Tool: read auth/session.ts      → 返回整个文件完整内容 <span class="c">~14,000 token</span>
 
 <span class="c"># 第 3 轮</span>
-agent: 搜一下相关调用
-工具: grep -rn "validateSession" → 返回 60 处匹配      <span class="c">~7,000 token</span>
+Agent: 全局搜索相关的调用
+Tool: grep -rn "validateSession" → 返回 60 处匹配代码   <span class="c">~7,000 token</span>
 
-<span class="c"># 第 4 轮 …… 第 12 轮</span>
+<span class="c"># 第 4 轮 …… 第 12 轮（不知不觉累加）</span>
                                                      <span class="c">累计 ~180,000 token</span>
 <span class="c"># 第 13 轮</span>
-provider: <span class="s">400 Bad Request — context_length_exceeded</span></code></pre>
+Provider: <span class="s">400 Bad Request — context_length_exceeded</span></code></pre>
 
   <p>
-    十三轮，任务还没做完，agent 死了。注意看那些数字的<strong>比例</strong>：用户说的话是 20 token，
-    一次文件读取是 14,000 token —— <strong>相差七百倍</strong>。
+    仅仅跑了 13 个回合，Bug 还没查清楚，模型就直接弹出了 400 报错，当场暴毙。
+    停下来仔细看一眼这几个数字的<strong>巨大反差</strong>：
+    你对它说的那句话只有短短 20 个 Token，而它随手读一个文件就吃掉了 14,000 个 Token —— <strong>两者整整差了 700 倍！</strong>
   </p>
 
   <div class="call key">
-    <span class="tag">关键观察</span>
-    Agent 的上下文不是被「对话」撑爆的，是被<b>工具返回值</b>撑爆的。这个事实决定了后面所有设计。
-    人类聊天记录增长是线性且缓慢的；agent 轨迹里每一次工具调用都可能塞进几万 token。
+    <span class="tag">直觉反转：第一条关键思维</span>
+    很多人第一反应以为：“对话说得太多，所以把窗口聊爆了”。<br>
+    但真实的 Agent 世界恰恰相反：<b>撑爆上下文窗口的从来不是聊天，而是工具吐出来的一长串文件内容与终端日志！</b><br>
+    这就好比你让助理查账，你只问了一句“上个月花了多少”，他却把厚厚三整箱银行流水账单直接一股脑全砸在了你的办公桌上。每一次工具调用，都像在小桌子上倒下一卡车的沙子。
   </div>
 
   <p>
-    而且这不是「加大窗口就能解决」的问题。窗口从 8K 涨到 200K 再到 1M，agent 的胃口涨得更快 ——
-    因为窗口一大，你就敢让它读更大的文件、跑更宽的搜索、开更多子任务。
-    <strong>约束会被填满，这是工程里的常态。</strong>
+    如果你是负责设计的工程师，你的第一直觉是不是：“那咱们等大模型窗口再做大一点不就行了？从 8K 涨到 200K，甚至 1M、2M，总装得下了吧？”<br>
+    这里藏着软件工程里一条百试不爽的铁律：<strong>办公桌换得再大，你堆杂物的胆子也会跟着等比例放大。</strong><br>
+    在 8K 时代，你只敢小心翼翼让 Agent 读函数片段；到了 1M 时代，你就敢让它跑全库索引、读几十兆的日志、同时拉起五个子任务。只要没有主动收纳机制，多大的窗口都会在几分钟内被迅速填满。
   </p>
 </section>
 
 <!-- ============ 2 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 02</span><h2 class="section-title">上下文窗口是一堵什么样的墙</h2></div>
-  <div class="section-sub">硬约束的三个性质</div>
+  <div class="section-head"><span class="section-num">STEP 02</span><h2 class="section-title">上下文窗口这堵墙，到底有什么怪脾气？</h2></div>
+  <div class="section-sub">三个违背直觉的底层特性</div>
 
-  <p>要设计对策，先得准确理解这个约束。它有三个反直觉的性质。</p>
+  <p>要想设计出一套聪明的收纳法则，首先得摸清大模型上下文的三大“怪脾气”。它们个个反直觉，却决定了一切工程选择。</p>
 
-  <h3 class="sub">性质一：历史是一个前缀，不是一份日志</h3>
+  <h3 class="sub">脾气一：历史不是追加日记，而是每次重念一遍的“前情提要”</h3>
   <p>
-    LLM 是无状态的。第 13 轮请求不是「接着第 12 轮说」，而是把<strong>前 12 轮的全部内容重新发一遍</strong>，
-    再加上新的一句。
+    大模型是没有状态记忆的（Stateless）。到了第 13 轮，它并不是“接着第 12 轮的想法继续往下琢磨”，
+    而是你必须把<strong>前 12 轮发生的所有对话、工具调用和报错日志，一字不差地从头到尾重新给它念一遍</strong>，然后在末尾加上新的一句话。
   </p>
   <p>
-    这句话本身是常识。要紧的是它的<strong>三个后果</strong>——而其中只有一个跟钱有关：
+    这就像一位记忆只有几分钟的金鱼侦探，每次翻开新的一页，都要把前面的整本案件卷宗从头读到尾。这个特性带来了三个连锁后果：
   </p>
 
   <ul class="arrow">
-    <li><b>它必须每一轮都装得下</b>，而不是「最后一次装得下」。这才是墙之所以是墙 —— 不是终点线，是<b>每一步都要迈过去的门槛</b>。</li>
-    <li><b>它是一段稳定前缀</b>。provider 的 <em>prompt cache</em> 正是按前缀命中，命中部分按<b>约 0.1 倍</b>计价 —— 所以「一直背着历史」这件事本身很便宜。</li>
-    <li><b>也正因为是前缀，改它的代价不是局部的</b>。前缀一变，后面全部作废。</li>
+    <li><b>每一轮都必须能装得下</b>：不是最后收尾能装下就行，而是办案的每一步，桌子都绝对不能塌。</li>
+    <li><b>只要前情提要一字不差，云厂商会给你打巨额折扣</b>：各大厂商普遍支持 <em>Prompt Cache</em>（提示词缓存）。只要你念的前半部分与刚才完全一致，模型不用重复计算，缓存命中部分直接按<b>约 0.1 倍（一折）</b>计费！所以“背着旧账本”本身的推理开销其实很低。</li>
+    <li><b>但只要你动了开头一个字，整个打折全部作废</b>：前缀缓存就像整齐排列的多米诺骨牌，开头一旦被改写，后面的缓存立刻全部失效。</li>
   </ul>
 
   <div class="call pit">
-    <span class="tag">第三条就是压缩的结构性代价</span>
-    压缩必然要重写历史开头 —— 那正是缓存前缀所在的位置。压一次，缓存作废，
-    下一次请求得重新写入：<b>5 分钟 TTL 收 1.25 倍全价，1 小时 TTL 收 2 倍</b>。
-    <br><br>
-    <b>你省下的是本来只花 0.1 倍的部分，付出的是一次全价重写。</b>
-    这不是实现得好不好的问题，是「压缩」和「缓存」都建立在同一个前缀上导致的<b>结构性冲突</b>。
+    <span class="tag">两难困境：压缩与缓存的天然博弈</span>
+    只要你想压缩，就必须对早期的历史动手术（比如做个总结）。但那一块恰恰是缓存的最前端！<br>
+    你刚把旧记录压成一段摘要，原有的 Prompt Cache 瞬间全部报废。下一次请求发出去，系统就得按<b>全价甚至 1.25 到 2 倍的溢价</b>重新往缓存里写入：<br><br>
+    <b>换句话说：你省下的本来是只花一折的廉价旧 Token，却反手付了一笔全额的缓存重建违约金！</b><br>
+    所以记住推导出的第一条原则：<b>千万别把“为了省钱省 Token”当成做压缩的理由，这笔账往往根本算不过来。我们做压缩，纯粹是为了保命 —— 保证 Agent 不被活活卡死！</b>
   </div>
 
+  <h3 class="sub">脾气二：桌上堆得下，不代表脑子看得清（迷失在中间）</h3>
   <p>
-    所以别把「省钱」当成压缩的理由 —— 它经常算不过来。
-    <strong>压缩的理由是第一条</strong>（每一轮都要装得下）<strong>和下面的性质二</strong>（装得下也未必用得好）。
-    这也是本篇后面所有取舍的出发点：你是在为「能不能跑下去」和「跑得好不好」付钱，不是在省钱。
+    很多初学者会想：“既然窗口有 200K，那只要还没到 190K，我就完全不管它，等快撑爆了再压缩呗？”
+  </p>
+  <p>
+    这就好比复习考试：你一口气看了厚厚几百页的书，你能记住的往往只有<strong>第一章的导论</strong>和<strong>最后一章的总结</strong>，夹在正中间那大几百页，脑子里全是一片糨糊。大模型也是一模一样的！学界著名的发现 <em>Lost in the Middle</em>（迷失在中间）证明：
+    大模型对上下文<strong>开头和末尾</strong>的注意力极高，而对<strong>中段内容</strong>的检索准确率会大幅下挫，呈现出一条深陷下去的 U 形曲线。
+  </p>
+  <p>
+    一段塞到 90% 的超长上下文，中间那 100K 就算没有报错，模型也大概率正在“神游”，关键线索摆在它眼前它也会漏看。
+    <strong>因此，压缩不仅是为了防止报错撞墙，更是为了主动给桌面清灰，把有用的线索擦亮。</strong>
   </p>
 
-  <h3 class="sub">性质二：装得下 ≠ 用得好</h3>
+  <h3 class="sub">脾气三：供应商标的容量，可能只是个“参考值”</h3>
   <p>
-    这是最容易被忽略的一条。学界有个著名发现叫 <em>Lost in the Middle</em>：
-    模型对上下文<strong>开头和结尾</strong>的信息利用得好，对<strong>中间</strong>的信息利用得差 —— 检索准确率呈 U 形曲线。
+    文档上白纸黑字写着“支持 128K 窗口”，你在实际写代码时就真敢用到 128K 吗？往往不敢。因为服务商往往还要给模型的输出预留空间，或者服务端内部还有隐藏的 Guardrail 校验，甚至不同分词器的计算方式有细微出入。
   </p>
   <p>
-    所以「还没到 200K，不用压」是错的。一段塞到 90% 的上下文，中间那 60% 可能模型根本没在看。
-    <strong>压缩不只是为了不撞墙，也是为了让留下的东西真的被用上。</strong>
-  </p>
-
-  <h3 class="sub">性质三：墙的位置未必是文档写的那个</h3>
-  <p>
-    provider 声明的窗口大小不一定等于实际可用。十一个平台里有一家（kimi-code）干脆不信任声明值：
-    一旦请求撞上溢出错误，它就把<strong>本次请求大小的 85%</strong> 记为该模型的真实窗口，并永久下调自己的预算。
-    <strong>它靠撞墙来学墙在哪。</strong>
+    在调研的 11 个开源平台里，kimi-code 的思路极其朴素而管用：它根本不去盲信文档上的宣称值。只要在实际运行中遇到一次溢出报错，它就立刻把<strong>本次请求大小的 85%</strong> 默默记下来，当成这台模型的真实物理红线，并在后续执行中永远留出足够的安全余量。
+    <strong>既然测不准墙在哪，就撞一次记住它，以后绕着走。</strong>
   </p>
 
   <div class="stat-row">
-    <div class="stat"><div class="num">×700</div><div class="note">单条消息大小的跨度<br>用户 prompt vs 文件读取</div></div>
-    <div class="stat"><div class="num">U 形</div><div class="note">长上下文的检索准确率<br>中间段最容易被忽略</div></div>
-    <div class="stat"><div class="num">0.1×</div><div class="note">缓存命中的历史按此计价<br>而压缩会打掉这个折扣</div></div>
+    <div class="stat"><div class="num">×700</div><div class="note">单次交互的信息量极差<br>人说一句话 vs 机器读一个文件</div></div>
+    <div class="stat"><div class="num">U 形</div><div class="note">模型注意力的分布曲线<br>夹在中间的内容极易被忽略</div></div>
+    <div class="stat"><div class="num">0.1×</div><div class="note">前缀缓存命中时的计费折扣<br>动了开头就会丢掉这一红利</div></div>
   </div>
 </section>
 
 <!-- ============ 3 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 03</span><h2 class="section-title">不压会怎么死，压了会怎么伤</h2></div>
-  <div class="section-sub">两边的代价都要先看清</div>
+  <div class="section-head"><span class="section-num">STEP 03</span><h2 class="section-title">不压会怎么死，乱压又会怎么伤？</h2></div>
+  <div class="section-sub">看清天平两端的真实代价</div>
 
-  <p class="deck">先别急着写压缩代码。先搞清楚你在两种痛苦之间做交换。</p>
+  <p class="deck">别一拍脑袋就去调个小模型写摘要。工程的本质，永远是在不同的代价之间做权衡。</p>
 
-  <h3 class="sub">不压缩的三种死法</h3>
+  <h3 class="sub">如果不做压缩，Agent 会以哪三种姿势倒下？</h3>
   <div class="tiles">
-    <div class="tile"><div class="lbl">硬失败</div><div class="body"><b>provider 报 400</b>。会话直接中断，且这一轮的钱已经花了。最干脆也最难看的一种。</div></div>
-    <div class="tile"><div class="lbl">软失败</div><div class="body"><b>缓存过期</b>。缓存默认只活 <b>5 分钟</b>，而 agent 的一个回合常常更久 —— 工具调用、长思考。间隔一超 TTL，整段历史就是<b>全价</b>重来一次。</div></div>
-    <div class="tile"><div class="lbl">静默失败</div><div class="body"><b>质量下滑</b>。没报错，但模型开始忘记早先的决定、重复已做过的工作。最危险，因为你看不见。</div></div>
+    <div class="tile"><div class="lbl">姿势一：当场暴毙（硬失败）</div><div class="body"><b>API 抛出 400 Context Exceeded</b>。整个会话直接死锁中断，前面干到一半的代码和推理全部报废，刚才花掉的几十轮推理费也全部打了水漂。</div></div>
+    <div class="tile"><div class="lbl">姿势二：钱包大出血（软失败）</div><div class="body"><b>缓存悄无声息过期</b>。供应商的缓存通常只有 <b>5 分钟</b>寿命。Agent 在跑长测试、做复杂推理时稍稍耽搁一下，超时后再发请求，几十万 Token 的历史就得全额全价重新计费。</div></div>
+    <div class="tile"><div class="lbl">姿势三：悄悄变傻（静默失败）</div><div class="body"><b>开始胡说八道、逻辑倒退</b>。接口完全没报错，但模型开始遗忘你一开始立下的规矩，或者把刚才已经验证行不通的蠢办法又重复试一遍。这是最危险的死法。</div></div>
   </div>
 
-  <h3 class="sub">压缩的代价：三个实证数字</h3>
-  <p>2026 年有几项工作第一次把压缩的代价量化了。这些数字应该在你动手前就知道：</p>
+  <h3 class="sub">那随便找个小模型总结一下不就得了？看三个触目惊心的实证数字</h3>
+  <p>很多人以为“做压缩嘛，随便抓个便宜小模型把前文归纳一下不就完了”。近期的多项权威评测用真实数据给这种轻率泼了一盆冷水：</p>
 
   <div class="stat-row">
-    <div class="stat"><div class="num">6.5</div><div class="note">其他一切不变，只换摘要器模型，<br>SWE-bench Verified 相差 6.5 分</div></div>
-    <div class="stat"><div class="num">0→30%</div><div class="note">压缩后治理约束的违规率<br>（单模型最高 59%）</div></div>
-    <div class="stat"><div class="num">8.3×</div><div class="note">软性组织策略的衰减速度<br>是硬性安全规范的 8.3 倍</div></div>
+    <div class="stat"><div class="num">6.5</div><div class="note">其他一切不变，仅仅换了个摘要模型，<br>代码基准 SWE-bench 成绩竟相差 6.5%</div></div>
+    <div class="stat"><div class="num">0→30%</div><div class="note">压缩之后关键规则的违规率大幅飙升<br>（特定模型测试中峰值达 59%）</div></div>
+    <div class="stat"><div class="num">8.3×</div><div class="note">项目自创的特定工程规范，<br>在压缩中被遗忘的速度是通识的 8.3 倍</div></div>
   </div>
 
   <div class="call pit">
-    <span class="tag">第一个坑</span>
-    很多人把摘要器当成「随便挑个便宜模型跑一下」的预处理步骤。上面第一个数字说明它不是 ——
-    <b>摘要器的选择是一个和主模型选择同量级的性能变量</b>。省摘要器的钱，可能比省下来的更贵。
+    <span class="tag">避坑提醒一：别把写摘要当成廉价的“外包杂活”</span>
+    上面的 6.5 分血泪教训告诉我们：<b>做摘要的模型选谁，对最终任务成败的影响跟主模型几乎平起平坐！</b><br>
+    这就像一位极聪明的老板，如果配了一个抓不住重点、每天写错交接备忘录的糊涂实习生，老板的决策也会跟着被带偏。在写摘要上省下几厘钱，可能换来主模型几百次调用全打水漂。
   </div>
 
   <div class="call pit">
-    <span class="tag">第二个坑</span>
-    第二、三个数字说的是同一件事：<b>压缩会静默地删掉规则</b>。而且越是「这个项目的特殊约定」这类
-    没有模型先验兜底的软约束，掉得越快 —— 因为摘要器不知道它重要。
-    安全规范模型自己还记得，你们团队「所有 API 必须走 v2 路由」这种，摘要一转述就没了。
+    <span class="tag">避坑提醒二：压缩就像“传话游戏”，会悄悄吃掉你的规则</span>
+    第二、第三个数字揭示了同一个残酷的现实：<b>在把长篇大论压缩变薄的过程中，特定规则是最容易被优先漏掉的。</b><br>
+    像“不能删库”、“不要输出敏感信息”这类全网通识，基座大模型自己在预训练时背过千百遍，还不容易忘；但你们团队独创的软约定（比如“修改任何接口必须走 v2 路由”），摘要模型一看觉得是细枝末节，三两句省略掉，下一轮 Agent 立刻把这规矩抛到了九霄云外。
   </div>
 </section>
 
 <!-- ============ 4 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 04</span><h2 class="section-title">建立坐标系：压缩的六个层</h2></div>
-  <div class="section-sub">先有语言，才能比较</div>
+  <div class="section-head"><span class="section-num">STEP 04</span><h2 class="section-title">建立思维坐标系：收纳整理的六个动作层</h2></div>
+  <div class="section-sub">给混乱的专有名词理清脉络</div>
 
   <p>
-    各家管这件事叫的名字都不一样 —— compaction、compression、condensation、pruning、eviction。
-    术语打架的时候，先建坐标系。任何一套压缩机制都可以拆成这六层：
+    各大开源框架起的名字五花八门 —— Compaction、Compression、Condensation、Pruning、Eviction……
+    别被这些花哨的名词绕晕了。就像收拾一间杂乱的房间一样，世界上任何一套上下文治理机制，本质上都在做这六件事：
   </p>
 
   <div class="layers">
-    <div class="layer"><span class="lid">L1</span><span class="lname">Measurement 测量</span><span class="ldesc">现在用了多少？靠 provider 上报、字符估算，还是真跑一遍 tokenizer</span></div>
-    <div class="layer star"><span class="lid">L2</span><span class="lname">Trigger 触发 ⭐</span><span class="ldesc">什么时候动手？百分比阈值、绝对余量、事件计数、固定节拍，还是撞墙后补救</span></div>
-    <div class="layer"><span class="lid">L3</span><span class="lname">Selection 选点</span><span class="ldesc">压哪一段、留哪一段？切点划在哪里才不破坏结构</span></div>
-    <div class="layer star"><span class="lid">L4</span><span class="lname">Reduction 减法 ⭐</span><span class="ldesc">怎么变小？LLM 摘要、确定性裁剪、去重，还是直接丢弃</span></div>
-    <div class="layer"><span class="lid">L5</span><span class="lname">Reassembly 重组</span><span class="ldesc">压完怎么拼回去？角色交替是否合法、工具调用配对是否完整</span></div>
-    <div class="layer star"><span class="lid">L6</span><span class="lname">Persistence 持久化 ⭐</span><span class="ldesc">被压掉的原文去哪了？删除、归档、标记不可见，还是可以再捞回来</span></div>
+    <div class="layer"><span class="lid">L1</span><span class="lname">Measurement 计量</span><span class="ldesc">先拿尺子量一量，桌面到底堆了多少？看云厂商返回的 Usage，还是在本地粗算字符</span></div>
+    <div class="layer star"><span class="lid">L2</span><span class="lname">Trigger 触发 ⭐</span><span class="ldesc">什么时候该动手收拾了？占满 80%？还是剩余空间告急？还是固定每 5 步整理一次？</span></div>
+    <div class="layer"><span class="lid">L3</span><span class="lname">Selection 选点</span><span class="ldesc">哪些东西必须留在桌上，哪些可以打包收走？切口划在哪里才不会把对话切碎？</span></div>
+    <div class="layer star"><span class="lid">L4</span><span class="lname">Reduction 削减 ⭐</span><span class="ldesc">收走的东西怎么变薄？呼叫模型写摘要、直接拿大剪刀截断、去重，还是直接丢掉？</span></div>
+    <div class="layer"><span class="lid">L5</span><span class="lname">Reassembly 重组</span><span class="ldesc">整理好之后怎么摆回桌上？保证角色一问一答格式合法、工具调用的请求和回包别脱节</span></div>
+    <div class="layer star"><span class="lid">L6</span><span class="lname">Persistence 持久化 ⭐</span><span class="ldesc">扔掉的旧草稿去哪了？直接扔碎纸机彻底不要了，还是归档到地下室以后还能搜回来？</span></div>
   </div>
 
   <div class="call key">
-    <span class="tag">读完十一家源码后的结论</span>
-    各家在 <b>L1 / L3 / L5</b> 上高度趋同 —— 几乎是同一套工程解法，抄就完了。
-    真正拉开差距、也真正体现设计哲学的是标 ⭐ 的三层：<b>什么时候压（L2）、用什么方式减（L4）、原文留不留（L6）</b>。
-    你自己设计时，把精力花在这三层上。
+    <span class="tag">研读 11 家源码后的干货结论</span>
+    对比各家顶级开源项目的代码会发现：大家在 <b>L1（怎么量）、L3（选点切口）、L5（怎么拼回去）</b> 上的做法高度收敛，几乎都用同一套标准的工程解法，我们直接复用业界成熟方案即可。<br>
+    而真正决定一个 Agent 是“玩具”还是“工业级系统”的分水岭，全在标了 ⭐ 的这三层：<b>什么时候该动手（L2）、用什么手段削减（L4）、丢掉的内容还要不要找回（L6）</b>。你自己写代码时，应把八成精力放在这三项设计上。
   </div>
 </section>
 
 <!-- ============ 5 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">动手：最小可用的一套</h2></div>
-  <div class="section-sub">六步，每步给一个能直接抄的默认值</div>
+  <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">亲自动手：六步搭一个好用又抗造的最小压缩器</h2></div>
+  <div class="section-sub">步步推导，每一步都给你开箱即用的黄金默认值</div>
 
-  <p class="deck">先把最简单的版本跑起来，再逐层加固。这六步走完，你就有一个能用的压缩器了。</p>
+  <p class="deck">不要一上来就搞极其庞杂的微服务。跟着这六步推导，你就能亲手写出一个稳健可靠的生产级压缩组件。</p>
 
   <div class="steps">
     <div class="step">
-      <h4>测量：优先信 provider，回落到估算</h4>
+      <h4>第一步 · 计量：优先看官方账单，没有就用字符粗估</h4>
       <div class="txt">
-        每次请求后 provider 会返回 usage，那是最准的。拿不到就退到本地估算 ——
-        最粗糙但够用的是 <code>字符数 / 4</code>。<b>别一开始就上真 tokenizer</b>，它慢，而且触发判断不需要那么精确。
-        <br><br>但有一件事必须做对：<b>把 system prompt 和 tools schema 一起算进去</b>。
-        很多人只数对话消息，结果一个塞了 30 个工具定义的 agent，光 schema 就吃掉 15K，估算全错。
+        模型调用结束后，接口返回的 <code>usage</code> 字段是最权威的数据源。如果是在发送请求前需要本地预估，最实用省事的经验法则是：<code>英文字符与代码数 / 4</code>（中文大约按 <code>字符数 / 1.5</code> 估算）。<b>一开始千千万万别在本地挂一个重量级的 Tokenizer 分词包</b>！分词不仅耗费 CPU，而且判断“桌子是不是快满了”根本不需要精确到个位数。<br><br>
+        <b>但这里有个九成新手都会踩中的隐形巨坑</b>：<b>量桌子时，别只去数聊天记录！</b><br>
+        很多代码只去统计 User 和 Assistant 说了多少句话，却忘了桌面上还摆着一个巨大的显示器 —— <b>System Prompt 和几十个工具的 JSON Schema 定义！</b> 一个稍微复杂点的 Agent，光是把所有工具的入参和说明列出来，就能吃掉 15,000 Token。如果你没把这部分算在总预算里，实际早爆仓了，你的代码还以为桌上很空呢。
       </div>
     </div>
 
     <div class="step">
-      <h4>触发：用「还剩多少」而不是「用了百分之几」</h4>
+      <h4>第二步 · 触发：看“还剩多少空地”，别看“用了百分之几”</h4>
       <div class="txt">
-        直觉会让你写 <code>if (used > 0.8 * window)</code>。但想一想：200K 窗口的 20% 是 40K，1M 窗口的 20% 是 200K ——
-        后者白白空着 200K 不用。<br><br>
-        更好的口径是<b>绝对余量</b>：<code>if (window - used &lt; 20000)</code>。
-        问题变成「还装不装得下下一次响应」，这个问题的答案跟窗口多大无关。
-        <br><br><b>20,000 这个数字有交叉验证</b>：OpenClaw 和 opencode 两个独立项目、不同语言、不同作者，
-        都收敛到了同一个常数。
-        <br><br>
-        <b>但别把它当成裸常数抄</b> —— 它必须配一个小窗口保护：
-        <pre style="margin:14px 0 12px"><code>reserve = min(20000, window * 0.15)   <span class="c">// 小窗口时按比例退让</span>
+        <b>先看一个经典的直觉陷阱</b>：很多人写代码习惯写 <code>if (used > 0.8 * window)</code>（用了超过 80% 就触发）。<br>
+        停下来用思维链推导一下：<br>
+        如果窗口是 200K，剩下 20% 是 40K 空闲；<br>
+        但如果窗口是 1M，剩下 20% 是足足 200K 空间！—— 你放着相当于一个标准大模型的 200K 宽敞空地不用，急吼吼地去触发压缩？<br><br>
+        更合理的衡量口径是看<b>绝对安全余量（Absolute Headroom）</b>：<code>if (window - used &lt; 20000)</code>。<br>
+        我们核心关心的不是占了百分之几，而是：“剩下的空地，还够不够模型再尽情吐一次长回答和长代码？”<br><br>
+        <b>20,000 这个数字有充分的行业实证</b>：OpenClaw（TypeScript）和 opencode（Python）是两个不同团队在不同时间用不同语言写的项目，最后竟然不约而同把安全余量都定在了 20,000 Token！<br><br>
+        <b>但别生搬硬套常数！必须配一个小模型保护兜底</b>：
+        <pre style="margin:14px 0 12px"><code>reserve = min(20000, window * 0.15)   <span class="c">// 遇到小窗口模型时，按比例退让</span>
 if (window - used &lt; reserve) compact()</code></pre>
-        没有这个 cap 的话，一个 16K 窗口的本地模型会出事：<b>20,000 的余量要求超过了整个窗口</b>，
-        于是连空 prompt 都被判为「余量不足」，每一轮都触发压缩，压完还是不足 —— <b>无限压缩循环</b>。
-        这不是假想，OpenClaw 的源码里就为此专门加了 cap 并写了注释说明。
+        想一想为什么？如果你把程序跑在一个只有 16K 窗口的本地小模型上，20,000 的余量要求直接超过了它的整个脑袋！结果即便是一句空对话，系统也判定为“空间不足”，每轮交互都疯狂触发压缩，压完还是不足，最终引发<b>无限压缩的死循环</b>。开源项目 OpenClaw 的源码里，就为此特意写了一长串防护与注释。
       </div>
     </div>
 
     <div class="step">
-      <h4>先做免费的那一层：裁掉超长 tool 输出，然后<b>重测</b></h4>
+      <h4>第三步 · 先做一招“免费”的物理瘦身，然后重新量一次！</h4>
       <div class="txt">
-        触发之后别急着叫摘要器。<b>先把超长的 tool result 按「头 + 中间挖掉 + 尾」裁一遍</b> ——
-        这一步不调 LLM、不要钱、结果确定、可单测。tool 输出往往就是 token 大头：一次 <code>grep</code>、
-        一次测试日志，几万字符很常见，而其中真正有用的通常只在开头和结尾。
-        <br><br>
-        可以直接抄的默认值：<code>超过 8192 字符就裁 → 留头 4096 + 尾 1024</code>，中间换成一行
-        <code>[... tool result middle pruned ...]</code>。
-        <br><br>
-        <b>关键是裁完要用同一个计量器重测一遍</b>：如果压力已经回到阈值以下，
-        <b>整个摘要调用就跳过了</b> —— 省下的是一次 LLM 调用、一次 cache 失效，以及一次不可逆的信息损失。
-        「读了几个大文件然后跑了个测试」这类回合，光这一步就有可能把压力压回阈值以下。
-        <br><br>
-        一个容易写错的细节：按 <b>Unicode code point</b> 切，不要按 UTF-16 code unit ——
-        否则落在<b>代理对</b>（surrogate pair）上的字符会被劈成半个，大量 emoji 和生僻汉字都在此列（常用汉字在 BMP 内，不受影响）。
-        注意这只挡住代理对：由多个 code point 组成的<b>字素簇</b>（比如 ZWJ 拼出来的 emoji）仍可能被切开。
+        一旦余量报警，很多人第一反应是赶紧呼叫大模型写摘要。<br>
+        <b>慢着！先别急着花钱调模型。</b><br>
+        回想 Step 01：最占地方的是什么？是终端吐出来的几千行测试报错或文件搜索结果！<br>
+        你想想平时看一份几十页的崩溃日志，是不是只看开头是哪一行挂了，以及最后几行报错堆栈，中间成千上万行千篇一律的业务加载流水你根本连看都不看？<br><br>
+        直接用代码做一步<b>确定性的“掐头去尾”粗剪（不要钱、零延迟、确定性极强）</b>：<br>
+        直接复用业界成熟的默认规则：<code>单次工具输出如果超过 8192 字符 → 只保留头部 4096 字符 + 尾部 1024 字符</code>，中间直接插入一行显眼的提示：<code>[... 中间冗余日志已自动省略 ...]</code>。<br><br>
+        <b>最精妙的一步在于“重新量一次”</b>：粗剪完毕后，拿尺子再量一遍当前体积。如果水位已经乖乖回落到了安全红线以下，<b>恭喜你，昂贵的大模型摘要直接跳过不做了！</b><br>
+        你不仅省下了一次 API 费用，保住了宝贵的 Prompt Cache，还免除了一次信息被总结篡改的风险！很多只是偶尔读了个大文件的轮次，单靠这一招就能直接满血自愈。<br><br>
+        <i>细节防坑</i>：字符串截取请务必按 <b>Unicode 码点（Code Point）</b>进行切分，切忌按 UTF-16 的裸字节去切！否则遇到 Emoji 表情或者生僻字，恰好砍在代理对中间，就会劈出半个不可解析的乱码。
       </div>
     </div>
 
     <div class="step">
-      <h4>选点：保护头尾，压中间</h4>
+      <h4>第四步 · 选点：把两头当成宝贝护住，专挑中间打发走</h4>
       <div class="txt">
-        最简单有效的策略：<b>system prompt 永远留、最近 N token 的原文永远留、中间那段拿去摘要</b>。
-        这直接对应 Step 02 讲的 U 形曲线 —— 把模型用得最好的两端保住，压模型本来就用不好的中段。
-        <br><br>
-        注意是<b>按 token 预算</b>保护尾部，不是按消息条数。「保留最近 20 条」在消息大小跨三个数量级的场景里毫无意义 ——
-        可能是 2K，也可能是 200K。默认值可以抄 8,000–20,000 token。
+        必须呼叫模型做摘要时，挑选哪一段呢？策略极为简单坚决：<br>
+        <b>顶部的 System Prompt 钉死不许动，底部最新的几轮原话和工具结果当成宝贝牢牢保留，唯独把夹在中间的那一大段历史抽出来拿去总结。</b><br><br>
+        这完美顺应了 Step 02 讲的 U 形注意力规律：既然模型天生对头尾最敏感、对中段最迟钝，那我们就顺水推舟，把中段原本就看不清的杂草修剪成干练的精华！<br><br>
+        <i>注意</i>：保护尾部时，一定要<b>按 Token 预算保护（例如保留最近 8,000–20,000 Token）</b>，绝不要图省事写成“保留最近 10 条消息”！因为有的消息只有三个字，有的消息带着一整个文件，按条数保护极容易发生体积暴雷。
       </div>
     </div>
 
     <div class="step">
-      <h4>减法：让摘要器填一张固定的表</h4>
+      <h4>第五步 · 削减：给摘要模型一张“固定表格”，绝不让它写自由作文</h4>
       <div class="txt">
-        不要写「summarize the conversation above」。十一家里没有一家这么干。
-        给它<b>固定的 section</b>，缺了能被程序检查出来：
-        <br><br>
-        <code>## 目标</code> — 用户到底要什么<br>
-        <code>## 进度</code> — 分 已完成 / 进行中 / 受阻 三栏<br>
-        <code>## 关键决策</code> — 决定了什么，以及<b>为什么</b><br>
-        <code>## 下一步</code> — 具体动作，不是方向<br>
-        <code>## 相关文件</code> — 路径 + 为什么相关
-        <br><br>
-        这五栏是十一家收敛出来的最小可用集。其中<b>「进度分三栏」</b>特别值钱 ——
-        它逼模型区分「做完了」和「以为做完了」。
+        千万不要写“请总结上述对话”这种毫无约束的 Prompt！这就像你让助理“写个工作总结”，他大概率会给你写一篇散文。<br>
+        你要做的是<b>递给它一张格式严谨的表单，逼它按项填空</b>：<br><br>
+        <code>## 核心目标</code> — 用户最初到底要什么，验收标准是什么？<br>
+        <code>## 当前进度</code> — 严格分成 [已搞定] / [进行中] / [受阻卡壳] 三大栏！<br>
+        <code>## 关键技术决策</code> — 敲定了什么方案，以及<b>为什么这么决定</b>？<br>
+        <code>## 下一步明确动作</code> — 具体要敲什么命令、改什么代码，不要写抽象方向<br>
+        <code>## 关键文件清单</code> — 触碰了哪些关键路径，为什么它重要？<br><br>
+        这是各大平台打磨出来的最小完备集。尤其是<b>“进度分三栏”</b>这一条格外值钱 —— 它能彻底治好模型的盲目乐观，逼它把“事情已经做完”和“自己以为做完但还没验证”严格区分开。
       </div>
     </div>
 
     <div class="step">
-      <h4>重组：摘要进去，再给一句续接词</h4>
+      <h4>第六步 · 重组：摘要贴回去，顺带附上一句“接头暗号”</h4>
       <div class="txt">
-        把摘要作为一条消息放回历史开头，后面接上保留的原文尾部。然后加一句<b>续接指令</b>，
-        告诉模型「上文已被压缩，接着干，<b>不要提起压缩这件事</b>」。
-        <br><br>
-        最后这半句不是客套。不加的话，模型下一句经常是「根据您提供的摘要……」——
-        它会把压缩本身当成对话内容来回应。
+        把新鲜生成的结构化摘要包装成一条消息放在历史开头，后面无缝接上保留的最新对话尾部。<br>
+        在最后务必追加一句明确的<b>续接指令</b>：<br>
+        <i>“请注意：上述早期历史已经完成结构化归档。请直接沿着既定目标推进下一步任务，<b>绝不要在回复中啰嗦重复或讨论‘上文已经被压缩’这件事！</b>”</i><br><br>
+        这句叮嘱绝不是客套话。如果少了它，很多模型开口第一句就是：“好的，根据您提供的历史摘要，我看到我们之前完成了……接下来我将……”—— 它会傻乎乎地把用于系统治理的内部记忆当成了用户的闲聊输入。
       </div>
     </div>
   </div>
 
   <div class="call try">
-    <span class="tag">现在可以试</span>
-    这六步做完就能跑。<b>先别加任何优化</b> —— 拿一个真实的长会话喂进去，
-    看压缩前后 agent 能不能接着干活。能，你就有基线了；不能，问题一定在第 5 步的摘要模板上。
+    <span class="tag">现在就可以动手跑跑看</span>
+    把上面这六步连起来，你的代码量并不大，但已经构建出了一套具备极强抗造能力的最小压缩管线。<b>在早期切忌画蛇添足加复杂的奇技淫巧</b> —— 拿一段真实的长程会话喂进去，看 Agent 压缩前后能不能丝滑顺畅地接着干活。能，你的工程基线就彻底稳了！
   </div>
 </section>
 
 <!-- ============ 6 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">五个必踩的坑</h2></div>
-  <div class="section-sub">基线跑通之后，这些会依次找上门</div>
+  <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">踩过这五个工程暗坑，你才算真正入行</h2></div>
+  <div class="section-sub">基线跑通之后，这些棘手问题会排着队找上门</div>
 
   <div class="call pit">
-    <span class="tag">坑 1 · 工具配对被切断</span>
-    如果切点落在「模型说要调用工具」和「工具返回结果」之间，你会得到一条<b>有 call 没有 result</b> 的历史。
-    provider 直接返回 400。<br><br>
-    <b>修法</b>：切之前往回找，确保切点落在一个完整回合的边界上。更严格的做法是把「未闭合的义务」概念推广 ——
-    ADK 连「等待用户确认的工具调用」和「未完成的鉴权请求」都算作不能切开的义务。
+    <span class="tag">暗坑 1 · 工具调用被拦腰切断（有借无还）</span>
+    如果你挑选的切点恰好落在了“模型发出工具调用指令（tool_calls）”和“工具返回执行结果（tool_result）”的正中间，发给 API 的消息列表就会出现<b>有借条却没有对账单的悬空调用</b>。<br>
+    主流模型厂商的网关会当场翻脸，直接抛出 400 校验异常拒绝服务！<br><br>
+    <b>避坑解法</b>：切分之前必须往前“回溯”，确保切点一定落在完整交互回合的边界上。在 Google ADK 等成熟框架里，这被称为“未闭合的义务（Unfulfilled Obligations）”—— 凡是等待工具返回、等待用户确认或者等待鉴权的节点，统统算作不可切断的整体。
   </div>
 
   <div class="call pit">
-    <span class="tag">坑 2 · 摘要的摘要的摘要</span>
-    长会话会压很多次。如果每次都是「把上一份摘要重新摘要一遍」，就是有损压缩的级联 ——
-    复印件的复印件，压到第十次，最初的信息基本面目全非。<br><br>
-    <b>修法</b>：把任务从「重新概括」改成<b>「保留旧摘要 + 增补新事实」</b>。
-    prompt 里写清楚 <code>PRESERVE 已有内容</code> / <code>ADD 新进展</code> / <code>REMOVE 已过期的</code>。
-    这利用了一个能力不对称：<b>LLM 做「复制并编辑」比做「重新创作」保真得多</b>。
+    <span class="tag">暗坑 2 · 复印件的复印件（传话游戏式信息失真）</span>
+    长任务往往会运行几十甚至上百轮，压缩会被触发很多次。如果你每次都是简单地“把上一份摘要再拿去重新总结一遍”，就会发生像复印件反复复印一样的严重信息衰退 —— 传到第十次，最初用户提的核心约束早就被磨灭得面目全非。<br><br>
+    <b>避坑解法</b>：把任务从“从头重新写总结”，转变成<b>“以旧摘要为基准做增量修改”</b>。在 Prompt 里清楚写明：<code>PRESERVE（旧摘要里的核心事实原样保留）</code> / <code>ADD（填入最新阶段的新进展）</code> / <code>REMOVE（擦掉已失效的临时假设）</code>。利用大模型的特长：<b>LLM 做“对照修改与增删”的准确度，远高于让它“凭空重新发挥”</b>。
   </div>
 
   <div class="call pit">
-    <span class="tag">坑 3 · prompt cache 被打穿</span>
-    这条在 Step 02 已经埋过伏笔，这里是它的工程形态。provider 的 prompt cache 按<b>前缀</b>命中，
-    而压缩必然重写历史开头 —— 那正是缓存前缀所在的位置。压一次，缓存就得重建：
-    <b>5 分钟 TTL 收 1.25 倍全价，1 小时 TTL 收 2 倍</b>。<br><br>
-    <b>修法</b>：这是压缩与缓存的<b>根本张力</b>，消不掉，只能管理。
-    一种做法是只裁剪已经超过 cache TTL 的部分（反正也要过期了）；另一种是把压缩频率当成显式旋钮，
-    承认「每压一次要付一次 cache break」，然后决定多久付一次。<br><br>
-    <b>还有一笔账几乎所有人都漏了</b>：压缩本身要<b>多发一次请求</b>去做摘要，而那次请求处理的
-    正好是整个会话<b>最长的那一刻</b>的历史。常规写法是「专门的 summarizer system prompt + 压平成一段文本的历史」——
-    第一个 token 就与刚跑完的对话请求不同，于是<b>整段缓存前缀作废</b>，最大的那段历史被全价读两遍。
-    有一家的修法值得抄，而且几乎不要钱：把摘要指令从请求<b>最前面</b>挪到对话<b>最后面</b>（变成最后一条 user 消息），
-    system prompt、tools schema、历史消息全部原样复用 —— 这样摘要调用就成了对话请求的<b>前缀延长</b>，缓存能接着命中。
-    代价是<b>摘要必须用主模型</b>：换模型就换 cache key，红利立刻归零。所以这条与「用便宜的小模型做摘要」是互斥的，
-    得自己称一下哪边更重。<br><br>
-    <b>但这里有个陷阱，正好也和上面第 3 步撞车</b>：如果你在摘要之前先做了确定性裁剪，
-    <b>而裁剪的结果落进了持久历史</b>，那么摘要请求读到的就是<b>裁剪后</b>的版本，
-    而刚跑完的那次对话请求带的是<b>裁剪前</b>的原文 —— 两者在<b>第一个被改写的 token</b> 处分叉，
-    那之后的前缀一样要重算。
-    <br><br>
-    也就是说这两层优化的目标是<b>相反</b>的：裁剪为了省 token 主动改写前缀，前缀复用要求前缀别动。
-    而且失效恰好发生在最不想失效的地方 —— 只有 tool 输出<b>超过</b>裁剪阈值时才会改写，
-    所以<b>越是塞满大宗 tool 输出、越该省这笔钱的会话，越吃不到完整红利</b>。
-    <br><br>
-    要想两头都要，先记住判据：<b>决定能不能复用的，只有摘要请求实际发出去的那串 token 和上一次对话请求是否一致</b> ——
-    裁剪结果存在哪儿（落盘还是只在内存里）跟这件事<b>没关系</b>。按这个判据只有三条路：
-    <b>把裁剪推迟到摘要之后</b>（摘要读原文，代价是输入更大、cache break 转嫁给下一次对话请求）；
-    <b>把裁剪提前到对话请求之前</b>（那次请求本身就带着裁剪后的文本，两边一致 —— 代价是裁剪得另有调度，不能由压力触发）；
-    或者<b>干脆不重放被改写的那部分</b>（用摘要质量换缓存）。
-    <br><br>
-    <b>有一个看着像对、其实不管用的做法</b>，值得单独记住：「让裁剪只影响摘要的输入、不写进持久历史」——
-    没用。摘要请求发出去的仍然是裁剪后的文本，照样在第一个改写点分叉。它保住的是<b>日志的保真度</b>，不是缓存。
-    <b>「存在哪儿」和「发出去什么」是两个正交的问题，只有后者决定缓存。</b>
+    <span class="tag">暗坑 3 · 捡了芝麻丢了西瓜：Prompt Cache 被硬生生打穿</span>
+    我们在 Step 02 里埋下的伏笔，在这里变成了真金白银的代价。Prompt Cache 认的是前缀一字不差的精准对齐。压缩必然要改写历史开头，这就注定了缓存会被打破重算：<b>5 分钟 TTL 重新写入要收 1.25 倍基础价，1 小时 TTL 甚至要收 2 倍！</b><br><br>
+    更要命的是，很多人为了做摘要，专门搞了一个独立的 Summarizer Prompt，把历史展平成纯文本发出去 —— 这样一来，摘要请求从第一个字起就跟刚才的对话完全不同，<b>整段缓存直接作废，在历史最庞大、最昂贵的那个瞬间，你全价把几十万 Token 读了两遍！</b><br><br>
+    <b>神仙解法（值得抄进你的代码里）</b>：把摘要指令不要放在请求的最开头，而是<b>作为一条 User 消息追加在对话的最末端！</b> 这样前面的 System Prompt、工具列表和历史消息一字没变，摘要调用就成了上一轮对话的<b>前缀延续</b>，能以一折白菜价直接复用刚刚跑完的缓存！唯一的限制是摘要必须用同一款主模型跑（换模型就换了 Cache Key）。<br><br>
+    <b>但是！这里还有一个和 Step 05 物理粗剪相撞的连环套</b>：如果在摘要前先剪裁了超长的工具输出，且<b>把剪裁结果存回了持久化历史</b>，那么发给摘要的请求就跟刚才没剪裁的对话请求在<b>第一个剪裁字符处分家了</b>，缓存照样会被当场打穿！<br><br>
+    牢记这个核心判据：<b>决定能不能蹭到缓存的，永远是发到网线上的 Token 序列和上次一不一样，跟你把数据存在内存还是硬盘毫无关系。</b> 想两全其美，要么把剪裁推迟到摘要之后做，要么在对话发出去之前就把工具输出规范化。
   </div>
 
   <div class="call pit">
-    <span class="tag">坑 4 · 压完反而更大了</span>
-    摘要器话痨，或者历史本来就短，都可能让「摘要 + 保留段」比原文还长。<br><br>
-    <b>修法</b>：压完数一遍 token，变多就<b>整体回滚</b>，什么都不做。几行代码的护栏。
-    同类的还有防抖：连续两次压缩的收益低于 10% 就停手，别在阈值边缘反复触发。
+    <span class="tag">暗坑 4 · 越压反而越庞大：请来了一位“话痨”摘要员</span>
+    有时候原本的对话其实挺简短，或者调用的摘要模型废话极多，铺垫了一大堆客套话，结果“生成的摘要 + 保留的尾部”算下来，Token 数量居然比压缩前还要多！<br><br>
+    <b>避坑解法</b>：在代码里加上两行朴素但救命的护栏 —— 组装完成后重新数一遍 Token，一旦发现没有变小甚至变大了，<b>立刻原地回滚撤销</b>，当什么都没发生过。同理加上防抖：连续两次压缩收益低于 10%，就老老实实进入冷却期，别在阈值边上来回拉扯。
   </div>
 
   <div class="call pit">
-    <span class="tag">坑 5 · 摘要器装不下要摘要的东西</span>
-    你要压的是 180K 的历史，但摘要器窗口只有 64K —— 压缩请求自己溢出了。<br><br>
-    <b>修法有三个方向，动的杠杆各不相同</b>：改<b>触发</b>（降低本次会话阈值去适配摘要器窗口）、
-    改<b>输入</b>（逐级剥掉工具返回值再重试，Goose 的梯子是 <code>[0, 10, 20, 50, 100]%</code>）、
-    改<b>比例</b>（整体按 <code>[0.7, 0.5, 0.35]</code> 缩小请求重试）。三者正交，可以叠加。
+    <span class="tag">暗坑 5 · 小书童装不下大账本：摘要模型自己爆仓了</span>
+    主任务跑到了 180K，你想找个便宜的 64K 小模型帮它做压缩 —— 结果压缩请求自己直接因超出 64K 窗口而报错崩溃了！<br><br>
+    <b>避坑解法有三个灵活的调音旋钮</b>：其一是<b>把警报拉早</b>（根据小模型的容量提前触发）；其二是<b>剥洋葱机制（Goose 开源项目的经典做法）</b>：遇到超限，按 <code>[0, 10, 20, 50, 100]%</code> 的阶梯逐步丢弃最不重要的历史工具输出，直到小模型能咽得下；其三是<b>切片分块</b>：按比例把历史切成两三份分别总结，最后再拼装融合。
   </div>
 </section>
 
 <!-- ============ 7 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 07</span><h2 class="section-title">三个设计选择，决定你的系统长什么样</h2></div>
-  <div class="section-sub">L2 / L4 / L6，也就是标 ⭐ 的那三层</div>
+  <div class="section-head"><span class="section-num">STEP 07</span><h2 class="section-title">三个关键十字路口：决定你的系统走向何方</h2></div>
+  <div class="section-sub">在触发、削减与持久化中做取舍</div>
 
-  <p class="deck">到这里基线已经稳了。接下来的选择没有标准答案，但每个选择都有明确的后果。</p>
+  <p class="deck">地基打牢之后，接下来的架构选择没有绝对的对错之分，就像选跑车还是越野车，完全取决于你的具体场景。</p>
 
-  <h3 class="sub">选择一：早压还是晚压</h3>
+  <h3 class="sub">抉择一：随手整理 vs 憋到极限大扫除？</h3>
   <div class="tbl-wrap">
   <table>
-    <tr><th>取向</th><th>好处</th><th>代价</th></tr>
-    <tr><td><b>早压</b>（用到 50–75% 就动手）</td><td>每次处理的历史少，摘要质量高，单次成本低</td><td>压缩次数多，cache 反复失效，信息经多轮摘要累积失真</td></tr>
-    <tr><td><b>晚压</b>（用到 85–100% 才动手）</td><td>最大化利用窗口，压缩次数少</td><td>每次要处理巨量历史，必须做分块 map-reduce，且离撞墙很近</td></tr>
+    <tr><th>策略倾向</th><th>核心优势</th><th>代价与隐患</th></tr>
+    <tr><td><b>随手轻度整理</b>（用了 50%–70% 就动手）</td><td>每次需要处理的历史很短，摘要质量极高，单次用时少</td><td>压缩太频繁，反复打碎 Prompt Cache，多轮级联易导致记忆失真</td></tr>
+    <tr><td><b>憋到极限大扫除</b>（用到 85%–95% 临界才动手）</td><td>最大化压榨长上下文能力，压缩次数少，充分享受缓存红利</td><td>每次要处理巨量文本，必须上复杂分块，容错缓冲极小，容易撞墙</td></tr>
   </table>
   </div>
   <p>
-    这个选择会往下传导：<strong>压得早，才敢用单次调用加头尾保留这种简单做法；压得晚，就必须先解决「摘要器装不下」的问题</strong>。
-    十一家里两种都有产品在跑，没有对错。
+    这个选择会直接决定系统代码复杂度：<strong>早点收拾，单次调用配合头尾保护就能搞定；憋到最后才收拾，你就必须在系统里完整实现一套分块并发合并的重型引擎</strong>。开源界两种流派都有优秀实践，量力而行即可。
   </p>
 
-  <h3 class="sub">选择二：减法减到什么程度</h3>
+  <h3 class="sub">抉择二：能剪多狠？为什么敢丢助理的思考，却死保用户的每一句话？</h3>
   <p>
-    光谱的一端是「只压中段，头尾原文全留」；另一端是 Codex 和 kimi-code 的做法 ——
-    <strong>压缩后 assistant 和工具消息一条不留</strong>，只保留 20K token 预算内的用户原话加一份摘要。
+    在激进的压缩流派里（例如 Codex 原型和 kimi-code），压缩之后会<strong>把 Assistant 说的每一句推理和所有工具输出彻底清空</strong>，仅仅留下有限预算内的用户原话和一份最新总结。
   </p>
   <div class="call key">
-    <span class="tag">背后的信息论</span>
-    为什么敢丢 assistant 消息却死保用户消息？因为两者的<b>可再生性不对称</b>。
-    Hermes 的源码注释说得最清楚：assistant 输出的大多是「我做了什么」的记账，摘要能存活；
-    <b>用户的话是一切的推导起点，丢了就永远回不来</b>。同理，工具返回值可以重新跑一遍拿到，
-    用户的原始意图不能。
+    <span class="tag">底层的思考：可再生性的不对称</span>
+    为什么激进方案敢把 Assistant 的发言当垃圾一样删掉，却要把用户的每一句话当宝贝供着？<br>
+    开源项目 Hermes 在源码注释里给出了极其深刻的解释：<br>
+    Assistant 的发言和工具调用，本质上是<b>解题过程中的草稿纸</b>，只要有了最终总结，草稿纸丢了随时可以重新推导；<br>
+    <b>但用户最初说的那几句话，是一切逻辑推演的原点与终极评判标准！</b> 一旦丢了用户的真实原意，再聪明的大脑也猜不出来主人最初要的到底是什么。
   </div>
 
-  <h3 class="sub">选择三：原文删不删</h3>
+  <h3 class="sub">抉择三：压掉的旧档案，是丢进碎纸机还是放进地下室？</h3>
   <p>
-    这是最容易被草率决定、后果又最大的一层。十一家给出了七类答案，但真正的分野只有一条：
-    <strong>被压掉的内容，还能不能捞回来？</strong>
+    被移出活跃窗口的旧细节，以后还需不需要找回来？业界主要有三条路：
   </p>
   <ul class="arrow">
-    <li><b>不能</b> —— 直接替换内存里的历史数组。最简单，也最不可逆。</li>
-    <li><b>能看不能搜</b> —— 打个「已压缩」标记或可见性标志，UI 里还看得到全量，但模型和检索都够不着。</li>
-    <li><b>能搜回来</b> —— 原文落盘并建索引，摘要里<b>专门写上检索关键词</b>，模型需要时自己捞。</li>
+    <li><b>扔进碎纸机（彻底覆盖）</b> —— 直接在内存数组里用摘要替换旧消息。实现最简单，但丢失的信息永远回不来。</li>
+    <li><b>加把锁留个底（界面可见，模型看不见）</b> —— 消息打上“已归档”标签，前端人眼查看时还能翻阅全量历史，但发给模型的上下文里不再包含。</li>
+    <li><b>建个图书索引室（可寻址检索）</b> —— 原始细节落盘存储并建立索引；摘要里<b>专门附带检索关键字和索引编号</b>，模型需要精确线索时，自己随时调用查询工具去档案室捞回来！</li>
   </ul>
   <p>
-    第三种是 Letta 的做法，也是整批项目里唯一把摘要当成<strong>「索引」而不是「替代品」</strong>的架构。
-    它的价值现在有独立研究背书 —— 学界的 Addressable Recall Compaction 基本是同一思路的形式化版本。
+    第三条正是 Letta（MemGPT）的核心设计哲学：它把摘要当成了<strong>“外部记忆的导航目录”而不是“一次性替代品”</strong>。这与学界前沿的 ARC（Addressable Recall Compaction）理论完全一致，代表了长记忆系统的演进高地。
   </p>
 </section>
 
 <!-- ============ 8 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 08</span><h2 class="section-title">压缩解决不了什么</h2></div>
-  <div class="section-sub">边界比技巧更重要</div>
+  <div class="section-head"><span class="section-num">STEP 08</span><h2 class="section-title">治标更要治本：真正的高手如何让信息“别挤进来”</h2></div>
+  <div class="section-sub">最好的收纳，是根本不把杂物堆上桌面</div>
 
-  <p class="deck">最好的压缩，是不需要压缩。</p>
+  <p class="deck">上下文压缩是事后补救，而最高明的架构设计，是在信息进门之前就做好节流。</p>
 
   <p>
-    到这里你已经能把压缩做得不错了。但有一类问题，无论压缩做得多好都解决不了 ——
-    <strong>因为它们根本不该经过摘要器</strong>。
+    掌握了前面的方法，你已经能做出一套很棒的压缩管线。但工程里有一类问题，无论压缩做得多巧妙也解决不了 —— <strong>因为它们在逻辑上就根本不该参与压缩！</strong>
   </p>
 
-  <h3 class="sub">治理约束：会掉，而且掉得最快</h3>
+  <h3 class="sub">别指望摘要模型帮你背负“规章制度”</h3>
   <p>
-    回到 Step 03 那两个数字：违规率 0% → 30%，软策略衰减是硬规范的 8.3 倍。
-    这不是摘要器不够好的问题 —— 你把一条规则丢进有损压缩管道，它就是会以某个概率消失。
+    还记得 Step 03 里提到的真实数据吗：压缩之后，规则违规率从 0% 飙升至 30%。这不是模型笨，而是信息论的客观规律：把规则混进一大堆流水账里做有损浓缩，它必然会有概率被漏掉。
   </p>
   <div class="call key">
-    <span class="tag">正确的解法</span>
-    别指望摘要器转述你的约束。<b>把「不可压缩区」做成显式配置</b>，让治理规则走一条完全独立的通道，
-    或者在<b>每次压缩后重新注入</b>。十一家里只有两家做了压缩后重注入 ——
-    一家注入项目约定，一家重新挂载任务列表，<b>而没有一家重注入的是治理约束本身</b>。
-    这是目前整个领域最明显的空白。
+    <span class="tag">聪明的系统解法</span>
+    千万别把团队核心规范丢给摘要模型去转述。<b>把“不可压缩区”做成系统级配置</b>，让合规制度走一条完全独立的输入通道；或者<b>在每次压缩重组完成后，由代码自动把规则前缀原模原样重新贴上去</b>。<br>
+    在调研的 11 个开源平台里，目前只有极少数做了重注入机制（一家重新挂任务待办，一家重新挂工程规范），这正是目前很多企业级 Agent 最值得补齐的关键短板。
   </div>
 
-  <h3 class="sub">更彻底的思路：让信息别进来</h3>
+  <h3 class="sub">三招从源头防膨胀的优雅架构</h3>
   <p>
-    压缩是在信息<em>进入</em>上下文之后做减法。还有一整类手段是在它<em>进来之前</em>就做取舍：
+    与其等桌子堆满再花力气大扫除，不如从源头减少堆到桌上的东西：
   </p>
   <div class="tiles">
-    <div class="tile"><div class="lbl">状态外置</div><div class="body">工作产物写文件、跨会话知识入库。<b>需要时再读回来</b>，而不是一直背着。</div></div>
-    <div class="tile"><div class="lbl">上下文分区</div><div class="body">把会产生大量工具输出的子任务<b>整个丢给 subagent</b>，它不继承父会话历史，输出只回传结论。</div></div>
-    <div class="tile"><div class="lbl">渐进披露</div><div class="body">技能/工具先只暴露 <b>名字 + 一句描述</b>，匹配上了才加载全文。从源头避免「加载了又被压掉」。</div></div>
+    <div class="tile"><div class="lbl">抽屉法则（状态外置）</div><div class="body">中间分析成果随时写进本地 Markdown 或 JSON 文件，跨会话知识写入数据库。<b>需要时再按需读回来</b>，而不是整天背在脑子里。</div></div>
+    <div class="tile"><div class="lbl">外包小弟（子任务沙盒）</div><div class="body">要跑几千行日志的模糊检索？<b>派一个独立的 Sub-agent 去做</b>！它跑完全部脏活，只给主 Agent 递上一张纸条：“第 42 行报错”，主桌面上干净清爽。</div></div>
+    <div class="tile"><div class="lbl">折叠菜单（渐进式披露）</div><div class="body">三十个工具的庞大说明书，先只暴露<b>工具名字加一句简短描述</b>。模型真正挑中某个工具时，再把具体的参数说明书翻给它看。从根源上省掉上万 Token！</div></div>
   </div>
   <p>
-    这三条合起来指向同一个判断：<strong>压缩是补救，架构才是解法</strong>。
-    一个把状态外置做好的 agent，压缩触发得更晚、压掉的东西更不重要、出问题的概率更低。
+    这三招凝聚成一句话：<strong>上下文压缩是系统底层的防御兜底，而优秀的架构设计才是让 Agent 轻装前行的解法</strong>。
   </p>
 </section>
 
 <!-- ============ 9 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 09</span><h2 class="section-title">怎么知道自己压对了</h2></div>
-  <div class="section-sub">评测口径，比评测本身更容易搞错</div>
+  <div class="section-head"><span class="section-num">STEP 09</span><h2 class="section-title">怎么知道自己到底压得对不对？</h2></div>
+  <div class="section-sub">别拿人类的语文眼光，去给 AI 的工作备忘录打分</div>
 
   <p>
-    最自然的想法是：拿摘要和原文比一比，看内容保留了多少 —— 用 ROUGE，或者让另一个模型打个相似度分。
+    很多团队做完压缩，第一反应是：“拿生成的摘要跟原文比比看，看文字通不通顺、语义像不像” —— 甚至去算 ROUGE 相似度。
   </p>
-  <p><strong>这是错的口径。</strong></p>
+  <p><strong>在 Agent 工程里，这是彻底南辕北辙的评估口径。</strong></p>
 
   <div class="pullquote">
-    摘要的读者不是人，是模型。判据不该是「读起来像不像」，而是<strong>「agent 拿着这份摘要，
-    还能不能复现出正确的动作序列」</strong>。
-    <span class="who">这是 2026 年评测工作收敛出的共识</span>
+    摘要的读者不是人类，而是接棒推理的大模型。<br>
+    唯一的衡量准绳只有一条：<strong>Agent 拿着这份压缩后的便签，到底还能不能准确无误地把下面的动作序列做对？</strong>
+    <span class="who">这是业界一线工程实践收敛出的唯一共识</span>
   </div>
 
   <p>
-    一份文字优美、覆盖全面的摘要，如果丢掉了一个文件路径，agent 下一步就会去改错文件 —— 这份摘要的分数应该是零。
-    反过来，一份读起来干巴巴、全是标识符和路径的摘要，只要 agent 能接着干活，它就是好摘要。
+    一份文采飞扬、总结得极漂亮的文字，如果随手漏掉了一个不起眼的文件路径或 Git Commit ID，Agent 下一步就会改错文件、提交错分支 —— 这份摘要在工程上就是<strong>零分</strong>。<br>
+    反过来，一份读起来干瘪枯燥、全是一串串符号、路径和错误码的备忘录，人类读起来极其痛苦，但 Agent 拿起来立刻能无缝接着修 Bug，它就是<strong>无可挑剔的顶级好摘要</strong>。
   </p>
 
   <div class="call try">
-    <span class="tag">可以直接用的三条自查</span>
-    <b>1. 标识符还在吗</b> —— 用正则从原文提取 commit hash、文件路径、issue 编号、错误码，
-    检查它们是否在摘要里原样出现。这是性价比最高的一条，纯代码，不用调模型。<br><br>
-    <b>2. 最近的诉求覆盖了吗</b> —— 摘要与用户最后几条消息做词汇重叠检查，太低说明摘要跑题了。<br><br>
-    <b>3. 压完变大了吗</b> —— Step 06 坑 4 那条护栏，同时也是最简单的质量信号。
+    <span class="tag">三条极低成本的工程自查规则</span>
+    <b>1. 核心专有名词还在不在</b> —— 用最简单的正则，把原文里的 Commit Hash、文件路径、端口号、Issue 编号全提取出来，检查它们在摘要里有没有精准出现。纯代码跑，不花一分钱调模型，防翻车效果极强。<br><br>
+    <b>2. 老板最近的要求覆盖了没有</b> —— 把摘要和用户最后发的那一两句话做词汇重叠度检查，如果重叠过低，说明摘要模型走神了，漏掉了最新的紧急需求。<br><br>
+    <b>3. 到底有没有变小</b> —— Step 06 坑 4 的硬性门槛：压缩后总 Token 数没减少甚至变胖了，直接报警并回滚！
   </div>
 
   <p>
-    值得一提的是：十一家里<strong>只有一家</strong>对摘要产物做在线的<strong>内容保真度</strong>校验并在失败时重试（另有一家会校验「摘要必须比它替换的内容更小」，但那查的是收缩，不是保真）。
-    这既说明这件事不容易，也说明它是一个还没被卷的位置。
+    值得一提的是：调研的 11 个开源平台里，<strong>目前只有一家</strong>在运行时对摘要结果做了自动化的<strong>事实保真度校验与重试机制</strong>。这也意味着，在这个关键细节上稍微下点功夫，你的系统就能轻松拉开同行一个档次。
   </p>
 </section>
 
 <!-- ============ 10 ============ -->
 <section class="essay">
-  <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">走完之后往哪走</h2></div>
-  <div class="section-sub">前沿方向与知识库入口</div>
+  <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">恭喜通关：接下来该往哪走？</h2></div>
+  <div class="section-sub">前沿演进方向与知识库查阅指南</div>
 
-  <p>把前九步做完，你的 agent 已经能稳定跑长任务了。再往前有三个方向：</p>
+  <p>学完并实现前九步，你的 Agent 已经具备从容应对复杂长任务的硬核内功了。再往前看，业界有三个激动人心的探索方向：</p>
 
   <ul class="arrow">
-    <li><b>摘要即索引</b> —— 不追求「摘要包含一切」，而是让摘要成为一张可寻址的目录，原文落盘可检索。压缩从「有损替换」变成「分层存储」。</li>
-    <li><b>把压缩挪出关键路径</b> —— 十一家里已经有三条路径这么做了：两条增量回收在后台跑，还有一家的<b>全量压缩本身就是后台 worker</b>，与回合并发且可中止。学界也有并行化压缩的工作。</li>
-    <li><b>让模型自己管</b> —— 压缩前先让 agent 把要紧的写进文件，比让摘要器去猜什么重要更可靠。这条几乎零成本，但做的人不多。</li>
+    <li><b>摘要即索引（Summary-as-Index）</b> —— 不再幻想用短短几百字包揽一切细节，而是让摘要成为一张清晰的外部导航地图，真正的原文落盘持久化。把“有损替代”升维成“冷热分层的外部长记忆”。</li>
+    <li><b>把繁重的收纳搬出主执行线程</b> —— 别让压缩拖慢用户的交互节奏。有的项目在后台做增量回收，甚至有平台把<b>全量压缩做成了独立的后台 Worker 进程</b>，与主逻辑并发运行，需要时随时可以优雅中止。</li>
+    <li><b>让模型自己记账（自主状态持久化）</b> —— 在触发系统压缩之前，主动提示 Agent：“请把当前的核心结论先写进本地文档”。自己整理的笔记，永远比别的模型事后瞎猜要准确十倍。</li>
   </ul>
 
   <div class="call key">
-    <span class="tag">接下来读什么</span>
-    这篇是学习路径，给的是<b>取舍和顺序</b>。具体到某一家怎么实现、常量是多少、源码在哪一行，
-    去看配套的知识库：<a href="../Agent_Context_Compression_Research.html">开源 Agent 平台的 Context Compression 机制研究</a> ——
-    横向核对十五个平台与生态；其中开源项逐文件读源码，附版本快照与一致性说明。
-    <br><br>
-    建议读法：<b>先按本篇的六层模型建立坐标系，再拿知识库当参考手册查</b>，
-    而不是从头读到尾。那篇三千多行，是拿来查的，不是拿来通读的。
+    <span class="tag">配套深度知识库怎么用？</span>
+    本篇教程给你的是一张<b>全局的技术思维地图与决策先后顺序</b>。<br>
+    如果你想深入追查某个具体开源平台的底层源码怎么写、某个神奇常数是在哪一行定义的、某个机制在代码里是如何实现的，请直接查阅我们的配套知识库：<br>
+    <a href="../Agent_Context_Compression_Research.html">开源 Agent 平台的 Context Compression 机制研究</a> ——
+    横向比对十五个主流平台与生态，开源项目逐文件精读源码，配齐版本快照与一致性证明。<br><br>
+    <b>推荐的最佳学习姿势</b>：以本篇建立的六层思维框架为坐标，把知识库当作身边的“工具词典”，遇到具体疑难随时翻查，千万不要从头到尾死记硬背！
   </div>
 </section>
 
@@ -708,13 +649,12 @@ if (window - used &lt; reserve) compact()</code></pre>
 <footer>
   <div class="foot-inner">
     <p>
-      本篇的所有机制、常量与实证数字均来自配套知识库，后者横向核对十五个平台与生态，
-      其中开源项逐文件阅读源码并标注版本快照；文档与源码冲突处以源码为准。
+      本篇涉及的所有工程机制、经验常量与量化实验数据，均严密溯源自配套知识库。知识库横向对齐十五个开源平台与工业级生态，开源部分逐文件深挖源码并标注版本快照；若官方文档与源码有出入，严格以代码实现为准。
     </p>
     <p>
       <a href="../../">← 返回 ML Learning Notes</a> ·
-      <a href="../Agent_Context_Compression_Research.html">知识库全文</a> ·
-      <a href="../skill-state/learn/">继续学习：SKILL.state 可视化论文解读</a>
+      <a href="../Agent_Context_Compression_Research.html">查看知识库全文</a> ·
+      <a href="../skill-state/learn/">进阶学习：SKILL.state 可视化论文深度解读</a>
     </p>
   </div>
 </footer>

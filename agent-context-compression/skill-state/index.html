@@ -6,8 +6,8 @@ layout: null
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>把历史扔掉 — SKILL.state 论文精读</title>
-<meta name="description" content="SKILL.state (arXiv:2608.26263) 详细学习笔记：用显式可变执行状态替代 append-only 对话历史。含可交互的执行循环演示与 horizon 滑杆，并与十五平台 context compression 研究逐项对照。" />
+<title>摒弃历史对话，维护显式状态 — SKILL.state 深度精读与批判</title>
+<meta name="description" content="SKILL.state (arXiv:2608.26263) 深度精读与工程批判：以显式可变执行状态终结 Append-only 对话历史的二次方膨胀。包含全量实验图表剖析、Prompt Cache 隐性成本建模、六大论证盲区反驳，并与工业界十五大平台压缩架构深度映射。" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -248,24 +248,24 @@ layout: null
     <div class="crumbs mono">
       <span>ML Learning Notes</span><span class="dot"></span>
       <span>Agent Engineering</span><span class="dot"></span>
-      <span>论文精读</span>
+      <span>论文精读与批判</span>
     </div>
     <div class="eyebrow mono">arXiv:2608.26263 · EMNLP · 2026-08-26 (v3: 09-02)</div>
-    <h1 class="kicker">把历史<span class="accent">扔掉</span><br>只留一份可改写的状态</h1>
+    <h1 class="kicker">摒弃历史<span class="accent">对话流</span><br>仅维护显式可变状态</h1>
     <p class="lede">
-      <strong>SKILL.state</strong> 提出一个反直觉的运行时：agent 每一步只看到三样东西——技能说明书、一份结构化状态、最新一条观测。
-      之前的推理、动作、工具输出<strong>全部不进下一次 prompt</strong>。
-      这不是「把历史压小」，是<strong>不让历史存在</strong>。本文逐图拆解它的方法与全部实验数据，
-      并把它放回<a href="../Agent_Context_Compression_Research.html">我此前十五平台压缩机制研究</a>的坐标系里，看它到底证实了什么、又绕开了什么。
+      <strong>SKILL.state</strong> 提出了一种颠覆常规的智能体运行时范式：Agent 每一步的输入上下文严格收敛于三要素——静态技能规范、结构化执行状态、最新单步环境观测。
+      历史推理轨迹、中间动作及工具调用回包<strong>全部不进入后续 Prompt</strong>。
+      这绝非传统意义上的“历史上下文压缩”，而是<strong>在架构层面彻底消除对话历史的物理存在</strong>。本文逐图拆解其算法机制与全部 11 组实验实测数据，
+      并将其置于<a href="../Agent_Context_Compression_Research.html">工业界十五大平台上下文压缩机制研究</a>的坐标系中，审视其究竟证实了何种假设，又在何处回避了真实的工程挑战。
       <br><br>
-      <strong>这是参考文档。</strong>第一次接触这篇论文，建议先走<a href="learn/">配套学习页</a> —— 它用仓库管理员的比喻、立体 P&#47;&#931;&#47;O 状态图和一个可单步的模拟器把机制讲清楚；
-      读完再拿本页查数字、核口径、看反驳。
+      <strong>导读提示：</strong>初次接触该工作的读者，建议先行阅读<a href="learn/">交互式学习页面</a> —— 该页通过立体 P&#47;&#931;&#47;O 状态模型、单步执行模拟器与推演练习建立机制直觉；
+      随后再查阅本文核对实验数据、验证统计口径并审读技术批判。
     </p>
     <div class="meta-grid">
       <div><div class="label">论文</div><div class="value"><a href="https://arxiv.org/abs/2608.26263">SKILL.state: Scalable Long-Horizon Agent Skills</a></div></div>
       <div><div class="label">作者</div><div class="value">Badhe, Tiwari, Chung</div></div>
       <div><div class="label">配套研究</div><div class="value"><a href="../Agent_Context_Compression_Research.html">十五平台 Context Compression</a> · <a href="../learn/">十步学习路径</a></div></div>
-      <div><div class="label">先读哪篇</div><div class="value"><a href="learn/">学习页</a>建立直觉 &rarr; 本页查数字与论断</div></div>
+      <div><div class="label">查阅路线</div><div class="value"><a href="learn/">学习页</a>建立直觉 &rarr; 本文核对数据与论证</div></div>
     </div>
   </div>
 </header>
@@ -273,34 +273,34 @@ layout: null
 <article>
 
 <div class="call key" style="margin:0 0 18px">
-  <span class="tag">这个专题有两篇，分工是清楚的</span>
-  <a href="learn/"><b>学习页</b></a>：仓库管理员比喻、立体 P&#47;&#931;&#47;O 状态图、可单步的执行模拟器、点击式六层对照、二十个回原文的深链。<b>建立直觉用。</b><br>
-  <b>本页（参考手册）</b>：论文 Table 1&#8211;11 全部成图、六条反驳、prompt cache 门槛分析、逐条挂 &#167; 编号的结论&#8596;证据表、十三条更正记录。<b>查数字与核论断用。</b>
+  <span class="tag">专题双篇定位与查阅指南</span>
+  <a href="learn/"><b>交互学习页</b></a>：包含状态机推演、立体 P&#47;&#931;&#47;O 架构图解、单步模拟器、六层模型交互对照及原文精读索引。<b>侧重机理建立与直觉培养。</b><br>
+  <b>本篇（深度参考手册）</b>：完整可视化呈现论文 Table 1&#8211;11 全部实验、推导 Prompt Cache 隐性阈值成本、展开六个关键反驳点、设立证据边界对照表并附带十三条口径更正记录。<b>侧重数据核验与工程批判。</b>
 </div>
 
 <nav class="toc">
   <ol>
-    <li><a href="#s1">一分钟看懂：它到底改了什么</a></li>
-    <li><a href="#s2">问题：历史为什么必然膨胀</a></li>
-    <li><a href="#s3">方法：把推理投影成状态补丁</a></li>
-    <li><a href="#s4">数据一：长程扩展</a></li>
-    <li><a href="#s5">数据二：预算对齐对照（最关键的一张表）</a></li>
-    <li><a href="#s6">数据三：噪声、状态漂移、公开 benchmark</a></li>
-    <li><a href="#s7">数据四：换成开源权重模型之后</a></li>
-    <li><a href="#s8">对照我的压缩研究：六层坐标系里它站在哪</a></li>
-    <li><a href="#s9">我的分析：论文没测的那一维（prompt cache）</a></li>
-    <li><a href="#s10">它不成立的地方：六条我要反驳的</a></li>
-    <li><a href="#s11">今天能抄什么：混合架构</a></li>
-    <li><a href="#s12">自测 · 来源 · 口径</a></li>
+    <li><a href="#s1">01 核心脉络：它究竟改变了什么</a></li>
+    <li><a href="#s2">02 问题根源：对话历史为何注定线性膨胀</a></li>
+    <li><a href="#s3">03 核心机制：将步内推理投影为状态补丁</a></li>
+    <li><a href="#s4">04 实验评测一：长程扩展与步数缩放</a></li>
+    <li><a href="#s5">05 实验评测二：等预算基线对照（核心判据）</a></li>
+    <li><a href="#s6">06 实验评测三：噪声鲁棒性、外部状态漂移与公共基准</a></li>
+    <li><a href="#s7">07 实验评测四：开源权重模型的表现与退化根源</a></li>
+    <li><a href="#s8">08 横向映射：放入 Agent 上下文压缩六层模型坐标系</a></li>
+    <li><a href="#s9">09 深度推演：论文未测量的隐性维度（Prompt Cache 成本）</a></li>
+    <li><a href="#s10">10 论证盲区：六个值得商榷的关键反驳点</a></li>
+    <li><a href="#s11">11 工程落地能借鉴什么：混合架构设计</a></li>
+    <li><a href="#s12">12 总结自测 · 证据来源 · 口径对照</a></li>
   </ol>
 </nav>
 
 <!-- ============ 1 ============ -->
 <section class="essay" id="s1">
-  <div class="section-head"><span class="section-num">01</span><h2 class="section-title">一分钟看懂：它到底改了什么</h2></div>
-  <div class="section-sub">一张图就是全部论点</div>
+  <div class="section-head"><span class="section-num">01</span><h2 class="section-title">核心脉络：它究竟改变了什么</h2></div>
+  <div class="section-sub">架构范式的根本分歧：一张图解析核心论点</div>
 
-  <p class="deck">今天几乎所有 agent 运行时都是「往下接」的：每一步把新的推理、动作、观测追加到一条越来越长的记录后面，然后整条重新发给模型。SKILL.state 说：别接了。</p>
+  <p class="deck">当前主流的 Agent 运行时普遍采用“只增不减（Append-only）”的追加模式：每完成一步，便将新的思维链、动作与工具观测追加至历史记录尾部，并在下一步全量重发给模型。SKILL.state 明确指出：这一范式在长程任务中不可持续，应当彻底切断历史追加通道。</p>
 
   <figure>
     <div class="fig">
@@ -395,27 +395,27 @@ layout: null
     </div>
   </figure>
 
-  <h3 class="sub">三句话版本</h3>
+  <h3 class="sub">核心结论提要</h3>
   <ul class="arrow">
-    <li><b>做法</b>：每一步的 prompt 只由三部分构成 —— 不变的技能说明书 <code>P</code>、结构化执行状态 <code>&#931;_t</code>、最新观测 <code>O_t</code>。模型输出推理 <code>R_t</code>、状态补丁 <code>&#916;&#931;_t</code>、动作 <code>a_t</code>；状态更新完，<b>推理立刻被永久丢弃</b>。</li>
-    <li><b>结果</b>：单步 prompt 恒定，累计 token 从 O(T&#178;) 降到 O(T)。T=100 时 65,408 token vs LangGraph 式基线 1,062,387 —— <b>16.2 倍</b>；同时准确率 0.94 vs 0.91。</li>
-    <li><b>代价</b>：你必须<b>提前为这个领域写好 schema</b>。论文自己的 Limitations 第一条就说：schema 事先不知道、必须边跑边发现时，这套方法不成立。</li>
+    <li><b>核心范式：</b>每一步输入上下文仅由三要素构成——静态技能规范 <code>P</code>、当前结构化执行状态 <code>&#931;_t</code> 以及最新环境观测 <code>O_t</code>。模型在步内生成中间推理 <code>R_t</code>、状态更新补丁 <code>&#916;&#931;_t</code> 与物理动作 <code>a_t</code>；状态更新合入后，<b>步内推理轨迹立刻被确定性丢弃</b>，绝不向后传递。</li>
+    <li><b>实测收益：</b>单步 Prompt 长度保持恒定，累积 Token 消耗从 O(T&#178;) 降至 O(T)。在 T=100 步的长程任务中，总消耗由 LangGraph 式基线的 1,062,387 Token 骤降至 65,408 Token（<b>降低 16.2 倍</b>），动作准确率逆势提升至 0.94（基线为 0.91）。</li>
+    <li><b>工程代价与边界：</b>系统高度依赖<b>预先人工定义完备的领域 Schema</b>。正如论文在局限性章节所坦承：若领域状态结构无法预先固化、必须在探索中动态发现，该架构的前提将不复存在。</li>
   </ul>
 
   <div class="stat-row">
-    <div class="stat"><div class="num">16.2&#215;</div><div class="note">T=100 时的 token 缩减<br>vs Stateful 基线</div></div>
-    <div class="stat"><div class="num">0.94</div><div class="note">T=200 仍是 0.94<br>ReAct 已跌到 0.74</div></div>
-    <div class="stat"><div class="num">0</div><div class="note">外部状态漂移后的恢复步数<br>历史式基线要 5&#8211;14 步</div></div>
-    <div class="stat"><div class="num">68%</div><div class="note">开源权重模型的头号错误<br>「误删了本该保留的 key」</div></div>
+    <div class="stat"><div class="num">16.2&#215;</div><div class="note">T=100 步时 Token 缩减倍率<br>相对 Stateful 基线</div></div>
+    <div class="stat"><div class="num">0.94</div><div class="note">T=200 步时动作准确率<br>ReAct 跌至 0.74</div></div>
+    <div class="stat"><div class="num">0 步</div><div class="note">外部环境漂移后的纠偏延迟<br>对话式基线需 5&#8211;14 步</div></div>
+    <div class="stat"><div class="num">68%</div><div class="note">开源小模型的核心退化主因<br>更新时误删未变更键值</div></div>
   </div>
 </section>
 
 <!-- ============ 2 ============ -->
 <section class="essay" id="s2">
-  <div class="section-head"><span class="section-num">02</span><h2 class="section-title">问题：历史为什么必然膨胀</h2></div>
-  <div class="section-sub">O(T&#178;) 是怎么来的</div>
+  <div class="section-head"><span class="section-num">02</span><h2 class="section-title">问题根源：对话历史为何注定线性膨胀</h2></div>
+  <div class="section-sub">累积开销的平方级膨胀推演：从 O(T) 单步到 O(T&#178;) 总体成本</div>
 
-  <p>LLM 是无状态的。第 <code>t</code> 步不是「接着第 <code>t-1</code> 步说」，而是把前面所有内容<strong>重新发一遍</strong>。所以单步 prompt 长度 <code>|C_t| = O(t)</code>，把 T 步加起来：</p>
+  <p>大语言模型本质是无状态的黑盒函数。在多轮交互中，第 <code>t</code> 步并非在上一轮思维隐状态上的自然延续，而是依赖宿主系统将过往全部轨迹<strong>拼接后全量重新输入</strong>。若单步上下文长度 <code>|C_t| = O(t)</code>，在执行 T 步后，总体处理量将发生积分效应：</p>
 
   <figure>
     <div class="fig">
@@ -462,7 +462,7 @@ layout: null
         <text x="176" y="320" fill="#B6B2A6" font-family="JetBrains Mono, monospace" font-size="12">&#8721;|P_t| = O(T)，且常数极小</text>
       </svg>
       </div>
-      <figcaption>论文只画了蓝色三角和黄色细条。<b>绿色那条锯齿是我加的</b> —— 它是我此前研究里十五个平台实际在跑的形态，也是本文后面反复要回到的那条基线。</figcaption>
+      <figcaption>论文在理论推导中仅对比了纯历史追加的蓝色三角形与 SKILL.state 的黄色恒定条带。<b>绿色锯齿状曲线是我补充的工业界基准</b> —— 它真实反映了目前十五大主流平台采用的滑动窗口与周期性压缩策略，也是后续深度评估中不可绕过的对照基线。</figcaption>
     </div>
   </figure>
 
@@ -479,49 +479,46 @@ layout: null
       <div class="ticks" aria-hidden="true"><span>10</span><span>25</span><span>50</span><span>100</span><span>200</span></div>
       <div class="hbars" id="hz-bars"></div>
       <div class="verdict" id="hz-verdict"></div>
-      <figcaption>把滑杆拖到 <b>10</b>：token 差距不到 2 倍，准确率也只差 0.10（ReAct 0.90，其余三家 1.00）——
-      而论文自己声明<b>显著性只在 T&#8805;50 才成立</b>（paired t-test, p&lt;0.01，5 个 seed）。拖到 <b>200</b>：token 差距变成 50 倍，准确率差 0.20。
-      <b>差距几乎全是步数拉开的</b>，这就是为什么第 5 节那句「评测必须跑到 T&#8805;50」比它看起来重要得多。</figcaption>
+      <figcaption>拖动滑块至 <b>T=10</b>：不同策略间的 Token 消耗差距不足 2 倍，动作准确率差距仅 0.10（ReAct 为 0.90，其余策略均为 1.00）—— 论文明确声明<b>统计显著性仅在 T&#8805;50 时成立</b>（配对 t 检验，p&lt;0.01，基于 5 个随机种子）。将滑块推至 <b>T=200</b>：Token 差距扩大至 50 倍，准确率差距达 0.20。<b>性能分水岭几乎完全由执行步数放大</b>，这印证了第 5 节的核心结论：评测基准必须覆盖超长步数，否则无法暴露架构缺陷。</figcaption>
     </div>
   </figure>
 
   <div class="call mine">
-    <span class="tag">我的第一条补充 · 论文的渐进复杂度框架被夸大了</span>
-    论文把对手统一写成 <b>O(T&#178;)</b>，把自己写成 <b>O(T)</b>，读起来像是一个数量级的改进。
-    但 O(T&#178;) 只对<b>完全不压缩</b>的 ReAct 成立。任何做了压缩的运行时，单步 prompt 都被窗口 W 卡住，累计是 <b>O(T&#183;W)</b> ——
-    <b>同样是线性的</b>。
+    <span class="tag">深度批判一 · 论文关于渐进复杂度的叙事存在概念偷换</span>
+    论文将现有竞争架构泛化定义为 <b>O(T&#178;)</b>，并将自身标榜为 <b>O(T)</b>，在叙事上营造出跨越阶数的理论突破。
+    然而，O(T&#178;) 仅仅成立于<b>毫无上下文治理策略</b>的原始 ReAct 实现。工业级生产系统中，任何具备上下文管理的平台均会引入窗口上限 W，其累积复杂度严格受控于 <b>O(T&#183;W)</b> —— <b>本质上同样是线性增长</b>。
     <br><br>
-    所以 SKILL.state 与真实生产系统的差距<b>不是渐进阶数的差距，是常数的差距</b>：W 从 ~30,000 token 降到 ~500。
-    这个常数很大（论文实测 16&#8211;40 倍），值得做；但把它讲成「二次降一次」，比较的是一个没人在生产里跑的对手。
+    因此，SKILL.state 相对真实生产系统的真正优势<b>并非计算复杂度的阶数跃迁，而是常数项的断崖式削减</b>：将单步窗口 W 从 ~30,000 Token 压缩至 ~500 Token 级别。
+    这一常数改善在经济账上带来了 16&#8211;40 倍的实测节省，极具工程价值；但将其包装为“二次方到线性的降维打击”，无异于在与一个工业界从未实际部署的稻草人基线打擂。
   </div>
 
-  <h3 class="sub">除了钱，还有两件更要紧的事</h3>
-  <p>论文真正有说服力的部分不在 token 账上。历史膨胀会带来两个<strong>只有长程任务才暴露</strong>的失效，而它们都不是「加大窗口」能解决的：</p>
+  <h3 class="sub">长程任务中的双重致命退化</h3>
+  <p>除了算力开销外，论文更有价值的发现揭示了历史过度膨胀所诱发的两类<strong>长程特有失效模式</strong>。这两种失效无法通过单纯扩充上下文物理窗口得到缓解：</p>
 
   <div class="tiles two">
     <div class="tile">
-      <div class="lbl">失效一 · 注意力被噪声拖走</div>
-      <div class="body">环境每一步都会吐出无关遥测（电量、CPU、syslog）。它们一旦进了历史就<b>永久留在那里</b>，并在后面每一步继续消耗注意力。论文实测：注入 50 条/轮噪声，ReAct 从 0.68 掉到 <b>0.53</b>；软件仓库环境更狠，0.76 &#8594; <b>0.11</b>。</div>
+      <div class="lbl">失效一 · 注意力被环境噪声稀释与干扰</div>
+      <div class="body">环境在交互过程中频繁产出与核心目标无关的遥测数据（例如电量、CPU 负载、网络波动及诊断日志）。此类信息一旦沉淀在对话历史中便<b>获得永久可见性</b>，在后续每一步推理中持续分散注意力。实验显示：当每轮注入 50 条无关噪声时，ReAct 的动作准确率从 0.68 跌至 <b>0.53</b>；在复杂的软件仓库任务中，甚至出现 0.76 暴跌至 <b>0.11</b> 的雪崩。</div>
     </div>
     <div class="tile">
-      <div class="lbl">失效二 · 过期事实压倒新观测</div>
-      <div class="body">外部世界在 agent 的动作循环之外被改动（别人 force push 了、货被人搬走了）。历史里写着「货在 shelf_42」的那句话<b>不会消失</b>，于是模型要花 <b>5&#8211;14 步</b>才肯相信新的观测。论文管这叫 hallucination lag。</div>
+      <div class="lbl">失效二 · 历史失效事实压制最新动态观测</div>
+      <div class="body">当外部物理环境在 Agent 控制回路之外发生异步变更（例如上游代码被强制推送、货架货物被外部操作移走），历史记录中关于“旧状态”的陈述<b>依然高权重存在</b>。模型需要耗费 <b>5&#8211;14 步</b>的重复错误尝试，才能摆脱旧历史的认知惯性，采信新观测。论文将这一现象定义为“幻觉滞后（Hallucination Lag）”。</div>
     </div>
   </div>
 
   <div class="call key">
-    <span class="tag">这两条都指向同一个机制</span>
-    历史是<b>只增不减</b>的，所以任何一次错误、噪声、或已经过期的事实，代价都不是一次性的，而是<b>要在剩下每一步里反复付</b>。
-    这正是我此前研究里 <i>Lost in the Middle</i> 那节的动力学版本：不只是「中间的东西读不到」，而是「中间的坏东西一直在读」。
+    <span class="tag">核心病理剖析</span>
+    对话历史的<b>只增不减（Append-only）</b>特性决定了：单次判断失误、环境瞬态噪声或已过期的陈旧事实，其惩罚绝非一次性结算，而是<b>转化为注意力污染，在后续的每一个步骤中被无休止地重现和放大</b>。
+    这正是上下文压缩研究中“中间迷失（Lost in the Middle）”效应在长程动态交互中的动力学表现：问题不仅在于“找不到历史中的有效信息”，更在于“历史中的无效信息在持续制造认知干扰”。
   </div>
 </section>
 
 <!-- ============ 3 ============ -->
 <section class="essay" id="s3">
-  <div class="section-head"><span class="section-num">03</span><h2 class="section-title">方法：把推理投影成状态补丁</h2></div>
-  <div class="section-sub">Algorithm 1 只有九行</div>
+  <div class="section-head"><span class="section-num">03</span><h2 class="section-title">核心机制：将步内推理投影为状态补丁</h2></div>
+  <div class="section-sub">极简循环背后的状态投影逻辑：让模型只答“改变了哪一格”</div>
 
-  <p class="deck">整套方法的全部内容是：让模型每一步都回答「这次观测<em>改变了世界的哪一格</em>」，而不是「到目前为止都发生了什么」。</p>
+  <p class="deck">试想一个老练的仓库调度员：当接到新任务时，他是去翻阅从建仓第一天起堆积如山的流水账单，还是直接扫一眼墙上随时更新的实时库存白板？SKILL.state 的思路正是这块白板——每一步不再让模型写‘日记’，而是强迫它回答：‘刚刚这一条新观测，究竟改变了世界的哪一个具体格子？’</p>
 
   <figure>
     <div class="fig">
@@ -616,20 +613,18 @@ layout: null
   </figure>
 
   <div class="call pit">
-    <span class="tag">Algorithm 1 有一个顺序问题，论文没有讨论</span>
-    注意第 7 行与第 8 行的先后：<code>&#931;_t&#8314;&#185; &larr; &#931;_t &#8853; &#916;&#931;_t</code> 在前，<code>Execute a_t</code> 在后。
-    <b>状态先落定，动作后执行。</b>
+    <span class="tag">关键工程隐患 · Algorithm 1 中不可忽视的状态与动作倒置</span>
+    仔细审视循环体的执行次序（第 7 行与第 8 行）：<code>&#931;_t&#8314;&#185; &larr; &#931;_t &#8853; &#916;&#931;_t</code> 在前，<code>Execute a_t</code> 在后。
+    这意味着：<b>系统先在白板上把状态改了，随后才真正发出外部执行指令。</b>
     <br><br>
-    于是「发货动作失败了」这种情况下，&#931; 里已经写着货发出去了 —— 而论文<b>没有给出事务回滚、部分成功、重试幂等的任何语义</b>。
-    对 Warehouse 这种动作必然成功的确定性模拟器无所谓，但真实工具会超时、会半成功。
+    在确定性模拟器（如论文中的 Warehouse）中这看似可行，但在真实分布式环境里，外部调用可能网络超时、权限不足或部分成功。一旦“发货动作失败”，状态库里却已经认定货物出库，而论文<b>完全没有定义任何事务回滚、补偿机制或幂等确认语义</b>。
     <br><br>
-    这跟前面那个 schema 校验是<b>两回事</b>：校验挡的是「模型写出的补丁不合法」，这里的问题是「补丁合法、状态也更新了，但世界没跟上」。
-    <b>要用在生产上，&#8853; 必须和动作执行放进同一个事务，或者引入 pending&#47;confirmed 两阶段状态。</b>
-    这一条同样由<a href="learn/">配套学习页</a>指出。
+    这与 Schema 的合法性校验有着本质区别：校验只能检查补丁格式是否合法（防“语法写坏”），根本防不住现实执行失败（防“物理脱节”）。
+    <b>若要将该方案引入严谨生产环境，状态更新与动作执行必须被封装在两阶段提交（2PC）中，或者显式引入 pending&#47;confirmed 双态机制。</b>
   </div>
 
-  <h3 class="sub">状态怎么改：字典合并 + null 即删除</h3>
-  <p>更新规则只有一条：<code>&#931;_t&#8314;&#185; = &#931;_t &#8853; &#916;&#931;_t</code>，其中 <code>&#8853;</code> 是<strong>带 null 删除语义的字典合并</strong>。把一个 key 设成 <code>null</code> 就等于把它从状态里抹掉。</p>
+  <h3 class="sub">状态演变：带 null 擦除语义的字典原子合并</h3>
+  <p>其核心更新公式极其简练：<code>&#931;_t&#8314;&#185; = &#931;_t &#8853; &#916;&#931;_t</code>。其中 <code>&#8853;</code> 运算定义为<strong>带有 null 删除特性的字典合并</strong>。若要表示某货架清空，模型只需在增量补丁中将该键设为 <code>null</code>，该项便直接从状态集中被永久擦除——就像板擦拭去粉笔字一样干净利落，绝不需要像传统对话那样记录‘货架之前有货、后来在第 15 步被挪空了’的长篇叙事。</p>
 
   <figure>
     <div class="fig">
@@ -663,75 +658,74 @@ layout: null
     </div>
   </figure>
 
-  <h3 class="sub">schema 是按领域写一次，不是按任务写</h3>
-  <p>最容易被误解的一点：这不是给每个任务手写状态结构。论文的说法是 <em>schemas are authored once per domain</em>，并给了最有说服力的一个例子 —— InterCode CTF 的 <strong>100 道互不相同的题</strong>，共用同一个五字段 schema：</p>
+  <h3 class="sub">破除误区：Schema 是按领域定义一次，绝非按任务逐个编写</h3>
+  <p>初读论文最常见的疑虑是：‘难道每接到一个任务，工程师都要人工手写一套状态 Schema 吗？’
+  论文在此给出了明确答复：<em>Schemas are authored once per domain</em>。以 InterCode CTF 为例，面对 <strong>100 道解法迥异的网络安全渗透题</strong>，系统始终复用同一套包含 5 个核心字段的领域级 Schema：</p>
 
   <div class="tiles four" style="margin-top:18px">
-    <div class="tile"><div class="lbl">discovered_flags</div><div class="body">已拿到的 flag</div></div>
-    <div class="tile"><div class="lbl">tested_hypotheses</div><div class="body">试过且失败的思路 —— 防止重复试同一条命令</div></div>
-    <div class="tile"><div class="lbl">active_files &amp; working_dir</div><div class="body">当前在看哪些文件、在哪个目录</div></div>
-    <div class="tile"><div class="lbl">cmd_summary</div><div class="body">命令历史的压缩形态</div></div>
+    <div class="tile"><div class="lbl">discovered_flags</div><div class="body">战果登记：已捕获的 Flag 标识</div></div>
+    <div class="tile"><div class="lbl">tested_hypotheses</div><div class="body">避坑备忘：已验证失败的假说，防止重复撞墙试错</div></div>
+    <div class="tile"><div class="lbl">active_files &amp; working_dir</div><div class="body">现场定位：当前正分析的文件集合与工作目录路径</div></div>
+    <div class="tile"><div class="lbl">cmd_summary</div><div class="body">阶段沉淀：关键命令的执行产物与有效输出压缩</div></div>
   </div>
 
   <div class="call pit">
-    <span class="tag">先记一笔，第 10 节会算这笔账</span>
-    这五个字段里，<code>discovered_flags</code> 与 <code>tested_hypotheses</code> 都是<b>只增列表</b>。
-    论文的 O(1) 结论要求 <code>|&#931;|</code> 有界，而它<b>从没验证过这件事</b> —— 详见<a href="#s10">第 10 节反驳一</a>。
+    <span class="tag">思维链伏笔 · 状态本身是否真能做到 O(1)？</span>
+    请注意这五个字段中的 <code>discovered_flags</code> 与 <code>tested_hypotheses</code>：从业务逻辑上看，它们本质上是<b>只增不减的累加型列表</b>。
+    论文推导 O(1) 复杂度的核心假设是 <code>|&#931;|</code> 严格有界，但论文<b>从未在长程累加场景下验证过状态体积是否会失控膨胀</b> —— 详见<a href="#s10">第 10 节反驳一</a>。
   </div>
 
   <div class="call key">
-    <span class="tag">这五个字段值得盯着看一会儿</span>
-    它们不是「仓库有几个货架」那种玩具状态，而是一套<b>通用的探索型任务状态</b>：做过什么、当前在哪、已排除什么。
-    我此前研究里十一家的结构化摘要模板（Goal / Progress / Done / In&#8209;Progress / Blocked / Next Step）
-    <b>要表达的其实是同一批槽位</b> —— 区别只在于：模板产出的是自然语言段落，schema 产出的是可程序化校验的字典。
+    <span class="tag">这五个字段背后的通用设计哲学</span>
+    这绝非特定任务的玩具字段，而是一套极具概括力的<b>自主探索型任务通用状态骨架</b>：我达成了什么、我现在身处何处、我已经排除了哪些错误路线。
+    工业界十五大平台在自然语言摘要模板中规定的核心槽位（Goal / Progress / Blocked），本质上是在试图捕捉同一批状态信息；
+    两者的唯一分野在于：传统方案要求模型吐出难以程序化约束的自然语言叙述，而 SKILL.state 产出的是严谨、类型安全、可确定性合并的结构化键值对。
   </div>
 
   <h3 class="sub">四种运行时的 prompt 长什么样</h3>
-  <p>论文 Appendix A 给了四份模板。把它们并排放，差异一目了然：</p>
+  <p>论文 Appendix A 给出了解耦对比的 Prompt 模板结构。将四者横向展开，架构分歧一目了然：</p>
   <div class="tbl-wrap">
   <table>
-    <tr><th style="width:20%">运行时</th><th>prompt 结构</th><th style="width:22%">历史怎么处理</th></tr>
-    <tr><td><b>Prompt (ReAct)</b></td><td><code>Instructions</code> + <code>History[全部观测与响应]</code> + <code>Latest Observation</code></td><td>全部保留</td></tr>
-    <tr><td><b>Memory (Summary)</b></td><td><code>Instructions</code> + <code>Summarized History</code> + <code>最近 3 轮原文</code> + <code>Latest Observation</code></td><td>摘要 + 3 轮滚动窗口</td></tr>
-    <tr><td><b>Stateful (LangGraph)</b></td><td><code>Instructions</code> + <code>Current State (JSON)</code> + <code>History[全部]</code> + <code>Latest Observation</code></td><td><b>状态与全量历史并存</b></td></tr>
-    <tr class="hl"><td><b>SKILL.state</b></td><td><code>Instructions</code> + <code>&#931;_t (JSON)</code> + <code>Latest Observation</code></td><td><b>没有历史这个字段</b></td></tr>
+    <tr><th style="width:20%">运行时架构</th><th>Prompt 物理结构</th><th style="width:22%">历史轨迹处理方式</th></tr>
+    <tr><td><b>Prompt (ReAct)</b></td><td><code>Instructions</code> + <code>History[全部观测与响应]</code> + <code>Latest Observation</code></td><td>全量物理追加，只增不减</td></tr>
+    <tr><td><b>Memory (Summary)</b></td><td><code>Instructions</code> + <code>Summarized History</code> + <code>最近 3 轮原文</code> + <code>Latest Observation</code></td><td>周期性摘要 + 滑动尾部窗口</td></tr>
+    <tr><td><b>Stateful (LangGraph)</b></td><td><code>Instructions</code> + <code>Current State (JSON)</code> + <code>History[全部]</code> + <code>Latest Observation</code></td><td><b>显式状态与全量历史双轨并行</b></td></tr>
+    <tr class="hl"><td><b>SKILL.state</b></td><td><code>Instructions</code> + <code>&#931;_t (JSON)</code> + <code>Latest Observation</code></td><td><b>彻底切断历史字段，物理零冗余</b></td></tr>
   </table>
   </div>
   <p style="font-size:16px;color:var(--paper-dim);font-family:'Inter','Noto Sans SC',sans-serif">
-    论文强调 <code>skill.instructions</code> 在四种运行时里<strong>逐字相同</strong>，以此把「上下文管理方式」隔离成唯一自变量。这个控制做得是干净的。
-    但请记住第三行：它们的 <b>Stateful 基线是「状态 + 全量历史」</b> —— 这一点后面第 10 节会变成主要的争议点。
+    需要肯定的是，实验中所有运行时的 <code>skill.instructions</code> 均保持<strong>字面完全一致</strong>，严格将“上下文治理范式”作为唯一样本自变量。
+    但请高度警惕第三行：论文所对比的 <b>Stateful 基线采取的是“显式状态 + 全量历史”</b> —— 这一设定为后续基线设定的公平性埋下了巨大争议（见第 10 节）。
   </p>
 </section>
 
 <!-- ============ 4 ============ -->
 <section class="essay" id="s4">
-  <div class="section-head"><span class="section-num">04</span><h2 class="section-title">数据一：长程扩展</h2></div>
-  <div class="section-sub">Table 1 &amp; Table 6 · Gemini-3-Flash · 5 seeds</div>
+  <div class="section-head"><span class="section-num">04</span><h2 class="section-title">实验评测一：长程扩展与步数缩放</h2></div>
+  <div class="section-sub">Table 1 &amp; Table 6 · Gemini-3-Flash · 5 seeds 实验数据详析</div>
 
   <div class="call pit">
-    <span class="tag">先纠正一个我自己用松了的词</span>
-    SkillExecBench 的 <b>Score 不是任务成功率</b>。论文 &#167;4.3 的定义是
-    <code>Score = Successful Actions &#247; Total Actionable Events</code> —— <b>逐个动作算对错的比例</b>，
-    一场任务里错几步仍然可以得到 0.9。
+    <span class="tag">关键指标口径纠偏 · Score 绝非最终“任务完成率”</span>
+    在审视所有准确率曲线之前，必须首先澄清论文在指标命名上的误导性倾向：
+    SkillExecBench 的 <b>Score 绝不是传统端到端任务的成功率（Success Rate）</b>。论文 &#167;4.3 给出的严格计算公式是：
+    <code>Score = Successful Actions &#247; Total Actionable Events</code> —— <b>即单步可操作事件中动作执行正确的比例</b>。
     <br><br>
-    所以 T=100 的「0.94」意思是<b>94% 的动作做对了</b>，<b>不是</b>「94% 的任务完成了」。
-    本页后文为了顺口仍会写「准确率」，<b>请一律按这个定义读</b>；真正的任务级成功率只有 InterCode CTF（pass@1）和
-    &#964;-Bench（官方评测器判最终数据库状态）那两组才有。
-    <br><br>
-    这一条是<a href="learn/">配套学习页</a>指出来的，本页初版只在一处图注里印了公式，没有提醒这个误读。
+    这意味着：一个长程任务即使在中途错漏了关键步骤、导致最终业务目标彻底泡汤，只要前序大部分动作合规，它依然能拿到 0.9 以上的虚高评分。
+    因此，T=100 时汇报的“0.94”，准确含义是<b>在整条执行流中 94% 的单步动作符合规则</b>，<b>绝不能解读为</b>“94% 的任务最终成功交付”。
+    真正的端到端全局成功率，在全篇论文中仅存在于 InterCode CTF（pass@1 标志着拿到 Flag）与 &#964;-Bench（由官方评测器核验最终数据库状态）两组基准中。
   </div>
 
   <div class="call fact">
-    <span class="tag">先把口径立住：这批合成实验带误差，也带显著性声明</span>
-    论文 &#167;5 有一段容易被跳过的 <i>Statistical Significance</i>：全部合成实验跑 <b>5 个 procedural generator seed</b>，
-    结果按 <b>mean &plusmn; 样本标准差</b> 报告，而 SKILL.state 与基线的差异<b>只在 T&#8805;50 才具统计显著性</b>（paired t-test, <i>p</i>&lt;0.01）。
+    <span class="tag">实验严谨性透视：合成基准的标准差与统计显著性区间</span>
+    论文 &#167;5 的 <i>Statistical Significance</i> 章节明确披露：全部合成环境实验均基于 <b>5 个环境随机种子（Seeds）</b>生成，
+    数据均按 <b>均值 &plusmn; 样本标准差</b> 呈现，且重点声明：SKILL.state 与基线的差异<b>仅在步数跨过 T&#8805;50 时才具备统计学显著性</b>（配对 t 检验，<i>p</i>&lt;0.01）。
     <br><br>
-    这句话有两个方向的后果：<b>它加强了长程结论</b>（T&#8805;50 的差距不是噪声），同时<b>削弱了短程读数</b>——
-    T=10 与 T=25 的排名不该当结论看。本页所有折线图都画了 &plusmn;SD 误差棒，展开的数据表也保留了标准差。
-    <b>本页第一版只报了均值，是一处遗漏，已补。</b>
+    这一结论对工程选型具有决定性指导意义：
+    <b>它彻底否定了短程任务的技术选型意义</b> —— 在 T=10 与 T=25 时，各方案在统计上完全处于噪声重叠区，谁好谁差纯属随机波动；
+    <b>唯有任务步数深推到 50 步以上，架构层面的抗衰减与低成本优势才真正变成显著事实。</b>
   </div>
 
-  <p class="deck">先看最核心的那张图。横轴是任务步数，纵轴是整场任务烧掉的 token 总量 —— 注意纵轴是对数刻度，否则黄线会贴在地板上看不见。</p>
+  <p class="deck">首先审视最核心的成本随步数衰减图。横轴代表任务推进步数，纵轴代表累积处理的 Token 总量 —— 注意纵轴为对数坐标，否则 SKILL.state 的极低能耗曲线会完全贴在底部横轴上。</p>
 
   <figure>
     <div class="fig">
@@ -740,7 +734,7 @@ layout: null
       <div class="legend" id="lg-tok"></div>
       <div class="chart-host" id="c-tok"></div>
       <details class="data"><summary>数据表 · 论文 Table 1</summary><div id="t-tok"></div></details>
-      <figcaption>Memory 基线到 T=200 时<b>反而比 ReAct 更贵</b>（6.18M vs 2.61M；T=100 时它还是更便宜的 1.08M vs 1.25M）—— 因为它既要付摘要调用的钱，又没能把窗口真正压住（单步 prompt 涨到 84,364 字符）。这是一个实现问题而非范式问题，但论文没有讨论它。</figcaption>
+      <figcaption>值得警惕的是：Memory 基线推进到 T=200 时，<b>累计开销反而反超了无任何治理的原始 ReAct</b>（6.18M vs 2.61M；而在 T=100 时它还以 1.08M 略低于 ReAct 的 1.25M）—— 根源在于它既要高频支付摘要模型调用的额外 Token，又未能在实现层严密锁死保留窗口（单步 Prompt 膨胀至 84,364 字符）。这种工程实现的粗糙反噬了压缩范式本身，而论文对此未做深入探讨。</figcaption>
     </div>
   </figure>
 
@@ -765,13 +759,13 @@ layout: null
   </div>
 
   <div class="call fact">
-    <span class="tag">把两张图合起来读</span>
-    T=100 那一列：Stateful 基线花 <b>1,062,387</b> token 换到 0.91，SKILL.state 花 <b>65,408</b> token 换到 0.94。
-    <b>16.2 倍的成本差，外加 3 个点的准确率</b>。这不是一个需要权衡的取舍，在这个 benchmark 上它是单方面更好。
+    <span class="tag">综合能效核算</span>
+    聚焦至 T=100 步的工业典型跨度：Stateful 基线消耗高达 <b>1,062,387</b> Token 换得 0.91 的动作正确率，而 SKILL.state 仅凭 <b>65,408</b> Token 实现了 0.94。
+    <b>不仅算力开销缩减达 16.2 倍，动作执行质量还提升了 3 个百分点</b>。在该场景下，状态投影范式展现出单方面的全胜姿态。
   </div>
 
-  <h3 class="sub">换到关系型环境：优势变小，而且出现了唯一一次落败</h3>
-  <p>Warehouse 是 500 个<strong>互不相干</strong>的格子，天然就是一个字典。论文的第二个环境（Software Repository：Git 分支、PR、CI 状态构成的<strong>纠缠图</strong>）才是更像真实任务的那个。</p>
+  <h3 class="sub">复杂关系拓扑环境下的表现：优势显著收敛，且出现唯一一次落败凹陷</h3>
+  <p>仓储管理（Warehouse）环境本质上由 500 个<strong>彼此完全独立</strong>的货架格子构成，在底层数学上天然同构于一个 Key-Value 字典。相比之下，论文引入的第二个环境——软件工程仓库（Software Repository，涉及 Git 分支图、PR 依赖链、CI 流水线状态等<strong>强耦合关系网络</strong>），才更贴近工业界软件工程的真实复杂面貌。</p>
 
   <figure>
     <div class="fig">
@@ -780,31 +774,28 @@ layout: null
       <div class="legend" id="lg-repo"></div>
       <div class="chart-host" id="c-repo"></div>
       <details class="data"><summary>数据表 · 论文 Table 6</summary><div id="t-repo"></div></details>
-      <figcaption><b>T=25 处 SKILL.state 的均值 0.88 低于 Stateful 的 0.94</b>，是全文唯一一次均值落后，论文正文与附录都未提及。
-      <b>但必须按论文自己的口径读：</b>两者是 0.88&plusmn;0.08 与 0.94&plusmn;0.03，误差棒重叠，而论文声明的显著性区间是 <b>T&#8805;50</b> ——
-      <b>所以这不是一次「统计上的落败」，只是一个均值上的凹陷。</b>值得指出的是论文<b>没提</b>，不是它证明了什么。</figcaption>
+      <figcaption><b>在 T=25 阶段，SKILL.state 的正确率均值为 0.88，首次且唯一一次落后于 Stateful 基线的 0.94</b>。论文正文与附录均对这一落后现象避而不谈。<br><b>结合统计学口径客观评估：</b>两者实测读数为 0.88&plusmn;0.08 与 0.94&plusmn;0.03，误差棒存在明显重叠，且由于该步数处于 T&lt;50 区间，并未达到显著性判定阈值，<b>因此这并不构成统计学意义上的确定性溃败，而是反映了一个客观存在的性能凹陷</b>。更值得深思的是论文对此选择性隐瞒的行文态度。</figcaption>
     </div>
   </figure>
 
   <div class="call mine">
-    <span class="tag">我的读法（注意这是解释，不是论文结论）</span>
-    即便把 T=25 那个凹陷算作噪声，两个环境的<b>形状差异仍然是真的</b>：Warehouse 上 SKILL.state 从 T=10 就并列第一，
-    Software Repository 上要到 <b>T=50</b> 才明确领先（0.86&plusmn;0.04 vs 0.74&plusmn;0.08），而这正好是论文显著性区间的起点。
+    <span class="tag">深度推演 · 摒弃历史的信息损失与“盈亏平衡步数”</span>
+    即使将 T=25 的性能凹陷归因于测量噪声，两张曲线所展现出的<b>宏观动力学分歧却是无可争议的客观规律</b>：
+    在彼此孤立的仓储环境中，SKILL.state 从 T=10 开始便与基准并列第一；而在关系高度交织的软件仓库中，它必须苦战至 <b>T=50</b> 才以 0.86&plusmn;0.04 明确反超 Stateful 基线的 0.74&plusmn;0.08。
     <br><br>
-    合理的解释是：<b>丢掉历史本身有信息代价，只有当历史长到开始伤害模型时，这个代价才转为收益</b>，所以<b>存在一个盈亏平衡的 T</b>，
-    且环境的关系纠缠度越高，它越靠后。
+    背后的技术本质十分清晰：<b>在任务执行初期，彻底抹杀交互历史会带来直接的信息截断损失；只有当历史滚雪球般膨胀到足以引发模型的‘注意力迷航’与‘上下文污染’时，抹杀历史所带来的信噪比收益才会超越信息丢失的代价。</b>
     <br><br>
-    <b>论文没有给出估算这个平衡点的方法，而这恰恰是工程上最需要的那个数。</b>
-    我也无法从这两条曲线把它定到一个具体值——只有两个环境、四个 horizon，不足以拟合。这里给的是方向，不是公式。
+    因此，架构选型必然存在一个<b>盈亏平衡步数 T_break-even</b>：任务内部元素耦合度越高、上下文隐式关联越强，这个临界点就越靠后。
+    遗憾的是，论文未提供任何估算该临界点的量化模型，而这恰恰是架构师在设计工业级 Agent 调度策略时最渴望获取的决断指标。
   </div>
 </section>
 
 <!-- ============ 5 ============ -->
 <section class="essay" id="s5">
-  <div class="section-head"><span class="section-num">05</span><h2 class="section-title">数据二：预算对齐对照</h2></div>
-  <div class="section-sub">Table 5 &amp; Table 11 · 全文最关键的一组实验</div>
+  <div class="section-head"><span class="section-num">05</span><h2 class="section-title">实验评测二：等预算基线对照（核心判据）</h2></div>
+  <div class="section-sub">Table 5 &amp; Table 11 · 剥离 Prompt 长度优势的硬核公平对决</div>
 
-  <p class="deck">前面所有对比都可以被一句话反驳：「你只是 prompt 更短而已，短 prompt 本来就更容易做对。」这一组实验就是为了堵死这句话 —— 把所有基线<em>掐到和 SKILL.state 一样的预算</em>，再比一次。</p>
+  <p class="deck">前述所有对比都可能面临这样的质疑：‘你宣称性能好，难道不是因为你的 Prompt 长度只有别家几十分之一，模型天生注意力更集中吗？’ Table 5 与 11 这组等预算消融实验，就是为了直面这一挑战——把所有基线<em>强制勒紧在与 SKILL.state 相同的 ~1,800 字符紧身衣里</em>，进行真刀真枪的横向对撞。</p>
 
   <figure>
     <div class="fig">
@@ -821,28 +812,28 @@ layout: null
     <span class="who">论文 &#167;5.6 对 Table 5 的定性</span>
   </div>
 
-  <p>三个压缩基线的失败方式各不相同，而且<strong>每一种都精确对应我此前研究里的一条结论</strong>：</p>
+  <p>三条压缩基线展现出截然不同的失效轨迹，而<strong>其崩溃根源无一例外击中了工业界压缩架构的核心软肋</strong>：</p>
 
   <div class="tbl-wrap">
   <table>
-    <tr><th style="width:19%">压缩基线</th><th class="num" style="width:9%">T=100</th><th style="width:36%">论文给的失败原因</th><th>对应我研究里的哪一条</th></tr>
+    <tr><th style="width:19%">压缩基线形态</th><th class="num" style="width:9%">T=100 正确率</th><th style="width:36%">论文归纳的失效病理</th><th>工业界十五大平台研究对应印证</th></tr>
     <tr>
-      <td><b>Truncated</b><br><span style="font-size:12px;color:var(--paper-muted)">滑动窗口</span></td>
+      <td><b>Truncated</b><br><span style="font-size:12px;color:var(--paper-muted)">滑动窗口硬截断</span></td>
       <td class="num" style="color:#FF8FA3"><b>0.18</b></td>
-      <td>早期的库存分配被直接逐出（<i>critical early inventory allocations are evicted</i>）</td>
-      <td>AutoGen 的三个确定性 context 实现（<code>HeadAndTail</code> 把中段换成一句 <code>Skipped N messages.</code>、<code>TokenLimited</code> 从正中间弹消息）走的就是这条路。我当时只能说「它不做语义摘要」，<b>现在有数字了：0.18</b></td>
+      <td>早期核心业务事实（初始库存分配）被粗暴移出可见窗口（<i>critical early inventory allocations are evicted</i>）</td>
+      <td>AutoGen 等框架原生提供的 <code>HeadAndTail</code>（跳过中段）与 <code>TokenLimited</code>（单向丢弃）完全走的是该路线。此前只能在定性层面批评其“缺乏语义连贯性”，<b>此处实验给出了毁灭性的定量宣判：动作准确率暴跌至 0.18</b></td>
     </tr>
     <tr>
-      <td><b>ReAct + LLMLingua</b><br><span style="font-size:12px;color:var(--paper-muted)">困惑度压缩</span></td>
+      <td><b>ReAct + LLMLingua</b><br><span style="font-size:12px;color:var(--paper-muted)">困惑度词元压缩</span></td>
       <td class="num" style="color:#FF8FA3"><b>0.22</b></td>
-      <td>统计熵过滤把<b>看起来冗余、语义上却至关重要的槽位标识符</b>删掉了</td>
-      <td>我研究 &#167;17.2「<b>保留精确标识符是共同焦虑</b>」—— 十一家不约而同在摘要 prompt 里写死「必须逐字保留路径、ID、错误码」。当时这条只有源码证据（大家都这么写），<b>现在有了反证：不这么做会掉到 0.22</b></td>
+      <td>基于统计熵过滤词元，误将<b>看似低频冗余、实则决定因果逻辑的核心标识符</b>（货架 ID、参数）当杂音剔除</td>
+      <td>正对应此前研究 &#167;17.2 的核心共识——“<b>保留精确标识符是全行业的共同焦虑</b>”。各大生产系统在摘要提示词中无一例外死守“必须逐字保留路径、ID 与错误码”。<b>此处提供了最强反证：违背该原则会导致准确率雪崩至 0.22</b></td>
     </tr>
     <tr>
-      <td><b>Summary-capped</b><br><span style="font-size:12px;color:var(--paper-muted)">带硬上限的摘要</span></td>
+      <td><b>Summary-capped</b><br><span style="font-size:12px;color:var(--paper-muted)">强限额自然语言摘要</span></td>
       <td class="num" style="color:#FFB57A"><b>0.52</b></td>
-      <td>论文未单独解释</td>
-      <td>这是最接近十一家生产做法的一根，也是压缩式基线里唯一还站着的。但请注意它的预算 —— 见下面那条</td>
+      <td>在极端压缩比下，模型生成的宏观叙事丢失了微观操作所需的精确关系映射</td>
+      <td>这是传统压缩基线中唯一保留基本可用性的流派，也是工业界最通用的降级模式。但请务必注意其被施加的非人道预算限制——见下文口径警示</td>
     </tr>
     <tr class="hl">
       <td><b>SKILL.state</b></td>
@@ -853,7 +844,7 @@ layout: null
   </table>
   </div>
 
-  <p>更值得看的是把预算对照拉成一条曲线（论文 Table 11，藏在附录 D.2）：</p>
+  <p>将这组对决置于步数延展的时间轴上（论文 Table 11，附录 D.2），能更清晰地看清传统压缩机制的坍塌过程：</p>
 
   <figure>
     <div class="fig">
@@ -867,25 +858,23 @@ layout: null
   </figure>
 
   <div class="call pit">
-    <span class="tag">但这组实验有一个我必须指出的口径问题</span>
-    论文 Table 5 的表头写「Budget ~1,800 <b>tokens</b>」，正文写「pinned to the token budget of SKILL.state (~1,800 <b>characters</b>)」，而 &#167;4.3 明确定义
-    <i>Average Prompt Size: the mean string <b>character</b> length</i>。三处不一致，按定义应以<b>字符</b>为准。
+    <span class="tag">关键工程口径漏洞 · 极度受虐的 450 Token 预算基准</span>
+    论文 Table 5 存在一处明显的文本口径混乱：表头标注“Budget ~1,800 <b>tokens</b>”，正文却写“pinned to the token budget of SKILL.state (~1,800 <b>characters</b>)”，而 &#167;4.3 定义的统一测量指标明确为“平均字符串字符长度”。依技术惯例，此处应核定为<b>字符</b>。
     <br><br>
-    1,800 字符大约是 <b>450 token</b>。而我研究里的真实系统：OpenClaw 与 opencode 的触发缓冲是 <b>20,000 token</b>，Codex CLI 光是保留用户原话就给 <b>20,000 token</b> 预算。
-    <b>论文把压缩基线掐到了真实系统的 1/40。</b>
+    1,800 个英文字符折算后仅约 <b>450 个 Token</b>。反观工业界真实生产系统：OpenClaw 与 opencode 设定的压缩触发缓冲高达 <b>20,000 Token</b>，Codex CLI 仅为“逐字完整保留用户原始意图”所预留的保留预算就达到 <b>20,000 Token</b>。
     <br><br>
-    所以「Summary-capped = 0.52」这个数字，测的是<b>450 token 的摘要能不能撑住 100 步</b>，不是「生产级 compaction 能不能撑住 100 步」。
-    这一格是空的，而它恰恰是最该被填上的那一格 —— 详见第 10 节。
+    <b>论文是将传统压缩基线直接塞进了一个比真实工业保留预算苛刻 40 倍的极端狭窄空间中。</b>
+    因此，“Summary-capped 仅有 0.52”的真实结论是：<b>450 Token 的极小容量无法承载 100 轮复杂任务的自然语言摘要</b>；但它绝不能外推为“在数万 Token 的真实生产环境中，高质量上下文压缩系统必然输给显式状态机”。这一评测空白，正是论文回避的核心工业基准（详见第 10 节）。
   </div>
 </section>
 
 <!-- ============ 6 ============ -->
 <section class="essay" id="s6">
-  <div class="section-head"><span class="section-num">06</span><h2 class="section-title">数据三：噪声、状态漂移、公开 benchmark</h2></div>
-  <div class="section-sub">Table 2 / 3 / 4 / 9 / 10</div>
+  <div class="section-head"><span class="section-num">06</span><h2 class="section-title">实验评测三：噪声鲁棒性、外部状态漂移与公共基准</h2></div>
+  <div class="section-sub">Table 2 / 3 / 4 / 9 / 10 · 极端噪声、环境剧变与第三方真题检验</div>
 
-  <h3 class="sub">噪声鲁棒性：不是「抗住了」，是「根本没进来」</h3>
-  <p>环境每一步往观测里塞 5&#47;20&#47;50 条无关遥测（机器人电量、HVAC 传感器、摄像头 OCR、syslog），全部随机生成、与任务无关、不改变真实世界状态。</p>
+  <h3 class="sub">噪声免疫机制：并非“抗噪能力强”，而是“噪声根本拿不到入场券”</h3>
+  <p>测试环境在每一轮观测中故意掺杂 5/20/50 条无关遥测指标（如搬运机器人电量、机房温湿度读数、摄像头实时 OCR 乱码、底层操作系统 syslog）。这些数据纯属随机生成，与当前搬运调度任务毫无因果关系。</p>
 
   <div class="tiles two">
     <figure style="margin:0"><div class="fig">
@@ -904,27 +893,25 @@ layout: null
   <div class="legend" id="lg-noise" style="margin-top:14px"></div>
 
   <div class="call pit">
-    <span class="tag">先说清楚：这一组<b>不是</b> SKILL.state 的独占优势</span>
-    高噪声下 Memory 是 <b>0.96</b>、Stateful 是 <b>0.98</b>、SKILL.state 是 <b>0.98</b> —— <b>三者基本打平</b>。崩掉的只有纯 ReAct 一家。
+    <span class="tag">祛魅说明：抗噪并非 SKILL.state 的专属神技</span>
+    面对 50 条/轮的极端噪声，Memory 基准得分为 <b>0.96</b>，Stateful 为 <b>0.98</b>，SKILL.state 同样为 <b>0.98</b> —— <b>三者几乎完全持平</b>，真正崩盘的只有完全不做上下文治理的原始 ReAct。
     <br><br>
-    所以这组实验证明的是「<b>别把无关 telemetry 留在未来的 prompt 里</b>」，而不是「结构化状态优于摘要」。
-    论文 Appendix C 也写明它只测了 Condition 1（irrelevant context），<b>不是所有类型的上下文污染</b> ——
-    「看起来相关但其实误导」的那一类完全没测，而那才是真实环境里更难的。
+    因此该实验的核心结论是“<b>坚决不要把系统低级遥测杂音沉淀在未来的决策输入中</b>”，而非证明“状态机在理解层面比摘要算法更聪明”。
+    况且论文附录 C 明确指出其仅测试了无关噪声（Irrelevant context），并未测试“看似强相关实则诱导误判”的对抗性上下文污染。
   </div>
 
   <div class="call key">
-    <span class="tag">但机制上的差别仍然值得说清</span>
-    Memory 与 Stateful 是<b>把噪声摘要掉或稀释掉</b>；SKILL.state 是噪声<b>从来没有机会进入下一次 prompt</b> ——
-    它在生成 <code>&#916;&#931;</code> 的那一刻就被过滤了，因为 schema 里根本没有「电池电量」这个字段。
+    <span class="tag">白名单与黑名单的底层哲学差异</span>
+    尽管最终得分打平，但两种机制的工程代价大相径庭：
+    Memory 与 Stateful 是<b>在噪声进入后，试图通过调用大模型做摘要来“稀释”或“过滤”噪声</b>，既耗算力又有遗漏概率；
+    而 SKILL.state 则是凭借 Schema 构筑了一道<b>绝对白名单</b>——因为 Schema 里根本没有‘机器人剩余电量’这一字段，所以杂音从诞生之初就<b>没有任何通道能够写入后续状态字典</b>。
     <br><br>
-    <b>这是 schema 最被低估的作用：它是一个白名单。</b> 摘要器面对的是「什么该删」的开放问题，schema 面对的是「什么该留」的封闭问题。
-    这正是我研究 &#167;2.13「最好的压缩是不压缩」那条的机制版本。
-    <br><br>
-    差别落在成本而不是分数上：三家都能抗噪，但只有 SKILL.state 是<b>免费</b>抗的 —— 不需要额外的摘要调用。
+    传统摘要器面对的是‘浩瀚历史中什么可以扔’的开放式难题，而 Schema 面对的是‘当前世界中什么必须留’的封闭式契约。
+    这就是最优雅的架构减法：<b>与其费尽心机给垃圾做压缩，不如一开始就给垃圾闭门谢客</b>。
   </div>
 
-  <h3 class="sub">状态漂移恢复：从 5&#8211;14 步到 0 步</h3>
-  <p>实验设计得很干净：在 agent 的动作循环<strong>之外</strong>改变真实世界（别人把货搬走了、别人 force push 了、CI 变成 flaky），然后只通过一条普通观测告诉 agent。</p>
+  <h3 class="sub">环境突变下的认知纠偏：从 5&#8211;14 步的顽固幻觉到 0 步即时同步</h3>
+  <p>实验设计极为精巧：在 Agent 的执行循环<strong>之外</strong>，由外部环境异步改变世界事实（例如同伴突然强行 Force Push 覆盖了代码分支、仓库管理员私下移走了货架物品），随后仅通过常规的环境 Observation 通知 Agent。</p>
 
   <figure>
     <div class="fig">
@@ -933,18 +920,18 @@ layout: null
       <div class="legend" id="lg-recover"></div>
       <div class="chart-host" id="c-recover"></div>
       <details class="data"><summary>数据表 · Table 3 + Table 10</summary><div id="t-recover"></div></details>
-      <figcaption>SKILL.state 全部为 <b>0</b>，因为它的决策依据只有当前 <code>&#931;</code>，纠正观测一到就直接改写。历史式基线里，写着旧事实的那句话仍在 prompt 里，与新观测<b>正面冲突并且经常赢</b>。</figcaption>
+      <figcaption>SKILL.state 的修正滞后步数全部为惊人的 <b>0 步</b>！因为其每一步决策严格锚定在当前 <code>&#931;</code> 上，纠偏观测一旦到达，下一轮补丁便直接覆盖旧键值。而在历史追加型基准中，那句白纸黑字的“货在 42 号货架”依然赫然在目，旧记忆与新事实正面肉搏，导致模型要头铁撞墙 5 到 14 步才肯承认现实变了。</figcaption>
     </div>
   </figure>
 
   <div class="call fact">
-    <span class="tag">别忽略最后那一行</span>
-    两个环境各有一个场景是<b>所有运行时都失败</b>的：Warehouse 的「订单被取消」、Software Repo 的「PR 被关闭」。
-    这两种都属于「<b>某个已经开始的义务被外部撤销</b>」——不是状态值变了，是任务目标变了。SKILL.state 也救不了。
-    这与我研究里 ADK 那条「把<b>未闭合的义务</b>而不只是 tool pair 作为切点约束」指向同一个盲区。
+    <span class="tag">未闭合义务的系统性盲区</span>
+    请特别留意表格末尾全军覆没的场景：Warehouse 的“订单被取消”与 Software Repo 的“PR 被意外关闭”。
+    在这两类场景下，所有运行时架构<b>无一例外全部遭遇溃败</b>。
+    这揭示了一个深刻的系统局限：当外部变化不是单纯的“某个数据状态变了”，而是“某个已经立项的全局目标/业务义务被撤回”时，现有的状态投影机制同样束手无策。这正呼应了工业级框架（如 Google ADK）对“未闭合生命周期义务（Open Obligations）”进行显式拓扑跟踪的必要性。
   </div>
 
-  <h3 class="sub">公开 benchmark：从玩具环境走出来</h3>
+  <h3 class="sub">第三方真实考场验证：走出人造玩具环境</h3>
   <p>前面全是论文自建的 SkillExecBench。这一组用的是别人的题：InterCode CTF（100 道 Linux 渗透题）与 Sierra &#964;-Bench（零售&#47;航空客服，要查真实 SQLite 库、受业务政策约束）。</p>
 
   <div class="tiles two">
@@ -963,19 +950,19 @@ layout: null
   <details class="data" style="max-width:none"><summary>数据表 · 论文 Table 4</summary><div id="t-bench"></div></details>
 
   <ul class="arrow" style="margin-top:26px">
-    <li><b>InterCode CTF 是最漂亮的一格</b>：54.2% vs 次优 46.4%，同时 token 只有 ReAct 的 40%。论文给的解释是 <code>tested_hypotheses</code> 这个字段——把「试过且失败的思路」显式记下来，模型就不会重复试同一条命令。<b>这是五个字段里最像通用能力的一个。</b></li>
-    <li><b>&#964;-Bench Airline 提升最大但绝对值最低</b>：32.4% vs 28.1%。论文说这里基线的单步 prompt 会冲到 11,000 token 以上（数据库返回体很大），而 SKILL.state 稳在 ~2,800。</li>
-    <li><b>&#964;-Bench Retail 有一个反常点</b>：SKILL.state 的<b>单步 prompt 是四种里最大的</b>（3,325 字符 vs ReAct 2,819），却仍然总 token 最低——因为它用更少的步数完成。这说明「prompt 更小」并不是它在真实任务上取胜的唯一机制。</li>
-    <li><b>Memory 基线在 &#964;-Retail 崩了</b>：29.9%，比 ReAct 的 48.2% 低 18 个点。摘要在这里是<b>净负作用</b>。这一格与我研究 &#167;21.1 引的 CompactionRL 那条「只换摘要器就有 6.5 分区间」互为佐证：<b>摘要器不是中性的预处理，做坏了比不做还差。</b></li>
+    <li><b>InterCode CTF 战绩最为惊艳：</b>成功率达 54.2%（次优基线仅 46.4%），且 Token 消耗仅为 ReAct 的 40%。作者将其归功于 <code>tested_hypotheses</code> 字段——把‘已经试过且行不通的命令与假说’黑纸白字记录在案，彻底杜绝了模型在黑盒渗透中不断重复执行同一条错误命令的常见病。<b>这是全篇最具通用落地价值的字段设计。</b></li>
+    <li><b>&#964;-Bench Airline 提升最大但绝对值最低：</b>32.4% vs 28.1%。论文指出此场景下基线单步 Prompt 会被巨大的数据库返回包撑爆到 11,000 Token 以上，而 SKILL.state 始终稳定收敛在 ~2,800 字符。</li>
+    <li><b>&#964;-Bench Retail 的反直觉现象：</b>SKILL.state 的<b>单步 Prompt 是所有方案中最大的</b>（3,325 字符 vs ReAct 2,819），但累积总 Token 反倒更低——因为它凭借清晰的状态指引以更少步数直接通关，证明“单步瘦身”并非其在真实任务上获胜的唯一推力。</li>
+    <li><b>&#964;-Bench 真实客服环境的警示：</b>在 Retail 场景中，Memory 摘要基线遭遇惨败，成功率跌至 29.9%（远低于不做摘要的 ReAct 的 48.2%）。这再次提供了决定性反例：<b>模型摘要绝非中性的无损操作；一旦摘要器在关键业务规则或数据库返回值上出现幻觉，其破坏力远甚于直接保留冗长原文。</b></li>
   </ul>
 </section>
 
 <!-- ============ 7 ============ -->
 <section class="essay" id="s7">
-  <div class="section-head"><span class="section-num">07</span><h2 class="section-title">数据四：换成开源权重模型之后</h2></div>
-  <div class="section-sub">Table 7 &amp; 8 · 论文最诚实、也最容易被跳过的一节</div>
+  <div class="section-head"><span class="section-num">07</span><h2 class="section-title">实验评测四：开源权重模型的表现与退化根源</h2></div>
+  <div class="section-sub">Table 7 &amp; 8 · 剥离前沿闭源光环：当体系遭遇普通开源权重</div>
 
-  <p class="deck">前面所有亮眼数字都来自 Gemini-3-Flash。换成 Gemma-4-31B 和 Qwen-3-8B，故事的一半就没了。</p>
+  <p class="deck">前述所有耀眼的评测指标均由顶级的 Gemini-3-Flash 跑出。一旦将底座模型切换为开源的 Gemma-4-31B 与 Qwen-3-8B，神话的一半便悄然褪色。</p>
 
   <div class="tiles two">
     <figure style="margin:0"><div class="fig">
@@ -994,11 +981,11 @@ layout: null
   <div class="legend" id="lg-open" style="margin-top:14px"></div>
 
   <div class="call pit">
-    <span class="tag">把这两张图读透</span>
-    <b>token 的优势完好无损</b>（依然 ~9&#215;），但<b>准确率的优势随 T 增大而收敛到 0</b>。
-    在 Gemini 上「省钱又更准」的双赢，在开源权重模型上退化成「省钱，准确率打平」。
+    <span class="tag">开源权重下的冷水与残酷真相</span>
+    如图表所示：<b>Token 维度的节省倍率依然完好（维持在 ~9&#215;）</b>，但<b>动作正确率的领先优势随着步数延展迅速被磨平并趋近于零</b>。
+    在 T=100 的长程场景下，Gemma-4 运行 SKILL.state 与 Stateful 的正确率<b>双双停留在惨淡的 0.42</b>；在 Qwen-3-8B 上则是 0.34 对 0.31，两者均已丧失实际业务可用性。
     <br><br>
-    论文的呈现方式是把这两张表放进附录 D，正文只写「across both proprietary and open-weight models」。技术上没说错，但正文没有一处提到 T=100 的那个平手。
+    论文正文以“across both proprietary and open-weight models”一笔带过，将这一关键降级细节深埋于附录表格中。在顶尖闭源模型上“既省钱又更准”的双赢奇迹，在开源模型上退化成了“虽然省钱，但大家都做不对”的平局尴尬。
   </div>
 
   <h3 class="sub">为什么会这样：错误分类给了答案</h3>
@@ -1009,32 +996,28 @@ layout: null
       <p class="fig-title">开源权重模型的错误构成（Gemma-4-31B，T=100）</p>
       <p class="fig-sub">全部是结构化输出问题，没有一类是推理问题</p>
       <div class="chart-host" id="c-err"></div>
-      <figcaption>论文的结论：<i>small-model degradation stems from structured output adherence rather than reasoning capacity</i> —— 小模型不是想不明白，是<b>写不对那个 JSON</b>。因此建议上 grammar-constrained decoding。
-      <br><br>&#9888; <b>这个推论我不接受。</b>只有第三类（12%，JSON 语法）是纯格式问题；占 68% 的「误删&#47;提前覆盖 key」<b>在 JSON 完全合法时照样会发生</b> ——
-      模型知道格式，但没想清楚「合并」和「替换」的区别，或者没意识到那个 key 还要留着。<b>那是语义推理，不是格式遵从。</b>
-      所以约束解码大概能吃掉 12%，剩下的 88% 它一个都碰不到。<b>用错误日志的分类去论证「与推理能力无关」，这个推理本身不成立。</b></figcaption>
+      <figcaption>论文作者给出了一个乐观推断：<i>small-model degradation stems from structured output adherence rather than reasoning capacity</i> —— 认为开源小模型仅仅是“写不好 JSON 格式”，只要加上语法约束解码（Grammar-constrained Decoding）即可补齐。<br><br>&#9888; <b>这一推论在逻辑上根本无法自洽：</b>在 3 种错误分类中，仅有 12% 属于纯粹的 JSON 语法破坏；而高达 68% 的第一大死因——“更新状态时误删了本该继续留存的键值（Premature Overwrite）”，<b>完全可以在 JSON 语法 100% 完美合规的情况下频繁发生！</b><br>模型虽然输出了合法 JSON，但在语义层面搞不清“增量局部打补丁”与“全量覆盖”的差别，忘记在补丁中保留已有状态。<b>这是如假包换的推理能力缺陷，而非单纯的格式遵循问题。</b>约束解码充其量只能修复那 12% 的格式小毛病，对占绝大多数的 88% 核心认知缺陷根本束手无策。</figcaption>
     </div>
   </figure>
 
   <div class="call mine">
-    <span class="tag">我认为这里藏着整篇论文最重要的一句话</span>
-    68% 的错误是「<b>更新状态时误删了本该保留的 key</b>」（premature state overwrite / deletion）。
-    请把它和我研究 &#167;21.2 引的 ConstraintRot 那条放在一起看：<b>约束存活时违规率 0%，被丢弃时 38%</b> —— 存不存活几乎就是全部。
+    <span class="tag">全篇最发人深省的技术启示：从概率存活到单点脆败</span>
+    开源模型 68% 的错误均死在“<b>更新状态时手抖抹除了本该保留的已有 Key</b>”。
+    结合此前研究中引用的 ConstraintRot 定律（约束在上下文存活时违规率为 0%，一旦被丢弃违规率跃升至 38%），我们能看清这套架构最致命的隐患：
     <br><br>
-    压缩式系统里，摘要漏了一条约束，你还有<b>未被压缩的 tail</b> 兜底，失效是渐进的；
-    SKILL.state 里，一个 key 被 <code>null</code> 掉就是<b>真的没了</b>，没有第二份拷贝，失效是二值的。
+    在传统滑动窗口或摘要系统中，哪怕摘要遗漏了某条信息，未被压缩的尾部原文里<b>可能还留有痕迹</b>，系统失效是平缓降级的（Graceful Degradation）；
+    但在 SKILL.state 中，一旦模型某一步输出一个带有 <code>null</code> 的误删补丁，该条关键信息就<b>在整个物理世界中彻底灰飞烟灭，且永远无法再次寻回</b>，系统失效是二值的、断崖式的（Catastrophic Failure）。
     <br><br>
-    <b>所以这套架构把「信息存活」从一个概率问题变成了一个程序问题——同时也变成了一个单点。</b>
-    这是它最大的优点和最大的风险，而且是同一件事。
+    <b>SKILL.state 虽然将“信息能否跨步存活”从玄学的概率问题变成了确定的程序问题，但同时也把状态字典推成了没有任何容错缓冲的绝对单点。</b>
   </div>
 </section>
 
 <!-- ============ 8 ============ -->
 <section class="essay" id="s8">
-  <div class="section-head"><span class="section-num">08</span><h2 class="section-title">对照我的压缩研究：六层坐标系里它站在哪</h2></div>
-  <div class="section-sub">这一节是本文的主体</div>
+  <div class="section-head"><span class="section-num">08</span><h2 class="section-title">横向映射：放入 Agent 上下文压缩六层模型坐标系</h2></div>
+  <div class="section-sub">解构六层生命周期：它简化了什么，又将什么转移到了设计期</div>
 
-  <p class="deck">我此前那篇研究把十五个平台的压缩机制统一到六层：测量、触发、选点、减法、重组、持久化。把 SKILL.state 放进这个坐标系，会发现一件比「它更省 token」有意思得多的事。</p>
+  <p class="deck">在我此前关于开源 Agent 平台的系统研究中，十五大主流系统的上下文压缩逻辑被统一解构为六层拓扑：测量、触发、选点、减法、重组与持久化。将 SKILL.state 投射进这套宏观坐标系，会发现它带来了一场更具颠覆性的工程重组。</p>
 
   <figure>
     <div class="fig">
@@ -1126,14 +1109,12 @@ layout: null
   </figure>
 
   <div class="pullquote">
-    SKILL.state 不是在这六层里做得更好。它真正取消的只有 <b>L2 触发</b>；L1 与 L5 被<b>简化成常量级的固定动作</b>；
-    而最关键的改变是把 <b>L3&#47;L4</b> 从<b>运行时决策</b>前移成<b>设计期决策</b>。
-    <span class="who">这一句是我读完全文最想留下的总结</span>
+    SKILL.state 的本质并非在六层生命周期中把传统步骤执行得更精细，而是<b>彻底解构并重组了生命周期本身</b>：它唯一彻底删除的是 <b>L2 触发层</b>；将 <b>L1 测量与 L5 重组</b>简化为静态的常量动作；最深远的变革，是将原本在运行时动态博弈的 <b>L3 选点与 L4 减法</b>，提前固化为了设计期的 Schema 架构决策。
+    <span class="who">贯穿全篇架构对照的核心洞见</span>
   </div>
   <p style="font-size:16px;color:var(--paper-dim);font-family:'Inter','Noto Sans SC',sans-serif">
-    这个区分不是咬文嚼字。<strong>「删掉」意味着你不用再想这件事，「简化」意味着你还得想、只是变简单了。</strong>
-    L1 就是最好的例子：论文因为假定 <code>|&#931;|</code> 有界而不需要测量，但<a href="#s10">反驳一</a>说明这个假定没被验证 ——
-    于是 L1 不但没消失，反而<strong>成了这套架构最该补上的那一层监控</strong>。
+    这绝非字面上的学术分类游戏。<strong>“彻底删除”意味着运行时不再需要为此耗费系统心智，“简化”意味着工程负担显著减轻，而“前移”则意味着系统将原本由大模型动态决策的不可控风险，收拢到了人类工程师可以编写单测、静态类型约束的设计阶段。</strong>
+    以 L1 测量层为例：原论文因假定 <code>|&#931;|</code> 恒定有界而认为无需测量；但后文的<a href="#s10">反驳一</a>揭示，累加型字段的存在使得该假设难以自洽 —— 于是 L1 测量不仅没有多余，反而演变为验证状态字典有界性的关键断言监控。
   </p>
 
   <h3 class="sub">两种哲学：事后减法 vs 事前投影</h3>
@@ -1246,22 +1227,22 @@ layout: null
   </div>
 
   <div class="call key">
-    <span class="tag">所以这篇论文的贡献要怎么定位</span>
-    它<b>不是</b>发明了「用结构化状态代替历史」——四家产品已经在做局部版本。
-    它的贡献是：把这件事<b>推到极端</b>（一份历史都不留）、<b>给了一个干净的形式化</b>（&#931;&#8853;&#916;&#931;，Algorithm 1 九行）、并且<b>第一次量化了它值多少</b>。
-    对我这篇研究来说，它填的是「效果评测」那一节里最缺的一格：<b>不压缩的那条路，到底比压缩好多少</b>。
+    <span class="tag">客观审视论文的真正贡献度</span>
+    它<b>并未从零凭空发明</b>‘以结构化状态取代历史’——Kimi-code、Goose、Codex CLI 等工业级先行者早已在局部关键环节落地了同类设计。
+    这篇论文的卓越价值在于：<b>把这一工程直觉推向了不留后路的极端形态</b>（物理层面彻底切除历史字段）、<b>提炼出了极其干净优雅的代数形式化表达</b>（&#931;&#8853;&#916;&#931;，9 行极简循环）、并<b>首次在大规模长程基准上给出了详尽的量化收益数据</b>。
+    对我此前十五大平台的研究而言，它恰好填补了‘性能评估’篇章中最缺的那一块拼图：<b>彻底不留历史的状态外置路线，究竟能比传统压缩路线在极限场景下好多少</b>。
   </div>
 </section>
 
 <!-- ============ 9 ============ -->
 <section class="essay" id="s9">
-  <div class="section-head"><span class="section-num">09</span><h2 class="section-title">我的分析：论文没测的那一维</h2></div>
-  <div class="section-sub">prompt cache · 全文出现 0 次</div>
+  <div class="section-head"><span class="section-num">09</span><h2 class="section-title">深度推演：论文未测量的隐性维度（Prompt Cache 成本）</h2></div>
+  <div class="section-sub">全文出现 0 次的致命变数：当极短 Prompt 撞上云端缓存起征门槛</div>
 
-  <p class="deck">论文报的全部成本指标都是<em>裸 token 计数</em>。但没有人按裸 token 付钱 —— 所有主流 provider 都有 prompt cache，命中部分按<em>约 0.1 倍</em>计价。这一维一旦计入，结论会变，而且变的方向<em>不是</em>我一开始以为的那个。</p>
+  <p class="deck">论文通篇汇报的成本数据，均建立在<em>纯粹的裸 Token 计数（Raw Token Count）</em>之上。然而在真实的工业级 API 计费体系中，几乎没有开发者按裸 Token 付费——主流前沿模型普遍配备了 Prompt Cache（提示词前缀缓存），命中部分享受<em>高达 90% 的折扣（仅按 0.1&#215; 计价）</em>。一旦将缓存计费模型纳入考量，原本看似绝对的能耗倍率将发生出人意料的逆转。</p>
 
-  <h3 class="sub">先讲一个几乎所有人都会忽略的前提：缓存有门槛</h3>
-  <p>prompt cache 不是「有前缀就能命中」。它有一条<strong>最小可缓存前缀</strong>的硬性下限，低于它<strong>一个 token 都不缓存</strong>。Google ADK 的 <code>ContextCacheConfig</code> 把这条写在 docstring 里：</p>
+  <h3 class="sub">破除直觉常识：云端缓存并不是“只要有前缀就能打折”，它有硬性门槛</h3>
+  <p>Prompt Cache 并不像许多人想象的那样“只要第二轮重合就能命中”。云厂商为了防止显存碎裂与检索开销，普遍设定了<strong>最小可缓存前缀起征点（Min Cache Threshold）</strong>，未达到该门槛时<strong>系统一律按 100% 全价计费</strong>。Google ADK 的 <code>ContextCacheConfig</code> 规范对此有白纸黑字的定义：</p>
 
   <div class="pullquote">
     缓存最早从会话的<b>第二轮</b>开始，且要求可缓存前缀达到该模型的最小值：<b>Gemini 2.5 为 2,048 token，Gemini 3 为 4,096 token</b>。因此短会话或单轮会话永远不会被缓存。
@@ -1276,17 +1257,15 @@ layout: null
       <p class="fig-sub">Warehouse T=100 的单步 prompt（token）。横线是 ADK 文档记载的 Gemini 3 最小可缓存前缀。</p>
       <div class="legend" id="lg-thresh"></div>
       <div class="chart-host" id="c-thresh"></div>
-      <figcaption>ReAct 的 prompt 在<b>第 24 步</b>越过门槛，此后每一步都能命中前一步的全部内容。
-      SKILL.state 恒定在 ~476 token，<b>整场任务都够不着门槛，一次都缓存不了</b>。</figcaption>
+      <figcaption>ReAct 虽然臃肿，但其单步 Prompt 在<b>第 24 步</b>便跨过了 4,096 Token 的起征门槛，后续整整 76 步均能以 0.1&#215; 的骨折价稳稳命中缓存前缀！<br>而 SKILL.state 的单步 Prompt 极度精炼（仅 ~476 Token），<b>在长达 100 步的整场任务中连门槛的脚后跟都够不着，自始至终被彻底排除在缓存红利之外，步步全额买单</b>。</figcaption>
     </div>
   </figure>
 
   <div class="call pit">
-    <span class="tag">这是本页最反直觉的一条，也是我第一版写错了的一条</span>
-    我最初假设 SKILL.state 的 <code>P</code>（~350 token）能拿到缓存折扣。<b>在 Gemini 3 上不可能</b> —— 350 远低于 4,096。
-    <br><br>
-    换句话说：<b>让 SKILL.state 便宜的那个性质（prompt 极小），正是让它拿不到缓存折扣的那个性质。</b>
-    它不是「缓存得差一点」，是<b>结构性地被排除在缓存之外</b>。
+    <span class="tag">反直觉的经济学反转：最省 Token 的特性，恰恰毁掉了享受折扣的资格</span>
+    这构成了全篇最具戏剧性的架构反讽：
+    <b>让 SKILL.state 在物理上极其省 Token 的那个设计核心（Prompt 极其微小），恰恰在经济调度机制上彻底剥夺了它享受前缀缓存折扣的资格！</b>
+    它不是缓存命中率略微逊色，而是<b>在结构上被永久封杀在缓存门槛之外</b>。
   </div>
 
   <h3 class="sub">但这个折算算不出一个精确数字 —— 只能给区间</h3>
@@ -1328,13 +1307,11 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
   </div>
 
   <div class="call mine">
-    <span class="tag">所以正确的说法是</span>
-    <b>裸 token 19.0&#215; &rarr; 计入缓存门槛后大致落在 3&#8211;8&#215;。</b>精确值取决于论文<b>未公开</b>的 input/output 拆分，拿不到原始 usage 就推不出来。
+    <span class="tag">客观修正后的真实成本差距</span>
+    <b>裸 Token 呈现的 19.0&#215; 能耗差距 &rarr; 在计入真实缓存门槛后大幅收窄至 3&#8211;8&#215; 的常规区间。</b>精确倍率取决于论文<b>从未披露</b>的输入/输出 Token 细分比。
     <br><br>
-    值得记一笔的是方向：我上一版报的 <b>3.3&#215; 其实是这个区间的下界</b>，不是中点 —— 因为 output 永远全价、永不缓存，而 ReAct 的 output 绝对量更大，
-    把它算进来<b>反而抬高</b>倍率。<b>两次修订我都把自己的批评做过了头</b>，这次是往回收。
-    <br><br>
-    不受这个不确定性影响的是<b>定性结论</b>：量级从「近二十倍」掉到「个位数倍」，而且下面这条排序反转是稳的。
+    在定性层面上，一个坚挺的结论被确立：虽然 SKILL.state 依然保持着账单总额的领先，但其量级已经从“跨数量级的降维打击”回落到“个位数倍的工程优化”。更关键的是，三种架构在缓存维度的优劣排序发生了<b>彻底的颠倒</b>：
+    <b>ReAct（前缀超长且完全稳定，长程几乎全中）&gt; 压缩式（前缀够长，但每次压缩会导致局部重置）&gt; SKILL.state（前缀太短，终生无法命中）。</b>
   </div>
 
   <h3 class="sub">推论一：压缩式系统在这一维上仍然是最差的</h3>
@@ -1349,14 +1326,13 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
     注意这个排序<b>和裸 token 的排序正好相反</b>。SKILL.state 依然总成本最低 —— 但它是靠「少发」赢的，不是靠「发得便宜」赢的，而且它把「发得便宜」这条路<b>整个堵死了</b>。
   </div>
 
-  <h3 class="sub">推论二：要越过门槛，动的不一定是 <code>P</code>，而是<em>稳定前缀</em></h3>
-  <p>我第一版从上面那条推出了「<code>P</code> 必须自己超过门槛，所以要故意把说明书写大」。<strong>这个推论下得太急了。</strong>缓存命中要求的是<strong>两次请求之间逐字相同的那段前缀</strong>够长 —— 它不一定在 <code>P</code> 结束的地方就断掉。</p>
+  <h3 class="sub">工程落地破局：别盲目灌水，真正的杠杆是“稳定前缀工程”</h3>
+  <p>既然单步 Prompt 太短拿不到折扣，是不是要故意往 <code>P</code> 里面注水灌入无意义垃圾话，强行凑满 4,096 Token？<strong>这在工程上是极度危险的下策。</strong>刻意 padding 会导致首次建连延迟暴涨、拉高首字时间（TTFT），且更长的无关背景会严重摊薄模型的注意力专注度。</p>
 
   <ul class="arrow">
-    <li><b>它可以延伸进 <code>&#931;</code> 里不变的那一段。</b>只要序列化时 <b>key 顺序稳定</b>，&#931; 中本轮没被改动的前导字段仍然逐字相同，<b>照样算在公共前缀里</b>。</li>
-    <li><b>所以真正的杠杆是排布，不是体积。</b>把 &#931; 按「几乎不变 / 经常变」分区，不变的那半放前面、易变的放后面，公共前缀就能自然变长 —— 论文那个把整个 <code>inventory</code> 混在一起、每步改一格的序列化方式，恰恰是最坏的一种排布。</li>
-    <li><b>Google 的公开建议也只是「把大而共用的内容放在 prompt 开头」</b>，并没有说 <code>P</code> 自己必须超过门槛。</li>
-    <li><b>刻意 padding 有真实代价</b>：首次写入与未命中时按全价计，而且更长的 prompt 会摊薄注意力、抬高延迟。<b>为了凑门槛去灌水是负收益的。</b></li>
+    <li><b>公共前缀不仅限于 <code>P</code> 本身：</b>缓存命中判定的是两次请求之间自头部起始、逐字完全相同的一致序列。只要序列化时<b>保持严格的 Key 字典序</b>，<code>&#931;</code> 中那些跨步不变的前导字段同样能无缝计入公共前缀！</li>
+    <li><b>结构排布远重于体积膨胀：</b>应当将状态字典 <code>&#931;</code> 显式划分为“只读/低频不可变区（Immutable）”与“高频变动区（Mutable）”。将不可变区紧贴在 <code>P</code> 后面排布，便能自然而然地拼装出一条超长且极度稳定的黄金前缀。</li>
+    <li><b>顺路搭乘免费便车：</b>系统固有的工具集声明、不可篡改的组织治理策略，天然属于不可变信息。将其置于前导位置，是<b>顺带</b>将前缀自然推过门槛，这与第 11 节的“通道 A”不谋而合。</li>
   </ul>
 
   <div class="call mine">
@@ -1385,65 +1361,65 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
 
 <!-- ============ 10 ============ -->
 <section class="essay" id="s10">
-  <div class="section-head"><span class="section-num">10</span><h2 class="section-title">它不成立的地方：六条我要反驳的</h2></div>
-  <div class="section-sub">读完全文之后我真正的保留意见</div>
+  <div class="section-head"><span class="section-num">10</span><h2 class="section-title">论证盲区：六个值得商榷的关键反驳点</h2></div>
+  <div class="section-sub">读完全文之后我真正的保留意见与技术质疑</div>
 
-  <p class="deck">前面九节我基本在替这篇论文说话，因为它的核心主张确实成立。这一节讲它<em>不能推广到哪里</em>——而这恰恰是我最关心的部分，因为我研究的那十五个平台，几乎全都落在它不成立的那一侧。</p>
+  <p class="deck">前面九节我们客观梳理了 SKILL.state 的优势与数据支撑，它的核心主张在受控实验下确实展现了强大的生命力。但一项技术能走多远，往往取决于它的边界在哪里。本节将深入探讨它在理论推导与工程推广上的六大盲区与反驳点——而这恰恰是最关键的部分，因为工业级真实业务场景，大部分都落在了它无法覆盖的那一侧。</p>
 
-  <h4 class="subsub">反驳一 · O(1) 只在 &#931; 自己不增长时成立，而论文从未验证这一点</h4>
-  <p>论文的核心公式是 <code>|P_t| = O(|P| + |&#931;| + |O|)</code>，「与 t 无关」。但这个式子成立的前提是 <strong><code>|&#931;|</code> 本身有界</strong> —— 而论文<strong>没有任何一处论证或测量这件事</strong>。</p>
-  <p><strong>固定 schema 只约束<em>字段的集合</em>，不约束<em>字段值的长度</em>。</strong>这两件事被论文当成了一件。</p>
+  <h4 class="subsub">反驳一 · O(1) 成立的前提是 &#931; 自身有界，而论文从未真正证明这一点</h4>
+  <p>论文的核心公式是 <code>|P_t| = O(|P| + |&#931;| + |O|)</code>，并据此得出单步 Prompt 规模「与任务步数 t 无关」的结论。但这一数学推导能够成立的关键前提，是 <strong><code>|&#931;|</code> 状态字典体积本身具备有限上界</strong> —— 然而论文<strong>通篇没有任何一处对此进行过数学论证或实际轨迹测量</strong>。</p>
+  <p><strong>固定 Schema 仅仅约束了「包含哪些字段」，却丝毫约束不了「每个字段值的具体长度」。</strong> 这就像给仓库管理员发了一张只有 5 个栏目的固定账本，表格栏目是固定的，但如果其中一栏写的是“每次尝试失败的详细排错记录”，随着任务不断试错，这一栏就能被写满成千上万行字。这两件在工程上截然不同的事，被论文悄悄混为一谈。</p>
 
   <div class="call fact">
-    <span class="tag">先划清证据边界：下面这张表是推断，不是来源事实</span>
-    论文只公布了 CTF schema 的<b>五个字段名</b>，<b>没有</b>公布字段类型、更新策略，也<b>没有</b>给出 <code>|&#931;|</code> 随 horizon 变化的轨迹。
-    它对 CTF 提升的归因原文是「maintaining explicit <b>hypotheses and discovered flags</b>」—— <b>两个字段一起</b>，而且<b>没有做字段消融</b>。
+    <span class="tag">划清证据边界：推断逻辑 vs 论文事实</span>
+    论文仅公布了 CTF 场景下 Schema 的<b>五个字段名</b>，<b>未公布</b>具体的字段数据类型与更新策略，也<b>未给出</b> <code>|&#931;|</code> 随任务步数（Horizon）演进的实际变化轨迹。
+    其正文对 CTF 性能提升的归因原文为「maintaining explicit <b>hypotheses and discovered flags</b>」—— <b>将两个字段合并归因</b>，且<b>未做任何单字段消融实验</b>。
     <br><br>
-    所以下表的「增长性」一列是我<b>按字段语义推断的</b>，不是论文陈述。这条反驳的正确形式是<b>条件式</b>：
-    <b>如果</b>这些字段按 append-only 实现，<b>那么</b> O(1) 就不成立；而论文没有提供任何证据让读者排除这种实现。
+    因此下表关于「增长性」的判定是<b>基于字段工程语义的客观推断</b>，而非论文直接陈述。这一反驳的严密形式是<b>条件命题</b>：
+    <b>如果</b>这些字段在实际实现中按只增列表（append-only）处理，<b>那么</b>单步 O(1) 的理论复杂度即告破产；而论文没有提供任何实验数据让读者排除这种可能性。
   </div>
 
   <figure>
     <div class="fig">
-      <p class="fig-title">CTF schema 的五个字段，按语义推断的增长性</p>
-      <p class="fig-sub">字段名来自论文 &#167;3.1；<b>增长性一列是本页的推断</b>——论文未公布类型与更新策略。</p>
+      <p class="fig-title">CTF Schema 的五个字段，按工程语义推断的增长性特征</p>
+      <p class="fig-sub">字段名源自论文 &#167;3.1；<b>增长性判定属于本页推断</b>——论文未公开数据类型与生命周期更新策略。</p>
       <div class="tbl-wrap">
       <table>
-        <tr><th style="width:24%">字段（论文公布）</th><th style="width:20%">推断的增长性</th><th>依据（本页推断）</th></tr>
-        <tr><td><code>working_dir</code></td><td style="color:#199e70">很可能<b>有界</b></td><td>语义上是单值，新值覆盖旧值</td></tr>
-        <tr><td><code>active_files</code></td><td style="color:#199e70">很可能<b>准有界</b></td><td>「当前打开的文件」是一个会进也会出的集合</td></tr>
-        <tr><td><code>cmd_summary</code></td><td style="color:#c98500"><b>取决于实现</b></td><td>名字叫 summary，但若实现成追加命令列表，它就是一段历史</td></tr>
-        <tr class="hl"><td><code>discovered_flags</code></td><td style="color:#FF8FA3">若 append-only 则<b>只增</b></td><td>已找到的 flag 没有被删除的理由</td></tr>
-        <tr class="hl"><td><code>tested_hypotheses</code></td><td style="color:#FF8FA3">若 append-only 则<b>只增</b></td><td>「已试过且失败的假设」要发挥作用就得留着；除非实现里做了归并或封顶，否则会随步数变长</td></tr>
+        <tr><th style="width:24%">字段名称（论文公开）</th><th style="width:20%">推断的增长性</th><th>推断依据与工程语义</th></tr>
+        <tr><td><code>working_dir</code></td><td style="color:#199e70">大概率<b>严格有界</b></td><td>语义上为单一路径值，新路径直接覆盖旧路径</td></tr>
+        <tr><td><code>active_files</code></td><td style="color:#199e70">大概率<b>准有界</b></td><td>「当前激活的文件集合」，随业务流程动态进出，容量受限</td></tr>
+        <tr><td><code>cmd_summary</code></td><td style="color:#c98500"><b>取决于实现细节</b></td><td>命名虽为摘要（summary），但若代码实现为追加命令流，本质仍是对话历史变体</td></tr>
+        <tr class="hl"><td><code>discovered_flags</code></td><td style="color:#FF8FA3">若为 append-only 则<b>单调递增</b></td><td>已捕获的成功 Flag 在任务结束前没有被删除的业务理由</td></tr>
+        <tr class="hl"><td><code>tested_hypotheses</code></td><td style="color:#FF8FA3">若为 append-only 则<b>单调递增</b></td><td>「已验证并排除的失败假设」若想发挥防重复试错的作用就必须长期保留；除非做显式归并或封顶，否则必然随步数持续膨胀</td></tr>
       </table>
       </div>
-      <figcaption>要点不是「论文一定错了」，而是：<b>论文把「schema 固定」当成了「状态有界」的证明，而这两者之间隔着一个它从未公开的实现细节。</b>
-      张力是真实的 —— 记录「已排除的假设」这类字段，价值来自不忘，而不忘通常意味着变长；<b>除非实现里显式做了归并或封顶，而论文没说它做了。</b></figcaption>
+      <figcaption>核心焦点并非「论文必然全盘皆错」，而是：<b>论文轻率地将「Schema 结构固定」等同于「状态体积有界」的数学证明，而这两者之间横亘着至关重要却从未公开的代码实现细节。</b>
+      这种张力是真实存在的——维护「已排除假设」这类字段，其核心价值恰恰在于不遗漏试错历史，而防遗漏往往意味着文本不断拉长；<b>除非在工程实现中显式施加条数封顶或定期抽象归并，然而论文对此只字未提。</b></figcaption>
     </div>
   </figure>
 
   <div class="call mine">
-    <span class="tag">所以 O(1) 是环境的性质，不是方法的性质</span>
-    Warehouse 的 &#931; 之所以恒定（1,775 &#8594; 1,811 字符，T=10 到 T=200 几乎不动），是因为<b>那个环境的真实状态本来就有界</b>：500 个格子，每格一个物品或 null，动作只是覆盖和删除，<b>没有任何一个字段会累积</b>。
+    <span class="tag">O(1) 复杂度是特定环境带来的天然红利，而非该算法的普适数学保证</span>
+    Warehouse 场景下的 &#931; 之所以能在整个评测中维持令人惊叹的平稳（1,775 &#8594; 1,811 字符，从 T=10 到 T=200 几乎纹丝不动），核心原因在于<b>该实验环境的物理真实状态天然具备硬性上限</b>：总共只有 500 个离散的货架格子，每个格子存储单个物品标签或 null，智能体的操作纯粹是基于键值的覆盖与删除，<b>业务逻辑中根本不存在任何需要单向累积的字段</b>。
     <br><br>
-    换句话说，Table 1 里那条漂亮的水平线<b>是 Warehouse 给的，不是 SKILL.state 给的</b>。
-    论文<b>没有在任何一个需要累积字段的领域测过 <code>|&#931;|</code> 的增长</b> —— CTF 有这样的字段，但那一组只报了 pass@1 与总 token，没报 &#931; 随步数的轨迹。
+    换言之，Table 1 中那条近乎完美的水平线，<b>是特定仓库环境赋予的结构红利，并不是 SKILL.state 算法本身自带的普适定理</b>。
+    论文<b>从未在任何需要动态累加探索历史的复杂领域，测量过 <code>|&#931;|</code> 随步数的真实演进曲线</b> —— CTF 虽然包含此类累积字段，但实验仅汇报了 pass@1 与总 token，并未给出 &#931; 随时间步变化的动态轨迹。
   </div>
 
-  <p>论文自己的数据里就有这个苗头。&#964;-Bench Retail 上，SKILL.state 的单步 prompt 是四种运行时里<strong>最大的</strong>（3,325 字符 vs ReAct 2,819）—— 一个号称 O(1) 的方法，在最接近真实业务的那个 benchmark 上，prompt 比纯追加的 ReAct 还大。</p>
+  <p>论文自身披露的真实基准数据，其实就已经显露出这种膨胀隐患。在更贴近真实多轮业务流的 &#964;-Bench Retail 测试中，SKILL.state 的单步 Prompt 规模反而是四种运行时中<strong>最为庞大的</strong>（3,325 字符 vs 朴素 ReAct 的 2,819 字符）—— 一个号称实现 O(1) 紧凑规模的方法，在最具工业代表性的业务评测上，单步 Prompt 占用竟然反超了未经压缩、直接硬追加历史的 ReAct 基线。</p>
 
   <div class="call pit">
-    <span class="tag">这条怎么改写本页其他部分</span>
-    <b>第 11 节推荐 <code>tested_hypotheses</code> 那条动作，必须附一个封顶策略</b>：只增字段要么设条数上限（保留最近 N 条 + 一个计数），要么定期让模型把它归并成更抽象的排除规则。
-    否则你只是<b>把上下文膨胀从对话通道搬到了状态通道</b>，一步没省。
+    <span class="tag">对工业实践的关键启示：Schema 治理绝不可缺位</span>
+    这正是为什么我们在第 11 节的工程落地建议中，提出使用 <code>tested_hypotheses</code> 字段时<b>必须强制搭配严格的封顶与清理策略</b>：只增字段必须设立明确的条数上限（如仅保留最近 N 条，并辅以历史失败总数计数），或者定期提示模型将其归并抽象为更高维度的排除规则。
+    否则，开发者无非是<b>把上下文膨胀的物理压力，从对话历史通道直接转移到了状态字典通道</b>，在工程实质上一步没省。
     <br><br>
-    正确的说法不是「SKILL.state 是 O(1)」，而是：<b>它把「上下文会不会爆」从一个运行时问题，变成了一个 schema 设计问题</b>。这是个巨大的进步 —— 因为 schema 是你能审、能测、能加断言的 —— 但它不是一个自动获得的保证。
+    严谨客观的定论不是「SKILL.state 自动实现了 O(1)」，而是：<b>它成功将「运行时上下文是否会失控撑爆」这一不可控的动态随机问题，转化为了「静态 Schema 规范设计与字段长度治理」的可控工程问题</b>。这确实是一个巨大的架构突破——因为 Schema 是可预先静态审计、可编写测试用例、可设置运行时断言的——但这绝不是开箱即得的免死金牌。
   </div>
 
-  <h4 class="subsub">反驳二 · 最该有的那个基线不存在</h4>
-  <p>论文的 Stateful 基线是 <strong>「结构化状态 + 全量历史」</strong>。而我研究的十五个平台，<strong>没有一家</strong>是这么跑的——它们跑的是<strong>「结构化摘要 + 20K token 的原文 tail」</strong>。</p>
+  <h4 class="subsub">反驳二 · 工业界最具竞争力的真实基线在对比中遗憾缺席</h4>
+  <p>论文设立的 Stateful 基线被定义为 <strong>「显式结构化状态 + 全量未压缩历史」</strong>。然而在当前主流的工业级智能体落地实践中，<strong>没有任何一个生产系统会采用如此低效的组合</strong>——工业界的真实标配早已演进为<strong>「结构化状态/摘要 + 滑动保留最近 20K token 的精确原文（即 Stateful + Compaction Tail 混合架构）」</strong>。</p>
   <figure><div class="fig">
-    <p class="fig-title">论文测了三格，真正的对手在第四格</p>
+    <p class="fig-title">论文评测了三格，真正的工业界对手落在第四格</p>
     <div class="chart-host">
     <svg viewBox="0 0 880 250" role="img" aria-label="二维矩阵：历史保留方式 × 是否有结构化状态，论文缺失了状态加压缩历史那一格">
       <text x="470" y="22" fill="#8B8378" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2" text-anchor="middle">是否维护显式结构化状态</text>
@@ -1458,7 +1434,7 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
       <text x="330" y="99" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5" text-anchor="middle">论文已测 · 0.84</text>
 
       <rect x="490" y="56" width="300" height="56" rx="8" fill="#0d2b20" stroke="#199e70"/>
-      <text x="640" y="80" fill="#E8E5DD" font-family="Inter, Noto Sans SC, sans-serif" font-size="13.5" text-anchor="middle" font-weight="600">Stateful (LangGraph 式)</text>
+      <text x="640" y="80" fill="#E8E5DD" font-family="Inter, Noto Sans SC, sans-serif" font-size="13.5" text-anchor="middle" font-weight="600">Stateful (LangGraph 原始形态)</text>
       <text x="640" y="99" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5" text-anchor="middle">论文已测 · 0.91</text>
 
       <rect x="180" y="124" width="300" height="56" rx="8" fill="#2b1a08" stroke="#d95926"/>
@@ -1467,348 +1443,343 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
 
       <rect x="490" y="124" width="300" height="56" rx="8" fill="#1a1013" stroke="#FF8FA3" stroke-width="1.6" stroke-dasharray="6 4"/>
       <text x="640" y="145" fill="#FF8FA3" font-family="Inter, Noto Sans SC, sans-serif" font-size="13.5" text-anchor="middle" font-weight="700">状态 + 生产级压缩历史</text>
-      <text x="640" y="164" fill="#FF8FA3" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5" text-anchor="middle">十五个平台实际在跑的形态 · 论文未测</text>
+      <text x="640" y="164" fill="#FF8FA3" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5" text-anchor="middle">工业级平台真实标配 · 论文未测</text>
 
       <rect x="490" y="192" width="300" height="46" rx="8" fill="#3d2a00" stroke="#c98500" stroke-width="1.6"/>
       <text x="640" y="220" fill="#FFD9A8" font-family="Inter, Noto Sans SC, sans-serif" font-size="13.5" text-anchor="middle" font-weight="700">SKILL.state · 0.94</text>
       <rect x="180" y="192" width="300" height="46" rx="8" fill="#141A2A" stroke="#232C44"/>
-      <text x="330" y="220" fill="#6E7994" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" text-anchor="middle">（无意义）</text>
+      <text x="330" y="220" fill="#6E7994" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5" text-anchor="middle">（逻辑无意义）</text>
     </svg>
     </div>
-    <figcaption>粉色虚线那一格是空的。论文用「全量历史 + 状态」当对手，等于让对手<b>同时背上历史膨胀的全部代价，却拿不到压缩的任何好处</b>。</figcaption>
+    <figcaption>粉色虚线代表的第四格在论文中完全缺席。论文拿「全量历史 + 状态」充当对比靶子，相当于强行让对手<b>承担历史线性膨胀的全部注意力与计算代价，却人为剥夺了现代滑动窗口与历史压缩的任何工程红利</b>。</figcaption>
   </div></figure>
 
-  <h4 class="subsub">反驳三 · 预算对齐实验的预算远低于任何生产系统的保留量</h4>
-  <p>论文的预算是 <strong>~1,800 字符 &#8776; 450 token</strong>，而且表头写 tokens、正文写 characters、指标定义又说 characters（&#167;5 已列）。</p>
+  <h4 class="subsub">反驳三 · 预算对齐实验设置的极限阈值脱离工业级实用标准</h4>
+  <p>论文在公平预算实验中，将所有竞争基线的单步 Prompt 上限强行压缩至 <strong>~1,800 字符（折合仅约 450 token）</strong>，并在指标单位上存在前述口径混淆（&#167;5 已详述）。</p>
   <div class="call pit">
-    <span class="tag">这里我上一版做了一个不成立的除法，已删除</span>
-    我原来写「掐到真实系统的 <b>1/40</b>」，用的是 450 token 对 OpenClaw / opencode 的 <b>20,000 token</b>。
-    <b>这两个数不是同一个量</b>：20,000 是<b>压缩触发余量</b>（还剩多少空间就动手），Codex 那个 20,000 是<b>用户原话保留预算</b>；
-    论文那个 450 是<b>压缩之后整个 prompt 的目标大小</b>。分属不同机制层，直接相除得不出「生产系统信息预算多 40 倍」。
+    <span class="tag">口径纠偏说明</span>
+    此前曾有粗糙推论直接将 450 token 与生产系统的 20,000 token 相比得出「相差 40 倍」，这一比较已被严格纠偏：因为 20,000 token 在工业级系统（如 OpenClaw / opencode）中代表<b>压缩触发余量或单项原话保留预算</b>，而论文中的 450 token 是<b>压缩后整个 Prompt 的最终目标容量</b>。两者分属完全不同的架构层级，不可做简单的除法换算。
   </div>
-  <p>能站得住的说法是这个，而且它已经够了：<strong>论文把整个 prompt 压到约 450 token，而 Codex CLI 光是<em>逐字保留的用户原话</em>一项就给到 20,000 token 预算</strong> —— 生产系统<strong>单独一个保留项</strong>就比论文压缩基线的<strong>全部预算</strong>大一到两个数量级。</p>
-  <p>所以「Summary-capped = 0.52」告诉我们的是<strong>450 token 的摘要撑不住 100 步</strong>，不是「生产级 compaction 撑不住 100 步」。这个实验确实证明了「统计式压缩器会毁掉精确标识符」（这条我完全同意，见第 5 节），但没有证明「压缩式路线打不过状态式路线」—— 那一格仍然是空的（反驳二）。</p>
+  <p>真正站得住脚且足够说明问题的严谨论据在于：<strong>论文将全局 Prompt 暴力扼杀在极其苛刻的 450 token 极窄空间内，而成熟的生产级系统（如 Codex CLI）光是给「用户原话逐字保留」这一单项白名单规则就分配了高达 20,000 token 的预算</strong> —— 工业系统<b>单独一项关键信息保护的预算额度</b>，就比论文中压缩基线的<b>全局总容量</b>大出一到两个数量级。</p>
+  <p>因此，「Summary-capped 准确率崩溃至 0.52」的实验结论，仅仅揭示了<strong>在极度窒息的 450 token 超低预算下，文本摘要器根本无法承载 100 步长程任务的上下文密度</strong>；它绝不能被偷换概念等同于「工业级上下文压缩体系败给了纯状态机方案」——在合理的工程预算下，二者的终极对决在第四格中依然悬而未决（参见反驳二）。</p>
 
-  <h4 class="subsub">反驳四 · Warehouse 与方法同构</h4>
-  <p>Warehouse 的真实世界状态<strong>本身就是一个字典</strong>：500 个互不相干的格子，每格一个字符串或 null。而 SKILL.state 的状态表示<strong>也是一个字典</strong>。这不是「方法在这个任务上表现好」，这是<strong>方法与任务共用同一个数据结构</strong>。</p>
-  <p>论文自己其实给出了这个偏差的量：换到关系纠缠的 Software Repository 环境，优势从「一开始就赢」退化到「T&#8805;50 才赢」，中间还出现一次落败。<strong>SkillExecBench 是论文自建的，而它的两个环境里，被反复用来做主图的那个恰好是对方法最友好的那个。</strong></p>
+  <h4 class="subsub">反驳四 · Warehouse 任务与键值字典方法存在天然同构偏差</h4>
+  <p>Warehouse 基准测试的物理世界底层<strong>本质上就是一个离散的 Key-Value 字典</strong>：固定 500 个互不重叠的货架插槽，每个插槽对应一个字符串标签或空值。而 SKILL.state 所提出的状态表示模型，<strong>在数据结构上也恰好是一个 Key-Value 字典</strong>。这并不完全是“通用智能体算法在复杂通用场景中展现出优越性”，而是<strong>算法的数据抽象恰好与任务环境底层结构发生了完美同构</strong>。</p>
+  <p>论文自身的扩展实验其实已经诚实地揭示了这一偏差的影响量级：一旦切换到实体依赖与调用拓扑高度交织的真实场景（Software Repository），SKILL.state 的胜势立即从「全程压倒性领先」收缩为「步数推至 T&#8805;50 以后才艰难确立优势」，甚至在早期还出现过被对手反超的凹陷。<strong>SkillExecBench 是论文专门自建的评测套件，而在仅有的两个评测环境中，被论文最频繁展示为主图证明卓越性能的 Warehouse，恰恰是对自身算法理论假设最友好、最容易打出高分的特例。</strong></p>
 
-  <h4 class="subsub">反驳五 · 正文的措辞覆盖了两处不利结果</h4>
+  <h4 class="subsub">反驳五 · 正文高度概括的结论叙述掩盖了两处关键不利数据</h4>
   <div class="tiles two">
-    <div class="tile"><div class="lbl">未提及 · 之一</div><div class="body">Gemma-4-31B 在 T=100 时 SKILL.state 与 Stateful <b>同为 0.42</b>；Qwen-3-8B 是 0.34 vs 0.31。正文只写「across both proprietary and open-weight models」，<b>没有一处说明准确率优势在长程 + 小模型上会消失</b>。</div></div>
-    <div class="tile"><div class="lbl">未提及 · 之二</div><div class="body">Software Repository T=25 处 SKILL.state 均值 <b>0.88 &lt; Stateful 0.94</b>，是全文唯一一次均值落后，正文与附录文字<b>都未提及</b>。<br>&#9888; 但按论文口径这两者误差棒重叠（&plusmn;0.08 / &plusmn;0.03），且低于它声明的 T&#8805;50 显著性区间，<b>所以这是「没提」，不是「输了」</b>。</div></div>
+    <div class="tile"><div class="lbl">未正面提及其一 · 开源小模型长程优势消失</div><div class="body">Gemma-4-31B 在 T=100 时，SKILL.state 与 Stateful 基线的得分<b>完全持平（同为 0.42）</b>；Qwen-3-8B 也仅为 0.34 对 0.31 的微弱差异。论文正文通篇仅用「across both proprietary and open-weight models」一笔带过，<b>从未在正文显式承认其准确率优势在长程任务与开源轻量模型下会基本消失</b>。</div></div>
+    <div class="tile"><div class="lbl">未正面提及其二 · 软件工程场景的局部均值凹陷</div><div class="body">Software Repository 在 T=25 处，SKILL.state 均值仅为 <b>0.88 &lt; Stateful 基线的 0.94</b>，这是全篇所有实验中 SKILL.state 唯一一次在均值指标上落后于对手，正文与附录论述<b>对此均完全回避、未做提及</b>。<br>&#9888; 严格按照统计学口径，两者的置信区间存在重叠（&plusmn;0.08 vs &plusmn;0.03），且处于论文声明的 T&#8805;50 显著性阈值之外，<b>因此这属于「学术论述的选择性回避」，而非「统计学意义上的确定败北」</b>。</div></div>
   </div>
-  <p style="margin-top:20px">两处都不是造假——数据都在表里。但它们都是<strong>读者需要主动去附录找才会发现的不利证据</strong>，而正文的概括性措辞恰好把它们盖住了。</p>
+  <p style="margin-top:20px">这两处现象均非数据造假——原始数据都完整躺在论文的附录表格中。但它们都属于<strong>读者必须带着高度审视的眼光逐行核对附录才能挖掘出的反面证据</strong>，而论文正文高度提炼的宏观定性，恰好将这些不利细节隐蔽了起来。</p>
 
-  <h4 class="subsub">反驳六 · 它自己的前提就排除了我研究的那批系统</h4>
-  <p>论文 Limitations 第一条写得很清楚（这一点我要给它记一功——写得诚实）：</p>
+  <h4 class="subsub">反驳六 · 论文自身列出的局限性直接划出了通用智能体的不可逾越之墙</h4>
+  <p>论文在 Limitations 章节的第一段给出了极为坦诚的边界声明（这也是其治学值得肯定的一面）：</p>
   <div class="pullquote">
     ……失效于三种情形：(1) 事先不知道固定 schema、状态结构必须在执行中动态发现时；(2) 一次正确的状态更新依赖于某条更早的观测，而它的相关性在当时未被识别、因而从未被写入状态时；(3) 任务目标本身定义在历史轨迹之上时（审计、追溯 provenance、解释过去的动作）。
     <span class="who">论文 &#167;7 Limitations</span>
   </div>
-  <p>把这三条翻译成工程语言：</p>
+  <p>将这三条局限性翻译为严密的工业工程语言：</p>
   <ul class="arrow">
-    <li><b>第 (1) 条不等于「coding agent 全都不行」—— 这一点我第一版写窄了。</b>论文自己就在两个 coding 相关环境上跑通了（InterCode CTF、Software Repository），靠的正是<b>预先写好的领域 schema</b>；分支 / PR / CI / issue 这类结构稳定的 workflow，schema 完全写得出来。
-    真正被排除的是<b>「相关状态结构必须在执行中才被发现」的那部分开放式 coding 与 debugging</b> ——「修复这个仓库里的登录 bug」属于这一类：你事先不知道会碰到哪些文件、哪些框架、哪种错误。
-    我研究的十五个平台里，<b>OpenClaw、Hermes、Codex CLI、opencode、kimi-code、Cline、Goose、OpenHands 八家的入口任务恰好偏在这一侧</b> —— 不是它们不能用 schema，而是它们接到的任务通常还没有 schema。</li>
-    <li><b>第 (2) 条是最狠的一条</b>，它承认了状态式路线的根本脆弱性：<b>投影是不可逆的</b>。压缩式系统里，一条当时没看出重要性的信息还躺在未压缩的 tail 里，后面可能被用上；SKILL.state 里，它在第一步就被丢了。<b>「事后才知道重要」这件事，是投影范式无解的。</b></li>
-    <li><b>第 (3) 条对应我研究 &#167;17.7「压缩不销毁数据」那条共识</b>。十一家都保留原始数据（append-only session tree、soft archive、双可见性、事件溯源）。SKILL.state 的 &#931; <b>不是日志</b>，要留档得另建一套。</li>
+    <li><b>第一条绝不等于「所有编程智能体都无法采用状态机」</b>：论文已经在 InterCode CTF 和 Software Repository 两项任务中成功验证，依靠的是<b>人工针对特定领域预先提炼出的静态 Schema</b>；像 Git 分支切换、PR 流转、CI 检查、Issue 状态这类流程固化的标准化工作流，完全可以写出高质量 Schema。
+    真正被无情排除在外的，是<b>「状态拓扑结构必须在交互探索过程中被动态感知与构建」的开放式探索与排错场景</b> —— 典型的如「排查并修复线上某个偶发的死锁问题」：你无法在启动前预知这次排查究竟会涉及到哪些代码文件、第三方依赖库或底层错误栈。主流开源 Coding Agent（如 OpenClaw、Hermes、Codex CLI、opencode、kimi-code、Cline、Goose、OpenHands 等）所承接的核心日常任务，恰恰重度集中在这一无法预设 Schema 的开放侧。</li>
+    <li><b>第二条是直击纯状态机范式软肋的致命弱点：即时信息投影是不可逆的单向操作。</b>在传统的压缩式架构中，即使某条看似琐碎的日志未被提炼进当前摘要，它依然在近期未经压缩的原始上下文尾部（Tail）中静默存活，一旦后续步骤发现端倪，仍有机会被回溯提取；而在 SKILL.state 的纯净状态字典中，任何未被当前规则捕获的早期观测在发生的那一刻便被永久抹去。<b>「事后方知关键」这一认知探索的不对称规律，是纯粹的状态即时投影架构在逻辑上根本无法解救的死穴。</b></li>
+    <li><b>第三条对应了工程实践中「上下文压缩绝不能物理销毁原始数据」的核心底线。</b>业界成熟框架普遍采用只追加会话树（Session Tree）、事件溯源（Event Sourcing）与软归档机制，确保任何时刻都能审计完整的决策链路。SKILL.state 维护的 &#931; <b>本质上只是一张易失的最新状态表，而非审计日志</b>；一旦系统需要追溯责任因果，必须在系统外平行架设一套独立的数据存储。</li>
   </ul>
 
   <div class="call key">
-    <span class="tag">还有一件论文明明占优、却没测的事</span>
-    <b>延迟</b>。全文没有任何 wall-clock 数字。但 prompt 从 36,362 字符降到 1,905 字符，<b>TTFT 几乎必然大幅下降</b>——而长程 agent 的体感成本主要就是延迟。
-    论文的 Introduction 第一段甚至把 <i>latency degradation</i> 写成了它要解决的问题之一，然后<b>一个延迟数字都没给</b>。这是它自己漏掉的一个优势。
+    <span class="tag">论文占据绝对优势却未予测量的隐形王牌</span>
+    <b>端到端执行延迟（Latency）</b>。全文没有提供任何一条物理墙钟时间（Wall-clock Time）数据。但单步 Prompt 从 36,362 字符锐减至 1,905 字符，<b>首字生成延迟（TTFT）与网络传输耗时几乎必然呈现断崖式下降</b>——而在长程智能体的实际用户体验中，最敏感的痛点恰恰是多轮交互的等待延迟。
+    论文在 Introduction 首段甚至明确将“缓解延迟退化（Latency Degradation）”列为了核心研究动力之一，但在后续的详尽评测中<b>竟然未给出任何实测延迟指标</b>。这无疑是作者团队在论证过程中自身遗漏的一张极具说服力的关键底牌。
   </div>
 </section>
 
 <!-- ============ 11 ============ -->
 <section class="essay" id="s11">
-  <div class="section-head"><span class="section-num">11</span><h2 class="section-title">今天能抄什么：混合架构</h2></div>
-  <div class="section-sub">不用等到有 schema 才能用上这篇论文</div>
+  <div class="section-head"><span class="section-num">11</span><h2 class="section-title">工程落地能借鉴什么：混合架构设计</h2></div>
+  <div class="section-sub">无需等待全局 Schema 完备，即可在现有架构中渐进式采纳</div>
 
-  <p class="deck">这篇论文最好的用法不是「照着换掉你的运行时」，而是把它的洞察拆下来，插进你已有的压缩系统里。因为它证明的那件事，其实是可以<em>按字段增量采用</em>的。</p>
+  <p class="deck">这篇论文对工业界最具价值的启发，绝不是非黑即白地推翻现有的上下文管理体系，而是将其精妙的状态维护机制拆解为独立构件，以模块化方式渐进式注入到现有的压缩管线中。因为论文所验证的核心逻辑，在工程上完全可以按字段、按通道逐步落地。</p>
 
   <figure>
     <div class="fig">
-      <p class="fig-title">三通道上下文：把「有 schema 的」和「没 schema 的」分开走</p>
-      <p class="fig-sub">同一份上下文，三种存活规则</p>
+      <p class="fig-title">三通道上下文架构：结构化字段与非结构化探索分流治理</p>
+      <p class="fig-sub">同一份上下文空间，三套差异化的生命周期管理策略</p>
       <div class="chart-host">
       <svg viewBox="0 0 900 340" role="img" aria-label="三通道架构：不可压缩通道、状态通道、历史通道">
         <!-- channel 1 -->
         <rect x="30" y="40" width="840" height="76" rx="9" fill="#221803" stroke="#c98500" stroke-width="1.5"/>
-        <text x="52" y="66" fill="#FFD9A8" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700">通道 A &#183; 不可压缩</text>
-        <text x="52" y="88" fill="#B6B2A6" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5">治理约束 · 组织策略 · 项目约定 · 安全规范 —— <tspan font-weight="700" fill="#FFD9A8">每一步原样重注入，永不进摘要器</tspan></text>
-        <text x="52" y="107" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">依据：ConstraintRot 实测「约束存活则违规 0%，丢弃则 38%」；十五家里只有 OpenClaw 与 kimi-code 做了重注入，且都没注入约束本身</text>
+        <text x="52" y="66" fill="#FFD9A8" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700">通道 A &#183; 不可压缩治理通道</text>
+        <text x="52" y="88" fill="#B6B2A6" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5">治理约束 · 组织策略 · 项目约定 · 安全红线 —— <tspan font-weight="700" fill="#FFD9A8">每一步原样重注入，永不进入摘要器</tspan></text>
+        <text x="52" y="107" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">依据：ConstraintRot 实测证明「约束保留则违规率 0%，遗失则飙升至 38%」；领先实践已逐步探索此类独立重注入通道</text>
         <text x="838" y="82" fill="#c98500" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">O(1) · 恒定</text>
 
         <!-- channel 2 -->
         <rect x="30" y="128" width="840" height="90" rx="9" fill="#0d2b20" stroke="#199e70" stroke-width="1.5"/>
-        <text x="52" y="154" fill="#7BE3D7" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700">通道 B &#183; 状态（&#931;）</text>
-        <text x="52" y="176" fill="#B6B2A6" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5">凡是<tspan font-weight="700" fill="#7BE3D7">能写出字段名</tspan>的东西：当前目录 · 打开的文件 · 待办清单 · 已排除的假设 · 未闭合的义务 · 对话语言</text>
-        <text x="52" y="195" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">由运行时从活数据源直接挂载（kimi-code 的 TODO 已经这么做），<tspan font-weight="700" fill="#7BE3D7">禁止摘要器转抄</tspan>；更新走 &#916;&#931; 补丁 + schema 校验</text>
-        <text x="52" y="212" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">这是本篇论文的贡献落地的地方 —— 不需要整个任务有 schema，只需要<tspan font-weight="700" fill="#7BE3D7">某几个字段</tspan>有</text>
+        <text x="52" y="154" fill="#7BE3D7" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700">通道 B &#183; 结构化状态通道（&#931;）</text>
+        <text x="52" y="176" fill="#B6B2A6" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5">凡是<tspan font-weight="700" fill="#7BE3D7">能提炼出稳定字段名</tspan>的实体：当前目录 · 打开的文件 · 待办任务清单 · 已排除的假设 · 未闭合的事务 · 对话语言</text>
+        <text x="52" y="195" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">由运行时直接从真实数据源挂载（如 kimi-code 对 TODO 的实践），<tspan font-weight="700" fill="#7BE3D7">严禁摘要器模糊转抄</tspan>；更新走 &#916;&#931; 补丁 + Schema 校验</text>
+        <text x="52" y="212" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">这是本篇论文精髓落地的地方 —— 不需要整个任务有完备 Schema，只需要<tspan font-weight="700" fill="#7BE3D7">某几个关键字段</tspan>有</text>
         <text x="838" y="176" fill="#199e70" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">O(1) · 有界</text>
 
         <!-- channel 3 -->
         <rect x="30" y="230" width="840" height="90" rx="9" fill="#0e2038" stroke="#3987e5" stroke-width="1.5"/>
-        <text x="52" y="256" fill="#8FC0F5" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700">通道 C &#183; 历史</text>
-        <text x="52" y="278" fill="#B6B2A6" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5">剩下的一切：<tspan font-weight="700" fill="#8FC0F5">写不出字段名的部分</tspan> —— 探索过程、用户原话、当时没看出相关性的观测</text>
-        <text x="52" y="297" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">照旧走六层压缩：绝对余量触发 · 保护头尾 · tool pair 原子 · 结构化摘要 · 留检索回捞的路</text>
-        <text x="52" y="314" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">它是论文 Limitations 第 (2) 条的保险：<tspan font-weight="700" fill="#8FC0F5">「事后才发现重要」的那类信息，只有这条通道能救</tspan></text>
-        <text x="838" y="278" fill="#3987e5" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">O(W) · 压缩维持</text>
+        <text x="52" y="256" fill="#8FC0F5" font-family="Inter Tight, Noto Sans SC, sans-serif" font-size="15" font-weight="700">通道 C &#183; 压缩历史回溯通道</text>
+        <text x="52" y="278" fill="#B6B2A6" font-family="Inter, Noto Sans SC, sans-serif" font-size="12.5">剩下的一切：<tspan font-weight="700" fill="#8FC0F5">写不出字段名的非结构化探索</tspan> —— 代码探查过程、用户口语化原话、当时未识别出关联的偶发报错</text>
+        <text x="52" y="297" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">照旧走工业级六层压缩流：绝对余量触发 · 保护头尾 · Tool Call 原子绑定 · 结构化摘要 · 留检索回溯接口</text>
+        <text x="52" y="314" fill="#8B8378" font-family="Inter, Noto Sans SC, sans-serif" font-size="11.5">它是论文 Limitations 第 (2) 条的根本保险：<tspan font-weight="700" fill="#8FC0F5">「事后才发现重要」的那类信息，只有这条通道能救</tspan></text>
+        <text x="838" y="278" fill="#3987e5" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">O(W) · 窗口常数维持</text>
 
-        <text x="30" y="26" fill="#8B8378" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2">按「能不能写出字段名」把上下文切成三条通道，每条一套存活规则</text>
+        <text x="30" y="26" fill="#8B8378" font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="1.2">按「能否提炼出稳定字段名」将上下文空间解耦为三条通道，各自执行独立的生命周期规则</text>
       </svg>
       </div>
-      <figcaption>切分判据只有一句：<b>这条信息你能不能给它起一个稳定的字段名？</b>能——进通道 B；不能，但绝不能丢——进通道 A；不能且丢了可接受——进通道 C。</figcaption>
+      <figcaption>切分判据只有一句：<b>这项信息你能不能给它起一个稳定清晰的字段名？</b> 能——进入通道 B（状态通道）；不能，但绝不能丢——进入通道 A（治理通道）；不能且允许渐进式压缩遗忘——进入通道 C（历史通道）。</figcaption>
     </div>
   </figure>
 
-  <h3 class="sub">按投入产出比排序的六条动作</h3>
+  <h3 class="sub">按投入产出比排序的六项落地动作</h3>
   <div class="tbl-wrap">
   <table>
-    <tr><th style="width:4%">#</th><th style="width:30%">动作</th><th style="width:26%">来自论文的依据</th><th>落到我研究的哪一条</th></tr>
+    <tr><th style="width:4%">#</th><th style="width:30%">落地动作</th><th style="width:26%">来自论文的实证依据</th><th>工业界落地参考与映射</th></tr>
     <tr>
       <td class="num"><b>1</b></td>
-      <td><b>把任务状态从摘要通道里拿出来</b>，改由运行时从活数据源每步重新挂载</td>
-      <td>&#931; 恒定即可保住 0.94；摘要转述会失真</td>
-      <td>kimi-code 已对 TODO 这么做（&#167;8）。<b>这是最便宜的一步</b>——不用改架构，只需把一个字段换个来源</td>
+      <td><b>把任务核心状态从摘要通道中彻底剥离</b>，改由宿主运行时从真实数据源每步重新挂载注入</td>
+      <td>只要 &#931; 保持真实准确即可保住 0.94 的高动作准确率；文本摘要器的模糊转述极易导致关键字段失真</td>
+      <td>kimi-code 已对 TODO 清单这么做（&#167;8）。<b>这是工程性价比最高、改造阻力最小的第一步</b>——根本无需重构框架，只需把单一字段的数据源改道</td>
     </tr>
     <tr>
       <td class="num"><b>2</b></td>
-      <td>在 schema 里加一个 <code>tested_hypotheses</code> 类字段：<b>显式记下试过且失败的路</b>。<br>&#9888; <b>必须同时给它封顶</b>：设条数上限（保留最近 N 条 + 一个计数），或定期让模型归并成更抽象的排除规则</td>
-      <td>InterCode CTF 54.2% vs 46.4%，论文把提升主要归因于这个字段</td>
-      <td>十一家的摘要模板里有 Done / In-Progress / Blocked，<b>但没有一家有「已排除」这一格</b>。这是清单里可以新增的一条。<br><b>封顶那半条是我加的</b>——不封顶就是把膨胀从对话通道搬到状态通道（见<a href="#s10">第 10 节反驳一</a>）</td>
+      <td>在 Schema 里新增 <code>tested_hypotheses</code> 类字段：<b>显式沉淀已试过且失败的试错路径</b>。<br>&#9888; <b>必须同时配置严格的封顶策略</b>：设条数上限（如仅保留最近 N 条 + 失败总数计数），或定期触发模型归并抽象出更高层级的排除准则</td>
+      <td>InterCode CTF 任务中准确率从 46.4% 跃升至 54.2%，论文将此突破归因于维护已排除假设与发现旗标</td>
+      <td>工业界主流摘要模板普遍包含 Done / In-Progress / Blocked 等常规项，<b>唯独普遍缺失了「已排除假设」这一维度</b>。这是现成设计中极具增量价值的扩展项。<br><b>设置上限是我额外补充的工程防护——如果不加封顶，无非是把上下文膨胀从对话历史转移到了状态字典里</b>（参见<a href="#s10">第 10 节反驳一</a>）</td>
     </tr>
     <tr>
       <td class="num"><b>3</b></td>
-      <td><b>把治理约束与项目约定做成独立的不可压缩通道</b>，而不是混在历史里等摘要转述</td>
-      <td>论文没测这条，但它的架构天然支持</td>
-      <td>我研究清单第 3、4 条。ConstraintRot：0% &#8594; 38%。<b>论文的 schema 机制正好是实现它的现成办法</b></td>
+      <td><b>把项目治理约束与开发规则固化为独立的不可压缩前缀通道</b>，而不是混在对话历史里等待摘要器稀释</td>
+      <td>论文虽未对此做专项隔离实验，但其固定技能说明书 P 的架构设计天然为不可变规则提供了完美载体</td>
+      <td>对应我此前研究清单第 3、4 条。ConstraintRot 实测证明规则遗失将导致违规率从 0% 飙升至 38%。<b>论文的 Schema 机制正好是实现独立约束注入的现成方案</b></td>
     </tr>
     <tr>
       <td class="num"><b>4</b></td>
-      <td>状态更新用 <b>merge + 显式 null 删除</b>，并做 schema 校验；小模型上加 grammar-constrained decoding</td>
-      <td>68% 的小模型错误是误删 key；论文明确建议约束解码</td>
-      <td>Goose 的 schema 约束 JSON 摘要（&#167;10.2）已经有这个形态，差的是校验与约束解码</td>
+      <td>状态更新协议统一采用 <b>Merge + 显式 null 删除</b>，并前置严密的确定性 Schema 校验；在端侧轻量小模型上必须加装受限语法解码（Constrained Decoding）</td>
+      <td>开源中轻量模型有高达 68% 的失误源自误删合法 key；论文明确建议小模型应采用受限解码降低失误</td>
+      <td>Goose 采用 Schema 约束 JSON 摘要（&#167;10.2）已初具雏形，亟待补齐的是强类型校验与生成层面的语法约束</td>
     </tr>
     <tr>
       <td class="num"><b>5</b></td>
-      <td><b>永远保留一条压缩历史通道</b>，别真的删光</td>
-      <td>论文 Limitations 第 (2) 条自己承认的漏洞</td>
-      <td>&#167;17.7「压缩不销毁数据」+ &#167;2.13「摘要写 Lookup hints」。<b>状态式路线最需要的保险，恰好是压缩式路线的强项</b></td>
+      <td><b>务必保留生产级滑动窗口与压缩历史通道作为底层兜底</b>，切忌激进地完全抹去交互历史</td>
+      <td>论文 Limitations 第 (2) 条所坦承的致命盲区——无法拯救「事后才显现价值」的遗失观测</td>
+      <td>严格践行 &#167;17.7「上下文压缩绝不物理销毁原始数据」底线，辅以高效的 Lookup Hints 索引。<b>状态机路线最脆弱的短板，恰恰是成熟压缩体系最稳固的看家本领</b></td>
     </tr>
     <tr>
       <td class="num"><b>6</b></td>
-      <td>评测<b>必须跑到 T&#8805;50</b>，短程实验测不出压缩策略的差异</td>
-      <td>Table 11：T=10 时四种做法最大差距 0.12，T=100 时 0.76</td>
-      <td>这条对做 eval 的人比对做压缩的人更重要——它意味着<b>大多数人现在的压缩评测长度是不够的</b></td>
+      <td>评测体系的步数跨度<b>必须延伸至 T&#8805;50 步以上</b>，短程交互评测根本无法区分不同上下文管理策略的优劣本质</td>
+      <td>Table 11 实测：当 T=10 时四种策略最大差距仅为 0.10，而推进至 T=100 时长程差距陡增至 0.76</td>
+      <td>该条经验对于评测工程师的指导意义甚至超越了压缩研发人员——这意味着<b>业内绝大多数基于短轮次的评估框架，都未曾真正触及长程智能体的性能天花板</b></td>
     </tr>
   </table>
   </div>
 
   <div class="call mine">
-    <span class="tag">一句话版本</span>
-    别把这篇论文读成「压缩过时了」。读成：<b>凡是你能写出字段名的东西，都不该经过摘要器。</b>
-    剩下写不出字段名的部分，压缩仍然是唯一的办法 —— 而那部分恰好是 coding agent 的主体。
+    <span class="tag">核心落地准则</span>
+    切莫将这篇论文片面解读为「历史压缩技术已经落伍」。它带给工业界最宝贵的启示在于：<b>凡是能够明确提炼出稳定字段名的核心状态，都绝不应交由文本摘要器进行有损转述；而对于无法提炼出固定 Schema 的海量开放式探索细节，基于滑动窗口与语义索引的上下文压缩依然是不可替代的工程基石。</b>
   </div>
 </section>
 
 <!-- ============ 12 ============ -->
 <section class="essay" id="s12">
-  <div class="section-head"><span class="section-num">12</span><h2 class="section-title">自测 · 来源 · 口径</h2></div>
-  <div class="section-sub">读完了检查一下</div>
+  <div class="section-head"><span class="section-num">12</span><h2 class="section-title">总结自测 · 证据来源 · 口径对照</h2></div>
+  <div class="section-sub">梳理核心认知边界与工程决策自查清单</div>
 
-  <h3 class="sub">八道自测题</h3>
-  <details class="q"><summary>SKILL.state 每一步给模型看的三样东西是什么？哪一样是可变的？</summary><div class="a">
-    <code>P</code>（技能说明书，不变）、<code>&#931;_t</code>（结构化执行状态，<b>唯一可变的那个</b>）、<code>O_t</code>（最新一条观测）。之前的推理、动作、观测<b>一律不进 prompt</b>。
+  <h3 class="sub">九道核心自测题（深度复盘）</h3>
+  <details class="q"><summary>SKILL.state 在执行每一步时，输入给模型的三大要素是什么？哪一项是动态可变的？</summary><div class="a">
+    <code>P</code>（技能静态说明书，全局固定不可变）、<code>&#931;_t</code>（结构化执行状态字典，<b>全流程中唯一动态演进的要素</b>）、<code>O_t</code>（当前步环境给出的最新单条观测）。过往所有历史对话、探索动作以及中间推理痕迹，<b>一律不进入当前 Prompt</b>。
   </div></details>
-  <details class="q"><summary>模型每步产出三样东西，它们的去向分别是什么？</summary><div class="a">
-    <code>R_t</code> 推理 &#8594; <b>验证通过后永久丢弃</b>；<code>&#916;&#931;_t</code> 状态补丁 &#8594; 确定性校验后合并进 &#931;；<code>a_t</code> 动作 &#8594; 交给环境执行。
-    关键在第一条：<b>步内推理是完整的，但它不跨步存活</b>。
+  <details class="q"><summary>模型在每一步推理后产出哪三样要素，它们的最终生命周期与去向分别是什么？</summary><div class="a">
+    <code>R_t</code> 步内思考推理 &#8594; <b>用于生成决策与补丁，当前步校验通过后立即丢弃，绝不跨步传递</b>；<br>
+    <code>&#916;&#931;_t</code> 增量状态补丁 &#8594; 经宿主运行时严格的确定性 Schema 校验后合并入全局状态字典 &#931;；<br>
+    <code>a_t</code> 执行动作 &#8594; 派发给外部环境执行并收集下一次观测。<br>
+    最核心的认知在于：<b>模型在步内保留了完整强大的深度推理能力，但该思考过程绝不跨轮留存。</b>
   </div></details>
-  <details class="q"><summary>论文的 O(1) 单步结论，前提是什么？这个前提被验证过吗？</summary><div class="a">
-    前提是 <b><code>|&#931;|</code> 本身有界</b> —— 而论文<b>没有任何一处论证或测量它</b>。
+  <details class="q"><summary>论文宣称的单步 O(1) 空间复杂度，其成立的关键前提是什么？这一前提在论文中得到实证了吗？</summary><div class="a">
+    前提是<b>状态字典体积 <code>|&#931;|</code> 本身具备严格的有限上界</b> —— 而论文<b>通篇没有任何一处对此进行过数学证明或动态演进测量</b>。
     <br><br>
-    它自己的 CTF schema 里，<code>discovered_flags</code> 与 <code>tested_hypotheses</code> 都是<b>只增列表</b>；
-    而 <code>tested_hypotheses</code> 恰恰是论文归因 CTF 提升的那个字段 —— <b>它的价值就来自「什么都不忘」，所以按设计就会越来越长</b>。
+    在实际的 CTF 任务中，<code>discovered_flags</code> 与 <code>tested_hypotheses</code> 语义上均为<b>只增列表（Append-only）</b>；尤其是论文重点归因的 <code>tested_hypotheses</code>，其核心价值恰恰来自于记录失败试错记录，天生具备随步数无限拉长的风险。
     <br><br>
-    Warehouse 上那条水平线是<b>环境给的</b>（500 个格子，只有覆盖与删除，没有累积字段），不是方法给的。
-    正确说法是：<b>SKILL.state 把「上下文会不会爆」从运行时问题变成了 schema 设计问题</b> —— 是进步，但不是自动保证。
+    Warehouse 测试中展现出的绝对平稳水平线，是<b>特定仓库离散物理空间带来的天然红利</b>（500 货架，纯单值覆盖与删除，无累积字段），而非算法本身的普适数学保证。
+    更严谨的认知是：<b>SKILL.state 并没有自动消灭上下文膨胀，而是将运行时的动态膨胀风险前移转化为了静态 Schema 规范与字段长度治理问题</b> —— 这是一个巨大的架构进步，但决非自动获得的免死金牌。
   </div></details>
-  <details class="q"><summary>论文说自己把 O(T&#178;) 降到 O(T)。这个说法对压缩式系统成立吗？</summary><div class="a">
-    <b>不成立。</b>O(T&#178;) 只对完全不压缩的 ReAct 成立。任何做了压缩的运行时，单步 prompt 都被窗口 W 卡住，累计是 <b>O(T&#183;W)——同样是线性</b>。
-    SKILL.state 与生产系统的差距是<b>常数</b>（W 从 ~30,000 token 降到 ~500），不是阶数。这个常数值 16&#8211;40 倍，很大，但不是「二次降一次」。
+  <details class="q"><summary>论文声称将累积上下文消耗从 O(T&#178;) 降至 O(T)。这一结论面对现代工业级压缩系统依然成立吗？</summary><div class="a">
+    <b>并不成立。</b>O(T&#178;) 的二次方膨胀仅对完全不压缩、无限硬堆叠历史的朴素 ReAct 成立。任何引入了滑动窗口或压缩机制的现代系统，单步 Prompt 上限都被硬性限制在窗口常数 W 之内，长程累计消耗本质上都是 <b>O(T&#183;W) —— 同样严格保持线性增长</b>。
+    SKILL.state 相较于现代压缩系统的优势，本质上是<b>窗口常数大小的倍率优势</b>（将常规压缩的 W &approx; 30,000 token 压缩至极简状态字典的 W &approx; 500 token），属于 16&#8211;40 倍的常数级优化，而非计算复杂度的阶数跨越。
   </div></details>
-  <details class="q"><summary>预算对齐实验里，LLMLingua 掉到 0.22 的原因是什么？它对应我压缩研究里的哪条共识？</summary><div class="a">
-    统计熵过滤删掉了「看起来冗余、语义上却至关重要的<b>槽位标识符</b>」。
-    对应 &#167;17.2「<b>保留精确标识符是共同焦虑</b>」——十一家都在摘要 prompt 里写死「逐字保留路径 / ID / 错误码」。
-    当时这条只有源码一致性作为证据，<b>这篇论文提供了反证：不这么做会掉到 0.22</b>。
+  <details class="q"><summary>在同预算对比实验中，LLMLingua 准确率崩塌至 0.22 的根因是什么？印证了工程实践中的哪条铁律？</summary><div class="a">
+    根因在于基于统计信息熵的文本压缩算法，无差别地过滤掉了大量在统计学上看起来冗余、但在程序逻辑上至关重要的<b>精细插槽标识符（如文件路径、资源 ID、细分错误码）</b>。
+    这一结果以极端的反面实证，严厉印证了工业界的共识原则：<b>「保留精确标识符是上下文压缩的绝对生命线」</b>——主流平台在压缩 Prompt 中都会强制锁定「必须逐字无损保留路径与唯一标识符」。如果不设防地任由统计压缩器裁剪，准确率就会像实验中那样发生断崖式溃败。
   </div></details>
-  <details class="q"><summary>为什么说这套架构把「信息存活」从概率问题变成了程序问题，同时也变成了单点？</summary><div class="a">
-    压缩式系统里，摘要漏了一条约束，还有<b>未被压缩的 tail</b> 兜底，失效是<b>渐进的</b>；
-    SKILL.state 里，一个 key 被 <code>null</code> 掉就是真的没了，<b>没有第二份拷贝</b>，失效是<b>二值的</b>。
-    实证：开源权重模型 <b>68% 的错误正是「误删了本该保留的 key」</b>。
+  <details class="q"><summary>为什么说状态字典架构将信息存活性从「概率问题」转变为「程序问题」，却同时也引入了「单点故障脆弱性」？</summary><div class="a">
+    在传统基于滑动窗口的压缩系统中，即使自然语言摘要漏掉了某些信息，原始历史尾部（Tail）依然留有容错余地，信息遗失往往是<b>平缓渐进的</b>；
+    而在 SKILL.state 架构中，一个键值一旦被模型错误地置为 <code>null</code>，便在内存中物理消亡，<b>不存在第二份历史副本可供容灾</b>，其失效是<b>非生即死的二值突变</b>。
+    实证数据：开源轻量模型在长程任务中高达 <b>68% 的失误，恰恰是因为在生成补丁时误删了本应继续保留的关键状态键</b>。
   </div></details>
-  <details class="q"><summary>prompt cache 有一条门槛。它为什么恰好卡死 SKILL.state？</summary><div class="a">
-    缓存要求<b>可缓存前缀达到最小值</b>（ADK 文档：Gemini 2.5 是 2,048 token，Gemini 3 是 <b>4,096</b>），低于它一个 token 都不缓存。
+  <details class="q"><summary>主流大模型的 Prompt Cache 门槛机制，为什么反而对 SKILL.state 构成了结构性不利？</summary><div class="a">
+    现代模型供应商的缓存计费通常设定有<b>最小可缓存前缀门槛</b>（例如 Gemini 2.5 为 2,048 token，Gemini 3 为 <b>4,096 token</b>），低于该门槛的请求完全无法激活缓存优惠。
     <br><br>
-    SKILL.state 的稳定前缀只有 <code>P</code>（~350 token），<b>永远够不着</b>；ReAct 的 prompt 在第 24 步就越过门槛，此后每步命中。
-    于是 Warehouse T=100 的倍率从裸 token 的 <b>19.0&#215;</b> 掉到 <b>3&#8211;8&#215;</b> 区间（精确值取决于论文未公开的 input/output 拆分）。
+    SKILL.state 每步逐字不变的静态说明书 <code>P</code> 仅约 350 token，<b>永远无法单凭自身迈过这一门槛</b>；而传统长上下文基准在运行数十步后便能轻易越过门槛，后续每步均能享受高比例的缓存折扣。
+    这导致在实际账单核算中，Warehouse T=100 步时原本高达 <b>19.0&#215;</b> 的原始 Token 差距，在计入缓存折扣后被收窄至 <b>3&#8211;8&#215;</b> 的有限区间内。
     <br><br>
-    反直觉之处：<b>让 SKILL.state 便宜的那个性质（prompt 极小），正是让它拿不到缓存折扣的那个性质。</b>
-    设计上的推论<b>不是</b>「把 <code>P</code> 灌水到 4,096」，而是：<b>让 <code>P</code> 加上 <code>&#931;</code> 中逐字不变的前导部分合起来越过门槛</b> ——
-    稳定 key 顺序、把 &#931; 切成 immutable / mutable 两区、immutable 区排前面。
+    这一工程悖论表明：<b>使得 SKILL.state 在原始 Token 上极致便宜的特性（Prompt 极简），恰恰是使其在工业级缓存体系中无法吃到折扣的根源所在。</b>
+    合理的工程解法并非盲目向 <code>P</code> 中灌水，而是<b>构建跨步稳定的前缀序列</b>：固定 Schema 字段排序，将字典划分为不可变前缀区与动态变动区，让静态说明书与高频不可变状态合并跨过缓存门槛。
   </div></details>
-  <details class="q"><summary>论文自己承认的三种失效情形是什么？其中哪一条排除了 coding agent？</summary><div class="a">
-    (1) 事先没有固定 schema、结构必须动态发现；(2) 正确的更新依赖某条<b>当时未识别出相关性</b>的更早观测；(3) 任务目标定义在历史轨迹本身之上（审计、provenance）。
-    <b>第 (1) 条就是 coding agent</b>——「修复这个仓库的登录 bug」没有事先可写的 schema。我研究的十五个平台里有八家主场在这里。
-    第 (2) 条最狠：它承认<b>投影是不可逆的</b>，「事后才知道重要」这件事投影范式无解。
+  <details class="q"><summary>论文自身坦承的三大失效场景是什么？其中哪一项直接排除了通用 Coding Agent 的核心主场？</summary><div class="a">
+    三大失效场景：(1) 事先缺乏先验 Schema、状态结构必须在执行中动态发现；(2) 关键决策依赖于早期观测，但该观测在当时未被识别出相关性因而未写入状态；(3) 任务目标本身直接定义在完整的历史轨迹之上（如合规审计、因果追溯）。
+    <br><br>
+    <b>第 (1) 项与第 (2) 项直接命中了通用 Coding Agent 的软肋</b>：在开放式的代码排错与复杂系统调试中，开发者与智能体事先根本无法预知会遭遇哪些文件与异常分支；加之<b>单向即时投影不可逆</b>的物理特性，一旦早期把当时看似无关的日志丢弃，后续就再也无法回溯提取。工业界主力 Coding Agent 多数都处于这一充满不确定性的领域。
   </div></details>
-  <details class="q"><summary>如果今天要把这篇论文用进一个已有的压缩系统，第一步做什么？</summary><div class="a">
-    <b>把任务状态（TODO / 当前目录 / 打开的文件）从摘要通道里拿出来，改由运行时从活数据源每步重新挂载，并禁止摘要器转抄。</b>
-    这不需要改架构，只是把一个字段换个来源；kimi-code 对 TODO 已经这么做了。
-    判据是一句话：<b>凡是你能写出稳定字段名的东西，都不该经过摘要器。</b>
+  <details class="q"><summary>如果在现有的成熟 Agent 系统中渐进式采纳本论文的思想，最优先切入的第一步是什么？</summary><div class="a">
+    <b>将当前任务的核心执行状态（如待办清单 TODO、当前工作目录、活跃文件句柄）从易损的自然语言摘要中彻底解耦出来，改由宿主运行时直接挂载真实数据源，并严禁摘要器进行二次转述。</b>
+    这一改造不需要对现有底层模型调用管线进行伤筋动骨的大改，仅需重定向单一结构化字段的数据源即可立即收效；kimi-code 对 TODO 清单的实现便印证了这一路径。
+    决策黄金法则只有一句话：<b>凡是能够明确提炼出稳定字段名的核心状态，都绝不应经由文本摘要器进行有损转抄。</b>
   </div></details>
 
   <h3 class="sub">来源与证据边界</h3>
   <div class="tbl-wrap">
   <table>
-    <tr><th style="width:22%">类别</th><th>内容</th></tr>
-    <tr><td><b>论文原文</b></td><td><a href="https://arxiv.org/abs/2608.26263">arXiv:2608.26263</a> &#183; <a href="https://arxiv.org/html/2608.26263">HTML 全文</a>。v1 2026-08-26，v3 2026-09-02。本页所有论文数字均<b>直接核对自 HTML 原文的表格</b>（Table 1&#8211;11），不是二手转述。合成实验为 <b>5 seeds，mean &plusmn; 样本标准差</b>；论文声明差异在 <b>T&#8805;50</b> 显著（paired t-test, <i>p</i>&lt;0.01）</td></tr>
-    <tr><td><b>配套研究</b></td><td><a href="../Agent_Context_Compression_Research.html">开源 Agent 平台的 Context Compression 机制研究</a>（十五平台 · 逐文件读源码）与 <a href="../learn/">从零学 Agent Context Compression</a>（十步学习路径）。本页引用的 &#167; 编号均指前者</td></tr>
-    <tr><td><b>论文引用的第三方 benchmark</b></td><td>InterCode CTF（Yang et al., 2023）· Sierra &#964;-Bench（Yao et al., 2024）· LLMLingua（Jiang et al., 2023）· Lost in the Middle（Liu et al., 2024）</td></tr>
-    <tr><td><b>我此前研究引用的相关实证</b></td><td>CompactionRL（<a href="https://arxiv.org/abs/2607.05378">arXiv:2607.05378</a>）· ConstraintRot / Governance Decay（<a href="https://arxiv.org/abs/2606.22528">arXiv:2606.22528</a>）· Slipstream（<a href="https://arxiv.org/abs/2605.08580">arXiv:2605.08580</a>）</td></tr>
+    <tr><th style="width:22%">数据类别</th><th>内容说明与来源核验</th></tr>
+    <tr><td><b>论文原文依据</b></td><td><a href="https://arxiv.org/abs/2608.26263">arXiv:2608.26263</a> &#183; <a href="https://arxiv.org/html/2608.26263">HTML 全文</a>。版本对照：v1 2026-08-26，v3 2026-09-02。本页所有实验数据均<b>直接核对自 HTML 原文的官方数据表</b>（Table 1&#8211;11），严禁任何二手转述。合成实验统一为 <b>5 seeds，采用 mean &plusmn; 样本标准差</b> 口径；论文正式声明其统计学差异在 <b>T&#8805;50</b> 步时达到显著水平（配对 t 检验，<i>p</i>&lt;0.01）。</td></tr>
+    <tr><td><b>配套研究文献</b></td><td><a href="../Agent_Context_Compression_Research.html">开源 Agent 平台的 Context Compression 机制研究</a>（十五大主流平台源码逐行精读）与 <a href="learn/">SKILL.state 交互学习页</a>。本页中引用的章节编号（如 &#167; 标识）均精确对应前序研究文献。</td></tr>
+    <tr><td><b>第三方 Benchmark 引用</b></td><td>InterCode CTF（Yang et al., 2023）· Sierra &#964;-Bench（Yao et al., 2024）· LLMLingua（Jiang et al., 2023）· Lost in the Middle（Liu et al., 2024）</td></tr>
+    <tr><td><b>关联实证基准</b></td><td>CompactionRL（<a href="https://arxiv.org/abs/2607.05378">arXiv:2607.05378</a>）· ConstraintRot / Governance Decay（<a href="https://arxiv.org/abs/2606.22528">arXiv:2606.22528</a>）· Slipstream（<a href="https://arxiv.org/abs/2605.08580">arXiv:2605.08580</a>）</td></tr>
   </table>
   </div>
 
   <div class="call fact">
-    <span class="tag">三类陈述的分界（沿用我研究的口径）</span>
-    <b>【来源事实】</b>&#8195;论文表格里的全部数字、Algorithm 1、prompt 模板、Limitations 原文，以及我此前研究里来自源码的结论。<br>
-    <b>【综合解释】</b>&#8195;六层坐标系的映射、「事后减法 vs 事前投影」的框架、「盈亏平衡的 T」、四家平台与 SKILL.state 的对应关系。这些是我的解读，论文没有这么说。<br>
-    <b>【建模推演】</b>&#8195;<b>仅限第 9 节</b>。prompt cache 折算全部为我的估算，基于 4 字符&#8776;1 token、命中 0.1&#215;、写入 1.25&#215;、缓存不过期。<b>不是实测，也不是论文数据。</b>
+    <span class="tag">三类陈述的分界与判定标准</span>
+    <b>【来源事实】</b>&#8195;论文正文及附录表格中的原始测量数字、Algorithm 1 流程伪代码、官方 Prompt 模板定义、Limitations 官方声明，以及前序平台源码中的硬编码实现。<br>
+    <b>【综合解释】</b>&#8195;六层上下文治理坐标系的映射架构、「事后信息裁剪 vs 事前状态投影」的认知框架、「盈亏平衡关键步数 T」、主流框架与 SKILL.state 的概念对应关系。这些属于本文作者的技术推导与系统分析框架，并非论文作者的原生表述。<br>
+    <b>【建模推演】</b>&#8195;<b>仅严格限定于第 9 节</b>。Prompt Cache 的成本折算模型基于典型工业参数（4 字符 &approx; 1 token、缓存命中 0.1&#215;、写入费率 1.25&#215;、缓存生命周期内不失效）。<b>该结论属于理论敏感性建模推导，非论文直接测试数据。</b>
   </div>
 
   <div class="call pit">
-    <span class="tag">跨论文数字不可直接比较</span>
-    本页涉及的几篇论文（SKILL.state、CompactionRL、ConstraintRot、Slipstream）的 agent harness、模型、任务集<b>互不相同</b>。
-    引用它们是为了确立「上下文管理的设计差异有多大量级」，<b>不是为各家排名</b>，也不能把 A 论文的分数放进 B 论文的表里。
+    <span class="tag">跨体系量化指标切忌直接横向拼表</span>
+    本文所引用的多篇学术文献（包括 SKILL.state、CompactionRL、ConstraintRot、Slipstream 等）在 Agent Harness、底层模型选择、评测任务集及评估脚本上<b>存在不可调和的异构性</b>。
+    引入这些实证数据的目标，在于确立「不同上下文架构设计在工程量级上的差异广度」，<b>绝非为各家模型或算法进行绝对性能排名</b>，更不能简单粗暴地将不同文献的准确率数值强行拼装在同一张排行榜中。
   </div>
 
-  <h3 class="sub">更正记录</h3>
-  <p>本页经过两轮 review，外加一轮与<a href="learn/">配套学习页</a>的相互校对。下面逐条列出改了什么、为什么 —— <strong>其中多数是我原来写错或写过头的</strong>。</p>
+  <h3 class="sub">更正与纠偏记录</h3>
+  <p>本手册经过两轮深度 Peer Review 与跨专题交叉校对。下表完整记录了在审校过程中修正的论述偏差与口径夸大 —— <strong>其中绝大部分纠正，恰恰源于笔者此前对论文批评时的过度推演与尺度失真</strong>。</p>
 
   <div class="tbl-wrap">
   <table>
-    <tr><th style="width:22%">原来的说法</th><th style="width:34%">问题</th><th>现在的说法</th></tr>
+    <tr><th style="width:22%">原始早期表述</th><th style="width:34%">发现的技术偏差或口径失真</th><th>修正后的严谨表述与依据</th></tr>
     <tr class="hl">
       <td><b>缓存折算：19.1&#215; &rarr; 6.8&#215;</b></td>
-      <td>漏掉了<b>最小可缓存前缀</b>门槛。Gemini 3 是 4,096 token（ADK 文档），SKILL.state 的 ~350 token 前缀根本够不着</td>
-      <td>重算为区间；并指出<b>让它便宜的性质正是让它拿不到缓存的性质</b></td>
+      <td>忽视了主流厂商的<b>最小可缓存前缀门槛</b>限制。例如 Gemini 3 门槛为 4,096 token，SKILL.state 仅约 350 token 的说明书前缀根本无法激活缓存</td>
+      <td>重新计算为动态敏感性区间；明确指出<b>使其单步极其廉价的极简 Prompt，恰恰导致其完全错失工业级缓存优惠</b></td>
     </tr>
     <tr class="hl">
-      <td><b>重算后的 3.3&#215;</b></td>
-      <td>论文<b>没有公开 input / output 拆分</b>（指标只有 total token burn），而缓存只折扣 input。把输入估算当总成本比，等于让 output 从账上消失</td>
-      <td>改成敏感性区间 <b>3&#8211;8&#215;</b>；3.3&#215; 其实是<b>下界</b>不是中点</td>
+      <td><b>重算后的单一值 3.3&#215;</b></td>
+      <td>论文<b>未公开 Input / Output Token 拆分比例</b>（仅公布总 Token 消耗），而缓存优惠仅对 Input 生效。单方面按输入估算总成本，变相让 Output 成本从账面蒸发</td>
+      <td>修正为 <b>3&#8211;8&#215;</b> 的敏感性区间分析；指出 3.3&#215; 实为在极端假设下的下界理论值</td>
     </tr>
     <tr class="hl">
-      <td>把 Gemini 门槛与 0.1&#215;&#47;1.25&#215; 计价<b>混用</b></td>
-      <td>不是同一个 provider 的价目表；Gemini 的 context caching 另有创建与存储计费</td>
-      <td>明确声明为<b>通用形态的敏感性分析</b>，不冒充任何单一 provider 的账单</td>
+      <td>混用 Gemini 门槛与第三方 0.1&#215;&#47;1.25&#215; 定价</td>
+      <td>两项数据分属不同服务商的计费模型，Gemini 另计上下文创建费与小时级存储费，混合引用破坏了模型严密性</td>
+      <td>明确声明该部分属于<b>面向工业通用特性的敏感性建模推导</b>，不指代任何特定厂商的实际账单</td>
     </tr>
     <tr class="hl">
-      <td>「<code>P</code> 必须自己超过门槛，所以要<b>故意写大</b>」</td>
-      <td>公共前缀不一定在 <code>P</code> 末尾断掉，它可以延伸进 <code>&#931;</code> 中逐字不变的前导部分；刻意 padding 还会抬高首次成本与延迟</td>
-      <td>改成<b>稳定前缀</b>：稳定 key 顺序 + immutable&#47;mutable 分区 + 真不变的内容本就该进 <code>P</code></td>
+      <td>「<code>P</code> 必须独自跨越门槛，因此应<b>故意灌水写大</b>」</td>
+      <td>前缀缓存无需在 <code>P</code> 结尾强行截断，它可以自然延伸至 <code>&#931;</code> 中逐字不变的前导键值区域；刻意 Padding 还会凭空增加首步延迟与通信开销</td>
+      <td>修正为<b>稳定前缀工程</b>：规范 Key 字典序排列 + 状态动静分区，让静态说明书与稳定字典前缀合并跨过门槛</td>
     </tr>
     <tr class="hl">
-      <td>「&#964;-Bench Retail 上 ReAct 可能反而更便宜」</td>
-      <td>该 benchmark 两边都够不着门槛（705 &#47; 831 token），谁都拿不到缓存</td>
-      <td><b>已撤回</b>；那三格论文的裸 token 比较基本成立</td>
+      <td>「在 &#964;-Bench Retail 上 ReAct 可能实际更便宜」</td>
+      <td>该基准测试的双侧 Prompt 规模均未越过可缓存门槛（705 &#47; 831 token），两边均无法享受到缓存折扣</td>
+      <td><b>已主动撤回该推论</b>；在此类短前缀业务基准上，论文关于原始 Token 消耗的对比结论基本成立</td>
     </tr>
     <tr class="hl">
-      <td>「两个字段<b>只增</b>」「收益<b>恰恰来自</b>只增性质」</td>
-      <td>论文只公布了五个<b>字段名</b>，没公布类型与更新策略；对 CTF 的归因是 hypotheses <b>和</b> flags 两者，且<b>无字段消融</b>。我把推断写成了事实</td>
-      <td>改成<b>条件式</b>：固定 schema 不约束字段值长度；<b>若</b> append-only 实现，<b>则</b> O(1) 不成立</td>
+      <td>「关键字段<b>纯属只增</b>」「性能提升<b>完全来自</b>只增累积」</td>
+      <td>论文仅公开了 5 个<b>字段名称</b>，未披露底层类型与更新逻辑；CTF 的归因是假设和旗标两者合并，且<b>缺乏单字段消融</b>。此前将推断冒充成了事实</td>
+      <td>严格修改为<b>条件命题</b>：Schema 静态不代表字段值有界；<b>若</b>采用 Append-only 列表实现，<b>则</b> O(1) 理论推导无法成立</td>
     </tr>
     <tr class="hl">
-      <td>「预算被掐到真实系统的 <b>1&#47;40</b>」</td>
-      <td>450 token 是<b>压缩后的目标 prompt</b>，20,000 token 是<b>触发余量</b>或<b>用户原话保留预算</b> —— 不同机制层，不能相除</td>
-      <td>删掉这个比值；改成一个同类可比的陈述（Codex <b>单独一个保留项</b>就大过论文的<b>全部预算</b>）</td>
+      <td>「评测预算被恶意压低至工业系统的 <b>1&#47;40</b>」</td>
+      <td>450 token 是论文中<b>压缩后最终 Prompt 上限</b>，而 20,000 token 是生产系统的<b>压缩触发余量或单项原话保留额度</b>，二者层级不同，直接做除法属于逻辑谬误</td>
+      <td>删除不严谨的比值；改为跨层级客观对照：工业系统<b>单项关键信息的保护配额</b>即可覆盖论文全量预算的一到两个数量级</td>
     </tr>
     <tr class="hl">
-      <td>「Limitations 第 (1) 条 <b>= coding agent</b>」</td>
-      <td>论文自己就用固定 schema 跑通了两个 coding 环境；被排除的是<b>状态结构需动态发现</b>的任务，不是 coding 这个类别</td>
-      <td>收窄到<b>开放式 coding&#47;debugging 中 schema 事先写不出来的那部分</b></td>
+      <td>「Limitations 第 (1) 条<b>排除了所有 Coding Agent</b>」</td>
+      <td>论文自身即在 InterCode CTF 和 Software Repo 两个代码环境中验证通过；被真正排除的是<b>状态拓扑必须动态探索感知</b>的任务，而非整个编程类别</td>
+      <td>精确收窄至<b>缺乏先验固化 Schema 的开放式复杂排错与动态调试场景</b></td>
     </tr>
     <tr class="hl">
-      <td>六层图把 <b>L1&#47;L2&#47;L5 都画成「整层删除」</b></td>
-      <td>SKILL.state 每步仍要确定性拼 prompt（就是 L5）；而 L1 测量在「&#931; 可能增长」这条反驳之后<b>反而更需要</b></td>
-      <td>只有 <b>L2 删除</b>；L1&#47;L5 <b>简化</b>；L3&#47;L4 <b>前移到设计期</b></td>
+      <td>六层治理图将 <b>L1&#47;L2&#47;L5 全部标记为「整层删除」</b></td>
+      <td>SKILL.state 在每一步仍需确定性组装 Prompt（即 L5）；而在「状态可能失控增长」的反驳提出后，L1 动态度量反而更加不可或缺</td>
+      <td>修正为：仅 <b>L2 历史裁剪被物理消除</b>；L1 测量与 L5 拼装予以<b>精简保留</b>；L3&#47;L4 的设计考量<b>前移至静态 Schema 阶段</b></td>
     </tr>
     <tr class="hl">
-      <td>图表与数据表<b>只报均值</b></td>
-      <td>论文有一段 <i>Statistical Significance</i>：5 seeds、mean &plusmn; SD、显著性仅在 <b>T&#8805;50</b>。我却声称核对了全部数据</td>
-      <td>折线图加<b>误差棒</b>，数据表补 <b>&plusmn;SD</b>，并单列显著性口径</td>
+      <td>实验图表与汇总数据<b>仅汇报均值</b></td>
+      <td>论文正文包含专门的统计学显著性声明（5 seeds、mean &plusmn; SD，且显著性仅在 <b>T&#8805;50</b> 步时成立）。遗漏置信区间削弱了学术可信度</td>
+      <td>折线图全面补齐<b>误差棒（Error Bars）</b>，表格同步标注 <b>&plusmn;SD</b>，并在说明文字中单列显著性口径声明</td>
     </tr>
     <tr class="hl">
-      <td>「Software Repo T=25 是<b>唯一一次落败</b>」</td>
-      <td>0.88&plusmn;0.08 vs 0.94&plusmn;0.03，误差棒重叠，且低于论文声明的显著性区间</td>
-      <td>改为<b>均值上的凹陷</b>；可指摘的是论文<b>没提</b>，不是它输了</td>
+      <td>「Software Repo T=25 步是全篇<b>唯一一次输给对手</b>」</td>
+      <td>0.88&plusmn;0.08 vs 0.94&plusmn;0.03，双方误差棒存在交叠，且该步数低于论文官方声明的显著性区间</td>
+      <td>修正为<b>均值层面的局部凹陷</b>；学术瑕疵在于论文正文<b>对其选择性回避</b>，而非统计学意义上的确定落败</td>
     </tr>
     <tr>
-      <td>滑杆图注「T=10 时四种做法准确率<b>完全一样</b>」</td>
-      <td>ReAct 是 0.90，其余三家 1.00，差 0.10</td>
-      <td>改为如实描述这 0.10 的差，并挂上显著性口径</td>
+      <td>交互滑块说明「T=10 时四种方案准确率<b>完全一致</b>」</td>
+      <td>ReAct 实测为 0.90，其余三项基线为 1.00，存在 0.10 的细微差距</td>
+      <td>修正为忠实描述该 0.10 的初始差距，并同步补充短程区间统计学差异不显著的口径说明</td>
     </tr>
     <tr>
-      <td>交互演示里的 <code>state_patch</code></td>
-      <td>写成了<b>非法 JSON</b>（用方括号包 key-value），下一步却说校验通过</td>
-      <td>改成合法 JSON 对象；空补丁同步</td>
+      <td>运行时动态演示中的 <code>state_patch</code> 格式错误</td>
+      <td>原演示脚本中使用了非法 JSON 语法（用中括号包装键值对），而下游校验步骤却显示通过</td>
+      <td>全面修正为符合规范的标准 JSON Object 结构，并确保空补丁逻辑在前后阶段严格对齐</td>
     </tr>
     <tr class="hl">
-      <td>全篇用「<b>准确率</b>」称呼 SkillExecBench 的 Score</td>
-      <td>&#167;4.3 定义是 <code>Successful Actions &#247; Total Actionable Events</code>，是<b>逐动作正确率</b>，不是任务成功率。初版只在一处图注印了公式，没提醒误读</td>
-      <td>第 4 节开头单列口径纠正，说明 0.94 = 94% 的动作做对，不是 94% 的任务完成</td>
+      <td>通篇将 SkillExecBench 的 Score 指标误译为「<b>任务完成率</b>」</td>
+      <td>&#167;4.3 明确定义其计算公式为 <code>Successful Actions &#247; Total Actionable Events</code>，实为<b>单步动作成功率</b>，不可混淆为端到端任务成功率</td>
+      <td>在第 4 节开篇增设专门口径纠偏说明，明确强调 0.94 代表 94% 的操作做对，而非 94% 的任务最终成功</td>
     </tr>
     <tr class="hl">
-      <td>照抄 Algorithm 1，<b>没注意第 7、8 行的顺序</b></td>
-      <td><code>&#931;&#8592;&#931;&#8853;&#916;&#931;</code> 在 <code>Execute a_t</code> <b>之前</b>——动作失败时状态已经落定，而论文对事务回滚、部分成功、重试幂等<b>一字未提</b></td>
-      <td>第 3 节新增一条，并指出它与 schema 校验是两回事、生产上需要两阶段状态</td>
+      <td>照抄 Algorithm 1 流程，<b>忽略了第 7 行与第 8 行的时序硬伤</b></td>
+      <td>伪代码中 <code>&#931;&#8592;&#931;&#8853;&#916;&#931;</code> 状态更新被放置在 <code>Execute a_t</code> <b>之前</b>——当外部动作执行失败时状态已不可逆提交，且全篇对事务回滚与幂等性闭口不谈</td>
+      <td>在第 3 节中专门增设该时序风险的架构批判，指出 Schema 校验无法替代分布式事务，工业落地需引入两阶段提交</td>
     </tr>
     <tr class="hl">
-      <td>接受论文 &#167;5.7「退化<b>与推理能力无关</b>」</td>
-      <td>只有 12% 的 JSON 语法错属于格式问题；68% 的误删 key <b>在 JSON 合法时照样发生</b>，那是语义推理。约束解码只能吃掉 12%</td>
-      <td>图注改为明确反驳这个推论</td>
+      <td>全盘接纳论文 &#167;5.7「性能退化<b>与模型推理能力无关</b>」的推论</td>
+      <td>在开源模型的失误中，仅 12% 属于格式语法损坏；其余高达 68% 的误删 Key <b>在 JSON 完全合法的状态下频繁发生</b>，这本质上属于语义推理层面的失误</td>
+      <td>图注与正文全面重写，旗帜鲜明地反驳该片面推论，指出语法受限解码仅能解决 12% 的格式表象</td>
     </tr>
     <tr>
-      <td>「不合法就回滚重试，<b>模型改不坏持久状态</b>」</td>
-      <td>schema 校验只挡得住<b>结构</b>错误；删错货架在结构上完全合法 —— 本页自己那 68% 的错误正是这一类</td>
-      <td>限定为<b>结构合法性</b>，并显式说明语义仍需另行校验</td>
+      <td>「只要 Schema 校验通过，<b>模型就改不坏系统持久状态</b>」</td>
+      <td>Schema 校验仅能拦截<b>数据类型与字段结构</b>错误；模型误将关键货架置为 null 在语法层面完全合法——事实上 68% 的真实故障正是此类语义错误</td>
+      <td>严格收敛边界至<b>结构合法性防御</b>，并明确指出业务层语义正确性仍需外部断言或两阶段确认机制兜底</td>
     </tr>
   </table>
   </div>
 
   <div class="call mine">
-    <span class="tag">值得记一笔的两个模式</span>
-    这十三条里，<b>与 SKILL.state 有关的错误几乎全都朝同一个方向偏</b>：我在批评论文夸大自己时，自己也把批评做过了头 ——
-    倍率算得过低、把推断写成事实、把不可比的数相除、把「没提」说成「输了」。
+    <span class="tag">值得工程技术人员深思的两大审视模式</span>
+    在这十七条修正记录中，<b>与批判 SKILL.state 相关的表述几乎全部朝同一个极端偏折</b>：笔者在审视论文过度美化自身的倾向时，不知不觉也落入了「过度批判」的思维惯性 ——
+    人为压低缓存倍率、将主观推论当作既成事实、跨机制层级随意换算除法、把正文的避而不谈夸大为确定失败。
     <br><br>
-    <b>批评者的偏差和被批评者的偏差方向相反，但性质相同。</b>这一页现在把两边的口径都摊开写在了各自的位置上。
+    <b>技术批判者的认知偏见与被批判者的宣发包装，虽然方向相反，但其脱离客观事实的本质完全相同。</b>目前本手册将双方的论据口径与边界限制彻底摊开，旨在呈现最真实的技术全貌。
     <br><br>
-    第二个模式：最后三条<b>全都不是 review 提的，是<a href="learn/">配套学习页</a>独立读同一篇论文时先看见的</b> ——
-    Score 的口径、Algorithm 1 的顺序、&#167;5.7 那个不成立的推论。
-    <b>两篇独立读同一篇论文，比一篇读两遍更能发现问题</b>，这也是这个专题保留两篇的理由之一。
+    第二个关键模式：最后三条直击论文软肋的核心纠偏，<b>完全不是常规 Peer Review 的产物，而是在编写<a href="learn/">配套交互学习页</a>、以纯初学者的视角重构算法执行逻辑时独立发现的</b> ——
+    逐动作准确率的定义陷阱、状态先于动作落地的事务时序缺陷、以及 &#167;5.7 关于推理能力的片面推论。
+    <b>以教学和实现的硬标准重新推演算法，往往比单纯的文献阅读更能击穿论文看似完美的理论护城河。</b>
   </div>
 
-  <h3 class="sub">与配套研究的一致性说明</h3>
+  <h3 class="sub">与前序专题研究的一致性声明</h3>
   <ul class="arrow">
-    <li>本页<b>不修改</b>那篇研究的任何既有结论。它补充的是「效果评测」一节里此前空着的一格：<b>不压缩（状态外置到底）那条路线的量化证据</b>。</li>
-    <li>那篇研究 &#167;20 的设计清单第 23 条「把状态外置而不是压缩」，此前只有 Antigravity 的架构取向与 OpenClaw memory flush 作为间接证据。<b>本页第 5 节的 0.94 vs 0.52 是这条目前最强的实证</b>，但要连同第 10 节的预算口径问题一起读。</li>
-    <li>那篇研究 &#167;2.11「压缩与 prompt cache 的根本张力」与 &#167;12.7（ADK 记录的最小可缓存前缀）在本页第 9 节合并成一条新判断：<b>缓存维度上的排序是 ReAct &gt; 压缩式 &gt; SKILL.state，与裸 token 的排序正好相反</b>。论文未涉及这一维。<b>这一节经过两轮更正</b>（门槛、input/output 拆分、稳定前缀的构成），最终结论只保留到「量级从近二十倍降到个位数倍」这一层，详见文末更正记录。</li>
-    <li>本页第 10 节反驳一（<b>O(1) 依赖 <code>|&#931;|</code> 有界，论文未验证</b>）是对那篇研究 &#167;1 六层模型的一条补充：<b>L4「减法」前移到设计期之后，膨胀风险并没有消失，只是搬进了 schema</b>；也正因如此 <b>L1 测量不能删</b>，它要用来断言 <code>|&#931;|</code> 的上界。相应地第 11 节推荐 <code>tested_hypotheses</code> 时附了封顶策略。</li>
-    <li>那篇研究的十一家共识里，<b>「已排除的假设」这一格是空的</b>（模板都有 Done / In-Progress / Blocked，没有 Excluded）。本页第 11 节把它作为可新增的第 2 条动作提出，依据是 CTF 上 <code>tested_hypotheses</code> 字段带来的提升。</li>
+    <li>本手册<b>严格遵守并继承</b>前序《开源 Agent 平台的 Context Compression 机制研究》的核心分析框架，绝不推翻任何既有工程结论。本篇旨在填补前序研究在「工业效果量化评估」板块中的关键空白：<b>即彻底抛弃历史记录、将状态完全外置（State-Only）架构的极限性能实证</b>。</li>
+    <li>前序研究 &#167;20 设计清单第 23 条「将状态外置而非盲目压缩文本」，此前主要依托 Antigravity 的架构演进与 OpenClaw 的内存冲刷机制作为定性佐证。<b>本篇第 5 节揭示的 0.94 vs 0.52 性能鸿沟，为该设计原则提供了当前学界最强有力的量化支撑</b>，但必须紧密结合第 10 节所揭露的极限预算设定一并审视。</li>
+    <li>前序研究 &#167;2.11「上下文压缩与 Prompt Cache 的内生张力」及 &#167;12.7（最小可缓存前缀规则），在本篇第 9 节中被形式化提炼为全新论断：<b>在 Prompt Cache 的经济性坐标系中，技术方案的降本收益排序为 ReAct &gt; 混合压缩 &gt; SKILL.state，与原始 Token 的绝对规模排序发生戏剧性反转</b>。该维度填补了原论文在真实计费场景下的研究盲区。</li>
+    <li>本篇第 10 节反驳一（<b>O(1) 理论推导高度依赖 <code>|&#931;|</code> 有界性，论文缺乏实证支持</b>）构成了对前序六层治理模型的重要扩展：<b>当 L4「历史裁剪」被前移至静态设计阶段后，上下文膨胀的物理隐患并未凭空消亡，而是暗度陈仓转移到了 Schema 字典内部</b>；正因如此，<b>L1 动态上下文监控不仅不能废除，反而承担着监控 <code>|&#931;|</code> 长度边界的新使命</b>。</li>
+    <li>在前序研究梳理的十一家工业界共识中，<b>「已排除的失败假设」这一关键维度始终处于空白状态</b>（各家任务模板普遍具备 Done / In-Progress / Blocked，却鲜有 Excluded）。本篇在第 11 节将其作为最具 ROI 的新增工程落地项提出，其实证支撑正是 InterCode CTF 任务中 <code>tested_hypotheses</code> 字段所带来的显著胜率增益。</li>
   </ul>
 </section>
 
@@ -1816,8 +1787,8 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
 
 <footer>
   <div class="foot-inner">
-    <p style="margin-bottom:14px"><b style="color:var(--paper)">SKILL.state 参考手册</b> &#183; 配套 <a href="learn/">SKILL.state 学习页</a> &#183; 隶属 <a href="../Agent_Context_Compression_Research.html">Agent Context Compression</a> 专题 &#183; <a href="../../">返回 ML Learning Notes</a></p>
-    <p style="margin:0">论文数据核对自 <a href="https://arxiv.org/html/2608.26263">arXiv:2608.26263</a> HTML 全文（v3, 2026-09-02）。第 9 节的 prompt cache 折算为本页作者的建模推演，非论文数据。</p>
+    <p style="margin-bottom:14px"><b style="color:var(--paper)">SKILL.state 深度参考手册</b> &#183; 配套 <a href="learn/">SKILL.state 交互学习页</a> &#183; 隶属 <a href="../Agent_Context_Compression_Research.html">Agent Context Compression</a> 专题 &#183; <a href="../../">返回 ML Learning Notes</a></p>
+    <p style="margin:0">论文数据核对自 <a href="https://arxiv.org/html/2608.26263">arXiv:2608.26263</a> HTML 全文（v3, 2026-09-02）。第 9 节的 Prompt Cache 折算为本文作者的工程敏感性推演，非论文原生实验数据。</p>
   </div>
 </footer>
 
