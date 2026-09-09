@@ -538,6 +538,10 @@ layout: null
     <li>面对“网格交易 / 马丁格尔加仓法” → 本质是零售视角的均值回复（流派 ②）。在箱体震荡中表现稳健，但在单边单向趋势中极易遭受毁灭性亏损，因其内置假设了价格必然均值回归，缺乏对基本面破裂的识别机制。</li>
     <li>面对“高频低回撤套利” → 属于做市与微观流动性提供（流派 ③）。在算法与网络设施足够顶尖时确实成立，但其资金容量十分有限——数十万资金的高 Sharpe 并不意味着数千万资金下依然有效。</li>
     <li>面对“精选优质龙头、长期年化回报稳健” → 属于风格因子与风险溢价（流派 ④）。这是成熟的配置理念，但属于系统性风险补偿（Beta），不宜将其包装为神秘的量化 Alpha。</li>
+  </ul>
+</section>
+
+<!-- ============ 04 ============ -->
 <section class="essay" id="s4">
   <div class="section-head"><span class="section-num">04</span><h2 class="section-title">第一个经典算法：截面动量（Cross-Sectional Momentum）</h2></div>
   <div class="section-sub">Cross-sectional momentum · 另外两个算法在 Deep Dive</div>
@@ -953,7 +957,7 @@ if len(valid) &gt;= <span class="n">2</span> * k:                      <span cla
       <tbody>
         <tr><td><b>① 佣金与税费</b></td><td>券商佣金、印花税、经手费与清算规费</td><td>固定基准，通常为体量最小项</td><td class="g">严格线性</td><td>交易通道优化、费率商务谈判</td></tr>
         <tr><td><b>② 买卖价差</b></td><td>跨越订单簿买卖盘口（Crossing Spread）需支付的半价差</td><td>大盘股通常在 1–5 bps</td><td class="g">线性</td><td class="g">采用被动限价单挂单提供流动性</td></tr>
-        <tr><td><b class="a">③ 市场冲击</b></td><td>自身订单规模改变流动性供需导致的价格逆向移动</td><td class="a">大额调仓可达 20–100+ bps</td><td class="r"><b>强非线性</b>：广泛近似为 ∝ √(订单量/日成交量)</td><td class="g">母单拆分子单、隐蔽流动性探测、智能路由（SOR）</td></tr>
+        <tr><td><b class="a">③ 市场冲击</b></td><td>自身订单规模改变流动性供需导致的价格逆向移动</td><td class="a">大单可达 50–100 bp+</td><td class="r"><b>强非线性</b>：广泛近似为 ∝ √(订单量/日成交量)</td><td class="g">母单拆分子单、隐蔽流动性探测、智能路由（SOR）</td></tr>
         <tr><td><b class="r">④ 延迟与时机成本</b></td><td>执行等待或撤挂单滞后导致的目标价不利漂移</td><td class="r">最难事前测算，实盘常被忽略</td><td>∝ σ·√等待时长</td><td>超低延迟信号链路、动态 Alpha 衰减补偿</td></tr>
       </tbody>
     </table>
@@ -961,7 +965,7 @@ if len(valid) &gt;= <span class="n">2</span> * k:                      <span cla
 
   <div class="call key">
     <span class="tag">平方根定律：策略资金容量的物理天花板</span>
-    实证微观结构研究表明，市场冲击成本率大致正比于<b>下单规模相对市场日均成交量（ADV）占比的平方根</b>（Square-root Law of Price Impact: $I \propto \sigma \sqrt{Q / V}$）。这意味着：
+    实证微观结构研究表明，市场冲击成本率大致正比于<b>下单规模相对市场日均成交量（ADV）占比的平方根</b>（Square-root Law of Price Impact: <code>I ∝ σ · √(Q / V)</code>）。这意味着：
     <br><br>
     <b>策略管理资金规模放大 100 倍 → 单位成交的冲击成本率扩大约 10 倍 → 总冲击摩擦金额激增约 1000 倍。</b>
     <br><br>
@@ -1083,7 +1087,7 @@ if len(valid) &gt;= <span class="n">2</span> * k:                      <span cla
           <td><b class="r">前视偏差 / 未来函数</b></td>
           <td>Sharpe 异常偏高（&gt; 3.0），收益回撤比失真</td>
           <td>引入了决策时刻尚未发生的未来信息（如财报按报告期而非实际披露日对齐、除权除息因子前置计算、全样本归一化）</td>
-          <td>严格采用<b>时点数据（Point-in-Time Data）</b>；特征工程与模型拟合（<code>fit</code>）仅允许调用截至时间 $t$ 之前的数据</td>
+          <td>严格采用<b>时点数据（Point-in-Time Data）</b>；特征工程与模型拟合（<code>fit</code>）仅允许调用截至时间 <i>t</i> 之前的数据</td>
         </tr>
         <tr>
           <td><b class="r">幸存者偏差</b></td>
@@ -1149,7 +1153,7 @@ if len(valid) &gt;= <span class="n">2</span> * k:                      <span cla
     </div></div>
     <div class="step"><h4>3. 全过程留存实验元数据</h4><div class="txt">
       规范记录每一次调参及回测结果，保存收益时序文件并关联配置哈希。<br>
-      <b>ADHD 极简友好版：</b>哪怕只在 CSV 里随手记下「今天总共试了几次」这一个数字，也远胜于完全不记——因为总尝试次数 $N$ 是计算 DSR 检验是否过拟合的核心客观输入，也是唯一能迫使自己保持诚实的铁证。
+      <b>ADHD 极简友好版：</b>哪怕只在 CSV 里随手记下「今天总共试了几次」这一个数字，也远胜于完全不记——因为总尝试次数 <i>N</i> 是计算 DSR 检验是否过拟合的核心客观输入，也是唯一能迫使自己保持诚实的铁证。
     </div></div>
     <div class="step"><h4>4. 确认参数高原，警惕孤立尖峰</h4><div class="txt">
       对关键参数执行网格扫描并绘制二维热力图。真实的 Alpha 在参数空间中应呈现出<b>平缓宽阔的连通高原</b>；若仅在某一狭窄参数点出现突兀的孤立高收益尖峰，必然属于样本内数据拟合。<br>
@@ -1285,7 +1289,7 @@ if len(valid) &gt;= <span class="n">2</span> * k:                      <span cla
         <tr><td><b>第 3 周</b></td><td>跑通首个截面量化策略</td><td class="g">实现截面动量基线算法，<b>输出十档资产组合的多空分层收益柱状图</b></td><td>第 04 节截面动量算法</td></tr>
         <tr><td><b>第 4 周</b></td><td>引入工程修正与交易摩擦</td><td class="a">加入行业中性化与现实交易成本模型；<b>量化对比中性化及扣费前后的净值落差</b></td><td>第 04 节第 ⑦ 步 + 第 06 节</td></tr>
         <tr><td><b>第 5 周</b></td><td>建立防范过拟合的反思机制</td><td class="r">阅读 <i>Pseudo-Mathematics</i>；<b>绘制关键参数敏感性热力图</b>，识别参数高原与孤立伪峰</td><td class="r">第 07 节（<b>全流程关键认知转折点</b>）</td></tr>
-        <tr><td><b>第 6 周</b></td><td>建立规范的研发实验日志</td><td>搭建轻量级实验追踪数据库（记录尝试时间、配置哈希、候选空间规模 $N$ 与收益时序）</td><td>第 07 节工作流第 3 步</td></tr>
+        <tr><td><b>第 6 周</b></td><td>建立规范的研发实验日志</td><td>搭建轻量级实验追踪数据库（记录尝试时间、配置哈希、候选空间规模 <i>N</i> 与收益时序）</td><td>第 07 节工作流第 3 步</td></tr>
         <tr><td><b>第 7–8 周</b></td><td>研发统计套利策略</td><td class="g">应用 PCA 提取共同因子残差，构建 Ornstein-Uhlenbeck 过程并实现 s-score 交易系统；<b>输出配对均值回归时序图</b></td><td>Avellaneda-Lee 经典论文</td></tr>
         <tr><td><b>第 9 周</b></td><td>实现多策略与资产配置算法</td><td class="g">在相同信号输入下，对比 1/N 朴素等权、逆波动率与分层风险平价（HRP）的配置表现，<b>绘制三者净值对比曲线</b></td><td>第 05 节组合构建</td></tr>
         <tr><td><b>第 10 周</b></td><td>交易摩擦与资金容量测算</td><td class="a">执行 1×/2×/3× 摩擦成本压力测试；测算策略在现实盘口冲击约束下的最大资金容量上限</td><td>第 06 节执行与成本</td></tr>
