@@ -198,7 +198,7 @@ ADK 实际上两种手段都用：token 阈值路径把上一份摘要作为 see
 
 **(b) 成本不对称。** 一条用户 prompt 通常几十到几百 token，一条 tool result 可能几万。保留全部用户原话的代价，往往还不如保留一条文件读取结果。
 
-Codex 把这个逻辑推到极致：压缩后 **assistant 和 tool 消息一条不留**，只保留 20K token 预算内的用户原话 + 摘要 + canonical context。它敢这么做，是因为有 `WorldState` 单独承载工具状态快照——**外部状态用外部机制保存，上下文里只留不可重建的部分**。
+本节所述 Codex 本地总结路径，压缩后不保留 assistant 和 tool 的**原始项**，重组为 20K token 预算内的用户原话、摘要与 canonical context。原文曾把它归因于 `WorldState` 保存工具状态快照，这个解释缺少依据，已更正（§6.4）。工作区修改可能仍在，部分结果信息可能进入摘要，但重读当前世界不等于恢复旧输出；不能据此声称删除 tool result 无损。
 
 ### 2.6 tool result 优先压缩 —— 按「信息密度 ÷ 可再生性」排序
 
@@ -231,15 +231,17 @@ Hermes 把这个思路做到了更细的粒度——它不是把 tool result 换
 
 > "No intermediate pressure warnings — **they caused models to 'give up' prematurely on complex tasks**"
 
-【机制解释】这是**对齐训练的副作用**。模型被训练成在感知到资源受限时给出保守、收敛的回答。「上下文快满了」会被理解成「该收尾了」的信号，于是提前给结论、停止探索、不再展开工具调用。
+【机制解释】一种可能的解释是：压力提示让模型把资源约束理解成“该收尾”的信号，从而提前给结论、停止探索。上述注释记录了 Hermes 的工程经验，不能单独证明原因来自对齐训练，也不能推广成所有模型、提示方式和工具配置下都会发生。
 
-同类现象：要求模型「简短回答」，它往往同时降低了**推理深度**，而不只是输出长度。资源约束信号在模型内部不是被独立处理的，它会渗透进行为策略。
-
-推论：**压缩应该对 agent 尽量透明**。Goose 的三种续接词都明确要求不要提起摘要这件事——
+由此可以提出“让压缩对 agent 尽量透明”的设计建议，但还须区分模型内部知道什么与用户最终看到什么。Goose 的三种续接词要求不要提起摘要——
 
 > "Do not mention that you read a summary or that conversation summarization occurred."
 
-走的是同一条思路：不让「发生过压缩」这个事实本身影响 agent 的行为。
+这约束的是用户可见输出，不能据此证明模型不知道发生过压缩。
+
+> **补注（2026-09-11，Codex 源码 `944d6fd1`）：存在主动暴露压力的实验设计。** TokenBudget 配置可向模型发送带剩余数字的提醒，让它写 notes、调用 new_context，再用 history 恢复细节。打包配置中的 6,144 提醒阈值与 16,384 fallback buffer 都有启用条件；完整窗口硬限可能先到，不保证收尾时间。Rust feature 默认与模型默认激活是不同判断，不能将该分支当成所有用户的现状。
+>
+> 【机制解释】值得评测的变量是：模型收到压力后，是否有明确且可靠的续接动作。告知压力可以服务于“保存状态并换窗口”，而不必等于“提前结束任务”。同时工具描述要求不播报内部记账，因此“模型可见压力”与“用户不见记账”可以并存。客户端源码没有证明这种方案优于 Hermes，也没有证明模型一定按提示行动。详见 [Codex 手册：压力与操作](../codex-harness/Codex_Harness_Research.md#pressure)。
 
 ### 2.8 摘要器是一个信任降级点
 
@@ -346,10 +348,10 @@ flowchart TD
     B --> B1["OpenClaw · 压缩前 memory flush 写盘"]
     B --> B2["Letta · sleeptime agent 后台整理记忆"]
     B --> B3["Antigravity · Artifacts + Knowledge Items"]
-    B --> B4["Codex · WorldState 承载工具状态"]
+    B --> B4["Codex · 当前文件等状态可重读<br/>不等于备份旧工具输出, 见 §6.4"]
 ```
 
-这一路线利用的是一个**能力替换**：用 LLM 的**工具使用能力**，替代 LLM 的**长上下文记忆能力**。前者更可靠（读回来的是原文而非转述）、可验证（读到了就是读到了）、且无损。
+这一路线利用的是一个**能力替换**：用 LLM 的**工具使用能力**补充长上下文记忆。已保存且可寻址的原文可以直接读取，避免再经摘要转述；但原文是否完整保存、模型是否知道去查、检索是否可用仍须验证。图中的“重读当前文件”只是重新观测当前状态，不能与恢复某次历史输出等同，更不能笼统宣称整条路线无损。
 
 几家的具体做法：
 
@@ -1364,6 +1366,8 @@ if self.llm.stream:
 
 > 注：Codex 的 compaction **没有写进官方 `docs/`**（`docs/config.md` 里搜不到）。以下全部来自源码。
 
+> **阅读范围更新（2026-09-11）**：本节保留原审计快照的实现描述；较新 `944d6fd1` 的 provider 路由、Remote V2 控制项、模型指令加载和实验性 notes/history 详见 [Codex Harness 手册](../codex-harness/Codex_Harness_Research.md)。§6.4 关于 WorldState 的因果归因属于解释更正；§17.8 的检索能力和 §2.7 的压力提醒则标明新快照与启用条件。
+
 ### 6.1 三种实现并存
 
 | 实现 | 文件 | 做法 |
@@ -1416,12 +1420,13 @@ flowchart LR
     end
     b1 --> a1
     b2 --> a2
-    b3 -.->|"全部丢弃"| X["✗"]
-    b4 -.->|"全部丢弃"| X
-    X -.->|"靠 WorldState 承载<br/>工具状态快照"| a3
+    b3 -.->|"原始项不保留"| X["退出模型视图<br/>WorldState 不备份工具输出"]
+    b4 -.->|"原始项不保留"| X
+    b3 -.->|"部分信息经总结"| a3
+    b4 -.->|"部分信息经总结"| a3
 ```
 
-**assistant 消息和 tool result 全部丢弃，一条不留。**
+**这里不保留 assistant 消息与 tool result 的原始项。** 这不等于其中的信息完全没有进入摘要，也不表示持久化记录已删除。
 
 这解释了社区里「compaction 感觉像 full context reset」的观感 —— 从模型视角看确实是重启，只不过带着摘要和你说过的话。
 
@@ -1485,7 +1490,11 @@ Be concise, structured, and focused on helping the next LLM seamlessly continue 
 
 > "Another language model started to solve this problem and produced a summary of its thinking process. **You also have access to the state of the tools that were used by that language model.** Use this to build on the work..."
 
-第二句是关键 —— Codex 靠 `WorldState`（工具状态的独立快照）承载本该由 tool result 承载的信息，所以才敢把 tool result 全扔掉。
+这句不能用于证明 `WorldState` 备份了工具输出。
+
+> **更正（2026-09-11，源码 `944d6fd1`）**：原文及 §2.5、§2.13、§6.2 图中将 WorldState 描述成工具结果快照，属于缺少依据的因果归因。当前内建 sections 管理规则、模型、权限、环境和能力；`ToolsState` 保存延迟工具命名空间目录，渲染上限 4 KiB，不保存工具调用结果。[结构证据](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/tools.rs#L12)
+>
+> 应区分：外部修改可能仍在；部分结果信息可能进入摘要；精确原文能否取回取决于独立存储和检索路径。重新运行测试会产生新的观测，一次性 API、随机结果和时间点快照更不能靠“世界还在”保证恢复。更正不应再变成“结果可重读，所以丢弃总是安全”的新断言。详见 [WorldState 与工具结果边界](../codex-harness/Codex_Harness_Research.md#world-state-boundary)。
 
 ---
 
@@ -2800,6 +2809,8 @@ throw new Error(`compaction still above threshold after ${spec.compactionRetries
 
 > 【实现明说】"No mainstream coding harness gives the model in-loop recall, and **none of the surveyed implementations makes compaction prefix-cache-aware**."
 
+> **时效补注（2026-09-11）**：Codex 在较新 `944d6fd1` 已包含可由模型调用的 history/notes 实验路径，见 §17.8；这使第一个分句不能再作为无时间范围的现状描述。未默认启用不等于不存在实现，也不证明已经普遍部署。此次核对不为第二个分句提供反证。
+
 > ⚠️ **这句话不能与 §13.1 混着读，它们说的不是同一个 cache。** 这篇 note 写于 `2026-07-06`，而 §13.1 那个前缀复用改动是 `2026-07-21` 落地的——晚了半个月。但即使不看日期，两者针对的也是**两条不同的轴**：
 >
 > | | 关心的请求 | 失效从哪开始 | 谁解决了 |
@@ -3200,7 +3211,7 @@ dsh 把这个区别暴露得最清楚：事件日志一个字节都没丢（①�
 | **OpenClaw** | append-only session tree + `firstKeptEntryId` | ✓ 磁盘全在 | ✓ `postIndexSync` 重索引进 memory search |
 | **Hermes** | in-place 重写 + soft archive（`active=0, compacted=1`） | ✓ 行还在 | ✓ `session_search` |
 | **OpenHands** | 事件流 + `Condensation` 事件，View 由重放推导 | ✓ 事件不可变 | **未核实**（只确认到 ①：事件流可回放；未见模型可调的检索工具） |
-| **Codex** | 新 context window（window id 链） | ✓ rollout trace | — |
+| **Codex** | 新 context window（window id 链） | ✓ rollout trace | 原快照未发现；较新 `944d6fd1` 有受条件控制的 `history` 工具，配套 TokenBudget 重置，见 §17.8 |
 | **Cline** | `markPreservedByCompaction` 标记 | ✓ | — |
 | **Goose** | **双可见性标志**，不删除 | ✓ UI 看到全量 | — |
 | **Letta** | 消息表 + recall memory | ✓ | ✓ archival/recall search，**摘要里写 lookup hints** |
@@ -3237,7 +3248,7 @@ flowchart LR
     E --> N["① 都没有<br/>丢了就是丢了"]
 ```
 
-**第 ③ 层不能从这张图上读出来，必须按平台单独核**——同一个机制节点里的平台能力并不一致：`A` 里 OpenClaw 有 memory search 而 OpenHands 未核实，`G` 里 Letta 有 recall memory 而 Codex 没有。目前确认做到 ③ 的只有三家（§17.8）：
+**第 ③ 层不能从这张图上读出来，必须按平台单独核**——同一个机制节点里的平台能力并不一致：`A` 里 OpenClaw 有 memory search 而 OpenHands 未核实，`G` 里 Letta 有 recall memory，而 Codex 在原快照未发现、较新快照则已有实验实现。下面三家属于原审计范围已确认的路径；Codex 的新快照与条件另见 §17.8：
 
 | 平台 | ③ 的形态 |
 |---|---|
@@ -3245,7 +3256,7 @@ flowchart LR
 | **Hermes** | `session_search` |
 | **Letta** | archival / recall search，且**摘要里专门写 lookup hints** 指路 |
 
-其余各家（Codex、Cline、Goose、opencode、OpenHands、ADK）一律记为「**本报告在固定 SHA 的源码核对中未发现**」——注意这是**未发现**，不是**明确不存在**：本报告没有逐家通读它们完整的工具注册表与调用链，所以给不出负证据。表里的 `—` 与这里的措辞是同一个证据边界。
+Codex 的后续发现另列于 §17.8；其余各家（Cline、Goose、opencode、OpenHands、ADK）仍记为「**本报告在固定 SHA 的源码核对中未发现**」——注意这是**未发现**，不是**明确不存在**：本报告没有逐家通读它们完整的工具注册表与调用链，所以给不出负证据。表里的 `—` 与这里的措辞是同一个证据边界。
 
 只有 **dsh 这一家可以下更强的结论**：它的回捞工具是被**明确写成 proposed 而尚未实现**的（`.agents/notes/proposed/feature/2026-07-06-recallable-compaction.md`），note 里连工具名 `history_read` / `history_search` 都定好了。所以 dsh 是**① 做满、③ 为零**——日志一个字节没丢，`shadowedSeqs` 精确记着被遮蔽了哪些节点，但模型确实没有工具够得着（§13.15）。这也是它比其余各家更适合用来说明这个区别的原因：**别人是「没找到」，它是「有设计、还没做」**。
 
@@ -3345,7 +3356,7 @@ dsh 在另一头：section 最多（8 个），且把「不许缺」写成了硬
 
 **tool 输出是 token 大头**，十一家里确认八家为它单独设了一层处理（下表）。opencode 的 `TOOL_OUTPUT_MAX_CHARS = 2_000` 属于最简形态；OpenHands 走通用事件截断、Codex 直接全丢；**kimi-code 未见独立的 tool-result 层**（`compactionOps.ts` 未通读，存疑）。
 
-三个例外值得说明，且三者的性质各不相同：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 则因为压缩后 tool result 一条不留（§6.2），也就无所谓「优先压缩」；**kimi-code** 是第三种情况——它**有** tool 侧机制，但那不是压缩管道里的一层：`toolResultTruncationService` 在**工具返回的当下**就把超过 `TOOL_RESULT_MAX_CHARS = 50_000` 的文本结果落盘，只在上下文里留 2K 预览加一个 `output_path`，让模型需要时自己 Read 回来。这是**卸载**不是压缩，发生在信息进入历史之前，因此不计入「压缩时优先处理 tool result」这一档。
+三个例外值得说明，且三者的性质各不相同：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 在 §6.2 所述的本地总结重组中直接不保留 tool result 原始项，这不代表它在入历史或构造压缩请求时没有输出整理，较新快照另见 [Harness 手册 §3.2](../codex-harness/Codex_Harness_Research.md#context)；**kimi-code** 是第三种情况——它**有** tool 侧机制，但那不是压缩管道里的一层：`toolResultTruncationService` 在**工具返回的当下**就把超过 `TOOL_RESULT_MAX_CHARS = 50_000` 的文本结果落盘，只在上下文里留 2K 预览加一个 `output_path`，让模型需要时自己 Read 回来。这是**卸载**不是压缩，发生在信息进入历史之前，因此不计入「压缩时优先处理 tool result」这一档。
 
 > 顺带一提，kimi-code 这条其实更接近 §15.2 的架构取向：**与其压缩，不如让它别进来**。同样是应对大宗 tool 输出，本报告多数平台的答案是「进来之后优先压它」，kimi-code 的答案是「进来之前就换成一个指针」。
 >
@@ -3379,7 +3390,15 @@ dsh 把这条推得比别家更远：仓库级不变量是「**Model-visible ⟺
 
 OpenClaw（postIndexSync）、Hermes（session_search）、Letta（recall memory + lookup hints）都承认：**摘要一定会丢东西，所以要留一条回捞的路**。
 
-按 §16.5 那个三层口径，这一节问的正是**第 ③ 层**——上面三家是十一家里唯一确认做到 ③ 的。反过来看，dsh 的日志里其实什么都在（`shadowedSeqs` 精确记录了哪些节点被遮蔽），**缺的只是一对模型可调的读取工具**——`history_read` / `history_search` 已经设计好了但还是 proposed 状态（§13.15）。它是「① 做满、③ 为零」这个组合最清楚的样本：**存储层的完备性一点也不自动变成 agent 的记忆能力**。那篇 note 顺带给出了一个判断，与本节可以互相印证：「a detail absent from summaries and keywords draws no recall. Recall converts **"unreachable even when suspected" into "reachable when suspected"**.」——回捞解决的不是「不知道自己丢了什么」，而是「怀疑丢了什么但够不着」。
+按 §16.5 的三层口径，这一节问的是**第 ③ 层**；上面三家是原审计范围确认的路径，不能把数量当作跨版本不变的结论。
+
+> **新增证据（2026-09-11，Codex `944d6fd1`）**：原生 `history` 提供 `list_windows / list_items / read_item / search_contents`，路由到 `alpha/history/v2/*`，可按窗口与 item ID 回捞服务端规范化历史；`notes` 保存跨窗口检查点。这是模型可调用的恢复接口，不只是本地 rollout 可读。它配套 TokenBudget 的无摘要重置，不应混入 §6.2 的本地总结步骤。[工具与 schema](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/history-notes/src/tools.rs#L24)
+>
+> **启用条件分层**：Rust 的 TokenBudget / ContextManagement feature 源码默认关闭；模型侧 `token_budget.enabled` 控制默认激活，打包对象的值为 false 或省略后默认为 false，但这不是对显式配置的否决。模型能力、provider、认证、托管约束与 `use_history_notes_extension` 还影响实际工具注册。源码证明有实现，不证明所有账户已经可用。[完整条件与续接流程](../codex-harness/Codex_Harness_Research.md#history-notes)
+>
+> 历史服务最终一致、读取有长度边界，笔记仍需模型正确写入；存在回捞接口不保证任务信息无损。
+
+反过来看，在本报告审计的 dsh 快照中，日志记录被遮蔽节点，`history_read` / `history_search` 却仍是 proposed（§13.15）。它说明：**存储层完备不自动等于模型具备检索能力**。回捞解决的是“怀疑丢了细节时能否去查”，仍不保证模型意识到缺了什么。
 
 ### 17.9 手动 compaction 语义与自动不同
 
@@ -3661,7 +3680,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 15. **压完 token 变多就回滚**（Gemini CLI）—— 几行代码的护栏
 16. **压缩前让 agent 自己把要紧的写盘**（OpenClaw memory flush）—— 比让摘要器猜更可靠
 17. **结构化中间表示 + 可覆盖渲染层**（Goose）—— 让用户能调「保留什么」而不改代码
-18. **「别告诉模型上下文快满了」是有争议的一条** —— Hermes 删掉压力警告，因为模型会提前放弃；但 kimi-code 的摘要 prompt 第一句就是 "You are about to run out of context."，且它紧接着把注意力导向「写好交接笔记」这个明确动作（§8.5）。两种做法都有产品在跑，本报告无证据判定孰优
+18. **「别告诉模型上下文快满了」是有争议的一条** —— Hermes 记录过压力提示导致提前放弃的经验；kimi-code 则把压力导向写交接笔记（§8.5）。较新 Codex 另有主动提醒、notes/history 与换窗口的实验路径（§2.7、§17.8）。应分别评测模型的应对动作与用户可见输出，不能从提示文本推断胜负
 19. **让摘要自报对话语言**（ADK、kimi-code、opencode 三家各自独立做了这件事）—— 一句 prompt 解决「压缩后 agent 从中文切回英文」，对非英语用户价值极高。⚠️ 但要与 dsh 的反向决定一起看：checkpoint 是**持久前缀**，把一段瞬时的对话语言写进去会在后续每轮压缩里被放大，所以 dsh 强制 checkpoint 用英文、只逐字保留字面量（§13.8）。两条并不真正冲突——一个管**可见回复**的语言，一个管**持久前缀**的语域——理论上可以叠加成「英文 checkpoint + 一行显式的 `Conversation Language:` 状态位」，但本报告没有见到有实现这么做
 20. **让摘要列出用过的工具名**（ADK）—— 维持 tool grounding，避免压缩后重复调用或幻觉工具名
 21. **把「未闭合义务」而不只是 tool pair 作为切点约束**（ADK）—— 待确认工具、待鉴权请求同样不能被切开
