@@ -578,9 +578,13 @@ let prompt = Prompt { input, tools: tool_router.model_visible_specs(),
                       parallel_tool_calls: true, base_instructions, … };
 ```
 
-保留规则（`is_retained_for_remote_compaction_v2`）：user 消息与 hook prompt、client-authored developer 消息、以及既不是子 agent 进度推送也不是 FINAL_ANSWER 的 inter-agent 消息——合计 64K，单条 agent 消息上限 10K。其余（assistant 消息、reasoning、function call 与 output）全丢。
+保留规则（`is_retained_for_remote_compaction_v2`）：user 消息与 hook prompt、client-authored developer 消息、以及既不是子 agent 进度推送也不是 FINAL_ANSWER 的 inter-agent 消息——合计 64K，单条 agent 消息上限 10K。
 
-【我的判断】加密产物与本地摘要是两种不同性质的东西。本地摘要是**散文**，人和客户端都能读、能审计、能在 UI 里展示；加密 blob 可以承载远比散文丰富的状态（例如结构化的工具状态、embedding、甚至 KV 相关的表示），代价是你和用户都无法审计 agent 压缩后「相信了什么」。与 §2.1 的提示词下发是同一个取舍的两面：**对自己训模型的一方合理，对不训模型的一方是纯粹的可观测性损失。**
+**措辞上要克制一点**：其余内容（assistant 消息、reasoning、function call 与 output）**不进入这条原文保留路径**，也就是不再作为原始 item 出现在替换历史里。但不能据此断言它们的**信息**不在新 checkpoint 中——`encrypted_content` 对客户端不透明，里面有什么、保真到什么程度，源码证明不了。可证实的是「原始 item 没留」，不是「信息丢了」。
+
+【我的判断】加密产物与本地摘要是两种不同性质的东西。本地摘要是**散文**，人和客户端都能读、能审计、能在 UI 里展示；加密 blob 不受「必须是人类可读散文」这个约束，因而**可以**承载别的东西，代价是你和用户都无法审计 agent 压缩后「相信了什么」。与 §2.1 的提示词下发是同一个取舍的两面：**对自己训模型的一方合理，对不训模型的一方是纯粹的可观测性损失。**
+
+> ⚠️ 到此为止。客户端源码能证明的只有「怎么接收、保留、重新发送这个 item」。它的**内部格式、摘要方法、信息保真率**，以及它是否属于某类 latent-memory 或 KV 快照机制，**本篇一概无法判断**，也不应从「它是加密的」推测出来。
 
 ### 7.2 补充二：压缩位置是训练出来的
 
@@ -625,7 +629,11 @@ const CONTEXT_WINDOW_TRUNCATED_OUTPUT_MESSAGE: &str =
 
 ## 8. token-budget 模式与 agent 自管上下文
 
-第三套「不摘要」的实现，只有放在一套把续接责任从 harness 交给模型的工具旁边才讲得通。这套东西在 `Feature::TokenBudget` 后面，且在本篇 SHA 的 bundle 里 **`enabled: false`** ——是方向，不是现状。
+第三套「不摘要」的实现，只有放在一套把续接责任从 harness 交给模型的工具旁边才讲得通。
+
+它被**两道独立的闸门**挡着，两道都默认关：一是 Rust feature flag —— `features/src/lib.rs` 里 `Feature::TokenBudget` 的 `default_enabled: false`（`Feature::ContextManagement` 同理）；二是模型侧 —— 注册表里 `model_messages.token_budget.enabled: false`。**两者是不同层次，不要混成一句「没开」**：前者是客户端是否编译／启用这条路径，后者是某个模型是否配了这套参数。源码默认关也不等于任何线上部署就是关的，本篇不对线上状态下判断。
+
+所以这一节是方向，不是现状。
 
 ### 8.1 两个工具命名空间
 
@@ -747,3 +755,5 @@ flowchart TB
 6. **与 Compression 研究的分工**：那篇 §6 是 Codex compaction 的主文，本篇 §7 只补四点增量，不覆盖它。§9 的三处更新按那篇的方法论处理——不改它在旧 SHA 上的结论，只加注新快照的发现。
 7. **§5.5 与 §9.3 是同一处更正**，前者给证据与替代解释，后者给回写位置。这是本篇唯一一处与 Compression 研究**实质冲突**（而非补充）的地方。
 8. **负证据的措辞**。本篇没有通读 Codex 完整的工具注册表与调用链。凡本篇未提及的机制，应理解为「本次阅读未覆盖」，而不是「不存在」。
+
+<script type="module" src="../assets/js/util/mermaid-render.js"></script>
