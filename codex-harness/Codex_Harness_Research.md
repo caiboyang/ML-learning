@@ -1,3 +1,9 @@
+---
+layout: default
+title: "Codex Harness 的上下文工程：Prompt 加载、World State 与三套 Compaction"
+description: "逐文件读 openai/codex 源码：提示词为何不在客户端、responses-lite 如何用内容寻址稳定缓存前缀、WorldState 怎样在 append-only 历史里修订状态，以及三套 compaction 的分工。"
+---
+
 # Codex Harness 的上下文工程：Prompt 加载、World State 与三套 Compaction
 
 > 研究对象：`openai/codex`（Rust workspace，约 150 个 crate）
@@ -158,7 +164,9 @@ impl ContextualUserFragment for UserInstructions {
 }
 ```
 
-发现规则（`core/src/agents_md.rs` 的模块注释）：从 project root 往 cwd 方向逐级收集同名文件并按该顺序拼接，**不越过 project root**；root 由 `project_root_markers`（默认 `.git`）向上查找确定，找不到 marker 就只看 cwd；`AGENTS.override.md` 优先于 `AGENTS.md`；多份之间用 `\n\n--- project-doc ---\n\n` 分隔；总量受 `project_doc_max_bytes` 限制。
+发现规则（`core/src/agents_md.rs` 的模块注释）：从 project root 往 cwd 方向逐级收集并按该顺序拼接，**不越过 project root**；root 由 `project_root_markers`（默认 `.git`）向上查找确定，找不到 marker 就只看 cwd；多份之间用 `\n\n--- project-doc ---\n\n` 分隔；总量受 `project_doc_max_bytes` 限制，默认 **32 KiB**（`DEFAULT_PROJECT_DOC_MAX_BYTES = 32 * 1024`）。
+
+**同一个目录内是按优先级选一个候选，不是把候选全拼进去**：`AGENTS.override.md` → `AGENTS.md` → 配置的 `project_doc_fallback_filenames`，取第一个命中的。所以 override 文件是**替换**该目录的项目文档，不是追加在它后面。另外项目不受信任时会跳过项目发现，全局／任务级用户指令走 host provider 另一条路。
 
 【我的判断】放进 user turn 而不是 system prompt 有两个后果。一是**项目指令因此携带用户权威**，与模型自己的 base instructions 分属不同层级。二是更实际的：它因此能像任何其他状态一样在会话中途被修订（§5.2）——system prompt 钉在请求的 `instructions` 字段上，是改不动的。
 
@@ -345,7 +353,17 @@ const REMOVAL_NOTICE: &str =
     "The previously provided AGENTS.md instructions no longer apply.";
 ```
 
-会话中途改 `AGENTS.md`，或 `cd` 进一个带自己 `AGENTS.md` 的子目录，你拿到的是一条带上述声明的新 user 消息——而不是一段已经过时却还躺在上文里的指令。`context_window_guidance` 用同一套。`ModelInstructionsState` 把它用在换模型上：中途换模型，新模型的完整 instructions 作为 `ModelSwitchInstructions` developer 消息出现在 bundle 最前面。
+`cd` 进一个带自己 `AGENTS.md` 的子目录，你拿到的是一条带上述声明的新 user 消息——而不是一段已经过时却还躺在上文里的指令。`context_window_guidance` 用同一套。
+
+> ⚠️ **不要把它理解成文件监听。** 这条机制在 **snapshot 发生变化**时触发，而 snapshot 来自 `AgentsMdManager` 已加载的内容，后者是带缓存的：`refresh()` 里 `refresh_repository` 只在**选择集（selections）变化或 active project 的 trust level 变化**时为真，否则走 `return Ok(cached)`——
+>
+> ```rust
+> // core/src/agents_md_manager.rs
+> let refresh_repository = state.cache.selections.as_ref() != Some(&selections)
+>     || state.cache.active_project_trust_level != active_project_trust_level;
+> ```
+>
+> 所以**切目录会触发重读，而原地编辑 `AGENTS.md` 的内容一般不会**——直到有别的原因让缓存失效。「改了文件、下一次采样一定重新读盘」这个承诺，源码给不了。`ModelInstructionsState` 把它用在换模型上：中途换模型，新模型的完整 instructions 作为 `ModelSwitchInstructions` developer 消息出现在 bundle 最前面。
 
 【机制解释】这是在用自然语言的**时序语义**补偿协议的不可变性。模型读到「这份取代此前所有 X」时，不需要 harness 真的删掉旧文本——冲突由语义层解决。代价是上文里的矛盾信息仍然占着 token，且仍可能被检索到；收益是不需要任何协议支持、不破坏前缀缓存（新内容追加在尾部）。对比之下，真正重写历史的做法（Hermes 的 in-place 重写）会从重写点开始失效缓存。
 
