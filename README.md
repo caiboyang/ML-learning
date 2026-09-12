@@ -18,12 +18,12 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ### 4. Agent Engineering
 
-* 🎓 [让 Agent 跨过上下文窗口 — 从零拆解 Codex Harness](https://caiboyang.github.io/ML-learning/codex-harness/learn/)
-  * *十步学习路径，用“满 100 免运费”的订单测试贯穿读文件、失败、改代码、规则更新、三路压缩与恢复验证。四份 transcript 快照配合执行循环图、三路 compaction 图和可展开练习，区分恢复规则、恢复待办与重新取证。*
+* 🎓 [Codex Harness 分析：从请求到执行与恢复](https://caiboyang.github.io/ML-learning/codex-harness/learn/)
+  * *十二步学习路径，拆解执行循环、基础指令与 Skills 加载、MCP 连接和工具曝光；用“满 100 免运费”的订单测试贯穿读文件、失败、改代码、规则更新、三路压缩与恢复验证。四份 transcript 快照配合执行循环图、三路 compaction 图和可展开练习，区分恢复规则、恢复待办与重新取证。*
   * *与下面的源码手册配套：**学习页给问题、顺序和练习，手册给调用链、常量和证据边界**。重点区分 Remote V2、Local 总结、实验性 TokenBudget 重置，以及 prompt cache 与 WebSocket 增量传输。*
 
-* 📚 [Codex Harness 源码参考：上下文、Compaction 与指令加载](https://caiboyang.github.io/ML-learning/codex-harness/Codex_Harness_Research.html)（[Markdown 原文](codex-harness/Codex_Harness_Research.md)）
-  * *基于 OpenAI 官方仓库固定提交 `944d6fd1ba4b` 的调用链审计，拆解执行循环、压缩与 checkpoint、WorldState 三态和 merge patch、ModelMessages 与指令 provenance。追踪 fragment 的请求元数据、history/notes 与压力提醒的启用条件，以及 Responses Lite 和 WebSocket 的缓存边界；源码事实、设计解释和未验证的服务端行为分别说明。*
+* 📚 [Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理](https://caiboyang.github.io/ML-learning/codex-harness/Codex_Harness_Research.html)（[Markdown 原文](codex-harness/Codex_Harness_Research.md)）
+  * *基于 OpenAI 官方仓库固定提交 `944d6fd1ba4b` 的调用链审计，拆解执行循环、Skills 多来源发现与按需读取、MCP 生命周期、Direct / Deferred / Code Mode 工具曝光，以及压缩与 checkpoint、WorldState 三态和 merge patch、ModelMessages 与指令 provenance。追踪 fragment 的请求元数据、history/notes 与压力提醒的启用条件，以及 Responses Lite 和 WebSocket 的缓存边界；源码事实、设计解释和未验证的服务端行为分别说明。*
 
 * 🎓 [从一个 Agent 到一支可控团队 — Multi-Agent Systems 十步学习路径](https://caiboyang.github.io/ML-learning/multi-agent-systems/learn/)
   * *从 single-agent baseline 开始，用十步建立多智能体系统的决策与工程坐标：什么时候值得拆分、为什么要按上下文边界拆、ADK 的 hierarchy / Sequential / Parallel / Loop 如何表达控制流，以及 planning 为什么不等于 multi-agent。后半程用任务合同、局部失败恢复、single-agent 对照评测和一个最小研究 Lab，把“多开几个 agent”变成可验证的系统设计。页面提供步骤导航与可展开自测答案。*
