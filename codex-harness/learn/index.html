@@ -6,7 +6,7 @@ layout: null
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="沿一次修复任务，用十二步拆解 Codex Harness：执行循环、提示词与 Skills 加载、MCP 和工具曝光，重点理解上下文管理与 compaction。">
+  <meta name="description" content="面向已理解 harness 的读者，图解 Codex 的对象关系、请求装配、Skills / MCP 加载，以及 context、compaction 与恢复的源码实现。">
   <title>Codex Harness 分析：从请求到执行与恢复</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -115,9 +115,9 @@ layout: null
     .scene-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 22px; list-style: none; padding: 0; margin: 0; }
     .scene-grid li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 23px 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
     .scene-grid.flow li:not(:last-child)::after { content: '→'; position: absolute; right: -20px; top: 51px; color: var(--phosphor); font: 21px sans-serif; }
-    .scene-icon { display: block; font: 46px/1.3 system-ui; margin-bottom: 18px; }
-    .scene-grid strong { font: 600 17px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
-    .scene-meaning { display: block; margin-top: 13px; color: var(--phosphor); font: 12px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .scene-icon { display: block; font: 34px/1.3 system-ui; margin-bottom: 18px; }
+    .scene-grid strong { overflow-wrap: anywhere; font: 600 17px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
+    .scene-meaning { overflow-wrap: anywhere; display: block; margin-top: 13px; color: var(--phosphor); font: 12px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
     .one-idea { border-left: 3px solid var(--phosphor); padding: 8px 0 8px 18px; font-size: 20px; }
     .one-idea > span { display: block; color: var(--phosphor); font: 12px/1.7 'Inter', 'Noto Sans SC', sans-serif; margin-bottom: 6px; }
     .bridge { color: var(--paper-dim); font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
@@ -169,11 +169,11 @@ layout: null
 <header class="hero">
   <div class="hero-inner">
     <nav class="crumbs mono" aria-label="面包屑"><a href="../../">ML Learning Notes</a><span aria-hidden="true">/</span><span>Agent Engineering</span><span aria-hidden="true">/</span><span>学习路径</span></nav>
-    <div class="eyebrow mono">Codex Harness · 从一次任务读懂一个运行时</div>
+    <div class="eyebrow mono">Codex Harness · 固定源码快照 · 对象、请求与状态变化</div>
     <h1>Codex Harness 分析<br><span class="accent">从请求到执行与恢复</span></h1>
-    <p class="lede">从“筹办一场朋友聚餐”开始：看工作台、翻菜谱、联系店铺，再看资料怎样整理与交接。十二幅生活场景带你拆解 Codex Harness；重点动手看上下文和 compaction，源码推演按需展开。</p>
+    <p class="lede">假设你已经熟悉 agent harness。这里直接画 Codex 的对象关系、请求装配、Skills / MCP 加载链与历史变化；重点追踪 context 和 compaction 的数据怎样流动，类比只辅助理解具体机制。</p>
     <div class="meta-grid">
-      <div><div class="label">读者假设</div><div class="value">会写程序，知道工具调用</div></div>
+      <div><div class="label">读者假设</div><div class="value">已理解 harness 与工具调用</div></div>
       <div><div class="label">读完能做到</div><div class="value">追踪加载、执行与上下文切换</div></div>
       <div><div class="label">源码快照</div><div class="value"><a href="https://github.com/openai/codex/tree/944d6fd1ba4baab69dbedd205282dc72ec20abb5">944d6fd1ba4b</a> · 2026-09-11 PDT</div></div>
       <div><div class="label">配套材料</div><div class="value"><a href="../Codex_Harness_Research.html">源码参考手册 ↗</a></div></div>
@@ -181,66 +181,71 @@ layout: null
   </div>
 </header>
 <main id="main">
-  <aside class="reading-map" aria-labelledby="reading-title"><h2 id="reading-title">先看图，抓住一件事，再决定往下钻</h2><p>🖼️ 每一幕：生活场景 → Codex 对应 → 一个要点。想追源码，再打开“源码推演与订单测试案例”。</p><p>从兴趣跳进去：<a href="#skills-step">📚 Skills</a> · <a href="#mcp-step">☎️ MCP</a> · <a href="#step-7">📝 Compaction</a> · <a href="#step-4">📋 提示词加载</a></p><p class="small-note">聚餐是统一类比，不代表模型具有人的长期记忆。展开区沿用“满 100 免运费”的代码案例；所有示例输出均为教学构造。</p></aside>
+  <aside class="reading-map" aria-labelledby="reading-title"><h2 id="reading-title">直接看 Codex 实现，从你关心的链路进入</h2><p>🖼️ 每节：源码结构图 → Codex 的实现要点 → 辅助类比。入口函数、常量和完整 transcript 在展开区；不重讲 harness 基础。</p><p>从兴趣跳进去：<a href="#skills-step">📚 Skills</a> · <a href="#mcp-step">☎️ MCP</a> · <a href="#step-7">📝 Compaction</a> · <a href="#step-4">📋 提示词加载</a></p><p class="small-note">范围：openai/codex 固定提交 944d6fd1ba4b 的客户端实现。展开区沿用“满 100 免运费”案例；示例输出为教学构造，服务端内部实现另标未知。</p></aside>
   <nav class="toc" aria-labelledby="toc-title">
-    <h2 id="toc-title">十二幕路线 · 从加载到执行与恢复</h2>
+    <h2 id="toc-title">十二条实现链路 · 对象、加载与上下文</h2>
     <ol>
-      <li><a href="#step-1">先划清模型和 harness 的边界</a></li>
-      <li><a href="#step-2">一条请求为什么会跑很多轮</a></li>
-      <li><a href="#step-3">把 context 拆成三种状态</a></li>
-      <li><a href="#step-4">基础指令究竟从哪里来</a></li>
-      <li><a href="#skills-step">Skills 怎样被发现、选中和读取</a></li>
-      <li><a href="#mcp-step">MCP 与工具怎样变成可调用能力</a></li>
-      <li><a href="#step-5">让变化进入上下文</a></li>
-      <li><a href="#step-6">什么时候应该压缩</a></li>
-      <li><a href="#step-7">沿三条 compaction 路径往下走</a></li>
-      <li><a href="#step-8">压缩后怎样接着干活</a></li>
-      <li><a href="#step-9">分清缓存、传输与记忆</a></li>
-      <li><a href="#step-10">用一条调用链检验理解</a></li>
+      <li><a href="#step-1">Codex 的模块怎样连接</a></li>
+      <li><a href="#step-2">run_turn 每次采样前后做什么</a></li>
+      <li><a href="#step-3">ContextManager 保存哪些类型化状态</a></li>
+      <li><a href="#step-4">Codex 怎样选取并装配基础指令</a></li>
+      <li><a href="#skills-step">Skills 的来源、选择与注入链</a></li>
+      <li><a href="#mcp-step">MCP 从配置到 PreparedMcpCall</a></li>
+      <li><a href="#step-5">WorldState 怎样更新与恢复基线</a></li>
+      <li><a href="#step-6">Codex 在哪些阈值触发 compaction</a></li>
+      <li><a href="#step-7">Compaction 请求由谁发、走哪条路径</a></li>
+      <li><a href="#step-8">replacement_history 怎样组成下一窗口</a></li>
+      <li><a href="#step-9">Codex 的请求增量与缓存边界</a></li>
+      <li><a href="#step-10">用一条 Codex trace 串起所有对象</a></li>
     </ol>
   </nav>
 
   <section class="essay" id="step-1">
-    <div class="section-head"><span class="section-num">STEP 01</span><h2 class="section-title">先划清模型和 harness 的边界</h2></div>
-    <p class="section-sub">谁提出动作，谁执行动作，谁保存状态</p><p class="scene-question">朋友只说：周六来你家吃饭。谁把这句话变成一桌菜？</p>
-    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">🧑‍🍳</span><strong>筹划员想下一步</strong><span class="scene-meaning">Model · 提出动作</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🧑‍💼</span><strong>管家安排并核对</strong><span class="scene-meaning">Harness · 调度执行</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🍳</span><strong>厨房与店铺动起来</strong><span class="scene-meaning">Tools / Environment · 产生结果</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>模型提出“去买菜”，harness 把请求交给工具，拿回实际结果；说过要做，不等于已经做完。</p>
-    <p class="bridge">代码案例：修复“满 100 免运费”。提出改代码 → 工具修改文件 → 运行测试，三步都要走。</p>
-    <details class="quiz"><summary>自测：模型说“测试已通过”，harness 就可以把任务标为成功吗？</summary>
-    <p>不能仅凭这句话。应检查工具是否执行、输出和退出状态是什么；模型陈述与环境结果是两份证据。</p></details>
+    <div class="section-head"><span class="section-num">STEP 01</span><h2 class="section-title">Codex 的模块怎样连接</h2></div>
+    <p class="section-sub">ThreadManager → Session → StepContext → ModelClient / ToolRouter</p><p class="scene-question">先定位对象和生命周期：哪些状态属于整个任务，哪些只属于一次采样？</p>
+    <figure><div class="diagram" tabindex="0" role="region" aria-label="Codex 模块关系图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    UI[CLI / TUI / app-server] --> S[ThreadManager / Session]
+    S --> R[run_turn]
+    R --> C[StepContext]
+    C --> P[Prompt：历史 / 基础指令 / 工具]
+    P --> M[ModelClient：Responses]
+    M --> T[ToolRouter / 工具执行运行时]
+    T --> H[ContextManager：记录结果]
+    H --> R
+    S -.当前状态与变化通知.-> W[WorldState]
+    W --> P
+    S -.持久化与恢复.-> D[Rollout / checkpoint]
+</code></pre></div><figcaption>本图定位 Codex 的核心对象；压缩、取消、审批和 MCP 执行前绑定在后续各节展开。</figcaption></figure>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">🧵</span><strong>ThreadManager / Session</strong><span class="scene-meaning">任务生命周期、历史与共享服务</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📦</span><strong>StepContext</strong><span class="scene-meaning">本次模型、环境、工具计划与规则快照</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🔀</span><strong>ModelClient / ToolRouter</strong><span class="scene-meaning">发送 Responses；分派模型提出的工具调用</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>Codex 把会话状态、每次请求的能力快照、模型传输与工具执行拆成独立部件。后面的加载与 compaction 都沿这套对象关系发生。</p>
+    <p class="bridge">辅助类比：Session 像整场活动的总档案，StepContext 像某一次派工的工作单；外部环境不会随工作单一起冻结。</p>
+    <details class="quiz"><summary>读图检查：整个任务的 Session 和一次请求的 StepContext 为什么要分开？</summary><p>Session 保留长期任务历史和服务；StepContext 固定某次采样的模型、工具与环境视图。下一次采样可以重新捕获能力，MCP 执行前还有独立调用绑定。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
     <div class="deep-content">
-    <p class="deck">你让模型修测试，它回答“改好了”，可本地测试还是红的。怎样让一次回答变成一次经过验证的修复？</p>
-    <p>先想象一张办公桌：模型根据桌上收到的材料提出下一步，<strong>harness</strong> 负责把请求交给工具执行器，再把结果送回桌面。模型写出“运行测试”还不算执行；要等工具真的跑完，才能知道结果。这里的 harness，就是把模型、工具、环境和会话串起来的运行程序。</p>
-    <div class="tiles">
-      <div class="tile"><div class="label">MODEL</div><h3>决定下一步</h3><p>根据当前输入生成回答或工具调用。能看见什么，取决于这次请求。</p></div>
-      <div class="tile"><div class="label">HARNESS</div><h3>组织与执行</h3><p>构造请求、运行工具、处理取消和审批、管理历史与窗口。</p></div>
-      <div class="tile"><div class="label">ENVIRONMENT</div><h3>承载实际结果</h3><p>工作区里的文件、进程和外部服务。它们的状态不会随聊天摘要自动重置。</p></div>
-    </div>
-    <p>接下来沿一个订单测试看这套分工怎样运转，源码范围和版本说明见页末及参考手册。</p>
+    <p>源码入口：<code>core/src/thread_manager.rs</code> 管任务，<code>core/src/session/turn.rs</code> 管回合执行，<code>core/src/session/step_context.rs</code> 固定采样状态，<code>core/src/client.rs</code> 与 <code>core/src/tools/router.rs</code> 分别承接模型请求和工具路由。</p>
     <div class="call"><span class="tag">贯穿案例 · 运费边界测试</span><strong>U1 用户请求：</strong>“修复 ShippingCostTest：订单金额满 100 免运费；保持 public API 不变。”<br><strong>R0 项目规则：</strong>根目录 AGENTS.md 要求使用 JUnit 5。后文始终追踪这一个任务。代码、消息 ID 和输出均为教学构造，未运行真实项目；工具名称是简写，不是可直接发送的 API。</div>
 
 
   </div></details>
-    <p class="source">源码与边界：<a href="../Codex_Harness_Research.html#scope">手册 §1 · 开源范围</a></p><a class="next-step" href="#step-2">下一幕 · 02 →</a>
+    <p class="source">源码与边界：<a href="../Codex_Harness_Research.html#architecture">手册 §2 · 核心对象</a></p><a class="next-step" href="#step-2">下一节 · 02 →</a>
   </section>
 
   <section class="essay" id="step-2">
-    <div class="section-head"><span class="section-num">STEP 02</span><h2 class="section-title">一条请求为什么会跑很多轮</h2></div>
-    <p class="section-sub">一个用户回合，不等于一次模型采样</p><p class="scene-question">去买番茄，发现卖完了。你得根据新情况重新安排。</p>
-    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📝</span><strong>看任务与现有材料</strong><span class="scene-meaning">一次模型输入</span></li>
-      <li><span class="scene-icon" aria-hidden="true">💭</span><strong>决定下一步买什么</strong><span class="scene-meaning">一次模型采样</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🛒</span><strong>购买并拿回回执</strong><span class="scene-meaning">工具调用与结果</span></li>
-      <li><span class="scene-icon" aria-hidden="true">↩️</span><strong>带新信息再做决定</strong><span class="scene-meaning">继续同一个用户回合</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>一次聚餐任务可以跑很多轮；Session 管整场任务，每次请求只拿到当时准备的材料。</p>
-    <p class="bridge">代码案例：读实现 → 跑测试 → 看到 amount=100 失败 → 改比较符 → 再测。新结果推动下一轮。</p>
+    <div class="section-head"><span class="section-num">STEP 02</span><h2 class="section-title">run_turn 每次采样前后做什么</h2></div>
+    <p class="section-sub">输入贡献 → 捕获 StepContext → 采样 → 执行与预算检查</p><p class="scene-question">同一个用户回合里，Codex 在什么位置重新准备请求、接收输入和检查压缩？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📥</span><strong>回合输入与贡献项</strong><span class="scene-meaning">处理用户输入、显式 Skills 等内容</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📦</span><strong>capture_step_context</strong><span class="scene-meaning">准备采样使用的模型、工具与环境</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📡</span><strong>ModelClient.stream</strong><span class="scene-meaning">发送 Prompt，处理 ResponseItem 与事件</span></li>
+      <li><span class="scene-icon" aria-hidden="true">↩️</span><strong>工具结果 / 待处理输入 / 预算</strong><span class="scene-meaning">决定续跑、压缩或结束本轮</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>run_turn 负责续跑判断；StepContext 约束采样计划。MCP handler 另在执行前刷新并捕获 PreparedMcpCall，不应把两种绑定混成一个永久快照。</p>
+    <p class="bridge">辅助类比：发出工作单后，店铺目录仍可能变化；真正下单时要重新确认这次调用使用的连接和资料。</p>
     <details class="quiz"><summary>自测：StepContext 是否保证请求发出后，MCP 目录和连接永不变化？</summary>
     <p>不保证。它固定采样使用的计划；MCP 执行前仍检查刷新并准备本次调用。模型看到过定义和实际成功执行，是两个需要分别核对的事实。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
     <div class="deep-content">
-    <p>你只交来一张“修好运费测试”的任务单，完成它却可能需要多次往返：读测试 → 读实现 → 改代码 → 运行测试 → 看到新失败 → 继续修改。每次拿回的新材料都会影响下一步。<code>run_turn</code> 在一个用户回合内反复请求模型、执行工具，直到无需续跑且没有待处理输入；这些步骤不是多次独立的用户回合。</p>
+    <p>在本例中，<code>run_turn</code> 把失败的工具结果写入历史，下一次采样取得更新后的输入。<code>run_turn</code> 在一个用户回合内反复请求模型、执行工具，直到无需续跑且没有待处理输入；这些步骤不是多次独立的用户回合。</p>
     <figure>
       <div class="diagram" tabindex="0" role="region" aria-label="执行循环图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
     U[用户要求修复测试] --> S[Session 接收输入]
@@ -269,17 +274,17 @@ output c2：amount=100，expected=0，actual=5，FAIL
 
 
   </div></details>
-    <p class="source">沿调用链阅读：<a href="../Codex_Harness_Research.html#architecture">手册 §2 · Session 与 StepContext</a></p><a class="next-step" href="#step-3">下一幕 · 03 →</a>
+    <p class="source">沿调用链阅读：<a href="../Codex_Harness_Research.html#architecture">手册 §2 · Session 与 StepContext</a></p><a class="next-step" href="#step-3">下一节 · 03 →</a>
   </section>
 
   <section class="essay" id="step-3">
-    <div class="section-head"><span class="section-num">STEP 03</span><h2 class="section-title">把 context 拆成三种状态</h2></div>
-    <p class="section-sub">正在看见、可以重建、已经保存</p><p class="scene-question">发票收进柜子了，坐在桌前的你会自动知道每个数字吗？</p>
-    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🗂️</span><strong>桌面：眼前材料</strong><span class="scene-meaning">活跃历史 · 下一次请求会使用</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📋</span><strong>规则册：当前约定</strong><span class="scene-meaning">Canonical state · 需复制进请求</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🗄️</span><strong>档案柜：已存记录</strong><span class="scene-meaning">持久化 · 需恢复或检索</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>保存、当前可见、可以重建，是三件事。柜里有记录，不等于模型此刻读到了。</p>
-    <p class="bridge">代码案例：旧 FAIL 可能在归档里；WorldState 管规则与环境，不会因此自动备份这段日志。</p>
+    <div class="section-head"><span class="section-num">STEP 03</span><h2 class="section-title">ContextManager 保存哪些类型化状态</h2></div>
+    <p class="section-sub">ResponseItemEnvelope / WorldState baseline / Rollout</p><p class="scene-question">Codex 的活跃历史、当前状态源和恢复记录，分别在哪里承担责任？</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🗂️</span><strong>ContextManager</strong><span class="scene-meaning">Arc&lt;Vec&lt;ResponseItemEnvelope&gt;&gt;：消息及元数据</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📋</span><strong>WorldState sections</strong><span class="scene-meaning">环境、规则、权限、模型与能力的可比较状态</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🗄️</span><strong>Rollout / checkpoint</strong><span class="scene-meaning">保存恢复所需记录；不自动成为模型输入</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>历史不是一个大字符串。call_id 维持调用配对，content_kind 区分真实用户输入与注入规则；同为 user role 不代表保留策略相同。</p>
+    <p class="bridge">辅助类比：桌面材料、规则册和档案柜。WorldState 的 ToolsState 是工具目录，不是调用结果备份。</p>
     <details class="quiz"><summary>自测：磁盘还保留完整对话，能否据此断言模型“没有忘记”？</summary>
     <p>不能。持久化解决的是保存，模型窗口解决的是当前可见性。还需要明确的检索或重注入路径，才能把保存的内容带回当前请求。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -300,17 +305,17 @@ output c2：amount=100，expected=0，actual=5，FAIL
 
 
   </div></details>
-    <p class="source">结构与整理规则：<a href="../Codex_Harness_Research.html#context">手册 §3 · ContextManager</a>、<a href="../Codex_Harness_Research.html#fragments">fragment 到 wire</a></p><a class="next-step" href="#step-4">下一幕 · 04 →</a>
+    <p class="source">结构与整理规则：<a href="../Codex_Harness_Research.html#context">手册 §3 · ContextManager</a>、<a href="../Codex_Harness_Research.html#fragments">fragment 到 wire</a></p><a class="next-step" href="#step-4">下一节 · 04 →</a>
   </section>
 
   <section class="essay" id="step-4">
-    <div class="section-head"><span class="section-num">STEP 04</span><h2 class="section-title">基础指令究竟从哪里来</h2></div>
-    <p class="section-sub">固定文件、模型目录和会话继承共同决定来源</p><p class="scene-question">换人筹办聚餐，“客人忌花生”不能被新人的默认菜单覆盖。</p>
-    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📌</span><strong>先看明确指定的安排</strong><span class="scene-meaning">显式基础指令</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📒</span><strong>没有，再看上次留下的安排</strong><span class="scene-meaning">会话继承的基础指令</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>还没有，才用默认手册</strong><span class="scene-meaning">当前模型目录模板</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>基础指令按来源选取；同时记住它是用户自定的 Custom，还是模型自带的 Model 默认值。</p>
-    <p class="bridge">换 A → B：保留用户自定义约定；不能让 A 的默认文本冒充用户覆盖。项目 AGENTS.md 是另一路上下文。</p>
+    <div class="section-head"><span class="section-num">STEP 04</span><h2 class="section-title">Codex 怎样选取并装配基础指令</h2></div>
+    <p class="section-sub">配置优先级 + ModelMessages + provenance + wire 分支</p><p class="scene-question">为什么只打开仓库里的 prompt.md，仍无法确定这次请求的基础指令？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📌</span><strong>config.base_instructions</strong><span class="scene-meaning">显式覆盖／文件内容解析后的基础来源</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📒</span><strong>session_meta.base_instructions</strong><span class="scene-meaning">无显式覆盖时使用恢复／fork 继承</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>模型 instructions_template</strong><span class="scene-meaning">前两项都没有时从模型目录回退</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>ModelMessages 把工具描述、审批与模式话术纳入模型元数据；Custom / Model provenance 防止模型默认文本被误当作用户覆盖。</p>
+    <p class="bridge">辅助类比：自定菜谱和厨师默认菜谱贴不同来源标签。普通 Responses 用 instructions / tools；Lite 分支把它们改装到 input 前缀。</p>
     <details class="quiz"><summary>自测：更新客户端后恢复旧会话，一定会采用仓库最新默认 prompt 吗？</summary>
     <p>不一定。没有显式覆盖时，保存的会话基础指令优先于当前模型模板。还要检查实际模型目录和会话继承状态。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -331,18 +336,18 @@ output c2：amount=100，expected=0，actual=5，FAIL
 
 
   </div></details>
-    <p class="source">完整优先级与 Lite 分支：<a href="../Codex_Harness_Research.html#instructions">手册 §7 · 指令加载</a>、<a href="../Codex_Harness_Research.html#provenance">Custom / Model 来源</a></p><a class="next-step" href="#skills-step">下一幕 · 05 →</a>
+    <p class="source">完整优先级与 Lite 分支：<a href="../Codex_Harness_Research.html#instructions">手册 §7 · 指令加载</a>、<a href="../Codex_Harness_Research.html#provenance">Custom / Model 来源</a></p><a class="next-step" href="#skills-step">下一节 · 05 →</a>
   </section>
 
 <section class="essay" id="skills-step">
-    <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">Skills 怎样被发现、选中和读取</h2></div>
-    <p class="section-sub">目录、正文、引用资源和执行是四个阶段</p><p class="scene-question">想做一道陌生的菜：先看目录，选菜谱，需要时再翻附页。</p>
-    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📚</span><strong>看菜谱目录</strong><span class="scene-meaning">技能名称、描述、来源</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>打开选中的菜谱</strong><span class="scene-meaning">SKILL.md 正文</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🧾</span><strong>翻配料表与附页</strong><span class="scene-meaning">引用资源按需读取</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🍳</span><strong>按步骤实际做菜</strong><span class="scene-meaning">调用工具，不是只读说明</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>显式点名 skill 时，运行时可以主动注入正文；模型也可以先判断相关，再自行读取。</p>
-    <p class="bridge">菜谱可能在家里、另一处厨房或远程资料库，对应 Host / Executor / Orchestrator；读取要走各自来源。</p>
+    <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">Skills 的来源、选择与注入链</h2></div>
+    <p class="section-sub">Host / Executor / Orchestrator → catalog → selected fragments</p><p class="scene-question">正文由运行时主动注入，还是等模型读取？Codex 同时存在两条路径。</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📚</span><strong>三类来源发现</strong><span class="scene-meaning">Host roots；Executor 环境；Orchestrator MCP resources</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📑</span><strong>catalog 与预算</strong><span class="scene-meaning">名称、描述、路径别名；不全量注入正文</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>显式选择 / 模型自主读取</strong><span class="scene-meaning">selection → 注入正文；或文件工具 / skills.read</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧾</span><strong>引用资源与工具执行</strong><span class="scene-meaning">package / resource 寻址；读说明不等于执行</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>Skills extension 的目录片段是 developer role，选中正文是 user role，标记为 skills.selected_skill_instructions；Core 还有 Host 注入和去重路径。</p>
+    <p class="bridge">辅助类比：先看菜谱目录，再打开正文和附页。Host、Executor、Orchestrator 是不同资料来源，必须用对应的读取路径。</p>
     <details class="quiz"><summary>自测：目录里已有 order-tests，能否断言模型读过正文、依赖也已安装？</summary>
     <p>不能。目录、正文、依赖安装和执行分别有入口。显式选择可能触发正文注入，但 MCP 依赖安装还受 feature、来源、策略与安装选择等条件约束。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -384,18 +389,18 @@ output c2：amount=100，expected=0，actual=5，FAIL
 
 
   </div></details>
-    <p class="source">来源、预算、角色与读取路径：<a href="../Codex_Harness_Research.html#skills-loading">手册 §7.6 · Skills 加载</a></p><a class="next-step" href="#mcp-step">下一幕 · 06 →</a>
+    <p class="source">来源、预算、角色与读取路径：<a href="../Codex_Harness_Research.html#skills-loading">手册 §7.6 · Skills 加载</a></p><a class="next-step" href="#mcp-step">下一节 · 06 →</a>
   </section>
 
   <section class="essay" id="mcp-step">
-    <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">MCP 与工具怎样变成可调用能力</h2></div>
-    <p class="section-sub">有配置、已连接、模型可见、执行成功并不是同一状态</p><p class="scene-question">手机里存了餐厅号码，不代表已接通，更不代表已经下单。</p>
-    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">🪪</span><strong>存下店铺联系方式</strong><span class="scene-meaning">MCP server 配置</span></li>
-      <li><span class="scene-icon" aria-hidden="true">☎️</span><strong>接通，问清能做什么</strong><span class="scene-meaning">连接、initialize、工具目录</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📜</span><strong>拿到具体点单表</strong><span class="scene-meaning">Tool schema 直接或按需曝光</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🧾</span><strong>下单，等实际回执</strong><span class="scene-meaning">准备调用、审批与执行</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>连接、工具定义进入模型视野、调用成功，是不同阶段。tool_search 在已有目录中找工具。</p>
-    <p class="bridge">菜谱是 Skill，店铺提供动作是 MCP。插件可同时贡献两者；读菜谱不会自动完成依赖安装或授权。</p>
+    <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">MCP 从配置到 PreparedMcpCall</h2></div>
+    <p class="section-sub">runtime → initialize / list_tools → binding → exposure → call</p><p class="scene-question">server 已连接，为什么工具可能还要搜索？调用前为什么又检查 binding？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">⚙️</span><strong>汇集 runtime 配置</strong><span class="scene-meaning">会话、插件、所选环境及策略</span></li>
+      <li><span class="scene-icon" aria-hidden="true">☎️</span><strong>连接与目录</strong><span class="scene-meaning">Stdio / HTTP；initialize；分页 list_tools</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📜</span><strong>ToolRouter 曝光计划</strong><span class="scene-meaning">Direct / Deferred / Code Mode；搜索已有目录</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🔗</span><strong>PreparedMcpCall</strong><span class="scene-meaning">dirty refresh → 当前调用 binding → 审批与执行</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>采样用的目录 binding 与执行前准备的调用 binding 是相邻的两个边界。普通来源 Eager；SubAgent 的 LazyWhenCached 还受缓存条件限制。</p>
+    <p class="bridge">辅助类比：通讯录、接通电话、点单表、实际回执分别对应不同阶段。tool_search 找已有工具定义，不安装新 server。</p>
     <details class="quiz"><summary>自测：issue-tracker 已连接，为什么模型仍可能需要搜索工具？</summary>
     <p>连接负责与 server 通信，搜索负责将已有目录里的延迟工具定义带入模型可用范围。两者降低的成本、发生的时机都不同；搜索本身也不等于执行。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -431,18 +436,18 @@ output c2：amount=100，expected=0，actual=5，FAIL
 
 
   </div></details>
-    <p class="source">配置与调用绑定：<a href="../Codex_Harness_Research.html#mcp-loading">手册 §7.7 · MCP 生命周期</a>；曝光、Code Mode 与插件：<a href="../Codex_Harness_Research.html#tool-loading">手册 §7.8 · 工具加载</a></p><a class="next-step" href="#step-5">下一幕 · 07 →</a>
+    <p class="source">配置与调用绑定：<a href="../Codex_Harness_Research.html#mcp-loading">手册 §7.7 · MCP 生命周期</a>；曝光、Code Mode 与插件：<a href="../Codex_Harness_Research.html#tool-loading">手册 §7.8 · 工具加载</a></p><a class="next-step" href="#step-5">下一节 · 07 →</a>
   </section>
 
 
   <section class="essay" id="step-5">
-    <div class="section-head"><span class="section-num">STEP 07</span><h2 class="section-title">让变化进入上下文</h2></div>
-    <p class="section-sub">第一次全量构造，之后比较状态</p><p class="scene-question">聚餐改成素食了，桌上的旧菜单要怎样处理？</p>
-    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🔎</span><strong>知道旧菜单写什么</strong><span class="scene-meaning">Known · 比较，必要时更新</span></li>
-      <li><span class="scene-icon" aria-hidden="true">❓</span><strong>看得出有旧菜单，却无精确快照</strong><span class="scene-meaning">Unknown · 明说新版替代旧版</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📄</span><strong>保留材料中没有旧菜单依据</strong><span class="scene-meaning">Absent · 直接放入新版</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>“不知道旧值”和“没有旧内容依据”不能合成一种空值；否则可能漏掉替换或撤销通知。</p>
-    <p class="bridge">WorldState 负责比较状态并发通知。前提是管理器已取得新状态；它本身不是每次重读文件的监听器。</p>
+    <div class="section-head"><span class="section-num">STEP 07</span><h2 class="section-title">WorldState 怎样更新与恢复基线</h2></div>
+    <p class="section-sub">Known / Absent / Unknown + fragments / merge patch</p><p class="scene-question">历史里还留着旧 AGENTS 文本，精确 snapshot 却丢了，Codex 会怎样发新版？</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🔎</span><strong>Known(snapshot)</strong><span class="scene-meaning">有旧快照：比较差异，必要时更新</span></li>
+      <li><span class="scene-icon" aria-hidden="true">❓</span><strong>Unknown</strong><span class="scene-meaning">有旧片段依据但无精确快照：替换或撤销通知</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📄</span><strong>Absent</strong><span class="scene-meaning">无有效旧依据：当前内容按需全量注入</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>面向模型的是变化 fragments；写入 rollout 的是 full snapshot 或 merge patch。恢复器重放状态与模型读自然语言通知，是两条不同的数据流。</p>
+    <p class="bridge">辅助类比：认得桌上有旧菜单但不知详情，仍要声明新版替代它。管理器缓存是否刷新，决定比较拿到的是不是新状态。</p>
     <details class="quiz"><summary>练习：旧历史有 AGENTS 文本、snapshot 丢了，当前规则已移除。什么都不发可以吗？</summary>
     <p>不可以。这是 Unknown；旧规则仍可能影响任务，需要明确通知它不再适用。若把它当成 Absent，就会丢掉撤销动作。处理依据是管理器提供的当前状态，不是臆测磁盘已经刷新。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -477,17 +482,17 @@ output c2：amount=100，expected=0，actual=5，FAIL
 
 
   </div></details>
-    <p class="source">三态、快照和缓存：<a href="../Codex_Harness_Research.html#world-state">手册 §7.5</a>、<a href="../Codex_Harness_Research.html#world-state-boundary">工具结果边界</a></p><a class="next-step" href="#step-6">下一幕 · 08 →</a>
+    <p class="source">三态、快照和缓存：<a href="../Codex_Harness_Research.html#world-state">手册 §7.5</a>、<a href="../Codex_Harness_Research.html#world-state-boundary">工具结果边界</a></p><a class="next-step" href="#step-6">下一节 · 08 →</a>
   </section>
 
   <section class="essay" id="step-6">
-    <div class="section-head"><span class="section-num">STEP 08</span><h2 class="section-title">什么时候应该压缩</h2></div>
-    <p class="section-sub">整理材料本身也需要空间</p><p class="scene-question">桌面已经堆满，再写一张交接卡也需要位置。什么时候该先整理？</p>
-    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📥</span><strong>材料继续增加</strong><span class="scene-meaning">历史与工具结果占窗口</span></li>
-      <li><span class="scene-icon" aria-hidden="true">⚠️</span><strong>提前到整理线</strong><span class="scene-meaning">自动压缩预算 A</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🛑</span><strong>还有独立的空间上限</strong><span class="scene-meaning">可用窗口 H</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>harness 计算用量并检查阈值。整理本身也要空间，所以不能总等到完全塞满。</p>
-    <p class="bridge">下面使用源码算例：W=272,000，C=250,000，p=95；Total 口径、无 fallback buffer、任务仍需继续。</p><div class="hands-on" id="budget-demo">
+    <div class="section-head"><span class="section-num">STEP 08</span><h2 class="section-title">Codex 在哪些阈值触发 compaction</h2></div>
+    <p class="section-sub">Total / BodyAfterPrefix + 自动预算 + 完整窗口检查</p><p class="scene-question">用源码 fixture 看两条线：自动预算不是完整可用窗口，250k 配置也不一定等到 250k。</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📥</span><strong>服务端用量 + 本地增量估计</strong><span class="scene-meaning">计量当前活跃上下文</span></li>
+      <li><span class="scene-icon" aria-hidden="true">⚠️</span><strong>自动阈值 A</strong><span class="scene-meaning">Total：min(C, floor(0.9 × W))，C 未设则取后项</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🛑</span><strong>可用窗口 H</strong><span class="scene-meaning">floor(p × W / 100)，另做完整窗口检查</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>采样前、需续跑的工具结果之后、特定模型切换时都可能触发检查。BodyAfterPrefix 的自动预算口径不同，buffer 也会改变条件。</p>
+    <p class="bridge">辅助类比：整理线和桌子的边缘不是同一条线。下方固定 W=272,000、C=250,000、p=95、Total、无 buffer、仍需续跑。</p><div class="hands-on" id="budget-demo">
 <h3>拖一拖：材料增加到哪里，要先整理？</h3>
 <label for="token-load">当前用量 <output id="token-number" for="token-load">244,000</output> tokens</label>
 <input id="token-load" type="range" min="180000" max="272000" step="100" value="244000" aria-describedby="budget-assumptions budget-state">
@@ -520,30 +525,31 @@ H = floor(p × W / 100)</code></pre>
 
 
   </div></details>
-    <p class="source">公式、口径和调用点：<a href="../Codex_Harness_Research.html#budget">手册 §4 · 压缩触发</a></p><a class="next-step" href="#step-7">下一幕 · 09 →</a>
+    <p class="source">公式、口径和调用点：<a href="../Codex_Harness_Research.html#budget">手册 §4 · 压缩触发</a></p><a class="next-step" href="#step-7">下一节 · 09 →</a>
   </section>
 
   <section class="essay" id="step-7">
-    <div class="section-head"><span class="section-num">STEP 09</span><h2 class="section-title">沿三条 compaction 路径往下走</h2></div>
-    <p class="section-sub">同一个生命周期名称，背后可能是不同机制</p><p class="scene-question">整理同一场聚餐的资料，可以写交接卡、收交接包，也可以直接换桌面。</p>
-    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📝</span><strong>写一张可读交接卡</strong><span class="scene-meaning">Local · 模型生成文本摘要</span></li>
-      <li><span class="scene-icon" aria-hidden="true">✉️</span><strong>接收密封交接包</strong><span class="scene-meaning">Remote V2 · 不透明压缩项</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🧹</span><strong>只换桌面，不自动写卡</strong><span class="scene-meaning">TokenBudget · 无总结重置</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>三条路径不做同一件事；源码按开关和 provider 能力路由，不是让模型随意选择。</p>
-    <p class="bridge">TokenBudget 在这份快照中是实验分支。Local 指客户端编排，不代表模型在本地运行。</p><div class="hands-on" id="compact-demo">
-<h3>点一种路径，看整理前后</h3>
+    <div class="section-head"><span class="section-num">STEP 09</span><h2 class="section-title">Compaction 请求由谁发、走哪条路径</h2></div>
+    <p class="section-sub">同一用户 Session；本次 model_info；三种实现</p><p class="scene-question">先看请求与结果：V2 发 trigger、Local 发总结要求、TokenBudget 跳过总结。</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">✉️</span><strong>Remote V2</strong><span class="scene-meaning">Responses + compaction_trigger → 一个 encrypted compaction item</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📝</span><strong>Local 总结</strong><span class="scene-meaning">历史 + 总结提示 → 文本 handoff summary</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧹</span><strong>TokenBudget reset</strong><span class="scene-meaning">start_new_context_window → 不生成摘要</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>普通总结型请求使用本次 turn_context.model_info()，结果写回原 Session。模型切换时可能先用旧模型压缩；服务端是否另用压缩模型，客户端无法证明。</p>
+    <p class="bridge">辅助类比：可读交接卡、密封交接包、直接换桌面。路由由 feature 与 provider capability 决定，不是用户任意选择的三个压缩按钮。</p><div class="hands-on" id="compact-demo">
+<h3>切换源码路径，看活跃历史的替换结果</h3>
 <div class="mode-buttons" role="group" aria-label="比较三种压缩路径">
 <button type="button" data-mode="local" aria-pressed="true" aria-controls="compact-result">📝 Local</button>
 <button type="button" data-mode="remote" aria-pressed="false" aria-controls="compact-result">✉️ Remote V2</button>
 <button type="button" data-mode="reset" aria-pressed="false" aria-controls="compact-result">🧹 TokenBudget</button>
 </div>
 <div class="desk-pair">
-<div class="desk"><h4>整理前 · 材料堆满</h4><div class="paper-stack"><span>📌 原需求 U1 / U2</span><span>📋 旧规则 R0 → 新规则 R1</span><span>🧾 失败日志、操作记录……</span><span>🛠️ 代码已改，仍待验证</span></div></div>
+<div class="desk"><h4>压缩前 · 活跃历史</h4><div class="paper-stack"><span>📌 原需求 U1 / U2</span><span>📋 旧规则 R0 → 新规则 R1</span><span>🧾 失败日志、操作记录……</span><span>🛠️ 代码已改，仍待验证</span></div></div>
 <div class="desk after" id="compact-result" aria-live="polite"><h4 id="compact-heading">Local · 可读交接卡</h4><div class="paper-stack" id="compact-papers"><span>📌 预算内保留的用户原文</span><span>📋 按时机重建当前规则</span><span>📝 已改比较符，仍需验证边界</span></div><p id="compact-note">摘要内容是教学构造。旧工具输出原始项不会因此完整保留。</p></div>
 </div>
-<p class="small-note">切换按钮只是比较源码路径，不会更改 Codex 设置。假设 U1/U2 在保留预算内；省略图片等特殊候选，规则注入时机见下一步。</p>
+<p class="small-note">按钮仅比较源码路径。U1：满 100 免运费、public API 不变；U2：验证 99/100/101；R1：JUnit 5、只跑订单模块。假设 U1/U2 在保留预算内，省略图片等特殊候选；规则注入时机见下一节。</p>
 </div>
-<div class="same-task"><span class="scene-icon" aria-hidden="true">🍽️</span><div><h3>整理的是材料，聚餐任务仍是原来的</h3><p>普通总结型压缩沿用同一个用户 Session，请求通常指定当前模型。新建请求层的 ModelClientSession 不等于另开任务。切换模型时，可先让旧模型整理再交接；Remote V2 服务端内部是否另用模型，公开代码无法证明。</p><a href="../Codex_Harness_Research.html#compaction-session-model">看 session / model 的源码边界 →</a></div></div><details class="quiz"><summary>自测：读完 Local 的公开总结模板，能否说明 Remote V2 使用同样的内部 prompt？</summary>
+<div class="call"><span class="tag">Remote V2 请求形状 · 逻辑投影</span><code>model = turn_context.model_info()</code><br><code>instructions = 原基础指令</code>，<code>tools = 本次工具表</code><br><code>input = 整理后的历史 + compaction_trigger</code><br>经普通 Responses 请求发送 → 要求完成事件与恰好一个 compaction item → 安装到原 Session。服务端内部摘要格式不可见。</div>
+<div class="same-task"><span class="scene-icon" aria-hidden="true">🍽️</span><div><h3>Session 不变；ModelClientSession 与模型选择另看</h3><p>普通总结型压缩沿用同一个用户 Session，请求通常指定当前模型。新建请求层的 ModelClientSession 不等于另开任务。切换模型时，可先让旧模型整理再交接；Remote V2 服务端内部是否另用模型，公开代码无法证明。</p><a href="../Codex_Harness_Research.html#compaction-session-model">看 session / model 的源码边界 →</a></div></div><details class="quiz"><summary>自测：读完 Local 的公开总结模板，能否说明 Remote V2 使用同样的内部 prompt？</summary>
     <p>不能。V2 交回不透明的 encrypted_content，公开客户端只展示控制项、传递和保留机制，不能揭示服务端内部摘要格式或算法。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
     <div class="deep-content">
@@ -571,17 +577,17 @@ H = floor(p × W / 100)</code></pre>
 
 
   </div></details>
-    <p class="source">三条实际调用链：<a href="../Codex_Harness_Research.html#compaction">手册 §5 · Compaction</a>、<a href="../Codex_Harness_Research.html#history-notes">history / notes</a>、<a href="../Codex_Harness_Research.html#pressure">压力提醒的条件</a></p><a class="next-step" href="#step-8">下一幕 · 10 →</a>
+    <p class="source">三条实际调用链：<a href="../Codex_Harness_Research.html#compaction">手册 §5 · Compaction</a>、<a href="../Codex_Harness_Research.html#history-notes">history / notes</a>、<a href="../Codex_Harness_Research.html#pressure">压力提醒的条件</a></p><a class="next-step" href="#step-8">下一节 · 10 →</a>
   </section>
 
   <section class="essay" id="step-8">
-    <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">压缩后怎样接着干活</h2></div>
-    <p class="section-sub">原始保留、任务摘要、规则重建各司其职</p><p class="scene-question">整理完桌面后，怎样接着备菜，又不漏掉客人的约束？</p>
-    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📋</span><strong>重新摆上当前规则</strong><span class="scene-meaning">从 canonical state 重建</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📝</span><strong>找回进度与下一步</strong><span class="scene-meaning">摘要、checkpoint 或可用历史</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🍲</span><strong>查看厨房现在的状态</strong><span class="scene-meaning">重读文件或重新执行</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>规则、待办、验证证据分别恢复。交接卡写“已经调味”，不等于“已经尝过并确认合适”。</p>
-    <p class="bridge">代码案例：摘要说已把 > 改为 >=，仍需运行 99 / 100 / 101 测试。旧失败原文能否回捞另看保存路径。</p>
+    <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">replacement_history 怎样组成下一窗口</h2></div>
+    <p class="section-sub">筛选原文 → 重建 initial context → 安装 checkpoint</p><p class="scene-question">压缩后究竟还剩哪些 items？规则、任务进度与工具原文分别怎样处理？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📌</span><strong>筛选保留的原始消息</strong><span class="scene-meaning">V2：共享 64k；Local：用户文本 20k 估算预算</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📋</span><strong>重建 canonical context</strong><span class="scene-meaning">回合中插到最后保留用户消息前；其他时机另处理</span></li>
+      <li><span class="scene-icon" aria-hidden="true">💾</span><strong>安装 replacement_history</strong><span class="scene-meaning">写 checkpoint 与窗口标识，更新基线并重算用量</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>预算限制的是原文保留，不是摘要大小。旧工具输出原始项不属于这两条原文保留路径；其信息是否进摘要，不能从 WorldState 推导。</p>
+    <p class="bridge">辅助类比：交接卡记录进度，当前规则从规则册重抄。已修改的文件仍在工作区，但重读当前文件不等于取回过去的失败输出。</p>
     <details class="quiz"><summary>练习：新窗口里只有“比较符已修改”，可以直接宣布测试通过吗？</summary>
     <p>不可以。下一步应运行 99、100、101 三个边界测试并检查结果，还应确认 public API 未变。若需要核对修改前的 FAIL，须从原文归档取证；重跑得到的是新观测。摘要里的“已修改”不是“已验证”。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -631,17 +637,17 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
 
 
   </div></details>
-    <p class="source">筛选细节与恢复布局：<a href="../Codex_Harness_Research.html#compaction">手册 §5</a>、<a href="../Codex_Harness_Research.html#recovery">§6</a></p><a class="next-step" href="#step-9">下一幕 · 11 →</a>
+    <p class="source">筛选细节与恢复布局：<a href="../Codex_Harness_Research.html#compaction">手册 §5</a>、<a href="../Codex_Harness_Research.html#recovery">§6</a></p><a class="next-step" href="#step-9">下一节 · 11 →</a>
   </section>
 
   <section class="essay" id="step-9">
-    <div class="section-head"><span class="section-num">STEP 11</span><h2 class="section-title">分清缓存、传输与记忆</h2></div>
-    <p class="section-sub">少算一点、少发一点、少放一点，分别需要证据</p><p class="scene-question">同一份菜单：少算一遍、少传一遍、少放几页，省的是同一种东西吗？</p>
-    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🧮</span><strong>复用算过的备菜用量</strong><span class="scene-meaning">Prompt cache · 少算</span></li>
-      <li><span class="scene-icon" aria-hidden="true">📨</span><strong>只告诉店家新增的两道菜</strong><span class="scene-meaning">WebSocket 增量 · 少传</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🗂️</span><strong>用交接卡替换一摞材料</strong><span class="scene-meaning">Compaction · 少放</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>缓存命中不释放上下文窗口；网络只发增量，也不代表模型只看增量。</p>
-    <p class="bridge">代码案例：追加一个工具结果可能走增量；压缩重写了历史结构，未必还能沿用原来的增量与缓存条件。</p>
+    <div class="section-head"><span class="section-num">STEP 11</span><h2 class="section-title">Codex 的请求增量与缓存边界</h2></div>
+    <p class="section-sub">previous_response_id / 稳定前缀 ID / prompt_cache_key</p><p class="scene-question">请求只传 delta、输入有稳定 ID、历史被压短，这三种现象分别能证明什么？</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📨</span><strong>WebSocket 增量</strong><span class="scene-meaning">属性匹配且 input 延续旧请求与输出，才发送 delta</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🏷️</span><strong>Responses Lite 前缀 ID</strong><span class="scene-meaning">UUIDv5(thread namespace, payload)：稳定身份</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧮</span><strong>Prompt caching</strong><span class="scene-meaning">服务端复用计算；须用 cached tokens 等观测</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>安装 replacement history 通常打破旧历史的严格扩展关系。V2 追加 trigger 有利于保留前缀，但不保证压缩全程命中缓存。</p>
+    <p class="bridge">辅助类比：少传菜单、给菜单编号、复用备菜计算分别解决不同问题；菜单编号稳定不证明省了计算。</p>
     <details class="quiz"><summary>自测：网络日志显示第二次只发送了工具结果，模型是否已经看不见最初需求？</summary>
     <p>不一定。满足增量条件时，服务端通过上一 response ID 延续已接受的输入。要看完整逻辑请求，不能只看本次传输的 delta。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -662,17 +668,18 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
 
 
   </div></details>
-    <p class="source">缓存条件和增量匹配：<a href="../Codex_Harness_Research.html#cache">手册 §8 · 三种机制</a></p><a class="next-step" href="#step-10">下一幕 · 12 →</a>
+    <p class="source">缓存条件和增量匹配：<a href="../Codex_Harness_Research.html#cache">手册 §8 · 三种机制</a></p><a class="next-step" href="#step-10">下一节 · 12 →</a>
   </section>
 
   <section class="essay" id="step-10">
-    <div class="section-head"><span class="section-num">STEP 12</span><h2 class="section-title">用一条调用链检验理解</h2></div>
-    <p class="section-sub">从“仓库里有这个函数”走到“这次会经过它”</p><p class="scene-question">交接卡上写着“晚餐准备好了”，你会直接请客人入座吗？</p>
-    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📋</span><strong>再核对客人的约束</strong><span class="scene-meaning">规则与原始任务</span></li>
-      <li><span class="scene-icon" aria-hidden="true">🥘</span><strong>检查食物真的完成</strong><span class="scene-meaning">当前环境与工具结果</span></li>
-      <li><span class="scene-icon" aria-hidden="true">✅</span><strong>检查后再报告完成</strong><span class="scene-meaning">执行证据支持结论</span></li></ol><figcaption>生活类比 → Codex 概念；图中动作是教学场景。</figcaption></figure>
-    <p class="one-idea"><span>这一幕记住</span>任务完成要靠结果证明；加载成功、压缩成功、模型说成功，各自只覆盖一部分。</p>
-    <p class="bridge">贯穿代码案例：三个边界返回 5 / 0 / 0，public API 未变，才满足任务。这里是教学预期，不是实测结果。</p>
+    <div class="section-head"><span class="section-num">STEP 12</span><h2 class="section-title">用一条 Codex trace 串起所有对象</h2></div>
+    <p class="section-sub">StepContext → 请求 → compaction item → replacement checkpoint</p><p class="scene-question">固定一组条件：TokenBudget 关闭、provider 支持 V2、需要续跑且预算到限。沿什么证据检查？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📦</span><strong>StepContext / turn_context</strong><span class="scene-meaning">确认模型、provider、工具表与触发原因</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📡</span><strong>run_remote_compact_v2_attempt</strong><span class="scene-meaning">核对原 instructions / tools、历史与追加 trigger</span></li>
+      <li><span class="scene-icon" aria-hidden="true">✉️</span><strong>collect_compaction_output</strong><span class="scene-meaning">完成事件 + 恰好一个 compaction item</span></li>
+      <li><span class="scene-icon" aria-hidden="true">💾</span><strong>replace_compacted_history</strong><span class="scene-meaning">核对保留项、initial context、基线与窗口记录</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>这条 trace 解释的是 Codex 如何压缩和续接；压缩语义质量仍需单独评测。读取源码测试断言也不能报告为已经运行测试。</p>
+    <p class="bridge">代码案例继续：确认 replacement 后能取得 U1/U2 的边界约束、R1 的模块规则，再运行 99 / 100 / 101，核对真实工具结果。</p>
     <details class="quiz"><summary>参考答案：怎样证明分支走对了，又怎样证明任务做完了？</summary>
     <p>分支证据是入口条件、实际请求结构、保留与重建规则、checkpoint 的安装和恢复。任务证据则是快照 D 的三个边界断言和 public API 检查；只有“换窗成功”或“比较符已改”都不够。加密压缩项的内部语义和真实质量仍需服务端资料或实测支持，本页构造的 PASS 不能充当实测结果。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
@@ -699,8 +706,8 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
       <li>最后读相关测试断言，检查请求路径和恢复视图；把“读过测试”和“运行通过”分别记录。</li>
     </ol>
 
-    <h3>做自己的 harness 时，从这些不变量开始</h3>
-    <p>保持调用与结果配对；区分采样时的工具计划与执行时的 MCP 调用绑定；把 Skills 的目录、正文和资源读取分层；把可恢复规则放在明确状态源中；为压缩请求本身留预算；用 replacement checkpoint 恢复模型视图。这些可以逐条验证，再讨论哪种摘要模型更好。</p>
+    <h3>把 Codex 的状态边界串起来</h3>
+    <p>ContextManager 维护调用配对与活跃历史；StepContext 固定采样计划；MCP handler 准备执行绑定；Skills extension 分阶段贡献指令；WorldState 重建当前规则；replacement checkpoint 保存压缩后的模型视图。沿这些对象检查同一条 trace，才能解释 Codex 在哪里保留、加载或替换了信息。</p>
 
   </div></details>
     <p class="source">深入阅读：<a href="../Codex_Harness_Research.html#evidence">源码顺序与验证边界</a> · <a href="../../agent-context-compression/learn/">上下文压缩的通用设计</a> · <a href="../../agent-evals/learn/">怎样验证 agent 真的更好</a></p>
