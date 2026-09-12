@@ -1,12 +1,12 @@
 ---
 layout: default
-title: "Codex Harness 源码参考：上下文、Compaction 与指令加载"
-description: "沿固定提交的执行调用链，拆解 Codex 的请求快照、类型化历史、三条 compaction 路径、WorldState、基础指令加载和缓存边界。"
+title: "Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理"
+description: "沿固定提交分析执行循环、指令与 Skills 加载、MCP 连接和工具曝光，重点展开上下文管理、WorldState 与三条 compaction 路径。"
 ---
 
-# Codex Harness 源码分析：执行循环、上下文、Compaction 与指令加载
+# Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理
 
-> 配套学习页：[让 Agent 跨过上下文窗口 — 从零拆解 Codex Harness](learn/)。先读学习页建立执行顺序，再用本手册核对源码、常量和适用条件。<br>
+> 配套学习页：[Codex Harness 分析：从请求到执行与恢复](learn/)。先读学习页建立执行顺序，再用本手册核对源码、常量和适用条件。<br>
 > 阅读约定：**【来源事实】** 指本快照源码直接支持的行为，**【综合解释】** 指对机制的归纳，**【实践建议】** 指需要自行评测的工程取舍。<br>
 > 相关专题：[Context Compression 横向研究](../agent-context-compression/Agent_Context_Compression_Research.html)。平台实现按各自快照理解；关于 WorldState 的概念性误读已同步更正，history/notes 与压力提醒则另标新快照的条件。
 
@@ -61,7 +61,7 @@ flowchart TD
 | ModelClient | 序列化请求、流式传输、重试、增量传输状态 | `core/src/client.rs` |
 | ToolRouter | 区分模型可见工具、延迟发现、Code Mode 与实际执行入口 | `core/src/tools/router.rs` |
 
-**【综合解释】** 对 Java 开发者，可以把 Session 理解为长期会话对象，把 StepContext 理解为不可变的 request-scoped snapshot。一次请求看到的工具 schema、执行时用的工具路由、环境权限与 AGENTS.md 应来自同一份快照，避免异步配置刷新把一轮操作拆成互不一致的两半。[StepContext 的字段与约束](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/step_context.rs#L17)
+**【综合解释】** 对 Java 开发者，可以把 Session 理解为长期会话对象，把 StepContext 理解为不可变的 request-scoped snapshot。它为采样时的环境、规则与工具计划提供一致视图；MCP 执行前仍会检查刷新并取得本次 PreparedMcpCall。因此要区分请求计划的一致性与实际调用绑定的一致性，不能把外部连接和目录变化也视作永久冻结，详见 §7.7。[StepContext 的字段与约束](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/step_context.rs#L17)
 
 <a id="context"></a>
 
@@ -320,7 +320,7 @@ input:
 
 <a id="instructions"></a>
 
-## 7. System prompt 的特殊加载方式
+## 7. Harness 怎样加载指令、Skills 和 MCP？
 
 日常所说的“system prompt”在这里包含多条不同来源的消息。应区分服务端 system、客户端基础 instructions、developer 消息、AGENTS.md 用户级上下文和工具定义。
 
@@ -457,11 +457,114 @@ BaseInstructions = UUIDv5(namespace, 基础指令文本的字节)
 
 **【实践建议】** 对变化中的文件、一次性 API、随机输出和某个时刻的测试结果，重跑会产生新观测，未必恢复旧证据。依赖精确历史结果时，应显式保存原文并验证可寻址的恢复路径；不能用“世界还在”替代保真评测。
 
-### 7.6 Skills 与工具也参与 context 构造
+<a id="skills-loading"></a>
 
-Skills extension 负责目录、使用规则、按回合贡献和显式提及处理。目录通常提供名称、描述、来源位置，正文随后按选择和加载规则读取；不是初始化时把所有 SKILL.md 正文都塞入同一个系统消息。当前实现还支持不同来源和短路径别名。[目录渲染](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/catalog_prompt.rs#L81)、[回合贡献](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/extension.rs#L355)
+### 7.6 Skills：发现、选择、读正文、读资源
 
-ToolRouter 也区分 `model_visible_specs`、Code Mode 映射和 deferred 工具。可执行工具集合不必全部以完整 schema 常驻模型输入；具体曝光方式要看本次工具计划。[工具可见性](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/router.rs#L74)
+**【来源事实】** Skills 有不同的来源边界。不能把所有条目都解释成宿主机某个目录里的文件：
+
+| 来源 | 怎样发现 | 怎样读取 |
+|---|---|---|
+| Host | 配置层的 skills roots、用户与仓库的 .agents/skills、系统 skills、插件和额外 roots；路径去重 | 通过对应文件系统读取 SKILL.md |
+| Executor | 执行环境提供的能力快照，或该环境的 skill roots | 按 authority / package 校验身份，用所属环境的文件系统读取 |
+| Orchestrator | 从 MCP resources 中查询 MIME 为 mcp/skill 的资源 | 经 MCP resource 接口读取 package 内资源 |
+
+Host roots 包括兼容的 $CODEX_HOME/skills；仓库 .agents/skills 沿项目根到任务 cwd 的范围查找。发现顺序、scope、插件身份共同参与条目处理，不能简化成“全盘扫描，然后按名字覆盖”。Orchestrator provider 还有启用及环境条件，并非所有本地会话都默认开放。[Host roots](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/host_roots.rs#L29)、[环境来源](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/provider/executor.rs#L72)、[Orchestrator 来源](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/provider/orchestrator.rs#L26)、[扩展启动条件](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/extension.rs#L155)
+
+#### 第一道加载边界：文件被扫描，不等于正文已进入模型窗口
+
+发现过程会读取 SKILL.md 来解析元数据，也可读取附属配置。**渐进披露指模型先看到目录摘要，再按需看到正文；不是说进程在此之前绝不读文件。** Host 服务按 cwd 和配置缓存快照，并提供清缓存入口；不能把每次采样等同于重新扫描文件系统。[发现实现](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/loader/discovery.rs#L54)、[Host 快照缓存](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/host_service.rs#L177)、[清缓存](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/host_service.rs#L375)
+
+目录渲染也有独立预算：有显式 `max_context_tokens` 时最多 10,000 tokens；否则有模型窗口信息时取其 2%，再否则回退到 8,000 字符。不同分支单位不同，10,000 也不是所有分支共同的上限。渲染器分配描述空间并可使用短路径别名。[目录预算](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/render.rs#L129)、[目录渲染](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/render.rs#L492)
+
+```mermaid
+flowchart TD
+    S[Host / Executor / Orchestrator 来源] --> C[发现元数据并生成目录]
+    C --> E{怎样选中}
+    E -->|显式提及| I[运行时读取正文并注入片段]
+    E -->|模型判断相关| R[模型调用文件工具或 skills.read]
+    I --> P[模型获得工作流程]
+    R --> P
+    P --> A[按需读取引用资源]
+    A --> T[通过已注册工具执行动作]
+```
+
+#### 第二道加载边界：显式选择和模型自主选择
+
+1. **显式选择。** selection 处理结构化 Skill 输入、指向 skill:// 或 SKILL.md 的 mention，以及文本中的显式技能提及，并过滤禁用条目、处理名称冲突与去重。它不是用语义检索自动判断所有自然语言任务。[选择逻辑](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/selection.rs#L22)
+2. **运行时注入。** Skills extension 在回合输入阶段列出来源、读取选中条目的 main prompt，然后生成 `SkillInstructions`。Core 另保留 Host skill 的加载路径，并记录已注入路径以避免重复；所以“必须等模型亲自调用 read 才能看到正文”也不准确。[回合贡献](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/extension.rs#L355)、[Core 加载](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/turn.rs#L1009)、[Host 去重与读取](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/host_prompt.rs#L10)
+3. **模型自主选择。** 当任务只是与某技能相关，目录让模型判断是否读取；Host 文件通过可用文件工具读取，资源来源则有 skills.list / skills.read。不能把这种行为解释成 harness 无条件自动加载全部相关正文。
+
+该 extension 的 `AvailableSkillsInstructions` 是 developer role；`SkillInstructions` 是 user role，并带 `skills.selected_skill_instructions` 分类和 name、path、resource_access、contents 等字段。**Skill 正文不是自动升级成 system prompt；它以可识别的指令片段进入历史。**[片段定义](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/fragments.rs#L39)
+
+#### 第三道加载边界：正文、引用文件和脚本各自读取
+
+skills.read 接收 package、可选 resource 和 cursor；省略 resource 读取主 SKILL.md，引用文件用返回目录中的资源标识读取。Executor 读取还会给出执行打包脚本所需的 skill_root，资源读接口校验 package 归属，而不是把 skill:// 当成本地路径。分页使用缓存读取快照。[read 工具](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/tools/read.rs#L35)、[环境与资源校验](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/provider/executor.rs#L130)
+
+大小限制也要按路径说：extension 自动注入主正文会截到 8,000 bytes；Core Host 路径对 agent-plugin skill 有对应截断，不能泛化成“所有 Host skill 正文最多 8 KB”，更不能与目录 token 预算混为一谈。[正文截断](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/render.rs#L1176)、[Host 注入](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/host_prompt.rs#L69)
+
+**【综合解释】** Skill 主要提供“怎样完成任务”的说明与资源。读到一段运行脚本的说明，既不代表脚本已执行，也不代表凭空新增了执行权限；动作仍需经过工具与执行环境。目录、正文、引用资源、工具输出分别占用上下文，这使按需加载与后续 compaction 成为同一条信息生命周期的不同阶段。
+
+<a id="mcp-loading"></a>
+
+### 7.7 MCP：配置、连接、目录、请求曝光、调用绑定
+
+MCP 的“加载”至少包含五个阶段。配置中存在一个 server，不能直接推出它已连接、所有工具 schema 已进入模型请求，或某次调用已获准执行。
+
+| 阶段 | 源码实际处理 | 边界 |
+|---|---|---|
+| 汇集配置 | 会话配置、插件贡献、所选执行环境的 server，再施加策略与权限约束 | 配置来源不是单个写死文件 |
+| 建立连接 | Stdio 使用对应本地或 Executor launcher；Streamable HTTP 处理连接与认证 | transport 决定连接路径，不决定模型曝光方式 |
+| 初始化与取目录 | initialize 协商能力、读取 server instructions，再分页 list_tools | resource 目录与 tool 目录是不同接口 |
+| 构造请求计划 | 取 MCP binding 的工具目录，结合内建、扩展和动态工具生成 ToolRouter | 直接、延迟及 Code Mode 曝光仍需单独选择 |
+| 执行调用 | 检查 dirty refresh，取当前调用 binding，生成 PreparedMcpCall，再处理审批与实际调用 | 不应假定请求发出后连接与元数据永不变化 |
+
+配置入口见 [会话投影](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mcp.rs#L92)、[运行时输入](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mcp_runtime.rs#L330)、[插件配置解析](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/plugin_config.rs#L45)。插件配置解析能保留合法 server 条目并报告其他条目的错误；顶层格式错误又是另一种情况。连接实现见 [transport 构造](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/rmcp_client.rs#L1136)、[初始化和首次工具目录](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/rmcp_client.rs#L907)、[分页 list_tools](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/rmcp_client.rs#L654)。
+
+```mermaid
+flowchart TD
+    C[配置 / 插件 / 所选环境] --> R[MCP runtime]
+    R --> I[连接与 initialize]
+    I --> L[分页工具目录与元数据]
+    L --> B[请求使用的 MCP binding]
+    B --> P[ToolRouter 决定曝光方式]
+    P --> M[模型生成工具调用]
+    M --> D[检查目录刷新与当前调用 binding]
+    D --> A[PreparedMcpCall 与审批]
+    A --> E[执行并返回结果]
+```
+
+图表示常规建立连接的路径。此快照普通来源使用 Eager startup policy；SubAgent 来源选择 LazyWhenCached，只有缓存及实现条件满足时才可推迟初始化。预热还有独立的 best-effort 合并队列；因此不能把“目录来自缓存”写成“所有 MCP 都已初始化”，也不能把“延迟曝光”写成“首次搜索才启动 server”。required server 的初始化失败有专门校验。[启动策略](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mcp_runtime.rs#L388)、[延迟条件](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/connection_manager.rs#L256)、[预热](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mcp_prewarm.rs#L1)、[required 校验](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/connection_manager/required.rs#L1)
+
+#### 两个一致性边界，而不是永久冻结一次请求
+
+采样时，McpBinding 提供冻结的模型可见目录；运行时根据 catalog revision 复用或重新捕获 binding。这样组装 schema 时不会随意混用目录版本。[binding](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/binding.rs#L30)、[revision 检查](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/runtime.rs#L366)
+
+执行时，McpHandler 会调用 `Session::prepare_mcp_call`，先 `refresh_mcp_if_dirty`，再取得 `current_binding_for_call` 并准备调用。该次执行使用的 metadata 和配置来自 prepared call；审批也在这个调用边界内处理。**这比“schema、client、权限在整次采样到执行期间永远是同一个快照”更准确。** 如果期间目录改变，必须以实际调用准备结果判断能否执行，不能只凭旧 schema 保证成功。[调用准备](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mcp_runtime.rs#L61)、[handler](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/handlers/mcp.rs#L175)、[调用审批](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/mcp_tool_call.rs#L219)
+
+MCP resources 还有独立的 list/read 路径。前面的 Orchestrator skills 使用资源读取，不等于它们每个都被注册成一个 MCP tool；工具 schema、资源内容、skill 指令是三个不同对象。[resource 接口](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/codex-mcp/src/binding.rs#L108)
+
+<a id="tool-loading"></a>
+
+### 7.8 工具怎样按需进入模型，以及插件怎样连接两条加载链
+
+build_tool_router 汇集内建工具、MCP 工具、扩展 executor、动态工具等，施加 exposure policy 后再处理排除、冲突、命名空间和模式。执行注册表与模型可见定义分别维护。[组装入口](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/spec_plan.rs#L125)、[最终计划](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/spec_plan.rs#L352)、[Router 字段](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/router.rs#L74)
+
+| 曝光方式 | 模型如何获得能力 | 不能据此推断 |
+|---|---|---|
+| Direct | 工具 schema 直接进入本次工具定义 | 所有已配置 server 的工具都在这里 |
+| Deferred | 先给目录线索，搜索后返回可加载定义 | 搜索会安装新 server |
+| Code Mode | 通过代码执行入口和嵌套工具定义使用 | 每个嵌套工具必须同时作为顶层 schema |
+| Hidden / 策略排除 | 不按普通直接或延迟方式曝光 | 隐藏等于模型仍可任意调用 |
+
+表中是教学分类，源码还有 DirectModelOnly、DeferredModelOnly、CodeModeOnly 等组合。搜索入口受模型支持与 namespace tools 条件影响；MCP 的直接／延迟选择和插件预算也有各自分支。[搜索启用条件](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/spec_plan.rs#L629)、[MCP 曝光](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/mcp_tool_exposure.rs#L75)、[Code Mode 注册](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/spec_plan.rs#L791)
+
+tool_search 针对当前 deferred registry 建立 BM25 索引，校验 query 与 limit，返回可加载的 `LoadableToolSpec`，并合并相关定义。这是对已有工具目录的检索，不是互联网搜索，也不负责安装依赖。目录缓存按 registry 身份或动态搜索信息变化失效。[索引与缓存](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/handlers/tool_search.rs#L53)、[查询与结果](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/handlers/tool_search.rs#L205)
+
+插件可以同时贡献 Skills 与 MCP 配置，但两者分别进入上面的加载链。Core 对显式选中的 Host skill 还可能执行 `maybe_prompt_and_install_mcp_dependencies`：受第一方客户端来源、`SkillMcpDependencyInstall` feature、缺失依赖、策略和安装选择等条件约束，再走安装与可能的认证流程。**不能因为读了某个 SKILL.md，就认定其 MCP 依赖已自动安装或授权。**[插件 MCP 贡献](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/mcp/src/lib.rs#L62)、[技能依赖处理](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/mcp_skill_dependencies.rs#L40)
+
+**【综合解释】** Codex 将“告诉模型有哪些能力”“提供如何使用的说明”“加载可调用定义”“连接外部服务”“执行前绑定与审批”拆开。它既降低常驻上下文的成本，也让不同来源的能力遵守各自的生命周期；故障定位必须先指出卡在哪一层，不能一概归为 prompt 没加载。
+
 
 <a id="cache"></a>
 
@@ -501,7 +604,9 @@ Remote V2 总结请求保留原 instructions 与工具表，并在历史尾部�
 
 ## 10. 建议的源码阅读顺序与验证边界
 
-阅读顺序：`session/step_context.rs` → `session/turn.rs` → `context_manager/history.rs` → `session/context_window.rs` → `compact_remote_v2_attempt.rs` / `compact_remote_v2.rs` → `compact.rs` → `session/world_state.rs` → `client.rs` → `models-manager/src/manager.rs`。
+执行与上下文主线：`session/step_context.rs` → `session/turn.rs` → `context_manager/history.rs` → `session/context_window.rs` → `compact_remote_v2_attempt.rs` / `compact_remote_v2.rs` → `compact.rs` → `session/world_state.rs` → `client.rs` → `models-manager/src/manager.rs`。
+
+加载支线：`ext/skills/src/host_roots.rs` → `selection.rs` / `extension.rs` → `tools/read.rs`；`core/src/session/mcp_runtime.rs` → `codex-mcp/src/rmcp_client.rs` / `binding.rs` → `core/src/tools/spec_plan.rs` → `handlers/tool_search.rs` / `handlers/mcp.rs`。先确认来源和目录，再确认模型曝光与实际调用。
 
 | 本次做了什么 | 能支持什么 | 不能支持什么 |
 |---|---|---|
@@ -515,6 +620,7 @@ Remote V2 总结请求保留原 instructions 与工具表，并在历史尾部�
 
 ### 两页一致性检查
 
+- Skills 的发现、正文注入、资源读取与动作执行分开；MCP 的连接、曝光、刷新和调用绑定分开。
 - 两页固定同一源码提交；远程服务端算法与线上启用状态都不由客户端源码推断。
 - 64k / 20k 都是原始消息保留预算；90% 是普通 Total 口径的默认阈值公式。
 - Remote V2 使用 Responses 流中的 `compaction_trigger`；Local 的公开总结模板不能用来解释 V2 的内部 prompt。

@@ -6,8 +6,8 @@ layout: null
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="沿一次 coding agent 任务，用十步理解 Codex harness 的上下文管理、三条 compaction 路径、指令加载与任务恢复。">
-  <title>让 Agent 跨过上下文窗口 — 从零拆解 Codex Harness</title>
+  <meta name="description" content="沿一次修复任务，用十二步拆解 Codex Harness：执行循环、提示词与 Skills 加载、MCP 和工具曝光，重点理解上下文管理与 compaction。">
+  <title>Codex Harness 分析：从请求到执行与恢复</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&amp;family=Inter+Tight:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Serif+SC:wght@400;600&amp;family=Noto+Sans+SC:wght@400;500;600&amp;display=swap" rel="stylesheet">
@@ -117,11 +117,11 @@ layout: null
   <div class="hero-inner">
     <nav class="crumbs mono" aria-label="面包屑"><a href="../../">ML Learning Notes</a><span aria-hidden="true">/</span><span>Agent Engineering</span><span aria-hidden="true">/</span><span>学习路径</span></nav>
     <div class="eyebrow mono">Codex Harness · 从一次任务读懂一个运行时</div>
-    <h1>让 Agent 跨过<br><span class="accent">上下文窗口</span></h1>
-    <p class="lede">模型只能处理眼前的输入，任务却可能持续几百次工具调用。Codex 怎样决定什么该留下、什么该压缩，又怎样让规则和进度接得上？沿一次修复任务，把 harness 的构造拆成十步。</p>
+    <h1>Codex Harness 分析<br><span class="accent">从请求到执行与恢复</span></h1>
+    <p class="lede">一条请求怎样变成多轮执行？提示词和 Skills 从哪里加载，MCP 怎样连接，工具怎样进入模型视野？沿一次修复任务，用十二步拆解 Codex Harness，并重点追踪上下文管理、compaction 与任务恢复。</p>
     <div class="meta-grid">
       <div><div class="label">读者假设</div><div class="value">会写程序，知道工具调用</div></div>
-      <div><div class="label">读完能做到</div><div class="value">追踪一次上下文切换</div></div>
+      <div><div class="label">读完能做到</div><div class="value">追踪加载、执行与上下文切换</div></div>
       <div><div class="label">源码快照</div><div class="value"><a href="https://github.com/openai/codex/tree/944d6fd1ba4baab69dbedd205282dc72ec20abb5">944d6fd1ba4b</a> · 2026-09-11 PDT</div></div>
       <div><div class="label">配套材料</div><div class="value"><a href="../Codex_Harness_Research.html">源码参考手册 ↗</a></div></div>
     </div>
@@ -129,12 +129,14 @@ layout: null
 </header>
 <main id="main">
   <nav class="toc" aria-labelledby="toc-title">
-    <h2 id="toc-title">十步路线 · 从执行到恢复</h2>
+    <h2 id="toc-title">十二步路线 · 从执行到恢复</h2>
     <ol>
       <li><a href="#step-1">先划清模型和 harness 的边界</a></li>
       <li><a href="#step-2">一条请求为什么会跑很多轮</a></li>
       <li><a href="#step-3">把 context 拆成三种状态</a></li>
       <li><a href="#step-4">基础指令究竟从哪里来</a></li>
+      <li><a href="#skills-step">Skills 怎样被发现、选中和读取</a></li>
+      <li><a href="#mcp-step">MCP 与工具怎样变成可调用能力</a></li>
       <li><a href="#step-5">让变化进入上下文</a></li>
       <li><a href="#step-6">什么时候应该压缩</a></li>
       <li><a href="#step-7">沿三条 compaction 路径往下走</a></li>
@@ -177,7 +179,7 @@ layout: null
 </code></pre></div>
       <figcaption>教学简图。真实循环还有 hooks、中断、审批与压缩；文字输出本身不是唯一的结束条件。</figcaption>
     </figure>
-    <p>每次派发前，harness 会准备一张“本次工作单”，写明可用工具、环境与规则，这就是 <code>StepContext</code>。如果给模型看的工具清单与执行器拿到的版本不同，就可能出现“允许调用却无法执行”的错位。因此本次工具定义、路由、环境、MCP 和 AGENTS.md 要来自同一份请求快照。对 Java 开发者，它接近不可变的 request-scoped 对象；这不意味着外部文件和进程也被冻结。</p>
+    <p>每次派发前，harness 会准备一张“本次工作单”，写明可用工具、环境与规则，这就是 <code>StepContext</code>。它为采样时的工具定义、环境和规则提供一致视图。MCP 调用还有执行前刷新与绑定：请求时看到的目录，不保证外部服务到执行时仍完全相同；第六步会展开这个边界。对 Java 开发者，它接近不可变的 request-scoped 对象；这不意味着外部文件和进程也被冻结。</p>
     <h3>快照 A：测试失败怎样进入下一次请求</h3>
     <pre><code>当前初始上下文 I0：权限、环境、R0「JUnit 5」
 U1：满 100 免运费，保持 public API
@@ -189,7 +191,7 @@ output c2：amount=100，expected=0，actual=5，FAIL
 
 下一次采样：看到以上历史，决定怎样修复</code></pre>
     <p>输出必须与调用共享 <code>call_id</code>。模型看到测试失败，才有根据把 <code>&gt; 100</code> 改成 <code>&gt;= 100</code>；生成修改建议、执行修改和确认测试通过是不同节点。</p>
-    <details><summary>自测：请求发出后工具目录刷新，为什么不应直接替换这次请求的执行表？</summary><p>否则模型选择工具时看到的是旧定义，执行时却可能按新定义处理。请求快照把“这次看见什么”和“这次能执行什么”绑定起来。</p></details>
+    <details><summary>自测：StepContext 是否保证请求发出后，MCP 目录和连接永不变化？</summary><p>不保证。它固定采样使用的计划；MCP 执行前仍检查刷新并准备本次调用。模型看到过定义和实际成功执行，是两个需要分别核对的事实。</p></details>
     <p class="source">沿调用链阅读：<a href="../Codex_Harness_Research.html#architecture">手册 §2 · Session 与 StepContext</a></p>
   </section>
 
@@ -233,8 +235,85 @@ output c2：amount=100，expected=0，actual=5，FAIL
     <p class="source">完整优先级与 Lite 分支：<a href="../Codex_Harness_Research.html#instructions">手册 §7 · 指令加载</a>、<a href="../Codex_Harness_Research.html#provenance">Custom / Model 来源</a></p>
   </section>
 
+<section class="essay" id="skills-step">
+    <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">Skills 怎样被发现、选中和读取</h2></div>
+    <p class="section-sub">目录、正文、引用资源和执行是四个阶段</p>
+    <p>现在给运费测试案例加一条教学分支：用户显式选择 <code>$order-tests</code>，一个说明如何补边界测试的假想 skill。模型怎样获得它的说明？先要区分来源，再区分谁触发读取。</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Skills 来源表，可横向滚动"><table>
+      <thead><tr><th>来源</th><th>发现入口</th><th>读取边界</th></tr></thead>
+      <tbody>
+        <tr><td>Host</td><td>配置 roots、用户与仓库 .agents/skills、系统和插件目录</td><td>通过相应文件系统读 SKILL.md</td></tr>
+        <tr><td>Executor</td><td>所选执行环境的能力快照或目录</td><td>在所属环境读取，校验 package 归属</td></tr>
+        <tr><td>Orchestrator</td><td>MCP 中标为 mcp/skill 的资源</td><td>通过资源接口读取；有单独启用条件</td></tr>
+      </tbody>
+    </table></div>
+    <p>通常先放到办公桌上的是技能目录：名称、描述和来源。扫描器可能已经读过文件来提取元数据，但模型还没有收到整篇正文。目录有预算和短路径别名；Host 服务还有按 cwd 与配置缓存的快照。因此“渐进披露”说的是模型可见内容分阶段增加，不是进程从未读过文件。</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="Skills 加载图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    C[发现来源并生成技能目录] --> S{怎样选中}
+    S -->|用户显式提及| I[运行时读正文并注入]
+    S -->|模型判断任务相关| R[模型调用文件工具或 skills.read]
+    I --> B[模型获得工作流程]
+    R --> B
+    B --> F[按需读取引用文件]
+    F --> T[通过工具执行脚本或其他动作]
+</code></pre></div>
+      <figcaption>能力与 feature 条件决定有哪些来源和读取工具；不是每次会话都开放所有分支。</figcaption>
+    </figure>
+    <h3>显式选择不必等模型亲自读文件</h3>
+    <p>selection 识别结构化 Skill 输入、资源／文件 mention 和文本显式提及；extension 可在回合输入阶段主动读取选中正文并注入。Core 也保留 Host 加载和去重路径。另一种情况是用户没有点名，模型从目录判断任务相关，再自行调用读取工具。这两条路不能混成“所有相关技能都会自动载入”。</p>
+    <p>Skills extension 的目录片段是 <code>developer</code> role，选中正文则是带 <code>skills.selected_skill_instructions</code> 分类的 <code>user</code> 片段。它没有把每篇技能正文都升级为 system prompt。自动注入、文件读取结果和后续脚本输出，也有不同的历史类型与预算。</p>
+    <h3>案例分支：从技能名到真正的测试动作</h3>
+    <pre><code>用户：使用 $order-tests 补齐这次边界测试
+目录：order-tests — 订单边界测试流程 — 来源位置
+选中正文：先读 references/boundaries.md，再补测试
+资源读取：检查阈值前、阈值处、阈值后的三个输入
+模型提出动作：补 99 / 100 / 101 三个测试
+工具实际执行：修改文件，运行测试，回传输出</code></pre>
+    <p>技能名、正文和资源内容均为教学构造。资源来源的 <code>skills.read</code> 用 package 和可选 resource 寻址；省略 resource 读取主文件，引用资源按返回的标识读取。读取脚本说明不等于执行脚本；执行仍要使用已注册工具与对应环境。</p>
+    <div class="call"><span class="tag">和上下文管理的连接</span>目录预算控制常驻线索，正文与资源按需进入历史，工具结果另有输出限制。稍后 compaction 整理的是这些已进入窗口的材料；它不会因为知道技能目录，就自动恢复每份已读资源的原文。</div>
+    <details><summary>自测：目录里已有 order-tests，能否断言模型读过正文、依赖也已安装？</summary><p>不能。目录、正文、依赖安装和执行分别有入口。显式选择可能触发正文注入，但 MCP 依赖安装还受 feature、来源、策略与安装选择等条件约束。</p></details>
+    <p class="source">来源、预算、角色与读取路径：<a href="../Codex_Harness_Research.html#skills-loading">手册 §7.6 · Skills 加载</a></p>
+  </section>
+
+  <section class="essay" id="mcp-step">
+    <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">MCP 与工具怎样变成可调用能力</h2></div>
+    <p class="section-sub">有配置、已连接、模型可见、执行成功并不是同一状态</p>
+    <p>继续这个教学分支：假设订单规则还要从一个已配置的 issue-tracker MCP 查询。Skill 说明了工作方法，MCP 提供外部动作；插件可以同时贡献两者，它们却走不同的加载链。</p>
+    <ol class="layers">
+      <li class="layer"><span>01</span>汇集会话、插件和所选执行环境的 server 配置，施加策略约束</li>
+      <li class="layer"><span>02</span>通过 Stdio 或 Streamable HTTP 建立连接，initialize 协商能力</li>
+      <li class="layer"><span>03</span>分页取得工具目录和元数据，构造 MCP binding</li>
+      <li class="layer highlight"><span>04</span>ToolRouter 结合内建、扩展与动态工具，决定本次怎样曝光</li>
+      <li class="layer"><span>05</span>模型发起调用后，检查刷新状态，准备绑定，再处理审批与执行</li>
+    </ol>
+    <p>这是常规连接路径；源码也有缓存目录、预热和条件性的延迟初始化。普通来源使用 Eager，SubAgent 来源选择 LazyWhenCached，后者还需缓存及实现条件满足。不能从“模型已经看到目录”推断 server 已完成初始化。</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="工具曝光方式表，可横向滚动"><table>
+      <thead><tr><th>方式</th><th>怎样进入模型可用范围</th><th>在案例里的含义</th></tr></thead>
+      <tbody>
+        <tr><td>Direct</td><td>本次请求直接带工具 schema</td><td>模型可直接提出查询规则的调用</td></tr>
+        <tr><td>Deferred</td><td>先给目录线索，搜索后返回可加载定义</td><td>先检索 issue 相关工具，再获得参数定义</td></tr>
+        <tr><td>Code Mode</td><td>通过代码入口使用嵌套工具</td><td>外层入口不必列出每个工具为顶层 schema</td></tr>
+        <tr><td>Hidden／排除</td><td>受策略和预算等控制</td><td>配置中存在并不保证模型可以调用</td></tr>
+      </tbody>
+    </table></div>
+    <p><code>tool_search</code> 在当前 deferred 工具目录上建立 BM25 索引，返回可加载的工具定义。它不是联网找一个新 MCP，也不是安装器。搜索是否启用、工具怎样曝光，还取决于模型支持、命名空间设置和工具计划。</p>
+    <h3>同一个查询，在哪一层失败？</h3>
+    <pre><code>目录线索：issue-tracker 可以读取需求记录
+搜索：查找读取订单规则的工具
+加载定义：read_issue(id)       ← 教学简写
+模型调用：read_issue("SHIP-42")
+调用准备：刷新检查 → 当前 binding → PreparedMcpCall
+实际结果：满 100 免运费        ← 假想外部返回</code></pre>
+    <p>搜索有结果只证明找到了定义；连接失败、工具被移除或执行前审批未通过，都不能算查询成功。MCP handler 会在执行前检查 dirty refresh，并把 client、metadata 与配置绑定到本次 prepared call；不能把 StepContext 理解为把外部连接永远冻结。</p>
+    <div class="call pit"><span class="tag">两种 MCP 内容，别混成一种</span>MCP tools 给出可调用动作；MCP resources 提供可读内容。Orchestrator skill 可以经 resource 接口读取，但这不意味着每个 skill 都注册成一个 MCP tool。读 skill、加载 schema、执行工具分别进入不同链路。</div>
+    <details><summary>自测：issue-tracker 已连接，为什么模型仍可能需要搜索工具？</summary><p>连接负责与 server 通信，搜索负责将已有目录里的延迟工具定义带入模型可用范围。两者降低的成本、发生的时机都不同；搜索本身也不等于执行。</p></details>
+    <p class="source">配置与调用绑定：<a href="../Codex_Harness_Research.html#mcp-loading">手册 §7.7 · MCP 生命周期</a>；曝光、Code Mode 与插件：<a href="../Codex_Harness_Research.html#tool-loading">手册 §7.8 · 工具加载</a></p>
+  </section>
+
+
   <section class="essay" id="step-5">
-    <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">让变化进入上下文</h2></div>
+    <div class="section-head"><span class="section-num">STEP 07</span><h2 class="section-title">让变化进入上下文</h2></div>
     <p class="section-sub">第一次全量构造，之后比较状态</p>
     <p>任务运行时，工作目录、规则或可用能力可能改变。Codex 用 <code>WorldState</code> 把这些内容分成可保存快照、可生成差异的 section。</p>
     <figure>
@@ -249,7 +328,7 @@ output c2：amount=100，expected=0，actual=5，FAIL
       <figcaption>AGENTS.md 被替换或移除时，更新消息会明确表达这个变化，避免只是叠加另一份规则。</figcaption>
     </figure>
     <p>项目 AGENTS.md 按 root → cwd 发现，同目录优先选 override，再选普通文件和配置的 fallback；项目内容有共享字节预算。它进入 <strong>user-role context</strong>，不会因为文件名而提升成 system 权限。</p>
-    <p>Skills 目录也不等于所有技能正文。目录主要告诉模型有哪些技能、描述与来源；正文随后按选择和加载规则读取。工具表还可以区分直接可见、Code Mode 和延迟发现，减少不必常驻的定义。</p>
+    <p>前两步说明了 Skills 与 MCP 能力怎样加载；这里追踪的是能力变化怎样通知模型。WorldState 中的工具目录状态不等于完整 schema，更不是执行结果的备份。</p>
     <div class="call pit"><span class="tag">边界 · 状态更新不等于每次重新读盘</span>AGENTS 管理器有缓存与刷新条件。不能把 WorldState 的差异比较解释成“每次采样都重新读取所有 AGENTS.md 和 SKILL.md”。</div>
     <h3>快照 B：规则更新与旧会话恢复</h3>
     <p>仍在修运费测试。假设下一轮由客户端把<strong>任务工作目录</strong>切到带子目录规则的位置，管理器刷新得到 R1：“JUnit 5；只跑运费模块测试”。这不是在一次 shell 命令中执行 cd，也不是假设原地编辑会触发监听。</p>
@@ -268,7 +347,7 @@ output c2：amount=100，expected=0，actual=5，FAIL
   </section>
 
   <section class="essay" id="step-6">
-    <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">什么时候应该压缩</h2></div>
+    <div class="section-head"><span class="section-num">STEP 08</span><h2 class="section-title">什么时候应该压缩</h2></div>
     <p class="section-sub">整理材料本身也需要空间</p>
     <p>办公桌已经堆满，再拿一张纸写交接摘要也可能放不下。模型总结同样要把历史和总结指令装进请求，所以系统需要在触及完整窗口上限前安排整理。超窗后有些路径会裁掉部分输入再重试，但可能损失信息。</p>
     <p>自动压缩的判断由程序执行。计数结合最近一次服务端用量，以及其后新加入的本地内容估计；本地估计并非精确 tokenizer。</p>
@@ -293,7 +372,7 @@ H = floor(p × W / 100)</code></pre>
   </section>
 
   <section class="essay" id="step-7">
-    <div class="section-head"><span class="section-num">STEP 07</span><h2 class="section-title">沿三条 compaction 路径往下走</h2></div>
+    <div class="section-head"><span class="section-num">STEP 09</span><h2 class="section-title">沿三条 compaction 路径往下走</h2></div>
     <p class="section-sub">同一个生命周期名称，背后可能是不同机制</p>
     <figure>
       <div class="diagram" tabindex="0" role="region" aria-label="三条压缩路径图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
@@ -321,7 +400,7 @@ H = floor(p × W / 100)</code></pre>
   </section>
 
   <section class="essay" id="step-8">
-    <div class="section-head"><span class="section-num">STEP 08</span><h2 class="section-title">压缩后怎样接着干活</h2></div>
+    <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">压缩后怎样接着干活</h2></div>
     <p class="section-sub">原始保留、任务摘要、规则重建各司其职</p>
     <p>假设第 80 次工具调用刚结束，模型还需要修测试。Remote V2 按候选筛选与共享 <strong>64k token</strong> 预算保留原始消息；Local 则按 <strong>20k 估算 token</strong> 预算保留用户文本，两者都偏向较新的内容。</p>
     <p>这两个数字不是摘要大小，也不是窗口大小。V2 还有图片、agent 消息及客户端 developer 消息的不同规则，预算边界处可能截断消息。</p>
@@ -370,7 +449,7 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
   </section>
 
   <section class="essay" id="step-9">
-    <div class="section-head"><span class="section-num">STEP 09</span><h2 class="section-title">分清缓存、传输与记忆</h2></div>
+    <div class="section-head"><span class="section-num">STEP 11</span><h2 class="section-title">分清缓存、传输与记忆</h2></div>
     <p class="section-sub">少算一点、少发一点、少放一点，分别需要证据</p>
     <p>继续用办公桌来想：传材料时说“接着上一份，只补这一页”是少传；复用已经做过的前缀计算是少算；用交接卡替换一叠活跃材料才是腾出空间。它们可以同时发生，但解决的是三个不同问题。</p>
     <div class="tbl-wrap" tabindex="0" role="region" aria-label="缓存与上下文机制对比，可横向滚动"><table>
@@ -390,7 +469,7 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
   </section>
 
   <section class="essay" id="step-10">
-    <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">用一条调用链检验理解</h2></div>
+    <div class="section-head"><span class="section-num">STEP 12</span><h2 class="section-title">用一条调用链检验理解</h2></div>
     <p class="section-sub">从“仓库里有这个函数”走到“这次会经过它”</p>
     <h3>快照 D：恢复任务，还要恢复验证义务</h3>
     <p>接快照 C：Local 从 S 读到待办；Remote V2 的模型可能从压缩项续接，但我们不能审计密文里的细节；TokenBudget 路径则先读已写的 notes，必要时用窗口与 item ID 取回历史。三条路径最后都要用当前代码的观测完成验证。</p>
@@ -402,6 +481,7 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
 检查 diff → 方法签名未变
 现在才可以报告：修复完成，已验证三个边界，public API 未改。</code></pre>
     <p>若找不到 U1/U2 的原始约束，也没有可信检查点，不能把上面的预期轨迹当作事实填进去。应先尝试可用的历史回捞，仍无法恢复再请求澄清。<strong>WorldState 恢复 R1，检查点或历史帮助恢复待办，重新执行产生验证证据</strong>；这三件事缺一不可。</p>
+    <p>回看 Skills / MCP 分支，也要逐层核对：技能目录能否定位到正文和引用资源；查询工具定义是否已加载；执行时是否成功取得调用绑定与实际结果。恢复后若还需这些材料，应走可用的重读或历史路径，不能把先前的目录线索当作完整证据。</p>
     <p>读开源 harness 时，最容易犯的错是看到一个函数，就把它当成产品默认行为。用下面这个练习把入口、条件、数据和结果连起来。</p>
     <div class="call"><span class="tag">练习场景 · 人为指定条件</span>TokenBudget 关闭，provider 声明 Remote V2；当前请求仍需续跑，窗口预算到限。你要解释下一次模型请求看见什么。这里是在分析假设路径，不是在描述当前账户的运行状态。</div>
     <ol class="practice">
@@ -414,14 +494,14 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
     </ol>
     <details><summary>参考答案：怎样证明分支走对了，又怎样证明任务做完了？</summary><p>分支证据是入口条件、实际请求结构、保留与重建规则、checkpoint 的安装和恢复。任务证据则是快照 D 的三个边界断言和 public API 检查；只有“换窗成功”或“比较符已改”都不够。加密压缩项的内部语义和真实质量仍需服务端资料或实测支持，本页构造的 PASS 不能充当实测结果。</p></details>
     <h3>做自己的 harness 时，从这些不变量开始</h3>
-    <p>保持调用与结果配对；让请求的工具表和执行器来自同一快照；把可恢复规则放在明确状态源中；为压缩请求本身留预算；用 replacement checkpoint 恢复模型视图。这些可以逐条验证，再讨论哪种摘要模型更好。</p>
+    <p>保持调用与结果配对；区分采样时的工具计划与执行时的 MCP 调用绑定；把 Skills 的目录、正文和资源读取分层；把可恢复规则放在明确状态源中；为压缩请求本身留预算；用 replacement checkpoint 恢复模型视图。这些可以逐条验证，再讨论哪种摘要模型更好。</p>
     <p class="source">深入阅读：<a href="../Codex_Harness_Research.html#evidence">源码顺序与验证边界</a> · <a href="../../agent-context-compression/learn/">上下文压缩的通用设计</a> · <a href="../../agent-evals/learn/">怎样验证 agent 真的更好</a></p>
   </section>
 </main>
 <footer>
   <div class="foot-inner">
     <p>本页与参考手册采用同一官方源码提交 <code>944d6fd1ba4baab69dbedd205282dc72ec20abb5</code>。流程图是教学投影，常量与启用条件以手册链接的源码为准。内容区分源码行为、工程解释与练习假设，不报告真实模型压缩质量，也不把源码默认值当作线上部署状态。</p>
-    <p><a href="../Codex_Harness_Research.html">打开源码参考手册</a> · <a href="#main">回到十步路线</a> · <a href="../../">返回学习笔记</a></p>
+    <p><a href="../Codex_Harness_Research.html">打开源码参考手册</a> · <a href="#main">回到十二步路线</a> · <a href="../../">返回学习笔记</a></p>
   </div>
 </footer>
 <script type="module" src="../../assets/js/util/mermaid-render.js"></script>
