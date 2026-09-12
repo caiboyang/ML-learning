@@ -1683,7 +1683,7 @@ COMPACT_USER_MESSAGE_HEAD_TOKENS = 2_000
 
 > **所以「切点合法性」在 kimi-code 上是个伪命题——没有任何东西被切开。** 这也解释了为什么它敢在 prompt 里把「上文全部消失」说得那么绝对：那不是修辞，是实现。
 >
-> 口径上它因此更接近 **Codex**（§6）：assistant/tool 全丢、只救用户原话 + 摘要。两家的用户消息预算甚至同为 **20K token**。区别在 Codex 保留 canonical context，kimi-code 则靠 `compactionUserMessageDisposition` 按来源白名单判定「什么才算真实用户消息」——注入、hook 结果、shell 命令、cron、task、非斜杠技能激活全部不算。这个精细度是别家没有的，也正是「只留用户消息」这一策略可行的前提。
+> 口径上它因此更接近 **Codex**（§6）：不保留 assistant/tool 原始项，留下预算内用户原话 + 摘要。两家的用户消息预算甚至同为 **20K token**。区别在 Codex 保留 canonical context，kimi-code 则靠 `compactionUserMessageDisposition` 按来源白名单判定「什么才算真实用户消息」——注入、hook 结果、shell 命令、cron、task、非斜杠技能激活全部不算。这个精细度是别家没有的，也正是「只留用户消息」这一策略可行的前提。
 
 ### 8.3 活着的那部分：并发压缩 + 三档溢出收缩
 
@@ -3167,7 +3167,7 @@ flowchart TD
 | OpenHands | `keep_first` 2 | 由 target 反推 | ✓ `manipulation_indices` | — |
 | opencode | — | `DEFAULT_KEEP_TOKENS` 8000，允许按字符劈开边界那条消息 | ✗ 压平成文本后不存在配对问题 | — |
 | kimi-code | — | 压缩后由 `compactionHandoff` 只留真实用户消息（头 2K + 尾，上限 20K） | 由 `dropLeadingToolResults` 在收缩时维持配对 | **只有用户消息被保留**，且按来源白名单判定何为「真实用户消息」 |
-| Codex | canonical initial context | **不保留 assistant/tool** | N/A（全丢） | **20K token 预算内原文保留** |
+| Codex（本地总结重组） | canonical initial context | **不保留 assistant/tool 原始项** | 不保留原始调用／结果对 | **20K token 预算内原文保留** |
 | Gemini CLI *(附录 A)* | `getInitialChatHistory` | 最后 30% 字符 | — | — |
 | Cline | — | 20000 tok | — | `mergeAdjacentUserTurns` |
 | Goose | — | 摘要 + 续接消息 | ✓ tool pair 成对处理 | **自动压缩保留最近一条纯文本用户消息** |
@@ -3344,7 +3344,7 @@ dsh 在另一头：section 最多（8 个），且把「不许缺」写成了硬
 
 ### 17.4 tool call / result 配对不可破坏
 
-9/11 显式处理。两个例外的理由完全不同：**Codex** 把 assistant/tool 消息全丢，无所谓配对；**opencode** 把历史压平成文本，配对这个概念不再存在（§7.3）。四种实现：
+9/11 显式处理。两个例外的理由完全不同：**Codex** 的本地总结重组不保留 assistant/tool 原始项，因此这一步不选择要保留的调用／结果对；这不代表发送请求时不检查配对；**opencode** 把历史压平成文本，配对这个概念不再存在（§7.3）。四种实现：
 - 分组扫描（OpenClaw `pendingToolCallIds`、Goose tool pair）
 - 边界对齐（Hermes `_align_boundary_backward/forward`、**dsh** `toolPairingBalancedBefore/After` —— dsh 把这两个谓词提到 seam 层导出，让任何后端都用同一套边界判定）
 - 预计算合法下标（OpenHands `manipulation_indices`）
@@ -3354,9 +3354,9 @@ dsh 在另一头：section 最多（8 个），且把「不许缺」写成了硬
 
 ### 17.5 tool result 是第一压缩目标（且与对话摘要分开处理）
 
-**tool 输出是 token 大头**，十一家里确认八家为它单独设了一层处理（下表）。opencode 的 `TOOL_OUTPUT_MAX_CHARS = 2_000` 属于最简形态；OpenHands 走通用事件截断、Codex 直接全丢；**kimi-code 未见独立的 tool-result 层**（`compactionOps.ts` 未通读，存疑）。
+**tool 输出是 token 大头**，十一家里确认八家为它单独设了一层处理（下表）。opencode 的 `TOOL_OUTPUT_MAX_CHARS = 2_000` 属于最简形态；OpenHands 走通用事件截断、Codex 在本地总结重组中不保留 tool result 原始项；**kimi-code 未见独立的 tool-result 层**（`compactionOps.ts` 未通读，存疑）。
 
-三个例外值得说明，且三者的性质各不相同：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 在 §6.2 所述的本地总结重组中直接不保留 tool result 原始项，这不代表它在入历史或构造压缩请求时没有输出整理，较新快照另见 [Harness 手册 §3.2](../codex-harness/Codex_Harness_Research.md#context)；**kimi-code** 是第三种情况——它**有** tool 侧机制，但那不是压缩管道里的一层：`toolResultTruncationService` 在**工具返回的当下**就把超过 `TOOL_RESULT_MAX_CHARS = 50_000` 的文本结果落盘，只在上下文里留 2K 预览加一个 `output_path`，让模型需要时自己 Read 回来。这是**卸载**不是压缩，发生在信息进入历史之前，因此不计入「压缩时优先处理 tool result」这一档。
+三个例外值得说明，且三者的性质各不相同：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 在 §6.2 所述的本地总结重组中直接不保留 tool result 原始项，这不代表它在入历史或构造压缩请求时没有输出整理，较新快照另见 [Harness 手册 §3.2](../codex-harness/Codex_Harness_Research.md#input-preparation)；**kimi-code** 是第三种情况——它**有** tool 侧机制，但那不是压缩管道里的一层：`toolResultTruncationService` 在**工具返回的当下**就把超过 `TOOL_RESULT_MAX_CHARS = 50_000` 的文本结果落盘，只在上下文里留 2K 预览加一个 `output_path`，让模型需要时自己 Read 回来。这是**卸载**不是压缩，发生在信息进入历史之前，因此不计入「压缩时优先处理 tool result」这一档。
 
 > 顺带一提，kimi-code 这条其实更接近 §15.2 的架构取向：**与其压缩，不如让它别进来**。同样是应对大宗 tool 输出，本报告多数平台的答案是「进来之后优先压它」，kimi-code 的答案是「进来之前就换成一个指针」。
 >
@@ -3457,7 +3457,7 @@ flowchart TD
 
 | 答案 | 代表 | 机制 |
 |---|---|---|
-| **用户原话不可再生** | Codex / **kimi-code** / Hermes / Goose / Letta | Codex：20K token 预算原文保留，assistant/tool 全丢<br>**kimi-code：同为 20K 预算，且是十一家里最极端的一家——压后只剩用户消息 + 摘要，并用 `compactionUserMessageDisposition` 按来源白名单剔除注入/hook/shell/cron，只认真实用户输入（§8.2）**<br>Hermes：`min_tail_user_messages` 保证**优先于 token 预算**；micro-compaction **结构上就不吸收 user turn**<br>Goose：自动压缩保留最近一条纯文本用户消息<br>Letta：摘要 schema 里 `user_messages` 独立字段 |
+| **用户原话不可再生** | Codex / **kimi-code** / Hermes / Goose / Letta | Codex：20K token 预算内用户原文保留，不保留 assistant/tool 原始项<br>**kimi-code：同为 20K 预算，且是十一家里最极端的一家——压后只剩用户消息 + 摘要，并用 `compactionUserMessageDisposition` 按来源白名单剔除注入/hook/shell/cron，只认真实用户输入（§8.2）**<br>Hermes：`min_tail_user_messages` 保证**优先于 token 预算**；micro-compaction **结构上就不吸收 user turn**<br>Goose：自动压缩保留最近一条纯文本用户消息<br>Letta：摘要 schema 里 `user_messages` 独立字段 |
 | **最近的东西最重要** | OpenClaw / Cline / opencode / **dsh** | 纯 token/字符预算的尾部保护，不区分角色（opencode 更进一步，允许把边界上那条消息按字符劈成两半，§7.2；**dsh 则连回合边界也不保护**——失控长回合里早期已闭合的 step 照压，§13.6） |
 | **头部（系统提示+首次交互）最重要** | OpenHands / Hermes | `keep_first=2` / `protect_first_n=3` |
 | **无角色偏好，只保证结构完整** | ADK | 只按 `event_retention_size` 计数，但把「未闭合义务」的完整性做到了最严 |
@@ -3667,7 +3667,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 2. **结构化摘要约束** —— 无一条路径用「summarize this」了事；其中固定 section 或 schema 8/11，Codex 与 ADK 只列必含要点，kimi-code 反其道用第一人称视角+必含内容清单替代标题约束。Progress 分 Done/In-Progress/Blocked 是最小可用集（dsh 有 8 个 section，是最多的一档，却恰好缺 Blocked 这一格）。再加一句几乎免费的 prompt 约束：**空 section 写 `(none)`，不许删**（dsh）——它堵掉的是「这节没内容所以我省了」这个最常见的省略借口。但**它只是降低省略率，不是保证**：dsh 没有 section 校验器，模型不听话就是不听话。想要真保证，得配第 13 条那个确定性校验（解析必需 section，缺了重跑），或者干脆用可校验的 schema（Goose）。**别把生成约束当成校验用**
 3. **压缩后重新注入项目约定**（OpenClaw `postCompactionSections`）—— ConstraintRot 实测：压缩把违规率从 0% 抬到 30%（单模型最高 59%），且软性组织策略的衰减是硬性安全规范的 **8.3 倍**。没有模型先验兜底的项目约定，一旦不在上下文里就等于不存在（§21.2）
 4. **把「不可压缩区」做成显式配置** —— 治理约束、安全策略不该混在普通历史里等摘要转述。ConstraintRot：约束**存活**时违规 0%，被丢弃时 **38%**——存不存活几乎就是全部（§21.2）
-5. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。十一家里八家这么做；OpenHands 走通用事件截断、Codex 直接全丢，kimi-code 未见独立层，是三个例外。再进一步：**裁完重测一遍，若压力已回到阈值以下就把 LLM 调用整个跳过**（dsh）
+5. **tool result 单独一层处理，且优先于对话摘要** —— 免费（不调 LLM）就能砍掉大头。十一家里八家这么做；OpenHands 走通用事件截断、Codex 在本地总结重组中不保留 tool result 原始项，kimi-code 未见独立层，是三个例外。再进一步：**裁完重测一遍，若压力已回到阈值以下就把 LLM 调用整个跳过**（dsh）
 6. **tool call/result 配对不可破坏 + 事后修复** —— 不做就是 provider 400 错误
 7. **阈值触发时压到限额的一半而非刚好达标** —— OpenHands 的迟滞设计，一行代码消除抖动（注意其显式请求路径基数是当前 view，不是限额）
 8. **保护用户原话**（Hermes 的理由最有说服力：不可重建且极便宜）
