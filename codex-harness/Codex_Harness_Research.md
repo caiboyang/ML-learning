@@ -8,7 +8,7 @@ description: "沿固定提交的执行调用链，拆解 Codex 的请求快照�
 
 > 配套学习页：[让 Agent 跨过上下文窗口 — 从零拆解 Codex Harness](learn/)。先读学习页建立执行顺序，再用本手册核对源码、常量和适用条件。<br>
 > 阅读约定：**【来源事实】** 指本快照源码直接支持的行为，**【综合解释】** 指对机制的归纳，**【实践建议】** 指需要自行评测的工程取舍。<br>
-> 相关专题：[Context Compression 横向研究](../agent-context-compression/Agent_Context_Compression_Research.html)。那篇保留各平台的审计快照；本篇单独追踪 Codex 的较新实现，不将不同版本结论混用。
+> 相关专题：[Context Compression 横向研究](../agent-context-compression/Agent_Context_Compression_Research.html)。平台实现按各自快照理解；关于 WorldState 的概念性误读已同步更正，history/notes 与压力提醒则另标新快照的条件。
 
 审计日期：2026-09-11（America/Los_Angeles）。官方仓库：`openai/codex`。固定提交：[`944d6fd1ba4baab69dbedd205282dc72ec20abb5`](https://github.com/openai/codex/tree/944d6fd1ba4baab69dbedd205282dc72ec20abb5)，提交时间为 2026-09-12 01:21:25 UTC。
 
@@ -80,6 +80,37 @@ flowchart TD
 `ContextManager` 保存 `Arc<Vec<ResponseItemEnvelope>>`，而不是单个字符串。Envelope 包含 `ResponseItem` 和 harness 元数据，元数据会记录客户端来源、工具输出预算、压缩模型兼容标记、用户输入顺序等。只读快照共享内存，修改时再复制。[历史结构](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context_manager/history.rs#L69)、[Envelope](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/history/src/lib.rs#L36)
 
 这个差别很实用：调用和结果要按 `call_id` 对应，用户消息和程序注入消息不能只靠 `role=user` 区分，assistant 的阶段、加密 reasoning、图片等也不能在拼接纯文本时丢掉。
+
+<a id="fragments"></a>
+
+#### 从 fragment 到 wire：角色、类别和文本标记各管什么？
+
+`ContextualUserFragment` 声明正文、`role()`、`content_kind()`、起止 marker 和是否独占消息。`render_fragment()` 产出 `RenderedFragment`，转换成 `ResponseItem` 时，类别进入 `internal_chat_message_metadata_passthrough.content_item_kinds`。因此类型信息不止存在于客户端内存。[trait 与转换](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/context-fragments/src/fragment.rs#L35)
+
+| 信息 | 回答的问题 | 例子与边界 |
+|---|---|---|
+| `role` | 消息属于哪个指令层级？ | AGENTS.md 是 `user`；基础指令 fragment 是 `developer` |
+| `content_kind` | 每个 content item 是什么类别？ | `agents_md.instructions`、`model.base_instructions`、`compaction.summary`；真实用户文本另有 `user.text` |
+| marker | 缺少结构化状态时，怎样识别过去注入的文本？ | 识别旧 AGENTS 块；无 marker 的 fragment 不会任意匹配正文 |
+| Envelope 元数据 | harness 怎样处理这个历史项？ | 来源、预算、保留条件；与 wire 类别标签不是同一结构 |
+
+更新路径中的 `merge_contextual_fragments()` 只合并**连续、同 role、双方都允许合并**的片段。N 个片段成为一条消息的 N 个 content item，类别数组与之逐项对应；独占消息的片段会截断合并段。以下为省略 ID 等字段的形状示意，不是实际请求：[合并实现](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context_manager/updates.rs#L12)
+
+```json
+{
+  "type": "message",
+  "role": "user",
+  "content": [
+    {"type": "input_text", "text": "<片段 A 正文>"},
+    {"type": "input_text", "text": "<片段 B 正文>"}
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "content_item_kinds": ["feature_a.instructions", "feature_b.instructions"]
+  }
+}
+```
+
+**【综合解释】** 消息可以合并，内容分类仍保留，接收端不必只靠 `role=user` 猜来源。但客户端源码不能证明服务端具体用这些标签做训练、计费还是压缩；`is_openai=false` 的发送分支会清除内部 metadata 和 `encrypted_function_args`，不能把它写成所有 Responses provider 都支持的保证。[发送边界](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/client.rs#L843)
 
 ### 3.2 在压缩以前，先限制和整理输入
 
@@ -201,6 +232,59 @@ run_auto_compact
 
 公开仓库同时有 history-notes extension，为窗口转换提供历史检索和笔记能力。`context_management` 的自动激活还检查模型能力、认证、provider 和账户条件。`token_budget` / `context_management` 在本快照的源码默认值均为关闭，不能将其当作所有 Codex 用户的默认行为，也不在本报告推断当前任务是否启用。[实验开关](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/features/src/lib.rs#L1615)、[激活条件](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/token_budget.rs#L21)、[公开历史／笔记工具实现](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/history-notes/src/tools.rs)
 
+<a id="history-notes"></a>
+
+#### 不是一个开关：默认激活、提示配置、工具注册分开判断
+
+| 层次 | 实际判断 | 为什么不能合并成一句“没开” |
+|---|---|---|
+| Rust feature | `Feature::TokenBudget` 源码默认 `false` | 显式配置和受条件约束的入口可改变默认值 |
+| 模型自动激活 | `model_messages.token_budget.enabled` 为真，且没有显式配置时，尝试开启 feature | `false` 阻止这条默认激活路径，不是否决显式开启 |
+| 每轮提示解析 | feature 已启用且没有显式细项时，可取当前模型的默认消息与预算 | “自动开启”与“开启后用什么文本”是两次判断 |
+| `context_management` 入口 | 检查模型能力、provider、认证及账户条件，再尝试激活 | 不能只看模型 JSON 判断可达性 |
+| history-notes 注册 | 还要求 `use_history_notes_extension`、OpenAI provider 和 Codex backend 认证 | 窗口重置不自动保证拥有原生检索工具 |
+
+打包目录中 5 个描述符带 token-budget 对象，`enabled` 显式为 false 或省略后反序列化为 false，另外 4 个无该对象。已有对象的提醒阈值为 6,144、fallback buffer 为 16,384；这是**目录的条件配置**，不是所有模型的运行时常量。自动激活还尊重显式配置和托管约束。[模型默认激活与解析](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/token_budget.rs#L80)、[每轮解析条件](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/turn_context.rs#L821)、[字段默认值](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/protocol/src/openai_models.rs#L606)、[目录样本](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/models-manager/models.json#L104)、[工具注册](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/history-notes/src/extension.rs#L45)
+
+#### notes 保存续接线索，history 按地址取回细节
+
+| 接口 | 用途 | 源码可见的限制 |
+|---|---|---|
+| `history.list_windows / list_items` | 定位窗口和历史项 | 按 agent、窗口、role、工具筛选；返回服务端规范化历史 |
+| `history.read_item / search_contents` | 按窗口 ID、item ID 读取，或按字面子串搜索 | 读取支持字符偏移和长度；只读、最终一致 |
+| `notes.write_file / append_to_file` | 保存目标、进度、待办与证据地址 | 显式工具动作，重置不会自动代写笔记 |
+| `notes.read_file / list_files_by_prefix / search_contents` | 恢复或寻找检查点 | 虚拟路径，不是工作区文件；列表和搜索可能延迟可见 |
+| `get_context_remaining` | 查询当前计算的剩余预算 | 复用 §3.3 / §4 的计量，不是额外的精确 tokenizer |
+| `new_context` | 请求建立新窗口 | handler 设置标记，主循环在续跑边界处理 |
+
+history 与 notes 分别路由到 `alpha/history/v2/*`、`alpha/notes/v2/*`，不是读本地 rollout 文件的别名。模型保存窗口和 item 的不透明 ID；已知地址时直接 read，不知道时先 list/search。笔记可以只留任务状态与证据地址，再按需取回原文。[工具与 schema](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/history-notes/src/tools.rs#L24)、[预算 handler](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/handlers/get_context_remaining.rs#L81)、[窗口请求 handler](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/tools/handlers/new_context_window.rs#L38)
+
+一个尚不能抹平的边界：打包 guidance 说跨 thread 笔记写入受限，而原生 notes 描述允许访问其他 agent 的笔记。两者的 thread / agent 命名与措辞不一致，不能任选一句推出服务端授权策略；本次只确认公开客户端接口，没有验证服务端跨范围权限。
+
+<a id="pressure"></a>
+
+#### 压力信号后面必须有可执行动作
+
+按上述打包配置，预期的续接流程是：
+
+```mermaid
+flowchart TD
+    A[当前窗口：逐步记录状态与证据 ID] --> B[剩余预算不大于提醒阈值]
+    B --> C[记录带剩余数字的提醒]
+    C --> D[模型写 notes，再请求 new_context]
+    D --> E[主循环重置；新窗口带窗口标识和可用提示]
+    E --> F[读 notes；必要时用 history 定位旧证据]
+    C --> G[继续消耗，基础预算耗尽]
+    G --> H{尚未触及强制切换条件且允许 fallback?}
+    H -->|是| I[追加收尾指令，要求先记笔记]
+    I --> D
+    H -->|否且仍需续跑| E
+```
+
+提醒判断是 `remaining <= threshold`，不是恰好剩 6,144 才触发；提醒与 fallback 各有去重状态。fallback 还要求基础余量为零、存在配置文本且当前允许兜底。buffer 只在有 fallback prompt 时计算；完整窗口硬限仍可能先到，因此**不能保证一定获得 16,384 token 收尾**，也不能把“只准 notes + new_context”的提示词当成工具执行器的强制白名单。[提醒条件](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/token_budget.rs#L161)、[buffer 与硬限](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/context_window.rs#L87)、[主循环先后关系](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/turn.rs#L600)
+
+**【综合解释】** 模型有记笔记、查询预算、主动换窗口的动作，压力就可以成为操作信号。与此同时，工具描述要求不向用户播报内部记账；“模型是否知道”与“用户是否看到”是两个问题。这是可检验的机制假设，不证明它优于 Hermes 的透明压缩，更不证明模型会及时记好笔记。它将一部分摘要保真问题转为笔记完整性、证据可寻址性、检索可用性与恢复成本问题。
+
 <a id="recovery"></a>
 
 ## 6. 为什么压缩后规则不会只靠摘要保留？
@@ -257,11 +341,40 @@ flowchart LR
 
 配置解析内部又把显式 override 放在 `model_instructions_file` 内容之前，之后才是兼容字段 `cfg.instructions`。`developer_instructions` 是另一路附加内容。因而自定义基础指令文件是替换基础来源，不是自动追加到默认 prompt 后面。[优先级](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mod.rs#L687)、[文件读取](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/config/mod.rs#L3894)
 
-### 7.2 模型目录可以远程刷新
+<a id="provenance"></a>
+
+#### 为什么文本之外还要保存 Custom / Model 来源？
+
+用户提供的基础指令应该跨模型保留；从模型 A 派生的默认指令则不能在切换到 B 时被误当作用户 override。`BaseInstructionsProvenance` 把这个生命周期区别落成数据：[来源类型](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/protocol/src/models.rs#L1524)
+
+```rust
+enum BaseInstructionsProvenance {
+    Custom,
+    Model { model: String },
+}
+```
+
+Session 初始化时：显式配置默认标为 `Custom`（调用方可另传已知来源）；继承来源存在就沿用；旧历史缺少来源时，只有保存文本与当前模板逐字相同，才反推为 `Model`，否则继续保持未知。这是迁移兼容策略，不能还原所有真实来源。[初始化判断](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/session.rs#L719)
+
+| 情形 | 保存的含义 | 下游用途 |
+|---|---|---|
+| 用户指令文件 → `Custom` | 用户明确选择的基础文本 | 构造模型配置时仍作为 override |
+| 继承自模型 A → `Model { A }` | A 的默认指令，不是用户自定义 | 构造模型配置时过滤这个 override，允许当前模型使用自己的模板 |
+| 旧历史且来源无法推断 | 不知道文本来自哪里 | 保留未知，不能直接视为可替换的模型默认值 |
+
+还要区分**持久化基础文本**和**当前模型收到的指令**：模型切换可由 WorldState 产生 `ModelSwitchInstructions` developer 片段，提到 developer bundle 最前，不等于原地覆盖 SessionMeta。`get_prompt_base_instructions()` 另可按条件调整请求副本，例如移除 update-plan 说明，而不修改用于持久化和 fork 的文本。[override 过滤](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/config/mod.rs#L1625)、[当前模型状态](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/world_state.rs#L46)、[切换渲染](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/model.rs#L44)、[请求副本](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mod.rs#L1409)
+
+**【综合解释】** provenance 回答“这段配置属于谁、允许怎样演进”。只保存最后拼好的字符串，会混淆用户选择和模型默认值，让恢复与模型切换难以安全更新指令。
+
+### 7.2 模型目录与 ModelMessages
 
 `models.json` 编译打包进程序，`ModelsManager` 还管理远程模型元数据、磁盘缓存、ETag、身份匹配和刷新策略。模型条目既有能力与窗口信息，也有 `model_messages.instructions_template`。所以“在 GitHub 找到一个 prompt.md”不足以确定某个已运行会话实际用的是哪份基础指令。[打包入口](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/models-manager/src/lib.rs#L15)、[远程刷新与合并](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/models-manager/src/manager.rs#L435)
 
 另一个版本差异：本快照的 `get_model_instructions()` 返回 **literal template 文本**，不再用旧 `instructions_variables` 做 personality 占位符展开；旧字段为兼容保留。`Personality::None` 的处理在模型配置覆盖阶段，可移除 Personality section。不能根据历史版本解释成“一直动态填充 personality 变量”。[模板实现](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/protocol/src/openai_models.rs#L534)、[personality 覆盖处理](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/models-manager/src/model_info.rs#L19)
+
+`ModelMessages` 还容纳内建工具描述、审批与权限文本、协作模式、多 agent 消息，以及 token-budget 的提醒和兜底配置。部分字段缺失会用内建文本，例如 `ToolMessage.description` 的 None 与空字符串分别表示“用内建描述”和“描述留空”。**按模型管理文本，不等于所有文字只在服务器。**[ModelMessages](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/protocol/src/openai_models.rs#L551)、[fallback 语义](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/protocol/src/openai_models.rs#L597)
+
+**【综合解释】** 模型、工具说明与上下文策略可以配套更新，减少客户端硬编码分支。但固定 binary 不足以完全复现远程目录参与后的行为；还应记录实际目录、配置覆盖、继承文本和来源。离线、缓存及静态目录路径仍存在，不能概括为“system prompt 不在客户端”。[打包目录初始化](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/models-manager/src/manager.rs#L298)
 
 ### 7.3 基础指令甚至不总在顶层 instructions 字段
 
@@ -272,6 +385,20 @@ flowchart LR
 
 Lite 路径还以会话和可见内容生成稳定 ID，使重试／恢复不会因随机新 ID 改变这些前缀项。这个分支说明：**角色语义、内部 Prompt 对象、wire JSON 字段是三个层次，不能混为一谈。**[两种请求装配](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/client.rs#L795)、[基础指令 developer 角色](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/base_instructions.rs#L7)
 
+Lite 稳定 ID 的等价构造如下，实际再包装为带 `at` / `msg` 类型前缀的 `ResponseItemId`：
+
+```text
+namespace        = UUIDv5(NAMESPACE_OID, thread_id 的字符串字节)
+AdditionalTools  = UUIDv5(namespace, 序列化后的 tools 字节)
+BaseInstructions = UUIDv5(namespace, 基础指令文本的字节)
+```
+
+同一 thread、相同 payload 得到相同 ID；换 thread 则不保证相同。源码保证的是这些请求专用前缀项在重试和恢复时身份稳定，没有承诺“ID 稳定就命中 KV cache”。`store:false` 也不能推出“每轮必定完整重传”，详见 §8。
+
+#### 初始上下文的装配位置
+
+`build_initial_context_with_world_state()` 先聚合 developer 内容，将模型切换片段提到其中最前；再加入独立 developer 片段、单独处理的多 agent 模式、聚合的 contextual user 消息，以及适用时的 guardian policy 和 managed developer instructions。扩展通过 `DeveloperPolicy`、`DeveloperCapabilities`、`ContextWindow` 等 `PromptSlot` 声明位置；notes 的 thread hint 进入窗口上下文，并非随便拼在用户请求末尾。[装配入口](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mod.rs#L4110)、[最终顺序](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mod.rs#L4296)
+
 ### 7.4 AGENTS.md 是 user context，有发现顺序和预算
 
 项目发现沿 root → cwd，默认用 `.git` 识别 root；同目录按 `AGENTS.override.md`、`AGENTS.md`、配置 fallback 名称选择候选，不是把同目录所有候选都拼进去。项目文本共享默认 32 KiB 预算；无 root 时只看 cwd。当前 core 还通过 host providers 接收全局／任务级用户指令，项目不受信任时跳过项目发现。[发现算法](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/agents_md.rs#L1)、[来源管理](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/agents_md_manager.rs#L1)
@@ -280,9 +407,51 @@ Lite 路径还以会话和可见内容生成稳定 ID，使重试／恢复不会
 
 ### 7.5 WorldState：全量初始化，后续追加差异
 
-每个状态 section 可以保存快照并实现 `render_diff`。第一次或 reference baseline 丢失时完整构造 initial context；有基线时只生成需要通知模型的差异。AGENTS 更新会附带“替换先前指令”的语义，移除也会发明确通知；模型变化可以追加 `ModelSwitchInstructions`。[正常更新路径](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/mod.rs#L4466)、[模型切换 section](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/model.rs#L25)
+<a id="world-state"></a>
 
-**【综合解释】** 这接近“程序维护状态、向模型发送状态变化事件”。正常追加有利于维持稳定历史前缀，压缩又提供一次重新建立 canonical baseline 的机会；它不是无限追加互相冲突的 prompt 文本。
+每个 section 有稳定 ID、只包含比较所需数据的 `Snapshot`，并实现 `render_diff(previous)`。返回 None 表示无需通知模型。这里的 diff 是**语义变化通知**：AGENTS 改变时可以重新发整段并声明取代旧规则，不是把 JSON patch 直接交给模型。[section 契约](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L207)
+
+#### 为什么 previous state 必须有三态？
+
+| 状态 | 对当前保留历史知道什么 | 以 AGENTS section 为例 |
+|---|---|---|
+| `Known(snapshot)` | 有可还原的精确快照 | 相同不发；改变时据旧内容发替换或移除通知 |
+| `Absent` | 没有该 section 的有效快照／匹配片段依据 | 当前有规则则全量发，不加替换声明；不等于整段会话从未出现过 |
+| `Unknown` | 有旧片段依据，但精确快照不可用 | 当前有规则则全量发并声明替换；当前无规则则明确撤销旧规则 |
+
+只用 `Option<Snapshot>` 会把“看不到旧规则”和“看得到旧规则但不知道确切内容”压成一个 None。后者若不作覆盖声明，旧规则仍可能影响任务。例如历史保留了“运行全部测试”，当前变成“只跑模块测试”，即使旧 snapshot 丢失，也要说清哪份生效。[AGENTS 三态实现](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/agents_md.rs#L52)
+
+`render_history_diff()` 优先使用快照；缺少快照时扫描 legacy fragment 的 role 与 marker，命中给 Unknown。快照反序列化失败也退到 Unknown。对声明了 retained-fragment matcher 的 section，即使快照仍在，若对应文本不在保留历史，也可按 Absent 处理。**保存过状态不等于模型仍看得见状态。**[历史回退](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L413)、[反序列化回退](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L111)
+
+这三态是传给 section 的知识状态，不是全体 section 共用的文本模板；模型 section 仍要判断模型是否变化。diff 也不是文件监听：只有 `AgentsMdManager` 交出变化后的快照才能比较。环境选择／任务工作目录或信任状态改变可触发 repository 重读；原地编辑文件通常不改变缓存键，单个 shell 子进程里的 cd 也不自动等于更换任务环境。[缓存边界](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/agents_md_manager.rs#L79)
+
+#### 给模型的通知与给恢复器的 merge patch
+
+`ContextManager::update_world_state()` 产出两份东西：按保留历史渲染的 fragments，以及写入 rollout 的状态记录。无 baseline 时保存 full snapshot，有 baseline 时保存 RFC 7386 merge patch；状态未变不产生 patch。[双输出](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context_manager/history.rs#L295)
+
+用工具目录做教学例子，删除语义如下：
+
+```json
+{"before": {"tools": {"search": "查资料", "db": "查数据"}},
+ "patch":  {"tools": {"db": null}},
+ "after":  {"tools": {"search": "查资料"}}}
+```
+
+对象 patch 中的 null 表示删除，所以比较前递归移除 snapshot 对象中的 null 字段；数组整体替换，不按同一规则清空元素。整个 section 序列化为 null 时记错并跳过。恢复按时间顺序应用 full 与 patch，遇到 compaction 清掉旧基线；没有 full baseline 的孤立 patch 被忽略，不能凭一个增量恢复全貌。[patch 算法](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L307)、[null 处理](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L485)、[恢复重放](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/rollout_reconstruction.rs#L439)
+
+部分 section 用 `WorldStateHash` 保存渲染指纹：SHA-1 加域分隔串，role 和文本分别带长度，CRLF 归一化。它比较模型可见片段是否改变，**不是工具结果备份、prompt cache key 或安全认证凭证**。[指纹](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L262)
+
+**【综合解释】** 正常执行追加变化通知，保留已有历史前缀；压缩后重新生成 canonical context，则提供清理旧规则、建立新基线的机会。可迁移的设计是“程序维护状态、向模型显式通知变化、独立保存恢复状态”，不是假设自然语言覆盖声明永远不会被误解。
+
+<a id="world-state-boundary"></a>
+
+#### 更正关联研究：WorldState 不是工具输出快照
+
+横向研究此前把“压缩后不保留 tool result 原始项”归因于 WorldState 保存了工具状态，这个因果解释缺少依据，已在原文和图中更正。此快照内建 sections 表达环境、规则、权限、模型和能力；`ToolsState` 保存延迟工具命名空间及描述，渲染上限 4 KiB、单条描述上限 250 字符，不保存调用结果。[ToolsState](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/tools.rs#L12)
+
+需要分开三件事：工作区修改可能仍在；工具结果的部分信息可能进入摘要／不透明 checkpoint；完整原文能否取回取决于独立存储与检索路径。local 交接前缀提到工具状态，不能据此推出“有完整输出快照”，也不能推出“因为能重读，所以删除总是安全”。[交接前缀](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/prompts/templates/compact/summary_prefix.md)
+
+**【实践建议】** 对变化中的文件、一次性 API、随机输出和某个时刻的测试结果，重跑会产生新观测，未必恢复旧证据。依赖精确历史结果时，应显式保存原文并验证可寻址的恢复路径；不能用“世界还在”替代保真评测。
 
 ### 7.6 Skills 与工具也参与 context 构造
 
@@ -303,6 +472,11 @@ ToolRouter 也区分 `model_visible_specs`、Code Mode 映射和 deferred 工具
 2026 年 1 月工程文章说当时 Codex 不使用 `previous_response_id`。此快照已实现 WebSocket 增量：只有请求属性匹配、当前 input 是此前 request + response items 的扩展时，才发送增量和上一 response ID；不匹配就不能套用这个增量优化。[增量匹配](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/client.rs#L1254)、[wire 构造](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/client.rs#L1793)
 
 Remote V2 总结请求保留原 instructions 与工具表，并在历史尾部追加 trigger，结构上有利于复用前缀；但压缩前整理会改写输入，工具／模型变化也会影响复用。压缩完成后替换历史又通常不再是旧历史的严格扩展，因此不能声称“compaction 全程必然 cache hit”。是否命中和省多少钱需要实测 `cached_input_tokens`、cache write、请求量与任务质量。
+
+还有两个容易混淆的条件：
+
+- `store:false` 不代表服务端完全没有临时状态，客户端仍可走 WebSocket 增量。稳定 ID 解决前缀项身份，增量机制解决传输重复，KV cache 是否命中另由服务端决定，不能从 UUIDv5 推导“唯一缓存策略”。
+- `prompt_cache_key` 优先取 override；特定 `SessionSource::Internal(source)` 且有 parent ID 时返回 `"{source}:{parent_thread_id}"`；其他情况取 session ID。普通父任务默认 key 若为 P，内部任务可为 source:P，两者不相等；不同 source 也不同。包含 parent ID 不等于父任务和所有子任务共享一个缓存分区。[key 构造](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/client.rs#L497)
 
 <a id="principles"></a>
 
@@ -343,5 +517,9 @@ Remote V2 总结请求保留原 instructions 与工具表，并在历史尾部�
 - TokenBudget 重置与普通总结 compaction 分开；实验开关的源码默认关闭不等于所有部署配置。
 - 普通 Responses 与 Responses Lite 的指令字段不同；AGENTS.md 属于 user context。
 - WebSocket 增量、prompt cache 和窗口压缩分开；没有保证缓存命中或摘要无损的结论。
+- fragment 的 wire 类别、客户端 Envelope 与恢复 marker 分开；内部 metadata 的发送有 provider 边界。
+- WorldState 三态通知与持久化 merge patch 分开；工具目录不是工具结果备份。
+- 模型默认激活、Rust feature、显式配置与 history-notes 注册分开；6,144 / 16,384 不作为无条件保证。
+- 学习页的订单测试是教学构造，区分 local 文本摘要、V2 不透明 checkpoint 与无摘要重置。
 
 <script type="module" src="../assets/js/util/mermaid-render.js"></script>

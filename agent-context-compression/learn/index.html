@@ -577,15 +577,15 @@ if (window - used &lt; reserve) compact()</code></pre>
 
   <h3 class="sub">选择二：减法减到什么程度</h3>
   <p>
-    光谱的一端是「只压中段，头尾原文全留」；另一端是 Codex 和 kimi-code 的做法 ——
-    <strong>压缩后 assistant 和工具消息一条不留</strong>，只保留 20K token 预算内的用户原话加一份摘要。
+    光谱的一端是「只压中段，头尾原文全留」；另一端是本节原审计中 Codex 和 kimi-code 的本地总结路径 ——
+    <strong>不保留 assistant 和工具消息的原始 item</strong>，保留 20K token 预算内的用户原话加一份摘要；原消息中的部分信息可能进入摘要。较新 Codex 的 Remote V2 与 TokenBudget 重置另见<a href="../../codex-harness/learn/#step-8">三路对照案例</a>。
   </p>
   <div class="call key">
     <span class="tag">背后的信息论</span>
     为什么敢丢 assistant 消息却死保用户消息？因为两者的<b>可再生性不对称</b>。
     Hermes 的源码注释说得最清楚：assistant 输出的大多是「我做了什么」的记账，摘要能存活；
-    <b>用户的话是一切的推导起点，丢了就永远回不来</b>。同理，工具返回值可以重新跑一遍拿到，
-    用户的原始意图不能。
+    <b>用户原话是需求的直接证据，不能靠模型重新生成</b>。工具可以再次观测当前状态，但文件、远程数据和执行环境可能已经改变；
+    重跑不等于恢复原结果，有副作用的操作也不能为“补记忆”而随意重放。
   </div>
 
   <h3 class="sub">选择三：原文删不删</h3>
@@ -599,8 +599,8 @@ if (window - used &lt; reserve) compact()</code></pre>
     <li><b>能搜回来</b> —— 原文落盘并建索引，摘要里<b>专门写上检索关键词</b>，模型需要时自己捞。</li>
   </ul>
   <p>
-    第三种是 Letta 的做法，也是整批项目里唯一把摘要当成<strong>「索引」而不是「替代品」</strong>的架构。
-    它的价值现在有独立研究背书 —— 学界的 Addressable Recall Compaction 基本是同一思路的形式化版本。
+    第三种是 Letta 的做法：在本报告原审计的总结路径中，它明确让摘要携带<strong>检索线索</strong>。
+    学界的 Addressable Recall Compaction 也研究了类似思路。较新 Codex 另有受条件控制的 history/notes 实验实现，配套无摘要换窗；它不等于 Letta 的摘要路径，也不能再被概括为“没有回捞工具”。详见<a href="../../codex-harness/Codex_Harness_Research.html#history-notes">启用条件与恢复边界</a>。
   </p>
 </section>
 
