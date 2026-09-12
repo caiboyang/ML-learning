@@ -581,10 +581,10 @@ if (window - used &lt; reserve) compact()</code></pre>
     <strong>不保留 assistant 和工具消息的原始 item</strong>，保留 20K token 预算内的用户原话加一份摘要；原消息中的部分信息可能进入摘要。较新 Codex 的 Remote V2 与 TokenBudget 重置另见<a href="../../codex-harness/learn/#step-8">三路对照案例</a>。
   </p>
   <div class="call key">
-    <span class="tag">背后的信息论</span>
-    为什么敢丢 assistant 消息却死保用户消息？因为两者的<b>可再生性不对称</b>。
-    Hermes 的源码注释说得最清楚：assistant 输出的大多是「我做了什么」的记账，摘要能存活；
-    <b>用户原话是需求的直接证据，不能靠模型重新生成</b>。工具可以再次观测当前状态，但文件、远程数据和执行环境可能已经改变；
+    <span class="tag">把需求单、交接卡与观测记录分开</span>
+    和 Codex 学习页的办公桌一样：<b>用户原话是需求单</b>，“满 100 免运费”不能凭模型印象重写；
+    assistant 的进度说明可以整理成<b>交接卡</b>，但仍需检查有没有漏掉约束和待办，不能把所有输出都视为无关流水账。
+    <b>测试日志则是某次执行的观测记录</b>：今天再跑一次会产生新记录，文件、远程数据和执行环境可能已经改变。
     重跑不等于恢复原结果，有副作用的操作也不能为“补记忆”而随意重放。
   </div>
 

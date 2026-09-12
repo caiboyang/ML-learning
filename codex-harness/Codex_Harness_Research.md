@@ -24,6 +24,8 @@ OpenAI 的工程文章把 harness 定义为协调用户、模型和工具的执�
 
 **核心判断：Codex harness 最值得学习的是“把哪些状态交给模型、哪些状态由程序维护、何时重新组装模型输入”的工程，而不是某一段很长的提示词。**
 
+**【综合解释】** 可以先想象一张办公桌：模型根据桌上的材料提出下一步，harness 调用工具并把结果送回来。程序另保管一份规则册和已保存的档案；规则要进入请求、档案要经恢复或检索，才会成为模型可见内容。后文的执行循环、WorldState 和 compaction，分别解释这套工作怎样继续、怎样更新规则、怎样整理桌面。
+
 <a id="architecture"></a>
 
 ## 2. Harness 的构造
@@ -111,6 +113,8 @@ flowchart TD
 ```
 
 **【综合解释】** 消息可以合并，内容分类仍保留，接收端不必只靠 `role=user` 猜来源。但客户端源码不能证明服务端具体用这些标签做训练、计费还是压缩；`is_openai=false` 的发送分支会清除内部 metadata 和 `encrypted_function_args`，不能把它写成所有 Responses provider 都支持的保证。[发送边界](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/client.rs#L843)
+
+<a id="input-preparation"></a>
 
 ### 3.2 在压缩以前，先限制和整理输入
 
@@ -409,7 +413,7 @@ BaseInstructions = UUIDv5(namespace, 基础指令文本的字节)
 
 <a id="world-state"></a>
 
-每个 section 有稳定 ID、只包含比较所需数据的 `Snapshot`，并实现 `render_diff(previous)`。返回 None 表示无需通知模型。这里的 diff 是**语义变化通知**：AGENTS 改变时可以重新发整段并声明取代旧规则，不是把 JSON patch 直接交给模型。[section 契约](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L207)
+每个 section 有稳定 ID、只包含比较所需数据的 `Snapshot`，并实现 `render_diff(previous)`。返回 None 表示无需通知模型。这里的 diff 是**语义变化通知**：AGENTS 改变时可以重新发整段并声明取代旧规则，不是把 JSON patch 直接交给模型。[section 契约](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/world_state/mod.rs#L226)
 
 #### 为什么 previous state 必须有三态？
 
