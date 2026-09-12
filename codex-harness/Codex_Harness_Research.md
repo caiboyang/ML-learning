@@ -14,15 +14,15 @@ description: "沿固定提交分析执行循环、指令与 Skills 加载、MCP 
 
 本文中的「当前」仅指这份源码快照，不代表所有已发布客户端、账户或服务端部署。**【来源事实】**说明代码实际做什么；**【综合解释】**说明这些机制解决什么问题。未调用真实模型测试压缩质量，也未构建或运行整个 Rust 测试套件。
 
-先想象你在筹办一场朋友聚餐：模型是提出下一步的筹划员，harness 是调度动作、拿回结果的管家。学习页用十二幅生活场景建立直觉，本手册提供对应的源码边界。类比不代表模型像人一样拥有长期记忆。
+**阅读前提：已理解 agent harness、模型采样与工具调用。** 本文直接分析 Codex 的客户端实现：对象边界、请求装配、能力加载、历史重写与恢复。配套学习页以源码结构图为主，生活类比仅辅助说明机制。
 
-| 先看哪幅生活图 | 再读什么源码机制 |
+| 图解入口 | 对应源码分析 |
 |---|---|
-| [🧑‍🍳 筹划 → 执行 → 拿回结果](learn/#step-2) | §2 执行循环、Session 与 StepContext |
-| [📋 约定从哪里来](learn/#step-4) / [📚 查菜谱](learn/#skills-step) / [☎️ 联系店铺](learn/#mcp-step) | §7 基础指令、Skills、MCP 与工具加载 |
-| [🗂️ 桌面、规则册与档案柜](learn/#step-3) / [❓ 换掉旧菜单](learn/#step-5) | §3 类型化历史、§7.5 WorldState 三态 |
-| [⚠️ 拖动用量，看何时整理](learn/#step-6) / [📝 切换三种整理结果](learn/#step-7) | §4 预算、§5 压缩路径、§6 恢复 |
-| [🧮 少算、少传、少放](learn/#step-9) / [✅ 检查后再请客人入座](learn/#step-10) | §8 缓存边界、§10 验证证据 |
+| [Codex 模块关系](learn/#step-1) / [run_turn 的采样边界](learn/#step-2) | §2 Session、StepContext、ModelClient 与 ToolRouter |
+| [基础指令装配](learn/#step-4) / [Skills 来源与注入](learn/#skills-step) / [MCP 调用绑定](learn/#mcp-step) | §7 配置、模型目录、扩展与工具加载 |
+| [ContextManager 状态](learn/#step-3) / [WorldState 三态与差异](learn/#step-5) | §3 类型化历史、§7.5 通知与恢复基线 |
+| [预算交互图](learn/#step-6) / [三路径历史替换](learn/#step-7) | §4 计量与触发、§5 压缩、§6 replacement checkpoint |
+| [请求增量与缓存](learn/#step-9) / [沿 compaction trace 核对](learn/#step-10) | §8 缓存边界、§10 验证证据 |
 
 <a id="scope"></a>
 
@@ -30,11 +30,11 @@ description: "沿固定提交分析执行循环、指令与 Skills 加载、MCP 
 
 Codex 的开源范围足以研究一个完整 coding agent 的客户端运行时：CLI/TUI、app-server、核心循环、工具路由、执行环境、上下文管理、持久化，以及模型请求构造。仓库采用 Apache-2.0 许可证。它并不等于模型权重、推理服务、远程 compaction 算法和整个托管产品都开源。[仓库许可](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/LICENSE)
 
-OpenAI 的工程文章把 harness 定义为协调用户、模型和工具的执行逻辑，并说明这一核心支撑多种 Codex 产品形态。分析时仍须区分共享架构与某个产品当下的部署细节。[官方架构说明](https://openai.com/index/unrolling-the-codex-agent-loop/)
+OpenAI 的工程文章说明这一核心支撑多种 Codex 产品形态。分析时仍须区分共享架构与某个产品当下的部署细节。[官方架构说明](https://openai.com/index/unrolling-the-codex-agent-loop/)
 
 **核心判断：Codex harness 最值得学习的是“把哪些状态交给模型、哪些状态由程序维护、何时重新组装模型输入”的工程，而不是某一段很长的提示词。**
 
-**【综合解释】** 可以先想象一张办公桌：模型根据桌上的材料提出下一步，harness 调用工具并把结果送回来。程序另保管一份规则册和已保存的档案；规则要进入请求、档案要经恢复或检索，才会成为模型可见内容。后文的执行循环、WorldState 和 compaction，分别解释这套工作怎样继续、怎样更新规则、怎样整理桌面。
+**【综合解释】** 下文沿 Session → StepContext → Prompt / ToolRouter 追踪请求，沿 ContextManager → WorldState / Rollout 追踪状态；用这两条线定位加载、compaction 与恢复的职责。
 
 <a id="architecture"></a>
 
@@ -181,11 +181,11 @@ flowchart TD
 
 <a id="compaction-session-model"></a>
 
-### 先看一幅图：整理材料时，谁继续负责这场聚餐？
+### 先看对象身份：压缩是否更换 Session 与模型？
 
 ```mermaid
 flowchart TD
-    A[同一个用户 Session：筹办这场聚餐] --> B[模型 A 根据当前材料做任务]
+    A[同一个用户 Session：原任务] --> B[模型 A 根据当前材料做任务]
     B --> C[发起一次专门的压缩请求]
     C --> D[安装缩短后的活跃历史]
     D --> E[通常仍由模型 A 继续原任务]

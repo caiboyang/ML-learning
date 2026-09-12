@@ -19,8 +19,8 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 ### 4. Agent Engineering
 
 * 🎓 [Codex Harness 分析：从请求到执行与恢复](https://caiboyang.github.io/ML-learning/codex-harness/learn/)
-  * *十二幕图解，用“筹办一场朋友聚餐”贯穿执行循环、提示词、Skills 与 MCP 加载、上下文管理和恢复。每幕先看生活场景图，再读一个要点；拖动 token 用量理解整理时机，切换三种 compaction 路径观察桌面材料如何变化。*
-  * *源码推演与“满 100 免运费”的订单测试案例按需展开，保留四份 transcript 快照、三态分析和自测。与下面的源码手册配套：**图解建立直觉，手册核对调用链、常量与证据边界**；类比和示例输出均明确标为教学构造。*
+  * *面向已经理解 harness 的读者，用十二条源码链路图解 Codex 的 Session / StepContext、请求装配、Skills / MCP 加载与历史恢复。实现图与数据变化是主线，生活类比作辅助；拖动 token 用量核对阈值，切换三条 compaction 路径观察 replacement history。*
+  * *源码推演与“满 100 免运费”的订单测试案例按需展开，保留四份 transcript 快照、三态分析和自测。与下面的源码手册配套：**图解展示 Codex 的实现，手册核对调用链、常量与证据边界**；类比和示例输出均明确标为教学构造。*
 
 * 📚 [Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理](https://caiboyang.github.io/ML-learning/codex-harness/Codex_Harness_Research.html)（[Markdown 原文](codex-harness/Codex_Harness_Research.md)）
   * *基于 OpenAI 官方仓库固定提交 `944d6fd1ba4b` 的调用链审计，拆解执行循环、Skills 多来源发现与按需读取、MCP 生命周期、Direct / Deferred / Code Mode 工具曝光，以及压缩与 checkpoint、WorldState 三态和 merge patch、ModelMessages 与指令 provenance。追踪 fragment 的请求元数据、history/notes 与压力提醒的启用条件，以及 Responses Lite 和 WebSocket 的缓存边界；源码事实、设计解释和未验证的服务端行为分别说明。*
