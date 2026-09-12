@@ -1,0 +1,354 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="沿一次 coding agent 任务，用十步理解 Codex harness 的上下文管理、三条 compaction 路径、指令加载与任务恢复。">
+  <title>让 Agent 跨过上下文窗口 — 从零拆解 Codex Harness</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&amp;family=Inter+Tight:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Serif+SC:wght@400;600&amp;family=Noto+Sans+SC:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void: #07090F;
+      --night: #0E1320;
+      --surface: #141A2A;
+      --rule: #232C44;
+      --paper: #E8E5DD;
+      --paper-dim: #B6B2A6;
+      --paper-muted: #A39C92;
+      --phosphor: #7BE3D7;
+      --phosphor-glow: #A7F2EA;
+      --amber: #FFB57A;
+      --rose: #FF8FA3;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0; background: var(--void); color: var(--paper);
+      font: 19px/1.78 'Newsreader', 'Noto Serif SC', serif;
+      -webkit-font-smoothing: antialiased;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='1' cy='1' r='1' fill='%23232C44' opacity='0.45'/></svg>");
+    }
+    a { color: var(--phosphor); text-underline-offset: 4px; text-decoration-color: rgba(123,227,215,.45); overflow-wrap: anywhere; }
+    a:hover { color: var(--phosphor-glow); }
+    a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 4px; }
+    code { font: .84em 'JetBrains Mono', monospace; color: var(--phosphor-glow); background: rgba(123,227,215,.07); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    p { margin: 0 0 20px; }
+    strong { color: var(--paper); font-weight: 600; }
+    .mono { font: 12px/1.7 'JetBrains Mono', monospace; letter-spacing: .09em; text-transform: uppercase; }
+    .skip { position: absolute; top: -80px; left: 20px; z-index: 1; padding: 10px 18px; background: var(--surface); }
+    .skip:focus { top: 12px; }
+    .hero { position: relative; padding: 84px 28px 56px; border-bottom: 1px solid var(--rule); background: radial-gradient(900px 450px at 85% 0%, rgba(123,227,215,.12), transparent 70%), var(--night); }
+    .hero-inner { max-width: 880px; margin: auto; }
+    .crumbs { display: flex; flex-wrap: wrap; gap: 14px; color: var(--paper-muted); }
+    .eyebrow { color: var(--phosphor); margin: 30px 0 18px; }
+    h1 { font: 700 clamp(36px, 6vw, 66px)/1.15 'Inter Tight', 'Noto Sans SC', sans-serif; letter-spacing: -.025em; margin: 0 0 26px; }
+    h1 .accent { color: var(--phosphor); }
+    .lede { max-width: 760px; color: var(--paper-dim); font-size: 21px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 38px; padding: 24px 0; border-block: 1px solid var(--rule); }
+    .label { color: var(--paper-muted); font: 11px/1.7 'JetBrains Mono', monospace; letter-spacing: .1em; }
+    .value { margin-top: 7px; font: 15px/1.6 'Inter', 'Noto Sans SC', sans-serif; }
+    main { max-width: 836px; margin: auto; padding: 40px 28px 0; }
+    .toc { border: 1px solid var(--rule); border-radius: 10px; background: var(--night); padding: 22px; }
+    .toc h2 { font: 600 17px 'Inter Tight', 'Noto Sans SC', sans-serif; margin: 0 0 18px; }
+    .toc ol { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px; margin: 0; padding-left: 25px; font: 14px/1.6 'Inter', 'Noto Sans SC', sans-serif; }
+    .toc li::marker { color: var(--paper-muted); }
+    section.essay { margin: 76px 0; }
+    .section-head { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--rule); padding-top: 24px; margin-bottom: 10px; }
+    .section-num { color: var(--phosphor); white-space: nowrap; font: 12px 'JetBrains Mono', monospace; }
+    .section-title { margin: 0; font: 700 28px/1.35 'Inter Tight', 'Noto Sans SC', sans-serif; }
+    .section-sub { margin: 0 0 26px; color: var(--paper-muted); font: 12px/1.6 'JetBrains Mono', 'Noto Sans SC', sans-serif; }
+    h3 { margin: 30px 0 14px; font: 600 20px/1.45 'Inter Tight', 'Noto Sans SC', sans-serif; }
+    .deck { border-left: 2px solid var(--phosphor); padding-left: 16px; color: var(--phosphor-glow); font-size: 21px; }
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 26px 0; }
+    .tile { padding: 19px 16px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+    .tile h3 { font-size: 17px; margin: 7px 0 12px; }
+    .tile p { margin: 0; color: var(--paper-dim); font: 14px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .call { border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 8px; padding: 18px 20px; margin: 26px 0; background: var(--surface); color: var(--paper-dim); font: 15px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    .call.pit { border-left-color: var(--rose); }
+    .call .tag { display: block; color: var(--amber); font-size: 12px; letter-spacing: .08em; margin-bottom: 10px; }
+    .call.pit .tag { color: var(--rose); }
+    .tbl-wrap { overflow-x: auto; margin: 26px 0; }
+    table { width: 100%; border-collapse: collapse; font: 14px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+    th { color: var(--phosphor); font-weight: 500; }
+    td { color: var(--paper-dim); }
+    pre { overflow-x: auto; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; margin: 24px 0; }
+    pre code { padding: 0; background: none; color: var(--paper-dim); font: 13px/1.8 'JetBrains Mono', monospace; overflow-wrap: normal; }
+    figure { margin: 28px 0; }
+    .diagram { background: #F5F5F0; color: #222; border-radius: 10px; padding: 20px 12px; overflow-x: auto; }
+    .diagram pre { background: transparent; border: 0; margin: 0; }
+    .diagram code { color: #222; }
+    .diagram .mermaid-diagram { min-width: 440px; }
+    figcaption, .source { margin-top: 12px; color: var(--paper-muted); font: 13px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .layers { padding: 0; list-style: none; margin: 26px 0; }
+    .layer { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; margin: 9px 0; padding: 14px 18px; font: 15px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+    .layer.highlight { border-color: var(--phosphor); }
+    .layer span { display: inline-block; color: var(--phosphor); font: 11px 'JetBrains Mono', monospace; margin-right: 12px; }
+    details { margin: 26px 0; padding: 16px 20px; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; font: 15px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    summary { cursor: pointer; color: var(--phosphor); }
+    details p { margin: 15px 0 0; color: var(--paper-dim); }
+    ol.practice { padding-left: 25px; font: 16px/1.8 'Inter', 'Noto Sans SC', sans-serif; color: var(--paper-dim); }
+    ol.practice li { margin-bottom: 12px; }
+    footer { border-top: 1px solid var(--rule); padding: 40px 28px 70px; }
+    .foot-inner { max-width: 780px; margin: auto; color: var(--paper-muted); font: 14px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    @media (max-width: 640px) {
+      .hero { padding: 60px 22px 36px; }
+      main { padding-inline: 22px; }
+      .meta-grid { grid-template-columns: 1fr 1fr; }
+      .tiles, .toc ol { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      .section-num { display: block; margin-bottom: 12px; }
+      .section-title { font-size: 25px; }
+      .tbl-wrap table { min-width: 520px; }
+      body { font-size: 18px; }
+      .lede, .deck { font-size: 20px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="hero">
+  <div class="hero-inner">
+    <nav class="crumbs mono" aria-label="面包屑"><a href="../../">ML Learning Notes</a><span aria-hidden="true">/</span><span>Agent Engineering</span><span aria-hidden="true">/</span><span>学习路径</span></nav>
+    <div class="eyebrow mono">Codex Harness · 从一次任务读懂一个运行时</div>
+    <h1>让 Agent 跨过<br><span class="accent">上下文窗口</span></h1>
+    <p class="lede">模型只能处理眼前的输入，任务却可能持续几百次工具调用。Codex 怎样决定什么该留下、什么该压缩，又怎样让规则和进度接得上？沿一次修复任务，把 harness 的构造拆成十步。</p>
+    <div class="meta-grid">
+      <div><div class="label">读者假设</div><div class="value">会写程序，知道工具调用</div></div>
+      <div><div class="label">读完能做到</div><div class="value">追踪一次上下文切换</div></div>
+      <div><div class="label">源码快照</div><div class="value"><a href="https://github.com/openai/codex/tree/944d6fd1ba4baab69dbedd205282dc72ec20abb5">944d6fd1ba4b</a> · 2026-09-11 PDT</div></div>
+      <div><div class="label">配套材料</div><div class="value"><a href="../Codex_Harness_Research.html">源码参考手册 ↗</a></div></div>
+    </div>
+  </div>
+</header>
+<main id="main">
+  <nav class="toc" aria-labelledby="toc-title">
+    <h2 id="toc-title">十步路线 · 从执行到恢复</h2>
+    <ol>
+      <li><a href="#step-1">先划清模型和 harness 的边界</a></li>
+      <li><a href="#step-2">一条请求为什么会跑很多轮</a></li>
+      <li><a href="#step-3">把 context 拆成三种状态</a></li>
+      <li><a href="#step-4">基础指令究竟从哪里来</a></li>
+      <li><a href="#step-5">让变化进入上下文</a></li>
+      <li><a href="#step-6">什么时候应该压缩</a></li>
+      <li><a href="#step-7">沿三条 compaction 路径往下走</a></li>
+      <li><a href="#step-8">压缩后怎样接着干活</a></li>
+      <li><a href="#step-9">分清缓存、传输与记忆</a></li>
+      <li><a href="#step-10">用一条调用链检验理解</a></li>
+    </ol>
+  </nav>
+
+  <section class="essay" id="step-1">
+    <div class="section-head"><span class="section-num">STEP 01</span><h2 class="section-title">先划清模型和 harness 的边界</h2></div>
+    <p class="section-sub">谁提出动作，谁执行动作，谁保存状态</p>
+    <p class="deck">你说“修好这个测试”。模型可以提出修改，真正读文件、执行测试、限制权限和保留进度的，是运行时。</p>
+    <p>这里的 <strong>harness</strong> 指把模型、工具、环境和会话串起来的程序。模型返回一个工具调用，harness 才会把它派发到执行器，再把结果送回下一次模型请求。</p>
+    <div class="tiles">
+      <div class="tile"><div class="label">MODEL</div><h3>决定下一步</h3><p>根据当前输入生成回答或工具调用。能看见什么，取决于这次请求。</p></div>
+      <div class="tile"><div class="label">HARNESS</div><h3>组织与执行</h3><p>构造请求、运行工具、处理取消和审批、管理历史与窗口。</p></div>
+      <div class="tile"><div class="label">ENVIRONMENT</div><h3>承载实际结果</h3><p>工作区里的文件、进程和外部服务。它们的状态不会随聊天摘要自动重置。</p></div>
+    </div>
+    <p>开源仓库让我们能追踪客户端的这些机制，但不能看到模型权重或远程压缩服务的内部算法。本页只解释固定源码快照，不把它推广成所有已发布版本和账户的实际配置。</p>
+    <details><summary>自测：模型说“测试已通过”，harness 就可以把任务标为成功吗？</summary><p>不能仅凭这句话。应检查工具是否执行、输出和退出状态是什么；模型陈述与环境结果是两份证据。</p></details>
+    <p class="source">源码与边界：<a href="../Codex_Harness_Research.html#scope">手册 §1 · 开源范围</a></p>
+  </section>
+
+  <section class="essay" id="step-2">
+    <div class="section-head"><span class="section-num">STEP 02</span><h2 class="section-title">一条请求为什么会跑很多轮</h2></div>
+    <p class="section-sub">一个用户回合，不等于一次模型采样</p>
+    <p>假设修复过程是：读测试 → 读实现 → 改代码 → 运行测试 → 看到新失败 → 继续修改。每次工具结果都可能改变下一步选择，<code>run_turn</code> 因而要反复采样，而不是发完一次 API 请求就结束。</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="执行循环图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    U[用户要求修复测试] --> S[Session 接收输入]
+    S --> C[StepContext 冻结本次能力与设置]
+    C --> P[组装模型请求]
+    P --> M[模型采样]
+    M -->|工具调用| T[执行并记录工具结果]
+    T --> B[检查待处理输入与窗口预算]
+    B --> C
+    M -->|无需续跑且无待处理输入| F[结束本轮]
+</code></pre></div>
+      <figcaption>教学简图。真实循环还有 hooks、中断、审批与压缩；文字输出本身不是唯一的结束条件。</figcaption>
+    </figure>
+    <p><code>StepContext</code> 是这一层的重要约束：本次模型看到的工具定义、实际使用的路由、环境、MCP 和 AGENTS.md 来自同一份请求快照。对 Java 开发者，它接近不可变的 request-scoped 对象。</p>
+    <details><summary>自测：请求发出后工具目录刷新，为什么不应直接替换这次请求的执行表？</summary><p>否则模型选择工具时看到的是旧定义，执行时却可能按新定义处理。请求快照把“这次看见什么”和“这次能执行什么”绑定起来。</p></details>
+    <p class="source">沿调用链阅读：<a href="../Codex_Harness_Research.html#architecture">手册 §2 · Session 与 StepContext</a></p>
+  </section>
+
+  <section class="essay" id="step-3">
+    <div class="section-head"><span class="section-num">STEP 03</span><h2 class="section-title">把 context 拆成三种状态</h2></div>
+    <p class="section-sub">正在看见、可以重建、已经保存</p>
+    <p>修复进行到第 80 次工具调用时，磁盘可能仍有旧日志，模型下一次却不一定能看到它们。要理解 compaction，先拆开三个容器：</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="三种状态对照表，可横向滚动"><table>
+      <thead><tr><th>状态</th><th>例子</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td>活跃模型历史</td><td>消息、工具调用、结果、reasoning、compaction item</td><td>组成下一次请求的历史视图</td></tr>
+        <tr><td>当前 canonical state</td><td>权限、AGENTS.md、环境、模式和能力</td><td>生成初始化上下文及后续差异</td></tr>
+        <tr><td>持久化记录</td><td>Rollout、replacement checkpoint、窗口标识</td><td>恢复会话与重建历史视图</td></tr>
+      </tbody>
+    </table></div>
+    <p><code>ContextManager</code> 保存有类型的 items 和元数据，而不是一大段字符串。这样才能识别真实用户输入、区分程序注入内容、维持工具的调用／结果配对。</p>
+    <p>减小上下文也从工具结果入历史时开始：先限制大输出，发送前再修复配对和处理不支持的模态。你看到的“压缩提示”只是整套 context 管理中的一个环节。</p>
+    <details><summary>自测：磁盘还保留完整对话，能否据此断言模型“没有忘记”？</summary><p>不能。持久化解决的是保存，模型窗口解决的是当前可见性。还需要明确的检索或重注入路径，才能把保存的内容带回当前请求。</p></details>
+    <p class="source">结构与整理规则：<a href="../Codex_Harness_Research.html#context">手册 §3 · ContextManager</a></p>
+  </section>
+
+  <section class="essay" id="step-4">
+    <div class="section-head"><span class="section-num">STEP 04</span><h2 class="section-title">基础指令究竟从哪里来</h2></div>
+    <p class="section-sub">固定文件、模型目录和会话继承共同决定来源</p>
+    <p>你在 GitHub 找到一个 <code>prompt.md</code>，还不能据此确定某个会话用的是什么。Session 启动时按下面顺序选择基础指令，命中前一项就不再回退：</p>
+    <ol class="layers">
+      <li class="layer highlight"><span>01</span>显式配置的基础指令，包括指令文件解析结果</li>
+      <li class="layer"><span>02</span>恢复／fork 历史保存的 <code>session_meta.base_instructions</code></li>
+      <li class="layer"><span>03</span>当前模型目录中的 <code>instructions_template</code></li>
+    </ol>
+    <p>模型目录既有编译打包的版本，也有远程元数据和磁盘缓存。<code>model_instructions_file</code> 替换基础来源；<code>developer_instructions</code> 则是另一条附加内容路径。</p>
+    <div class="call"><span class="tag">特殊之处 · wire 结构也会变</span>普通 Responses 使用顶层 <code>instructions</code> 和 <code>tools</code>。启用 <code>use_responses_lite</code> 的模型分支，会把基础指令作为 developer 消息、工具作为 <code>AdditionalTools</code> 放到 <code>input</code> 前面。</div>
+    <p>因此，日常说的“system prompt”至少要再问一句：说的是服务端 system、客户端基础指令，还是历史里的 developer／user 上下文？它们不是同一个字段。</p>
+    <details><summary>自测：更新客户端后恢复旧会话，一定会采用仓库最新默认 prompt 吗？</summary><p>不一定。没有显式覆盖时，保存的会话基础指令优先于当前模型模板。还要检查实际模型目录和会话继承状态。</p></details>
+    <p class="source">完整优先级与 Lite 分支：<a href="../Codex_Harness_Research.html#instructions">手册 §7 · 指令加载</a></p>
+  </section>
+
+  <section class="essay" id="step-5">
+    <div class="section-head"><span class="section-num">STEP 05</span><h2 class="section-title">让变化进入上下文</h2></div>
+    <p class="section-sub">第一次全量构造，之后比较状态</p>
+    <p>任务运行时，工作目录、规则或可用能力可能改变。Codex 用 <code>WorldState</code> 把这些内容分成可保存快照、可生成差异的 section。</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="WorldState 更新图，可横向滚动"><pre><code class="language-mermaid">flowchart LR
+    C[本次请求的当前状态] --> D{已有 reference baseline?}
+    D -->|没有| F[构造完整 initial context]
+    D -->|有| X[比较各个 section]
+    X --> A[追加变化片段]
+    F --> B[保存对应 baseline]
+    A --> B
+</code></pre></div>
+      <figcaption>AGENTS.md 被替换或移除时，更新消息会明确表达这个变化，避免只是叠加另一份规则。</figcaption>
+    </figure>
+    <p>项目 AGENTS.md 按 root → cwd 发现，同目录优先选 override，再选普通文件和配置的 fallback；项目内容有共享字节预算。它进入 <strong>user-role context</strong>，不会因为文件名而提升成 system 权限。</p>
+    <p>Skills 目录也不等于所有技能正文。目录主要告诉模型有哪些技能、描述与来源；正文随后按选择和加载规则读取。工具表还可以区分直接可见、Code Mode 和延迟发现，减少不必常驻的定义。</p>
+    <div class="call pit"><span class="tag">边界 · 状态更新不等于每次重新读盘</span>AGENTS 管理器有缓存与刷新条件。不能把 WorldState 的差异比较解释成“每次采样都重新读取所有 AGENTS.md 和 SKILL.md”。</div>
+    <details><summary>自测：为什么追加“当前权限变更”通常比修改历史开头更利于缓存？</summary><p>追加可能保持原有前缀不变；修改前面的消息会让匹配在修改位置中断。但工具表、模型等其他字段也可能改变，不能因此保证一定命中缓存。</p></details>
+    <p class="source">状态 section、发现与缓存：<a href="../Codex_Harness_Research.html#instructions">手册 §7.4–7.6</a></p>
+  </section>
+
+  <section class="essay" id="step-6">
+    <div class="section-head"><span class="section-num">STEP 06</span><h2 class="section-title">什么时候应该压缩</h2></div>
+    <p class="section-sub">先问计数口径，再问阈值</p>
+    <p>自动压缩的判断由程序执行。计数结合最近一次服务端用量，以及其后新加入的本地内容估计；本地估计并非精确 tokenizer。</p>
+    <p>普通 <code>Total</code> 口径下，自动阈值默认是当前解析窗口的 90%，显式设置只能在这条公式内进一步收紧；完整可用窗口还有独立上限。</p>
+    <pre><code>W = 当前解析的上下文窗口
+C = 显式自动压缩预算（若配置）
+p = effective_context_window_percent
+
+A = 未配置 C 时取 floor(0.90 × W)
+    否则取 min(C, floor(0.90 × W))
+H = floor(p × W / 100)</code></pre>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="源码测试算例，可横向滚动"><table>
+      <thead><tr><th>测试输入</th><th>自动阈值 A</th><th>可用上限 H</th></tr></thead>
+      <tbody><tr><td>W = 272,000<br>C = 250,000<br>p = 95</td><td><strong>244,800</strong></td><td><strong>258,400</strong></td></tr></tbody>
+    </table></div>
+    <p class="source">以上数字来自源码测试 fixture，用于解释公式，不是当前账户的模型规格。</p>
+    <p>还有 <code>BodyAfterPrefix</code> 口径，只把初始 prefix 之后的增长计入自动预算，同时继续检查完整窗口。相应配置还可能加入 fallback buffer，不能把所有路径压成一个固定百分比。</p>
+    <p>检查点包括新回合采样前、需要继续执行的采样／工具结果之后，以及某些模型切换场景。手动压缩则走独立的 CompactTask。</p>
+    <details><summary>自测：把配置预算设成 250k，上面的例子会等到 250k 才压缩吗？</summary><p>不会。普通 Total 口径取 min(250,000, 272,000 × 0.9)，结果为 244,800。真实触发还要结合续跑条件与相关 buffer 配置。</p></details>
+    <p class="source">公式、口径和调用点：<a href="../Codex_Harness_Research.html#budget">手册 §4 · 压缩触发</a></p>
+  </section>
+
+  <section class="essay" id="step-7">
+    <div class="section-head"><span class="section-num">STEP 07</span><h2 class="section-title">沿三条 compaction 路径往下走</h2></div>
+    <p class="section-sub">同一个生命周期名称，背后可能是不同机制</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="三条压缩路径图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    A[触发 compaction] --> B{TokenBudget 开启?}
+    B -->|是| R[跳过总结，开启新窗口]
+    B -->|否| C{Provider 支持 Remote V2?}
+    C -->|是| V[Responses 流追加 compaction_trigger]
+    V --> K[保留原始消息 + 不透明 compaction item]
+    C -->|否| L[普通模型生成交接总结]
+    L --> S[保留用户消息 + 文本摘要]
+</code></pre></div>
+      <figcaption>TokenBudget 与 context_management 在此快照的源码默认关闭，不能当成所有用户的默认路径。</figcaption>
+    </figure>
+    <h3>Remote V2：把压缩变成协议中的动作</h3>
+    <p>客户端整理历史、保留基础指令和工具表，追加 <code>{"type":"compaction_trigger"}</code>，通过普通 Responses 流发出。它要求接收恰好一个 compaction item，再安装新的历史。</p>
+    <div class="call"><span class="tag">版本差异 · 别照搬早期文章</span>此快照的 V2 集成测试检查 <code>/v1/responses</code>。早期资料里的独立 <code>/responses/compact</code> 是另一条描述，不能拿来替代当前调用链，也不能据此宣布公共 compact API 已取消。</div>
+    <h3>Local：客户端编排交接总结</h3>
+    <p>把进度、决策、约束、剩余步骤和关键引用总结出来，再与近期用户消息拼成新历史。“Local”描述的是客户端编排，模型本身仍可能运行在远程。</p>
+    <h3>TokenBudget：直接切换窗口</h3>
+    <p>它跳过自动总结，重建 initial context。公开仓库另有 history-notes extension 提供历史检索和笔记能力；启用需要看实际开关、模型、provider 与认证条件，不能把它与普通总结混用。</p>
+    <details><summary>自测：读完 Local 的公开总结模板，能否说明 Remote V2 使用同样的内部 prompt？</summary><p>不能。V2 交回不透明的 encrypted_content，公开客户端只展示控制项、传递和保留机制，不能揭示服务端内部摘要格式或算法。</p></details>
+    <p class="source">三条实际调用链：<a href="../Codex_Harness_Research.html#compaction">手册 §5 · Compaction</a></p>
+  </section>
+
+  <section class="essay" id="step-8">
+    <div class="section-head"><span class="section-num">STEP 08</span><h2 class="section-title">压缩后怎样接着干活</h2></div>
+    <p class="section-sub">原始保留、任务摘要、规则重建各司其职</p>
+    <p>假设第 80 次工具调用刚结束，模型还需要修测试。Remote V2 按候选筛选与共享 <strong>64k token</strong> 预算保留原始消息；Local 则按 <strong>20k 估算 token</strong> 预算保留用户文本，两者都偏向较新的内容。</p>
+    <p>这两个数字不是摘要大小，也不是窗口大小。V2 还有图片、agent 消息及客户端 developer 消息的不同规则，预算边界处可能截断消息。</p>
+    <figure>
+      <ol class="layers">
+        <li class="layer"><span>RETAIN</span>预算内较早的真实用户消息</li>
+        <li class="layer highlight"><span>REBUILD</span>当前权限、AGENTS.md、环境及其他 initial context</li>
+        <li class="layer"><span>RETAIN</span>最后一条保留的真实用户消息</li>
+        <li class="layer highlight"><span>CHECKPOINT</span>compaction item / 交接摘要，位于历史尾部</li>
+      </ol>
+      <figcaption>回合中总结型 compaction 的典型布局；基础 instructions 独立构造。没有真实用户消息时，插入点有对应回退。</figcaption>
+    </figure>
+    <p>关键是 <strong>REBUILD</strong>：当前规则从程序维护的 canonical state 重建。手动或回合前压缩会清除 reference baseline，下一次正常构造时再全量注入；回合中则立即插到最后一条真实用户消息之前。</p>
+    <p>之后保存 <code>replacement_history</code> 和窗口标识，恢复会话时重建这份模型视图。压缩完成不要求重启整个任务或重置真实工作区。</p>
+    <details><summary>自测：重新注入 AGENTS.md，是否意味着所有早期用户约束都不会丢？</summary><p>不意味着。AGENTS.md 有可靠状态源可重建；只出现在早期用户消息中的特殊要求仍受原文预算和摘要质量影响。需要以约束保留和实际行为评测。</p></details>
+    <p class="source">筛选细节与恢复布局：<a href="../Codex_Harness_Research.html#compaction">手册 §5</a>、<a href="../Codex_Harness_Research.html#recovery">§6</a></p>
+  </section>
+
+  <section class="essay" id="step-9">
+    <div class="section-head"><span class="section-num">STEP 09</span><h2 class="section-title">分清缓存、传输与记忆</h2></div>
+    <p class="section-sub">少算一点、少发一点、少放一点，分别需要证据</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="缓存与上下文机制对比，可横向滚动"><table>
+      <thead><tr><th>机制</th><th>主要减少什么</th><th>不能推出什么</th></tr></thead>
+      <tbody>
+        <tr><td>Prompt cache</td><td>重复前缀的模型计算</td><td>缓存命中不代表上下文不占窗口</td></tr>
+        <tr><td>WebSocket 增量</td><td>重复传输的 payload</td><td>网络只发增量不代表模型只看增量</td></tr>
+        <tr><td>Compaction</td><td>活跃窗口中的历史内容</td><td>变短不代表无损或下一轮必然命中缓存</td></tr>
+      </tbody>
+    </table></div>
+    <p>当前 WebSocket 路径已支持 <code>previous_response_id</code>：请求属性匹配、input 是此前请求加输出的扩展时，才可发送增量。早期“Codex 不使用 previous_response_id”的说法不适用于这份源码的全部路径。</p>
+    <p>Remote V2 追加 trigger 的请求结构可能保留原前缀；但压缩前的整理、工具变化、模型切换都会改变条件，压缩后安装的新历史通常也不再是旧历史的严格扩展。</p>
+    <div class="call pit"><span class="tag">推论边界</span>压缩比不是任务质量，缓存命中率也不是任务质量。应同时记录任务是否完成、约束是否保留、重复操作次数、token 与延迟。</div>
+    <details><summary>自测：网络日志显示第二次只发送了工具结果，模型是否已经看不见最初需求？</summary><p>不一定。满足增量条件时，服务端通过上一 response ID 延续已接受的输入。要看完整逻辑请求，不能只看本次传输的 delta。</p></details>
+    <p class="source">缓存条件和增量匹配：<a href="../Codex_Harness_Research.html#cache">手册 §8 · 三种机制</a></p>
+  </section>
+
+  <section class="essay" id="step-10">
+    <div class="section-head"><span class="section-num">STEP 10</span><h2 class="section-title">用一条调用链检验理解</h2></div>
+    <p class="section-sub">从“仓库里有这个函数”走到“这次会经过它”</p>
+    <p>读开源 harness 时，最容易犯的错是看到一个函数，就把它当成产品默认行为。用下面这个练习把入口、条件、数据和结果连起来。</p>
+    <div class="call"><span class="tag">练习场景 · 人为指定条件</span>TokenBudget 关闭，provider 声明 Remote V2；当前请求仍需续跑，窗口预算到限。你要解释下一次模型请求看见什么。这里是在分析假设路径，不是在描述当前账户的运行状态。</div>
+    <ol class="practice">
+      <li>从 <code>session/turn.rs</code> 找到预算检查与 <code>run_auto_compact</code>，确认路由条件。</li>
+      <li>到 <code>compact_remote_v2_attempt.rs</code>，找到压缩请求保留了哪些字段、追加了什么控制项。</li>
+      <li>到 <code>compact_remote_v2.rs</code>，检查输出数量、保留候选、64k 预算及顺序。</li>
+      <li>到 <code>compact.rs</code>，确认 <code>BeforeLastUserMessage</code> 的插入点。</li>
+      <li>到 <code>session/mod.rs</code>，追踪 replacement history、WorldState 基线与 token 重算。</li>
+      <li>最后读相关测试断言，检查请求路径和恢复视图；把“读过测试”和“运行通过”分别记录。</li>
+    </ol>
+    <details><summary>参考答案：哪四件事足以说明你追踪到了真正的执行路径？</summary><p>能指出入口条件；画出实际发出的请求；解释哪些原始 item 保留、哪些规则重建；说明 checkpoint 怎样安装和恢复。至于加密压缩项的内部语义和真实质量，仍需服务端资料或实测支持。</p></details>
+    <h3>做自己的 harness 时，从这些不变量开始</h3>
+    <p>保持调用与结果配对；让请求的工具表和执行器来自同一快照；把可恢复规则放在明确状态源中；为压缩请求本身留预算；用 replacement checkpoint 恢复模型视图。这些可以逐条验证，再讨论哪种摘要模型更好。</p>
+    <p class="source">深入阅读：<a href="../Codex_Harness_Research.html#evidence">源码顺序与验证边界</a> · <a href="../../agent-context-compression/learn/">上下文压缩的通用设计</a> · <a href="../../agent-evals/learn/">怎样验证 agent 真的更好</a></p>
+  </section>
+</main>
+<footer>
+  <div class="foot-inner">
+    <p>本页与参考手册采用同一官方源码提交 <code>944d6fd1ba4baab69dbedd205282dc72ec20abb5</code>。流程图是教学投影，常量与启用条件以手册链接的源码为准。内容区分源码行为、工程解释与练习假设，不报告真实模型压缩质量，也不把源码默认值当作线上部署状态。</p>
+    <p><a href="../Codex_Harness_Research.html">打开源码参考手册</a> · <a href="#main">回到十步路线</a> · <a href="../../">返回学习笔记</a></p>
+  </div>
+</footer>
+<script type="module" src="../../assets/js/util/mermaid-render.js"></script>
+</body>
+</html>
