@@ -14,6 +14,16 @@ description: "沿固定提交分析执行循环、指令与 Skills 加载、MCP 
 
 本文中的「当前」仅指这份源码快照，不代表所有已发布客户端、账户或服务端部署。**【来源事实】**说明代码实际做什么；**【综合解释】**说明这些机制解决什么问题。未调用真实模型测试压缩质量，也未构建或运行整个 Rust 测试套件。
 
+先想象你在筹办一场朋友聚餐：模型是提出下一步的筹划员，harness 是调度动作、拿回结果的管家。学习页用十二幅生活场景建立直觉，本手册提供对应的源码边界。类比不代表模型像人一样拥有长期记忆。
+
+| 先看哪幅生活图 | 再读什么源码机制 |
+|---|---|
+| [🧑‍🍳 筹划 → 执行 → 拿回结果](learn/#step-2) | §2 执行循环、Session 与 StepContext |
+| [📋 约定从哪里来](learn/#step-4) / [📚 查菜谱](learn/#skills-step) / [☎️ 联系店铺](learn/#mcp-step) | §7 基础指令、Skills、MCP 与工具加载 |
+| [🗂️ 桌面、规则册与档案柜](learn/#step-3) / [❓ 换掉旧菜单](learn/#step-5) | §3 类型化历史、§7.5 WorldState 三态 |
+| [⚠️ 拖动用量，看何时整理](learn/#step-6) / [📝 切换三种整理结果](learn/#step-7) | §4 预算、§5 压缩路径、§6 恢复 |
+| [🧮 少算、少传、少放](learn/#step-9) / [✅ 检查后再请客人入座](learn/#step-10) | §8 缓存边界、§10 验证证据 |
+
 <a id="scope"></a>
 
 ## 1. 先回答：究竟开源了什么？
@@ -168,6 +178,33 @@ flowchart TD
 <a id="compaction"></a>
 
 ## 5. Compaction 实际有三条路径
+
+<a id="compaction-session-model"></a>
+
+### 先看一幅图：整理材料时，谁继续负责这场聚餐？
+
+```mermaid
+flowchart TD
+    A[同一个用户 Session：筹办这场聚餐] --> B[模型 A 根据当前材料做任务]
+    B --> C[发起一次专门的压缩请求]
+    C --> D[安装缩短后的活跃历史]
+    D --> E[通常仍由模型 A 继续原任务]
+    C -.切换模型的特定条件.-> F[先由旧模型 A 压缩，再交给 B]
+```
+
+这幅图适用于总结型 compaction；TokenBudget 重置跳过模型总结。用户的任务 Session 与请求层的 ModelClientSession 是两种对象：新建后者，不等于新开一个用户任务或换模型。
+
+| 路径 | 请求层 session | 请求指定哪个模型 | 结果去哪里 |
+|---|---|---|---|
+| Remote V2 | 回合内可复用传入的 client session；独立调用可新建 | 本次 `turn_context.model_info()` | 原用户 Session 的 replacement history |
+| Local 总结 | 新建 ModelClientSession，并在压缩重试间复用 | 本次 `turn_context.model_info()` | 原用户 Session 的摘要与保留历史 |
+| TokenBudget | 不发模型总结请求 | 不适用 | 原任务开始新的上下文窗口 |
+
+V2 的构造读取原会话历史与基础指令、追加 trigger，调用传入当前模型元数据。Local 读取历史并追加总结要求，也使用传入的模型元数据。**客户端没有在这两条普通路径中默认另选一个摘要小模型；Remote V2 服务端内部是否另有模型参与，公开客户端不能证明。**[V2 请求与 client session](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/compact_remote_v2_attempt.rs#L31)、[V2 模型参数](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/compact_remote_v2.rs#L379)、[Local client session](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/compact.rs#L246)、[Local 模型参数](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/compact.rs#L764)
+
+切换 A → B 时，若已知 compaction 兼容 hash 改变，或 B 窗口更小且历史达到相应压力条件，可先用旧模型 A 压缩。特定认证、provider 与错误条件下，旧模型压缩失败可回退到当前 B 重试。它是切换模型的处理分支，不是每次 compaction 都另开一个模型。[切换与 fallback 条件](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/session/turn.rs#L1296)
+
+### 再看路由：程序怎样选择三条路径
 
 ```mermaid
 flowchart TD
