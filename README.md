@@ -19,7 +19,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 ### 4. Agent Engineering
 
 * 🎓 [Codex Harness 分析：从请求到执行与恢复](https://caiboyang.github.io/ML-learning/codex-harness/learn/)
-  * *面向已经理解 harness 的读者，用十二条源码链路图解 Codex 的 Session / StepContext、请求装配、Skills / MCP 加载与历史恢复。实现图与数据变化是主线，生活类比作辅助；拖动 token 用量核对阈值，切换三条 compaction 路径观察 replacement history。*
+  * *面向已经理解 harness 的读者，按“整体地图 → 请求解剖 → 输入加载 → 执行变化 → 压缩恢复 → 横向评价”六章推进。交互剖面标出 instructions / tools、input history 与程序状态的位置；逐项查看 role、内容类别、来源，并切换执行阶段与 Responses / Lite 前缀。最后比较 OpenHands SDK、LangChain agent 的责任分配，讨论 Codex 的设计收益与代价。*
   * *源码推演与“满 100 免运费”的订单测试案例按需展开，保留四份 transcript 快照、三态分析和自测。与下面的源码手册配套：**图解展示 Codex 的实现，手册核对调用链、常量与证据边界**；类比和示例输出均明确标为教学构造。*
 
 * 📚 [Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理](https://caiboyang.github.io/ML-learning/codex-harness/Codex_Harness_Research.html)（[Markdown 原文](codex-harness/Codex_Harness_Research.md)）
