@@ -16,6 +16,17 @@ description: "沿固定提交分析执行循环、指令与 Skills 加载、MCP 
 
 **阅读前提：已理解 agent harness、模型采样与工具调用。** 本文直接分析 Codex 的客户端实现：对象边界、请求装配、能力加载、历史重写与恢复。配套学习页以源码结构图为主，生活类比仅辅助说明机制。
 
+本手册按源码主题编号，学习页按六章教学顺序推进：**整体地图 → 请求解剖 → 输入加载 → 执行变化 → 压缩恢复 → 横向评价**。先定位整个系统，再观察一份具体输入，随后追踪它的来源和变化；学习页的章末过渡把各部分接成同一条线。
+
+| 学习章节 | 读完应能回答 | 对应手册 |
+|---|---|---|
+| 1. 整体地图 | 请求流与状态流分别经过哪些对象？ | §1–2 |
+| 2. 请求解剖 | instructions、tools、history 和程序状态在哪里？ | §3 与下方输入剖面 |
+| 3. 指令与能力加载 | 谁把输入各部分填进去，按什么条件？ | §7 |
+| 4. 运行中的变化 | 工具结果、用户输入和规则更新怎样进入历史？ | §2、§3、§7.5 |
+| 5. 压缩与恢复 | 何时重写，什么保留，什么重建，怎样续接？ | §4–6 |
+| 6. 比较与评价 | 相比其他组织方式，Codex 获得什么、付出什么？ | §8–10 |
+
 | 图解入口 | 对应源码分析 |
 |---|---|
 | [Codex 模块关系](learn/#step-1) / [run_turn 的采样边界](learn/#step-2) | §2 Session、StepContext、ModelClient 与 ToolRouter |
@@ -86,6 +97,48 @@ flowchart TD
 ```
 
 两者有交集，但不能互相替代。磁盘上留有历史，并不意味着模型每次都能看见那些历史；模型读到一段权限说明，也不等于权限由这段文字执行。
+
+<a id="input-anatomy"></a>
+
+### 先解剖一次输入：位置、类型、来源不是同一维度
+
+[交互剖面图](learn/#context-map) 可以切换初始请求、工具返回、规则更新、Local/V2 压缩后及 TokenBudget 新窗口，并逐项查看身份。可见位置如下：
+
+```text
+客户端程序状态（不自动发送）      普通 Responses 请求
+配置 / 模型目录 ─────────────→ instructions
+工具 registry / MCP binding ─→ tools
+WorldState / extensions ──────→ input 中的规则与环境片段
+ContextManager 历史 ──────────→ input 中有顺序的 items
+Rollout / checkpoint ──恢复──→ 当前历史；不作为整个档案库直接发送
+```
+
+| 对象 | 普通请求中的位置 | role / 类型 | 来源及含义 |
+|---|---|---|---|
+| 基础指令 | 顶层 instructions | 不带 message.role | 配置、继承或模型模板；独立于活跃历史装配 |
+| 工具定义 | 顶层 tools | schema，不是 tool result | 本次 model_visible_specs，不一定包含全部已注册工具 |
+| AGENTS 规则 | input 的上下文消息 | user；agents_md.instructions | 程序从项目规则构造，不是真实用户本轮输入 |
+| Skills 目录 | input 的扩展片段 | developer；skills.catalog | 此 Skills extension 的目录贡献 |
+| 选中 Skill 正文 | input 的注入片段 | user；skills.selected_skill_instructions | 运行时读取并注入；不因 role=user 就成为真实用户请求 |
+| U1 / U2 | input 历史项 | user；user.text | 本例真实用户要求 |
+| 调用／结果 | input 历史项 | function_call / function_call_output | 独立 typed items，以 call_id 配对，不强行套 message.role |
+| Local 摘要 | replacement history 尾部 | user；compaction.summary | 模型摘要经客户端包装；不是新的 system policy |
+| V2 压缩项 | replacement history 尾部 | compaction，无普通 message.role | encrypted_content 对客户端不透明 |
+
+同一个 user role 可以承载用户要求、AGENTS 规则、Skill 正文和 Local 摘要；**角色说明指令层级，类别与来源帮助程序判断它是什么、怎样保留或重建。** 图中的 I0/I1 只是把多个初始片段折叠成一个视觉分组，并不是 protocol item。
+
+Responses Lite 的顺序尤其不能画反：input 先插入 `AdditionalTools`（自带 developer role），再插入非空基础指令的 developer fragment，之后才是原 input。顶层 instructions 变空，tools 省略；这些前缀由每次请求重建，不代表追加进了持久历史。[请求转换](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/client.rs#L804)、[Skills 角色与类别](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/ext/skills/src/fragments.rs#L39)、[Local 摘要角色](https://github.com/openai/codex/blob/944d6fd1ba4baab69dbedd205282dc72ec20abb5/codex-rs/core/src/context/compaction_summary.rs#L17)
+
+回合中压缩的简化变化：
+
+```text
+之前：I0(R0) → U1 → c2 / FAIL → ΔR(R1) → U2 → c3 / 修改成功
+Local：U1 → I1(R1) → U2 → S（文本摘要）
+V2：   U1 → I1(R1) → U2 → Compaction（不透明）
+Reset：I1（当前规则与可用窗口提示；不自动带 U1/U2 或摘要）
+```
+
+假设 U1/U2 均在原文保留预算内，省略其他候选和模态；不是任意实际请求都长这样。普通更新追加 ΔR；compaction 则安装 replacement history，并按时机重建规则。不能用静态“system/user/assistant”三层图解释这两种不同变化。
 
 ### 3.1 活跃历史是有类型的数据
 
@@ -636,6 +689,38 @@ Remote V2 总结请求保留原 instructions 与工具表，并在历史尾部�
 6. **把缓存收益作为条件，不作为口号。** 输出更短与下一轮更便宜不是同一命题。
 7. **区分原始保留与摘要覆盖。** 原文预算可保护近期请求，但无法证明摘要完整保留所有早期约束。
 8. **实验能力必须跟调用路径和开关一起看。** 仓库里出现 history 工具或 reset 实现，不能据此判断任意线上会话正在使用它。
+
+<a id="harness-relations"></a>
+
+### 9.1 与其他 harness 的关系：共同问题，不同责任分配
+
+以下对照使用本次读取的官方架构文档；Codex 仍以本文固定提交为准。只比较接口与数据流，不推断线上默认配置或任务效果。
+
+| 问题 | Codex | OpenHands SDK | LangChain agent / LangGraph |
+|---|---|---|---|
+| 核心上下文表示 | 类型化活跃历史与程序状态基线 | 追加式事件流与 LLM View | Agent messages state 与 checkpointer |
+| 压缩如何生效 | 构造并安装 replacement history | 追加 Condensation，下一步生成过滤旧事件并插入摘要的 View | 配置 SummarizationMiddleware 更新消息状态 |
+| 模型选择的责任 | 普通路径使用本次 model_info；切换时有旧模型分支 | LLMSummarizingCondenser 有自己的 LLM 配置 | 总结 middleware 可以独立指定 model、trigger 和 keep |
+| 类型与来源 | role、content_kind、Envelope metadata 分开 | Event.source 与 LLM role 分开 | 消息状态、运行上下文和存储有不同用途 |
+
+OpenHands 官方文档描述了 Condensation 的 forgotten_event_ids、summary 与 summary_offset，以及下一步的 View.from_events；事件本身保留在追加日志中。它说明“持久事件”和“本次模型视图”同样可以分开，但压缩的审计入口与 Codex replacement checkpoint 不同。[Condenser](https://docs.openhands.dev/sdk/arch/condenser)、[事件与角色](https://docs.openhands.dev/sdk/arch/events)
+
+LangChain 官方示例为 agent 配置 checkpointer，并单独安装 SummarizationMiddleware，可指定不同于主任务模型的摘要模型及保留量。这里讨论的是 LangChain agent 层提供的策略，不能扩大为“所有 LangGraph graph 都默认自动摘要”。[短期记忆与总结中间件](https://docs.langchain.com/oss/python/langchain/short-term-memory#summarize-messages)
+
+### 9.2 Codex 的设计巧妙在哪里，又付出什么代价？
+
+以下是由已述源码行为得出的设计分析，不是性能排名。
+
+| 设计 | 解决的具体问题 | 收益 | 代价／仍未解决的事 |
+|---|---|---|---|
+| content_kind 与 role 分离 | user 既可能是真用户，也可能是注入内容 | 可按语义类别保留／重建，而非一刀切 | 元数据、marker 和旧历史兼容更复杂；此原则并非 Codex 独有 |
+| WorldState + 三态 + canonical 重建 | 旧规则还在历史里，精确 snapshot 可能缺失 | 能明确替换／撤销，并减少摘要承担的规则保真责任 | 依赖状态源与缓存刷新，不能保证原工具证据可恢复 |
+| Custom / Model provenance | 切换模型时默认文本可能冒充用户覆盖 | 保留自定义指令，又让模型默认模板可更新 | 旧会话缺来源时无法完美还原意图 |
+| catalog / body / schema / call 分阶段 | 大量能力定义挤占每次请求 | 按需增加模型可见内容 | 增加检索、读取和绑定步骤，各层均可能失败 |
+| replacement checkpoint 与请求产物校验 | 压缩完成后需稳定续接与恢复 | 可审计“安装了什么模型视图” | V2 内容不透明，格式正确不证明摘要语义完整 |
+| StepContext 与 PreparedMcpCall 分开 | 采样与执行之间目录和连接可能变化 | 分别维持采样计划及实际调用的一致性 | 不能承诺模型看过的旧工具定义一定仍能成功执行 |
+
+阅读方法是反向验证：先提出故障场景，再看该结构如何避免故障，最后指出它没有解决什么。要证明比其他 harness 更好，还需要同任务、同模型与可比预算的约束保留率、完成率、延迟和 token 成本评测。
 
 <a id="evidence"></a>
 
