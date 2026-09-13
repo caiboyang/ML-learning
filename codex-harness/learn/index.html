@@ -285,13 +285,13 @@ layout: null
     <p>不能。持久化解决的是保存，模型窗口解决的是当前可见性。还需要明确的检索或重注入路径，才能把保存的内容带回当前请求。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
     <div class="deep-content">
-    <p>恢复分析需要区分三种存储与可见性：原始记录在磁盘，不等于它在本次 input 中；程序持有当前规则，也不等于模型已经收到更新。</p>
+    <p>工具调用越多，历史里的日志就越长。排查上下文问题时，先问三件事：本次请求会带什么，程序还掌握什么，磁盘实际存下了什么。它们决定下一步该压缩历史、重新注入规则，还是读取归档。</p>
     <div class="tbl-wrap" tabindex="0" role="region" aria-label="三种状态对照表，可横向滚动"><table>
-      <thead><tr><th>状态</th><th>例子</th><th>作用</th></tr></thead>
+      <thead><tr><th>状态</th><th>包含什么</th><th>何时使用／怎样变化</th></tr></thead>
       <tbody>
-        <tr><td><strong>模型历史视图</strong><br>活跃模型历史</td><td>消息、工具调用、结果、reasoning、compaction item</td><td>组成下一次请求的历史视图</td></tr>
-        <tr><td><strong>当前状态源</strong><br>当前 canonical state</td><td>权限、AGENTS.md、环境、模式和能力</td><td>把当前规则与环境复制进请求；变化时通知模型</td></tr>
-        <tr><td><strong>持久化记录</strong><br>恢复与归档</td><td>Rollout、replacement checkpoint、窗口标识</td><td>用于会话恢复；模型回捞另需可用接口</td></tr>
+        <tr><td><strong>模型历史视图</strong><br>活跃模型历史</td><td>消息、工具调用、结果、reasoning、compaction item</td><td>每次请求按模型能力与预算整理；压缩可替换其中的历史项</td></tr>
+        <tr><td><strong>当前状态源</strong><br>当前 canonical state</td><td>权限、AGENTS.md、环境、模式和能力</td><td>程序维护比较基准，渲染成模型可见片段；刷新仍受管理器缓存条件约束</td></tr>
+        <tr><td><strong>持久化记录</strong><br>恢复与归档</td><td>Rollout、replacement checkpoint、窗口标识</td><td>恢复时读取实际保存的记录；不保证全部原始输出落盘，模型检索另需可用接口</td></tr>
       </tbody>
     </table></div>
     <p>重写活跃历史、更新 canonical state、读取归档是三个动作。状态必须经渲染进入请求才对模型可见；归档只包含实际保存下来的内容。<code>ContextManager</code> 给历史项保留类型和元数据，才能识别真实用户输入、区分程序注入内容、维持工具的调用／结果配对。</p>
@@ -323,9 +323,14 @@ layout: null
     </ol>
     <p>模型目录既有编译打包的版本，也有远程元数据和磁盘缓存。<code>model_instructions_file</code> 替换基础来源；<code>developer_instructions</code> 则是另一条附加内容路径。</p>
     <p><code>ModelMessages</code> 还把工具描述、审批话术、模式消息和预算提示放在模型元数据里，让能力与行为文本可以配套更新。缺失字段有各自的内建 fallback；不能把它理解为“提示词只在服务器”。</p>
-    <h4>同一任务换模型时，哪段指令可以变？</h4>
-    <p>切换模型时，用户覆盖应继续保留，旧模型的默认指令则应允许更新。只保存最终文本不足以表达这种生命周期差别；Codex 另存来源，并为缺少来源的旧历史提供兼容推断。</p>
-    <p>假设任务从模型 A 切到 B：标为 <code>Model { A }</code> 的继承文本不应成为 B 的用户 override；标为 <code>Custom</code> 的用户指令则应保留。系统保存 <strong>provenance（来源）</strong> 来区分二者，并可通过模型切换 developer 片段提供当前指令。持久化基础文本、请求副本与追加的切换消息要分开看。</p>
+    <h4>同一任务从模型 A 切到 B，哪些指令该留，哪些该换？</h4>
+    <p>假设任务中途换模型。难点不在复制字符串，而在判断这段文本是用户选的，还是模型 A 自带的默认值。</p>
+    <ul>
+      <li><strong>Custom：</strong>用户显式指定的基础指令，切换后仍作为用户配置保留。</li>
+      <li><strong>Model { A }：</strong>A 的默认指令，不应挡住 B 使用自己的模板；构造配置时过滤这项旧模型覆盖。</li>
+      <li><strong>来源未知：</strong>旧历史无法可靠判断来源时，不能擅自把文本当成可替换的默认值。</li>
+    </ul>
+    <p><strong>provenance（来源元数据）</strong> 就是为这个判断保存依据。新指令还可通过模型切换 developer 消息进入历史；这不等于把磁盘里的 SessionMeta 基础文本直接改写成 B 的模板。</p>
     <div class="call"><span class="tag">特殊之处 · wire 结构也会变</span>普通 Responses 使用顶层 <code>instructions</code> 和 <code>tools</code>。启用 <code>use_responses_lite</code> 的模型分支，会把基础指令作为 developer 消息、工具作为 <code>AdditionalTools</code> 放到 <code>input</code> 前面。</div>
     <p>因此，日常说的“system prompt”至少要再问一句：说的是服务端 system、客户端基础指令，还是历史里的 developer／user 上下文？它们不是同一个字段。</p>
 
@@ -443,7 +448,7 @@ layout: null
     <p>不保证。它固定采样使用的计划；MCP 执行前仍检查刷新并准备本次调用。模型看到过定义和实际成功执行，是两个需要分别核对的事实。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
     <div class="deep-content">
-    <p>在本例中，<code>run_turn</code> 把失败的工具结果写入历史，下一次采样取得更新后的输入。<code>run_turn</code> 在一个用户回合内反复请求模型、执行工具，直到无需续跑且没有待处理输入；这些步骤不是多次独立的用户回合。</p>
+    <p>本例先读代码，再运行测试，看到 FAIL 后才决定怎样改。<code>run_turn</code> 把每次工具结果写入历史，再请求模型决定下一步；只要还需续跑或有待处理输入，就继续循环。这些采样与工具执行都可以发生在同一个用户回合内。</p>
     <figure>
       <div class="diagram" tabindex="0" role="region" aria-label="执行循环图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
     U[用户要求修复测试] --> S[Session 接收输入]
@@ -457,7 +462,7 @@ layout: null
 </code></pre></div>
       <figcaption>教学简图。真实循环还有 hooks、中断、审批与压缩；文字输出本身不是唯一的结束条件。</figcaption>
     </figure>
-    <p>每次派发前，harness 会准备一张“本次工作单”，写明可用工具、环境与规则，这就是 <code>StepContext</code>。它为采样时的工具定义、环境和规则提供一致视图。MCP 调用还有执行前刷新与绑定：请求时看到的目录，不保证外部服务到执行时仍完全相同；MCP 加载一节展开这个边界。对 Java 开发者，它接近不可变的 request-scoped 对象；这不意味着外部文件和进程也被冻结。</p>
+    <p>为什么每次采样都要准备 <code>StepContext</code>？如果装配同一次请求时分别读取正在变化的配置，工具定义、环境和规则可能来自不同版本。快照让这次采样使用同一份计划。它没有锁住外部服务：MCP 执行前仍需刷新并取得 <code>PreparedMcpCall</code>，所以“采样计划一致”和“执行时绑定哪个连接”是两个边界。</p>
     <h4>快照 A：测试失败怎样进入下一次请求</h4>
     <pre><code>当前初始上下文 I0：权限、环境、R0「JUnit 5」
 U1：满 100 免运费，保持 public API
@@ -510,8 +515,8 @@ output c2：amount=100，expected=0，actual=5，FAIL
 已知旧快照且与 R1 相同：Known → 不重复发
 无旧快照，但历史里能识别旧 AGENTS：Unknown → 替换声明 + R1
 无旧快照也无旧片段依据：Absent → 发 R1，不加替换声明</code></pre>
-    <p>把 R1 看成新版规则页：<strong>Known</strong> 是知道桌上旧页写了什么，可以比较是否有变化；<strong>Unknown</strong> 是认得桌上有旧规则页，却没有可用的精确快照，发新版时必须说明它取代该旧版；<strong>Absent</strong> 是当前保留材料中没有旧页依据，直接放入新版即可，不代表整段会话从未出现过规则。</p>
-    <p>Unknown 与 Absent 都没有精确旧值，处理方式却不同，所以不能合成一个 <code>Optional.empty()</code>。当前规则为空时，Unknown 还需要发撤销通知。这里撤销的是对应的 AGENTS 旧内容，不是把其他来源的所有指令一起废除。</p>
+    <p><strong>Known</strong> 有精确旧值，可以比较变化；<strong>Unknown</strong> 只能识别历史里有旧规则，发 R1 时需要声明替换；<strong>Absent</strong> 是没有可用的旧状态或旧片段依据，发 R1 时不附替换声明。Absent 不等于整段会话从未出现过规则。</p>
+    <p>为什么不能只用 <code>Option</code> 区分“有／无旧快照”？设当前规则已清空：Unknown 仍有旧规则残留的可能，需要发撤销通知；Absent 没有这项依据，可以不发。Known 若明确记录了旧规则，也需要撤销。撤销的是对应的 AGENTS 内容，不是其他来源的全部指令。</p>
     <p>写入 rollout 的是另一份数据：第一次 full snapshot，后续 JSON Merge Patch。比如 <code>{"tools":{"db":null}}</code> 表示从工具目录删除 db；它不是发给模型的自然语言通知，也不删除任何数据库数据。</p>
 
 
@@ -536,7 +541,7 @@ output c2：amount=100，expected=0，actual=5，FAIL
     <p>不会。普通 Total 口径取 min(250,000, 272,000 × 0.9)，结果为 244,800。真实触发还要结合续跑条件与相关 buffer 配置。</p></details>
     <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
     <div class="deep-content">
-    <p>压缩请求也占用模型窗口：历史与总结指令必须一起放得下，所以系统需要在触及完整窗口上限前安排整理。超窗后有些路径会裁掉部分输入再重试，但可能损失信息。</p>
+    <p>为什么不等到满窗才开始整理？总结型压缩还要构造一次模型请求，历史与总结指令也必须放得下。提前触发能为这一步留下余量，但源码中的 90% 不是“所有路径恰好需要 10%”的证明，也不保证请求一定成功。超窗后部分路径会整理输入或重试；TokenBudget 则不自动调用模型总结。</p>
     <p>自动压缩的判断由程序执行。计数结合最近一次服务端用量，以及其后新加入的本地内容估计；本地估计并非精确 tokenizer。</p>
     <p>普通 <code>Total</code> 口径下，自动阈值默认是当前解析窗口的 90%，显式设置只能在这条公式内进一步收紧；完整可用窗口还有独立上限。</p>
     <pre><code>W = 当前解析的上下文窗口
@@ -597,13 +602,13 @@ H = floor(p × W / 100)</code></pre>
       <figcaption>TokenBudget 与 context_management 在此快照的源码默认关闭，不能当成所有用户的默认路径。</figcaption>
     </figure>
     <h4>Remote V2：把压缩变成协议中的动作</h4>
-    <p>可以把它看作服务端交回的一份不透明压缩项。客户端能保存和传递这个包，但打不开其中的语义内容；不能因为包还在，就断言每条细节都被保留。</p>
+    <p>服务端返回不透明的 compaction item，客户端负责校验、保存并放入后续请求。取舍是客户端无需实现其内部压缩算法，但也无法直接检查其中保留了哪些事实。</p>
     <p>客户端整理历史、保留基础指令和工具表，追加 <code>{"type":"compaction_trigger"}</code>，通过普通 Responses 流发出。它要求接收恰好一个 compaction item，再安装新的历史。</p>
     <div class="call"><span class="tag">版本差异 · 别照搬早期文章</span>此快照的 V2 集成测试检查 <code>/v1/responses</code>。早期资料里的独立 <code>/responses/compact</code> 是另一条描述，不能拿来替代当前调用链，也不能据此宣布公共 compact API 已取消。</div>
     <h4>Local：客户端编排交接总结</h4>
-    <p>这条路径会生成可读摘要：进度、决策、约束、剩余步骤和关键引用，再与近期用户消息拼成新历史。“Local”描述的是客户端编排，模型本身仍可能运行在远程。</p>
+    <p>客户端用总结指令请求可读摘要，再与预算内保留的用户消息拼成新历史。摘要可以直接检查，但仍可能遗漏信息。“Local”指客户端编排，模型仍可能在远程运行；它也不只是“不支持 V2”这一种条件的结果，具体入口见上方路由图和手册。</p>
     <h4>TokenBudget：直接切换窗口</h4>
-    <p>这条路径重置历史并重新注入当前上下文，不自动生成旧任务摘要。此前写入的 notes 和按地址检索的 history 还取决于 extension、模型、provider 与认证条件；重置本身不代写笔记，也不保证检索可用。</p>
+    <p>直接重置历史并重新注入当前上下文，省去自动模型总结这一步，但任务进度不会因此自动保存。notes 可以提供先前写下的续接线索，history 可以在可用时取回记录；能力仍取决于 extension、模型、provider 与认证。新窗口有当前上下文，不是空白输入，也不保证存在笔记或可检索的旧证据。</p>
     <div class="call"><span class="tag">实验分支 · 提醒之后有事可做</span>若已启用并使用那组模型默认配置，余量不大于 6,144 时可提醒写 notes；模型随后请求 new_context，新窗口再读 notes / history。16,384 是有条件的 fallback buffer，完整窗口硬限仍可先到。Rust feature 默认关闭与模型默认激活关闭是两项判断；后者不是禁止用户显式开启。</div>
 
 
@@ -633,7 +638,7 @@ H = floor(p × W / 100)</code></pre>
       </ol>
       <figcaption>回合中总结型 compaction 的典型布局；基础 instructions 独立构造。没有真实用户消息时，插入点有对应回退。</figcaption>
     </figure>
-    <p>任务摘要写“比较符已改，边界测试待跑”；当前 AGENTS 规则要求“使用 JUnit 5，只跑运费模块”。如果把规则也只交给摘要转述，漏掉一句就可能改变后续做法。因此 <strong>REBUILD</strong> 会从程序维护的当前状态重新生成规则与环境内容，任务进度则交给摘要或检查点。重新生成减少了对摘要保留规则的依赖，并不保证模型必然遵守。</p>
+    <p><strong>REBUILD 为什么有用？</strong> AGENTS 中“使用 JUnit 5，只跑运费模块”有程序维护的状态源，可以直接重建，不必让摘要再转述一遍。但 U1 的“满 100 免运费”是用户业务要求，不会自动变成 WorldState 规则；它仍要靠保留的用户原文、摘要或其他可靠记录续接。重建减少的是对摘要恢复当前配置的依赖，不保证所有约束都能无损恢复。</p>
     <p>手动或回合前压缩会清除 reference baseline，下一次正常构造时再全量注入；回合中则立即插到最后一条真实用户消息之前。程序使用的是当前掌握的状态，仍受前面提到的 AGENTS 缓存刷新条件约束。</p>
     <p>之后保存 <code>replacement_history</code> 和窗口标识，恢复会话时重建这份模型视图。压缩完成不要求重启整个任务或重置真实工作区。</p>
     <h4>快照 C：同一个任务，三种 replacement</h4>
@@ -701,11 +706,11 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
     <div class="deep-content">
     <p>同一请求可以同时使用增量传输、前缀缓存和压缩历史。三者的计量单位分别是传输字节、复用计算和活跃上下文 token，必须分开观测。</p>
     <div class="tbl-wrap" tabindex="0" role="region" aria-label="缓存与上下文机制对比，可横向滚动"><table>
-      <thead><tr><th>机制</th><th>主要减少什么</th><th>不能推出什么</th></tr></thead>
+      <thead><tr><th>机制</th><th>作用层</th><th>主要减少什么</th><th>不能推出什么</th></tr></thead>
       <tbody>
-        <tr><td>Prompt cache</td><td>重复前缀的模型计算</td><td>缓存命中不代表上下文不占窗口</td></tr>
-        <tr><td>WebSocket 增量</td><td>重复传输的 payload</td><td>网络只发增量不代表模型只看增量</td></tr>
-        <tr><td>Compaction</td><td>活跃窗口中的历史内容</td><td>变短不代表无损或下一轮必然命中缓存</td></tr>
+        <tr><td>Prompt cache</td><td>服务端计算复用</td><td>重复前缀的计算；实际收益看命中与服务端策略</td><td>复用计算不等于删除输入，不能据此认为窗口已腾空</td></tr>
+        <tr><td>WebSocket 增量</td><td>网络传输</td><td>满足条件时不再发送已接受的历史前缀</td><td>少传不等于少看：服务端延续此前上下文，不能只按本次 delta 计算可见输入</td></tr>
+        <tr><td>Compaction</td><td>活跃上下文</td><td>重写或重置历史，减少后续输入负担</td><td>变短不代表无损或必然命中缓存；截断、筛选也能减少输入，不只有压缩</td></tr>
       </tbody>
     </table></div>
     <p>当前 WebSocket 路径已支持 <code>previous_response_id</code>：请求属性匹配、input 是此前请求加输出的扩展时，才可发送增量。早期“Codex 不使用 previous_response_id”的说法不适用于这份源码的全部路径。</p>
@@ -751,8 +756,15 @@ I1(R1，当前/前一窗口 ID，可用的窗口提示)
       <li>最后读相关测试断言，检查请求路径和恢复视图；把“读过测试”和“运行通过”分别记录。</li>
     </ol>
 
-    <h4>把 Codex 的状态边界串起来</h4>
-    <p>ContextManager 维护调用配对与活跃历史；StepContext 固定采样计划；MCP handler 准备执行绑定；Skills extension 分阶段贡献指令；WorldState 重建当前规则；replacement checkpoint 保存压缩后的模型视图。沿这些对象检查同一条 trace，才能解释 Codex 在哪里保留、加载或替换了信息。</p>
+    <h4>把实现转成五项工程检查</h4>
+    <ol class="practice">
+      <li><strong>调用与结果：</strong>检查 call_id 配对、缺失结果处理，确保发出的历史符合协议。</li>
+      <li><strong>采样与执行：</strong>用一致快照装配请求，再检查执行时的真实绑定；两者不能混作永久冻结。</li>
+      <li><strong>规则与任务要求：</strong>重建程序维护的当前规则，另行确认用户业务约束怎样保留。</li>
+      <li><strong>预算与恢复：</strong>验证自动阈值、完整窗口上限及失败处理，不把 10% 当成通用保证。</li>
+      <li><strong>完成证据：</strong>本例边界测试尚未跑，应执行并核对结果；压缩成功或摘要写“已修改”都不能代替验证。</li>
+    </ol>
+    <p>这些检查帮助定位 harness 的工程问题；任务效果仍取决于模型、工具、上下文和验证方式，不能只归因于其中一项。</p>
 
   </div></details>
     <p class="source">深入阅读：<a href="../Codex_Harness_Research.html#evidence">源码顺序与验证边界</a> · <a href="../../agent-context-compression/learn/">上下文压缩的通用设计</a> · <a href="../../agent-evals/learn/">怎样验证 agent 真的更好</a></p>
