@@ -1,0 +1,800 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="面向已理解 harness 的读者，图解 Codex 的对象关系、请求装配、Skills / MCP 加载，以及 context、compaction 与恢复的源码实现。">
+  <title>Codex Harness 分析：从请求到执行与恢复</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&amp;family=Inter+Tight:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Serif+SC:wght@400;600&amp;family=Noto+Sans+SC:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void: #07090F;
+      --night: #0E1320;
+      --surface: #141A2A;
+      --rule: #232C44;
+      --paper: #E8E5DD;
+      --paper-dim: #B6B2A6;
+      --paper-muted: #A39C92;
+      --phosphor: #7BE3D7;
+      --phosphor-glow: #A7F2EA;
+      --amber: #FFB57A;
+      --rose: #FF8FA3;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0; background: var(--void); color: var(--paper);
+      font: 19px/1.78 'Newsreader', 'Noto Serif SC', serif;
+      -webkit-font-smoothing: antialiased;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='1' cy='1' r='1' fill='%23232C44' opacity='0.45'/></svg>");
+    }
+    a { color: var(--phosphor); text-underline-offset: 4px; text-decoration-color: rgba(123,227,215,.45); overflow-wrap: anywhere; }
+    a:hover { color: var(--phosphor-glow); }
+    a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 4px; }
+    code { font: .84em 'JetBrains Mono', monospace; color: var(--phosphor-glow); background: rgba(123,227,215,.07); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    p { margin: 0 0 20px; }
+    strong { color: var(--paper); font-weight: 600; }
+    .mono { font: 12px/1.7 'JetBrains Mono', monospace; letter-spacing: .09em; text-transform: uppercase; }
+    .skip { position: absolute; top: -80px; left: 20px; z-index: 1; padding: 10px 18px; background: var(--surface); }
+    .skip:focus { top: 12px; }
+    .hero { position: relative; padding: 84px 28px 56px; border-bottom: 1px solid var(--rule); background: radial-gradient(900px 450px at 85% 0%, rgba(123,227,215,.12), transparent 70%), var(--night); }
+    .hero-inner { max-width: 880px; margin: auto; }
+    .crumbs { display: flex; flex-wrap: wrap; gap: 14px; color: var(--paper-muted); }
+    .eyebrow { color: var(--phosphor); margin: 30px 0 18px; }
+    h1 { font: 700 clamp(36px, 6vw, 66px)/1.15 'Inter Tight', 'Noto Sans SC', sans-serif; letter-spacing: -.025em; margin: 0 0 26px; }
+    h1 .accent { color: var(--phosphor); }
+    .lede { max-width: 760px; color: var(--paper-dim); font-size: 21px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 38px; padding: 24px 0; border-block: 1px solid var(--rule); }
+    .label { color: var(--paper-muted); font: 11px/1.7 'JetBrains Mono', monospace; letter-spacing: .1em; }
+    .value { margin-top: 7px; font: 15px/1.6 'Inter', 'Noto Sans SC', sans-serif; }
+    main { max-width: 836px; margin: auto; padding: 40px 28px 0; }
+    .toc { border: 1px solid var(--rule); border-radius: 10px; background: var(--night); padding: 22px; }
+    .toc h2 { font: 600 17px 'Inter Tight', 'Noto Sans SC', sans-serif; margin: 0 0 18px; }
+    .toc ol { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px; margin: 0; padding-left: 25px; font: 14px/1.6 'Inter', 'Noto Sans SC', sans-serif; }
+    .toc li::marker { color: var(--paper-muted); }
+    section.essay { margin: 76px 0; }
+    .section-head { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--rule); padding-top: 24px; margin-bottom: 10px; }
+    .section-num { color: var(--phosphor); white-space: nowrap; font: 12px 'JetBrains Mono', monospace; }
+    .section-title { margin: 0; font: 700 28px/1.35 'Inter Tight', 'Noto Sans SC', sans-serif; }
+    .section-sub { margin: 0 0 26px; color: var(--paper-muted); font: 12px/1.6 'JetBrains Mono', 'Noto Sans SC', sans-serif; }
+    h3 { margin: 30px 0 14px; font: 600 20px/1.45 'Inter Tight', 'Noto Sans SC', sans-serif; }
+    .deck { border-left: 2px solid var(--phosphor); padding-left: 16px; color: var(--phosphor-glow); font-size: 21px; }
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 26px 0; }
+    .tile { padding: 19px 16px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+    .tile h3 { font-size: 17px; margin: 7px 0 12px; }
+    .tile p { margin: 0; color: var(--paper-dim); font: 14px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .call { border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 8px; padding: 18px 20px; margin: 26px 0; background: var(--surface); color: var(--paper-dim); font: 15px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    .call.pit { border-left-color: var(--rose); }
+    .call .tag { display: block; color: var(--amber); font-size: 12px; letter-spacing: .08em; margin-bottom: 10px; }
+    .call.pit .tag { color: var(--rose); }
+    .tbl-wrap { overflow-x: auto; margin: 26px 0; }
+    table { width: 100%; border-collapse: collapse; font: 14px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+    th { color: var(--phosphor); font-weight: 500; }
+    td { color: var(--paper-dim); }
+    pre { overflow-x: auto; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; margin: 24px 0; }
+    pre code { padding: 0; background: none; color: var(--paper-dim); font: 13px/1.8 'JetBrains Mono', monospace; overflow-wrap: normal; }
+    figure { margin: 28px 0; }
+    .diagram { background: #F5F5F0; color: #222; border-radius: 10px; padding: 20px 12px; overflow-x: auto; }
+    .diagram pre { background: transparent; border: 0; margin: 0; }
+    .diagram code { color: #222; }
+    .diagram .mermaid-diagram { min-width: 440px; }
+    figcaption, .source { margin-top: 12px; color: var(--paper-muted); font: 13px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .layers { padding: 0; list-style: none; margin: 26px 0; }
+    .layer { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; margin: 9px 0; padding: 14px 18px; font: 15px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+    .layer.highlight { border-color: var(--phosphor); }
+    .layer span { display: inline-block; color: var(--phosphor); font: 11px 'JetBrains Mono', monospace; margin-right: 12px; }
+    details { margin: 26px 0; padding: 16px 20px; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; font: 15px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    summary { cursor: pointer; color: var(--phosphor); }
+    details p { margin: 15px 0 0; color: var(--paper-dim); }
+    ol.practice { padding-left: 25px; font: 16px/1.8 'Inter', 'Noto Sans SC', sans-serif; color: var(--paper-dim); }
+    ol.practice li { margin-bottom: 12px; }
+    footer { border-top: 1px solid var(--rule); padding: 40px 28px 70px; }
+    .foot-inner { max-width: 780px; margin: auto; color: var(--paper-muted); font: 14px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    @media (max-width: 640px) {
+      .hero { padding: 60px 22px 36px; }
+      main { padding-inline: 22px; }
+      .meta-grid { grid-template-columns: 1fr 1fr; }
+      .tiles, .toc ol { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      .section-num { display: block; margin-bottom: 12px; }
+      .section-title { font-size: 25px; }
+      .tbl-wrap table { min-width: 520px; }
+      body { font-size: 18px; }
+      .lede, .deck { font-size: 20px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    .scene-question { font-size: 23px; color: var(--paper); max-width: 680px; }
+    .story-scene { margin: 24px 0; }
+    .scene-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 22px; list-style: none; padding: 0; margin: 0; }
+    .scene-grid li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 23px 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+    .scene-grid.flow li:not(:last-child)::after { content: '→'; position: absolute; right: -20px; top: 51px; color: var(--phosphor); font: 21px sans-serif; }
+    .scene-icon { display: block; font: 34px/1.3 system-ui; margin-bottom: 18px; }
+    .scene-grid strong { overflow-wrap: anywhere; font: 600 17px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
+    .scene-meaning { overflow-wrap: anywhere; display: block; margin-top: 13px; color: var(--phosphor); font: 12px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .one-idea { border-left: 3px solid var(--phosphor); padding: 8px 0 8px 18px; font-size: 20px; }
+    .one-idea > span { display: block; color: var(--phosphor); font: 12px/1.7 'Inter', 'Noto Sans SC', sans-serif; margin-bottom: 6px; }
+    .bridge { color: var(--paper-dim); font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .deep-dive { border-style: dashed; background: transparent; }
+    .deep-content { padding-top: 20px; }
+    .deep-content p { margin-bottom: 18px; }
+    .next-step { display: inline-block; margin-top: 14px; font: 14px/1.6 'Inter', sans-serif; }
+    .reading-map { margin: 0 0 28px; padding: 22px; background: var(--night); border: 1px solid var(--rule); border-radius: 10px; font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .reading-map h2 { margin-top: 0; font-size: 20px; }
+    .reading-map p:last-child { margin-bottom: 0; }
+    .hands-on { background: var(--night); border: 1px solid var(--rule); border-radius: 12px; padding: 24px; margin: 28px 0; font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .hands-on h3 { margin: 0 0 20px; }
+    .hands-on input[type=range] { display: block; width: 100%; margin: 22px 0; accent-color: var(--phosphor); cursor: pointer; }
+    .hands-on input:focus-visible, button:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 5px; }
+    .capacity { position: relative; height: 40px; border: 1px solid var(--rule); border-radius: 7px; background: var(--surface); overflow: hidden; }
+    #capacity-fill { height: 100%; background: var(--phosphor); }
+    .capacity i { position: absolute; top: 0; height: 100%; border-left: 3px dashed var(--night); }
+    .auto-mark { left: 90%; } .hard-mark { left: 95%; }
+    .budget-legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 10px 0 18px; font-size: 12px; }
+    .small-note { font: 12px/1.8 'Inter', 'Noto Sans SC', sans-serif; color: var(--paper-muted); margin: 18px 0 0; }
+    .mode-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+    .mode-buttons button { background: var(--surface); color: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; font: inherit; cursor: pointer; }
+    .mode-buttons button[aria-pressed=true] { color: var(--night); background: var(--phosphor); }
+    .desk-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .desk { padding: 16px; border: 1px solid var(--rule); border-bottom: 8px solid #69543f; border-radius: 8px; background: #191d27; }
+    .desk h4 { font-size: 15px; margin: 0 0 18px; }
+    .paper-stack span { display: block; padding: 12px; margin: 0 0 10px; background: #ebe5d8; color: #242935; border-radius: 3px; font-size: 13px; }
+    .desk:not(.after) .paper-stack span:nth-child(even) { transform: rotate(-2deg); }
+    .desk:not(.after) .paper-stack span:nth-child(odd) { transform: rotate(2deg); }
+    .desk.after { border-color: var(--phosphor); border-bottom-color: #69543f; }
+    .desk p { color: var(--paper-dim); font-size: 12px; margin: 14px 0 0; }
+    .same-task { display: flex; gap: 22px; margin: 28px 0; padding: 22px; border: 1px solid var(--rule); border-radius: 10px; }
+    .same-task h3 { margin: 0 0 12px; } .same-task p, .same-task a { font: 14px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    @media (max-width: 640px) {
+      .scene-grid { grid-template-columns: 1fr; gap: 20px; }
+      .scene-grid li { display: grid; grid-template-columns: 58px 1fr; text-align: left; align-items: center; padding: 18px; column-gap: 12px; }
+      .scene-icon { grid-row: span 2; margin: 0; font-size: 38px; }
+      .scene-meaning { margin-top: 5px; } .scene-grid strong { font-size: 16px; }
+      .scene-grid.flow li:not(:last-child)::after { content: '↓'; top: auto; right: 50%; bottom: -22px; }
+      .scene-question { font-size: 21px; } .hands-on { padding: 18px; }
+      .desk-pair { grid-template-columns: 1fr; } .same-task { display: block; }
+      .same-task .scene-icon { margin-bottom: 15px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    .syllabus ol { list-style: none; padding: 0; }
+    .syllabus li { padding: 14px; border: 1px solid var(--rule); border-radius: 8px; }
+    .syllabus p { font-size: 12px; color: var(--paper-dim); margin: 10px 0 0; }
+    .chapter-head { margin: 80px 0 30px; padding: 28px; background: var(--night); border-top: 3px solid var(--phosphor); }
+    .chapter-head > span { font: 12px 'JetBrains Mono', monospace; color: var(--phosphor); }
+    .chapter-head h2 { font: 600 30px/1.4 'Inter', 'Noto Sans SC', sans-serif; margin: 18px 0; }
+    .chapter-head p { font: 16px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .chapter-outcome { color: var(--phosphor); }
+    .chapter-head nav { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 14px; }
+    .chapter-transition { border-bottom: 1px solid var(--rule); padding: 0 0 25px; color: var(--phosphor); font-size: 17px; }
+    .design-choice { margin: 26px 0; padding: 20px; border-left: 3px solid var(--amber); background: var(--surface); font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .design-choice strong { color: var(--amber); } .design-choice p { margin: 10px 0 0; }
+    .map-return { font-size: 15px; }
+    .context-lab { margin: 28px 0; padding: 22px; background: var(--night); border: 1px solid var(--rule); border-radius: 12px; font: 14px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    .context-lab h4 { font-size: 21px; margin: 0 0 16px; } .context-lab h5 { font-size: 15px; margin: 0 0 14px; }
+    .context-controls { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
+    .context-controls label { flex: 1; min-width: 200px; }
+    .context-controls select { display: block; width: 100%; margin-top: 8px; padding: 12px; color: var(--paper); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; font: inherit; }
+    .context-legend { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0; }
+    .context-legend span { border-left: 4px solid var(--item-color); padding-left: 8px; font-size: 11px; }
+    .kind-rule { --item-color: #7BE3D7; } .kind-user { --item-color: #B7B3FF; } .kind-call { --item-color: #FFB57A; } .kind-summary { --item-color: #FF8FA3; }
+    .context-columns { display: grid; grid-template-columns: 0.8fr 1.4fr; gap: 18px; align-items: start; }
+    .state-bank { padding: 15px; border: 1px dashed var(--rule); border-radius: 8px; }
+    .state-bank > div { padding: 15px 0; border-top: 1px solid var(--rule); } .state-bank small, .state-bank p { color: var(--paper-dim); font-size: 12px; }
+    .request-shell { padding: 15px; border: 1px solid var(--phosphor); border-radius: 8px; }
+    .input-label { padding: 12px 0 7px; font-family: monospace; color: var(--paper-dim); }
+    #history-items { list-style: none; padding: 0; margin: 0; }
+    .history-item { display: block; width: 100%; text-align: left; cursor: pointer; padding: 12px; margin-bottom: 10px; background: var(--surface); color: var(--paper); border: 1px solid var(--rule); border-left: 4px solid var(--item-color); border-radius: 5px; font: inherit; overflow-wrap: anywhere; }
+    .history-item strong { font-size: 13px; } .history-item span { display: block; font: 11px/1.7 'JetBrains Mono', monospace; color: var(--paper-dim); margin-top: 6px; }
+    .history-item[aria-pressed=true] { outline: 2px solid var(--item-color); outline-offset: 1px; }
+    .context-breakdown { margin: 0 0 18px; padding: 12px; border: 1px dashed var(--rule); border-radius: 6px; }
+    .context-breakdown summary { cursor: pointer; color: var(--phosphor); }
+    .context-breakdown ol { padding: 0; list-style: none; }
+    .context-breakdown p { font-size: 12px; color: var(--paper-dim); }
+    .context-inspector { margin-top: 20px; padding: 18px; border: 1px solid var(--rule); border-radius: 8px; overflow-wrap: anywhere; }
+    .context-inspector dl { display: grid; grid-template-columns: 85px 1fr; gap: 10px; margin: 0 0 16px; } .context-inspector dd { margin: 0; } .context-inspector dt { color: var(--phosphor); }
+    .context-change { color: var(--amber); padding-top: 16px; margin-bottom: 0; }
+    .context-lab select:focus-visible { outline: 2px solid var(--phosphor); }
+    .deep-content h4 { font: 600 20px/1.45 'Inter', 'Noto Sans SC', sans-serif; }
+    .hands-on h4 { font-size: 20px; margin-top: 0; } .desk h5 { font-size: 15px; margin: 0 0 18px; }
+    @media (max-width: 640px) { .context-columns { grid-template-columns: 1fr; } .request-shell { order: -1; } .context-lab { padding: 14px; } .chapter-head { padding: 20px; } .chapter-head h2 { font-size: 25px; } }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="hero">
+  <div class="hero-inner">
+    <nav class="crumbs mono" aria-label="面包屑"><a href="../../">ML Learning Notes</a><span aria-hidden="true">/</span><span>Agent Engineering</span><span aria-hidden="true">/</span><span>学习路径</span></nav>
+    <div class="eyebrow mono">Codex Harness · 固定源码快照 · 对象、请求与状态变化</div>
+    <h1>Codex Harness 分析<br><span class="accent">从请求到执行与恢复</span></h1>
+    <p class="lede">先看 Codex 的整体地图，再拆开一次模型请求：指令放哪里，history 有哪些类别，Skills / MCP 怎样填入，执行与压缩又怎样改变它。沿这条主线走完六章，最后比较其他 harness 的选择与代价。</p>
+    <div class="meta-grid">
+      <div><div class="label">读者假设</div><div class="value">已理解 harness 与工具调用</div></div>
+      <div><div class="label">读完能做到</div><div class="value">追踪加载、执行与上下文切换</div></div>
+      <div><div class="label">源码快照</div><div class="value"><a href="https://github.com/openai/codex/tree/944d6fd1ba4baab69dbedd205282dc72ec20abb5">944d6fd1ba4b</a> · 2026-09-11 PDT</div></div>
+      <div><div class="label">配套材料</div><div class="value"><a href="../Codex_Harness_Research.html">源码参考手册 ↗</a></div></div>
+    </div>
+  </div>
+</header>
+<main id="main">
+  <aside class="reading-map" aria-labelledby="reading-title"><h2 id="reading-title">教学主线：整体 → 输入 → 加载 → 变化 → 压缩 → 评价</h2><p>前提：你已经理解 agent harness。本文围绕一个问题展开：<strong>Codex 怎样持续构造“下一次模型输入”？</strong>先认模块，再解剖请求，最后追踪历史变形。</p><p>贯穿案例：U1「满 100 免运费，public API 不变」；R0「JUnit 5」；后续规则 R1 限定订单模块，U2 要求验证 99/100/101。所有 transcript 均为教学构造。</p><p><a href="#context-map">直接打开 history / context 输入剖面 ↗</a> · <a href="#harness-comparison">查看其他 harness 的对照 ↗</a></p></aside><nav class="toc syllabus" aria-labelledby="toc-title"><h2 id="toc-title">六章大纲 · 每章回答前一章留下的问题</h2><ol><li><a href="#chapter-1"><b>01 · 整体地图：先确定各部分的位置</b></a><p>从 Session、StepContext 到历史与存储，先知道后面每章在拆哪一块。</p></li><li><a href="#chapter-2"><b>02 · 一次请求的解剖：模型眼前到底有什么</b></a><p>先分清位置、role、内容类别、来源与可见性，再去读加载代码。</p></li><li><a href="#chapter-3"><b>03 · 装配输入：指令、Skills 与 MCP 各走哪条路</b></a><p>按基础指令 → 工作流程说明 → 可调用工具的顺序，拆解三条加载链。</p></li><li><a href="#chapter-4"><b>04 · 运行中的变化：历史追加与规则更新</b></a><p>回到 run_turn，跟随工具结果、用户追加输入与 WorldState 更新。</p></li><li><a href="#chapter-5"><b>05 · 压缩与恢复：重写历史，但保持任务可续接</b></a><p>按触发 → 请求路由 → 产物与布局 → checkpoint 恢复的顺序阅读。</p></li><li><a href="#chapter-6"><b>06 · 比较与评价：巧妙在哪里，代价是什么</b></a><p>先比较责任分配，再解释缓存影响，最后用一条 trace 检验整套理解。</p></li></ol></nav><div class="chapter" id="chapter-1"><header class="chapter-head"><span>CHAPTER 01</span><h2>整体地图：先确定各部分的位置</h2><p>从 Session、StepContext 到历史与存储，先知道后面每章在拆哪一块。</p><p class="chapter-outcome">读完能画出两条线：请求怎样流向模型／工具，状态怎样留在程序／归档。</p><nav aria-label="第 1 章小节"><a href="#step-1">Codex 的模块怎样连接</a></nav></header><section class="essay" id="step-1">
+    <div class="section-head"><span class="section-num">01.1</span><h3 class="section-title">Codex 的模块怎样连接</h3></div>
+    <p class="section-sub">ThreadManager → Session → StepContext → ModelClient / ToolRouter</p><p class="scene-question">先定位对象和生命周期：哪些状态属于整个任务，哪些只属于一次采样？</p>
+    <figure><div class="diagram" tabindex="0" role="region" aria-label="Codex 模块关系图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    UI[CLI / TUI / app-server] --> S[ThreadManager / Session]
+    S --> R[run_turn]
+    R --> C[StepContext]
+    C --> P[Prompt：历史 / 基础指令 / 工具]
+    P --> M[ModelClient：Responses]
+    M --> T[ToolRouter / 工具执行运行时]
+    T --> H[ContextManager：记录结果]
+    H --> R
+    S -.当前状态与变化通知.-> W[WorldState]
+    W --> P
+    S -.持久化与恢复.-> D[Rollout / checkpoint]
+</code></pre></div><figcaption>本图定位 Codex 的核心对象；重点看 StepContext 的一致性边界、ContextManager 的类型化历史及 WorldState 的可比较状态；压缩、取消、审批和 MCP 执行前绑定在后续各节展开。</figcaption></figure>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">🧵</span><strong>ThreadManager / Session</strong><span class="scene-meaning">任务生命周期、历史与共享服务</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📦</span><strong>StepContext</strong><span class="scene-meaning">本次模型、环境、工具计划与规则快照</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🔀</span><strong>ModelClient / ToolRouter</strong><span class="scene-meaning">发送 Responses；分派模型提出的工具调用</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>Codex 把会话状态、每次请求的能力快照、模型传输与工具执行拆成独立部件。后面的加载与 compaction 都沿这套对象关系发生。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 的 <code>Agent.step()</code> 从事件视图推进一次推理；Codex 在 <code>run_turn</code> 内反复捕获 StepContext。这里重点比较采样边界，而非把循环本身当作独有设计。 <a href="https://docs.openhands.dev/sdk/arch/agent">对照依据 ↗</a></p>
+    <aside class="design-choice"><strong>设计分析 · 请求快照把采样边界固定下来</strong><p><b>收益：</b>同一份采样计划里使用一致的模型、环境与工具定义。</p><p><b>代价／边界：</b>外部连接仍会变化，所以 MCP 执行还需要自己的 PreparedMcpCall 边界。</p></aside>
+<details class="quiz"><summary>读图检查：整个任务的 Session 和一次请求的 StepContext 为什么要分开？</summary><p>Session 保留长期任务历史和服务；StepContext 固定某次采样的模型、工具与环境视图。下一次采样可以重新捕获能力，MCP 执行前还有独立调用绑定。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>源码入口：<code>core/src/thread_manager.rs</code> 管任务，<code>core/src/session/turn.rs</code> 管回合执行，<code>core/src/session/step_context.rs</code> 固定采样状态，<code>core/src/client.rs</code> 与 <code>core/src/tools/router.rs</code> 分别承接模型请求和工具路由。</p>
+    <div class="call"><span class="tag">贯穿案例 · 运费边界测试</span><strong>U1 用户请求：</strong>“修复 ShippingCostTest：订单金额满 100 免运费；保持 public API 不变。”<br><strong>R0 项目规则：</strong>根目录 AGENTS.md 要求使用 JUnit 5。后文始终追踪这一个任务。代码、消息 ID 和输出均为教学构造，未运行真实项目；工具名称是简写，不是可直接发送的 API。</div>
+
+
+  </div></details>
+    <p class="source">源码与边界：<a href="../Codex_Harness_Research.html#architecture">手册 §2 · 核心对象</a></p>
+  </section><p class="chapter-transition">整体图说明了模块，但还没说明模型真正收到什么。下一章把一次请求展开。</p></div><div class="chapter" id="chapter-2"><header class="chapter-head"><span>CHAPTER 02</span><h2>一次请求的解剖：模型眼前到底有什么</h2><p>先分清位置、role、内容类别、来源与可见性，再去读加载代码。</p><p class="chapter-outcome">读完能指出 instructions、tools、input history 和程序状态各在哪里。</p><nav aria-label="第 2 章小节"><a href="#step-3">ContextManager 保存哪些类型化状态</a></nav></header><section class="essay" id="step-3">
+    <div class="section-head"><span class="section-num">02.1</span><h3 class="section-title">ContextManager 保存哪些类型化状态</h3></div>
+    <p class="section-sub">ResponseItemEnvelope / WorldState baseline / Rollout</p><p class="scene-question">Codex 的活跃历史、当前状态源和恢复记录，分别在哪里承担责任？</p>
+    <div class="context-lab" id="context-map">
+  <h4>同一任务的输入剖面：位置 × 类别 × 来源</h4>
+  <p>从初始请求一路切到压缩后。请求框中的 <code>input[]</code> 从上到下表示历史顺序；点每一项查看它的角色、类别、来源与保留方式；展开 I0/I1，看内部各层的相对位置。</p>
+  <div class="context-controls">
+    <label for="history-stage">执行阶段 <select id="history-stage"><option value="initial">① 初始请求</option><option value="tools">② 工具返回后</option><option value="updated">③ 规则更新与追加要求</option><option value="local">④ Local 压缩后</option><option value="v2">⑤ Remote V2 压缩后</option><option value="reset">⑥ TokenBudget 新窗口</option></select></label>
+    <label for="wire-mode">请求形状 <select id="wire-mode"><option value="responses">普通 Responses</option><option value="lite">Responses Lite</option></select></label>
+  </div>
+  <div class="context-legend"><span class="kind-rule">规则／指令</span><span class="kind-user">真实用户输入</span><span class="kind-call">工具定义／调用／结果</span><span class="kind-summary">摘要／压缩项</span></div>
+  <div class="context-columns">
+    <aside class="state-bank"><h5>程序持有 · 不自动发送</h5><div>⚙️ 配置 + 模型目录<br><small>选择基础 instructions</small></div><div>📋 当前 canonical state<br><small>WorldState → 生成规则／环境片段</small></div><div>🔧 工具注册表 + MCP binding<br><small>ToolRouter → 本次可见定义</small></div><div>🗄️ Rollout / checkpoint<br><small>保存恢复状态；不是每轮全量输入</small></div><p>通过“装配、注入、恢复”才能进入右边。history/notes 还受独立的注册和服务条件限制。</p></aside>
+    <div class="request-shell"><h5>本次模型请求</h5><div id="request-top"></div><div class="input-label">input[] · 顶部较早，底部较新 ↓</div><ol id="history-items"></ol></div>
+  </div>
+  <div class="context-inspector" aria-live="polite"><h5 id="item-title">选择一个历史项查看身份</h5><dl id="item-fields"></dl><p id="item-explanation"></p></div>
+  <p class="context-change" id="history-change" role="status"></p>
+  <p class="small-note">这是固定源码语义的示意，不是捕获的完整 wire dump。I0/I1 可展开内部装配槽位；条件槽位不代表本例全部启用，也不等于一条协议 item；省略权限、模态、reasoning 与部分扩展项。示例 U1/U2 在保留预算内；Local/V2 展示回合中压缩，当前 initial context 插到最后保留用户消息之前。Responses Lite 只切换前缀装配视角，不表示可与每种压缩分支任意组合。</p>
+  <p class="source"><a href="../Codex_Harness_Research.html#input-anatomy">请求位置、role、content_kind 与原文保留的完整对照 →</a></p>
+  <noscript><p>未启用 JavaScript：普通请求把基础指令与工具放在顶层，input 包含当前规则及有序历史。回合中 Local/V2 的简化新历史是 U1 → I1(R1) → U2 → 摘要／压缩项；工具输出不属于这两条原文保留路径。下方源码展开区仍可阅读。</p></noscript>
+</div>
+<figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🗂️</span><strong>ContextManager</strong><span class="scene-meaning">Arc&lt;Vec&lt;ResponseItemEnvelope&gt;&gt;：消息及元数据</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📋</span><strong>WorldState sections</strong><span class="scene-meaning">环境、规则、权限、模型与能力的可比较状态</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🗄️</span><strong>Rollout / checkpoint</strong><span class="scene-meaning">保存恢复所需记录；不自动成为模型输入</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>历史不是一个大字符串。call_id 维持调用配对，content_kind 区分真实用户输入与注入规则；同为 user role 不代表保留策略相同。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 也把 Event.source 与 LLM role 分开。Codex 进一步在 Responses 内容项携带 content_kind；共同原则是“来源不等于角色”，具体编码和恢复入口不同。 <a href="https://docs.openhands.dev/sdk/arch/events">对照依据 ↗</a></p>
+    <aside class="design-choice"><strong>设计分析 · 用类别而不只用 role 识别内容</strong><p><b>收益：</b>AGENTS、真实用户请求和摘要即使都是 user，也可以采用不同保留与重建规则。</p><p><b>代价／边界：</b>元数据与 legacy marker 的兼容成本随之增加；只有文本 role 的分析会漏掉这层。</p></aside>
+<details class="quiz"><summary>自测：磁盘还保留完整对话，能否据此断言模型“没有忘记”？</summary>
+    <p>不能。持久化解决的是保存，模型窗口解决的是当前可见性。还需要明确的检索或重注入路径，才能把保存的内容带回当前请求。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>恢复分析需要区分三种存储与可见性：原始记录在磁盘，不等于它在本次 input 中；程序持有当前规则，也不等于模型已经收到更新。</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="三种状态对照表，可横向滚动"><table>
+      <thead><tr><th>状态</th><th>例子</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td><strong>模型历史视图</strong><br>活跃模型历史</td><td>消息、工具调用、结果、reasoning、compaction item</td><td>组成下一次请求的历史视图</td></tr>
+        <tr><td><strong>当前状态源</strong><br>当前 canonical state</td><td>权限、AGENTS.md、环境、模式和能力</td><td>把当前规则与环境复制进请求；变化时通知模型</td></tr>
+        <tr><td><strong>持久化记录</strong><br>恢复与归档</td><td>Rollout、replacement checkpoint、窗口标识</td><td>用于会话恢复；模型回捞另需可用接口</td></tr>
+      </tbody>
+    </table></div>
+    <p>重写活跃历史、更新 canonical state、读取归档是三个动作。状态必须经渲染进入请求才对模型可见；归档只包含实际保存下来的内容。<code>ContextManager</code> 给历史项保留类型和元数据，才能识别真实用户输入、区分程序注入内容、维持工具的调用／结果配对。</p>
+    <p>R0 和 U1 都可能属于 <code>role=user</code>，但类别不同：R0 是 <code>agents_md.instructions</code>，U1 的文本是 <code>user.text</code>。注入 fragment 的 <code>content_kind</code> 会随 content 进入内部 wire metadata；合并多个片段时，每个 content item 仍有对应标签。对非 OpenAI provider，发送前会清掉这些内部 metadata。</p>
+    <div class="call pit"><span class="tag">案例判读 · 同一个 FAIL 的三个位置</span>刚才的 FAIL 可以在活跃历史里，也可能保存在持久化记录中；<code>WorldState</code> 记录规则和环境，不会因此自动备份这段失败日志。稍后重跑测试得到 PASS，也不能还原那次 FAIL 的原始输出。</div>
+    <p>减小上下文也从工具结果入历史时开始：先限制大输出，发送前再修复配对和处理不支持的模态。你看到的“压缩提示”只是整套 context 管理中的一个环节。</p>
+
+
+  </div></details>
+    <p class="source">结构与整理规则：<a href="../Codex_Harness_Research.html#context">手册 §5 · ContextManager</a>、<a href="../Codex_Harness_Research.html#fragments">fragment 到 wire</a></p>
+  </section><p class="chapter-transition">现在知道输入有哪些格子，下一章追踪是谁把这些格子填满。</p></div><div class="chapter" id="chapter-3"><header class="chapter-head"><span>CHAPTER 03</span><h2>装配输入：指令、Skills 与 MCP 各走哪条路</h2><p>按基础指令 → 工作流程说明 → 可调用工具的顺序，拆解三条加载链。</p><p class="chapter-outcome">读完能解释模型目录、技能正文、MCP 连接与 schema 曝光为什么不是同一次加载。</p><nav aria-label="第 3 章小节"><a href="#step-4">Codex 怎样选取并装配基础指令</a><a href="#skills-step">Skills 的来源、选择与注入链</a><a href="#mcp-step">MCP 从配置到 PreparedMcpCall</a></nav></header><section class="essay" id="step-4">
+    <div class="section-head"><span class="section-num">03.1</span><h3 class="section-title">Codex 怎样选取并装配基础指令</h3></div>
+    <p class="section-sub">配置优先级 + ModelMessages + provenance + wire 分支</p><p class="scene-question">为什么只打开仓库里的 prompt.md，仍无法确定这次请求的基础指令？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📌</span><strong>config.base_instructions</strong><span class="scene-meaning">显式覆盖／文件内容解析后的基础来源</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📒</span><strong>session_meta.base_instructions</strong><span class="scene-meaning">无显式覆盖时使用恢复／fork 继承</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>模型 instructions_template</strong><span class="scene-meaning">前两项都没有时从模型目录回退</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>ModelMessages 把工具描述、审批与模式话术纳入模型元数据；Custom / Model provenance 防止模型默认文本被误当作用户覆盖。</p>
+    <p class="bridge"><strong>实现对照：</strong>LangChain 的 <code>system_prompt</code> 接受文本或 SystemMessage，动态提示可由 middleware 提供。Codex 把配置／继承／模型目录及 Custom／Model 来源管理内建到客户端；区别在生命周期责任，不只是字符串放哪。 <a href="https://docs.langchain.com/oss/python/langchain/agents#system-prompt">对照依据 ↗</a></p>
+    <aside class="design-choice"><strong>设计分析 · 把“文字来自谁”一起保存</strong><p><b>收益：</b>Custom / Model provenance 保护用户覆盖，又允许切换模型采用新的默认模板。</p><p><b>代价／边界：</b>旧历史缺来源时只能有限推断，不能凭相似文本还原真实意图。</p></aside>
+<details class="quiz"><summary>自测：更新客户端后恢复旧会话，一定会采用仓库最新默认 prompt 吗？</summary>
+    <p>不一定。没有显式覆盖时，保存的会话基础指令优先于当前模型模板。还要检查实际模型目录和会话继承状态。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>你在 GitHub 找到一个 <code>prompt.md</code>，还不能据此确定某个会话用的是什么。Session 启动时按下面顺序选择基础指令，命中前一项就不再回退：</p>
+    <ol class="layers">
+      <li class="layer highlight"><span>01</span>显式配置的基础指令，包括指令文件解析结果</li>
+      <li class="layer"><span>02</span>恢复／fork 历史保存的 <code>session_meta.base_instructions</code></li>
+      <li class="layer"><span>03</span>当前模型目录中的 <code>instructions_template</code></li>
+    </ol>
+    <p>模型目录既有编译打包的版本，也有远程元数据和磁盘缓存。<code>model_instructions_file</code> 替换基础来源；<code>developer_instructions</code> 则是另一条附加内容路径。</p>
+    <p><code>ModelMessages</code> 还把工具描述、审批话术、模式消息和预算提示放在模型元数据里，让能力与行为文本可以配套更新。缺失字段有各自的内建 fallback；不能把它理解为“提示词只在服务器”。</p>
+    <h4>同一任务换模型时，哪段指令可以变？</h4>
+    <p>切换模型时，用户覆盖应继续保留，旧模型的默认指令则应允许更新。只保存最终文本不足以表达这种生命周期差别；Codex 另存来源，并为缺少来源的旧历史提供兼容推断。</p>
+    <p>假设任务从模型 A 切到 B：标为 <code>Model { A }</code> 的继承文本不应成为 B 的用户 override；标为 <code>Custom</code> 的用户指令则应保留。系统保存 <strong>provenance（来源）</strong> 来区分二者，并可通过模型切换 developer 片段提供当前指令。持久化基础文本、请求副本与追加的切换消息要分开看。</p>
+    <div class="call"><span class="tag">特殊之处 · wire 结构也会变</span>普通 Responses 使用顶层 <code>instructions</code> 和 <code>tools</code>。启用 <code>use_responses_lite</code> 的模型分支，会把基础指令作为 developer 消息、工具作为 <code>AdditionalTools</code> 放到 <code>input</code> 前面。</div>
+    <p>因此，日常说的“system prompt”至少要再问一句：说的是服务端 system、客户端基础指令，还是历史里的 developer／user 上下文？它们不是同一个字段。</p>
+
+
+  </div></details>
+    <p class="source">完整优先级与 Lite 分支：<a href="../Codex_Harness_Research.html#instructions">手册 §4 · 指令加载</a>、<a href="../Codex_Harness_Research.html#provenance">Custom / Model 来源</a></p>
+  </section><section class="essay" id="skills-step">
+    <div class="section-head"><span class="section-num">03.2</span><h3 class="section-title">Skills 的来源、选择与注入链</h3></div>
+    <p class="section-sub">Host / Executor / Orchestrator → catalog → selected fragments</p><p class="scene-question">正文由运行时主动注入，还是等模型读取？Codex 同时存在两条路径。</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📚</span><strong>三类来源发现</strong><span class="scene-meaning">Host roots；Executor 环境；Orchestrator MCP resources</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📑</span><strong>catalog 与预算</strong><span class="scene-meaning">名称、描述、路径别名；不全量注入正文</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>显式选择 / 模型自主读取</strong><span class="scene-meaning">selection → 注入正文；或文件工具 / skills.read</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧾</span><strong>引用资源与工具执行</strong><span class="scene-meaning">package / resource 寻址；读说明不等于执行</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>Skills extension 的目录片段是 developer role，选中正文是 user role，标记为 skills.selected_skill_instructions；Core 还有 Host 注入和去重路径。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 的 KeywordTrigger 按消息匹配，PathTrigger 可把规则加入工具 observation。Codex 本节的目录发现、显式正文注入和模型自主读取是三条不同入口；不能由文件都叫 Skill 推断触发方式与位置相同。 <a href="https://docs.openhands.dev/sdk/arch/skill">对照依据 ↗</a></p>
+    <aside class="design-choice"><strong>设计分析 · 把发现、读正文和执行拆开</strong><p><b>收益：</b>目录提供选择线索，正文与引用资源按需进入上下文。</p><p><b>代价／边界：</b>会多出读取步骤，还要处理来源、缓存、去重和注入大小限制。</p></aside>
+<details class="quiz"><summary>自测：目录里已有 order-tests，能否断言模型读过正文、依赖也已安装？</summary>
+    <p>不能。目录、正文、依赖安装和执行分别有入口。显式选择可能触发正文注入，但 MCP 依赖安装还受 feature、来源、策略与安装选择等条件约束。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>现在给运费测试案例加一条教学分支：用户显式选择 <code>$order-tests</code>，一个说明如何补边界测试的假想 skill。模型怎样获得它的说明？先要区分来源，再区分谁触发读取。</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Skills 来源表，可横向滚动"><table>
+      <thead><tr><th>来源</th><th>发现入口</th><th>读取边界</th></tr></thead>
+      <tbody>
+        <tr><td>Host</td><td>配置 roots、用户与仓库 .agents/skills、系统和插件目录</td><td>通过相应文件系统读 SKILL.md</td></tr>
+        <tr><td>Executor</td><td>所选执行环境的能力快照或目录</td><td>在所属环境读取，校验 package 归属</td></tr>
+        <tr><td>Orchestrator</td><td>MCP 中标为 mcp/skill 的资源</td><td>通过资源接口读取；有单独启用条件</td></tr>
+      </tbody>
+    </table></div>
+    <p>通常先进入模型上下文的是技能目录：名称、描述和来源。扫描器可能已经读过文件来提取元数据，但模型还没有收到整篇正文。目录有预算和短路径别名；Host 服务还有按 cwd 与配置缓存的快照。因此“渐进披露”说的是模型可见内容分阶段增加，不是进程从未读过文件。</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="Skills 加载图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    C[发现来源并生成技能目录] --> S{怎样选中}
+    S -->|用户显式提及| I[运行时读正文并注入]
+    S -->|模型判断任务相关| R[模型调用文件工具或 skills.read]
+    I --> B[模型获得工作流程]
+    R --> B
+    B --> F[按需读取引用文件]
+    F --> T[通过工具执行脚本或其他动作]
+</code></pre></div>
+      <figcaption>能力与 feature 条件决定有哪些来源和读取工具；不是每次会话都开放所有分支。</figcaption>
+    </figure>
+    <h4>显式选择不必等模型亲自读文件</h4>
+    <p>selection 识别结构化 Skill 输入、资源／文件 mention 和文本显式提及；extension 可在回合输入阶段主动读取选中正文并注入。Core 也保留 Host 加载和去重路径。另一种情况是用户没有点名，模型从目录判断任务相关，再自行调用读取工具。这两条路不能混成“所有相关技能都会自动载入”。</p>
+    <p>Skills extension 的目录片段是 <code>developer</code> role，选中正文则是带 <code>skills.selected_skill_instructions</code> 分类的 <code>user</code> 片段。它没有把每篇技能正文都升级为 system prompt。自动注入、文件读取结果和后续脚本输出，也有不同的历史类型与预算。</p>
+    <h4>案例分支：从技能名到真正的测试动作</h4>
+    <pre><code>用户：使用 $order-tests 补齐这次边界测试
+目录：order-tests — 订单边界测试流程 — 来源位置
+选中正文：先读 references/boundaries.md，再补测试
+资源读取：检查阈值前、阈值处、阈值后的三个输入
+模型提出动作：补 99 / 100 / 101 三个测试
+工具实际执行：修改文件，运行测试，回传输出</code></pre>
+    <p>技能名、正文和资源内容均为教学构造。资源来源的 <code>skills.read</code> 用 package 和可选 resource 寻址；省略 resource 读取主文件，引用资源按返回的标识读取。读取脚本说明不等于执行脚本；执行仍要使用已注册工具与对应环境。</p>
+    <div class="call"><span class="tag">和上下文管理的连接</span>目录预算控制常驻线索，正文与资源按需进入历史，工具结果另有输出限制。稍后 compaction 整理的是这些已进入窗口的材料；它不会因为知道技能目录，就自动恢复每份已读资源的原文。</div>
+
+
+  </div></details>
+    <p class="source">来源、预算、角色与读取路径：<a href="../Codex_Harness_Research.html#skills-loading">手册 §4.5 · Skills 加载</a></p>
+  </section><section class="essay" id="mcp-step">
+    <div class="section-head"><span class="section-num">03.3</span><h3 class="section-title">MCP 从配置到 PreparedMcpCall</h3></div>
+    <p class="section-sub">runtime → initialize / list_tools → binding → exposure → call</p><p class="scene-question">server 已连接，为什么工具可能还要搜索？调用前为什么又检查 binding？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">⚙️</span><strong>汇集 runtime 配置</strong><span class="scene-meaning">会话、插件、所选环境及策略</span></li>
+      <li><span class="scene-icon" aria-hidden="true">☎️</span><strong>连接与目录</strong><span class="scene-meaning">Stdio / HTTP；initialize；分页 list_tools</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📜</span><strong>ToolRouter 曝光计划</strong><span class="scene-meaning">Direct / Deferred / Code Mode；搜索已有目录</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🔗</span><strong>PreparedMcpCall</strong><span class="scene-meaning">dirty refresh → 当前调用 binding → 审批与执行</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>采样用的目录 binding 与执行前准备的调用 binding 是相邻的两个边界。普通来源 Eager；SubAgent 的 LazyWhenCached 还受缓存条件限制。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 初始化时从 mcp_config 发现工具，并包装为 MCPToolDefinition。Codex 还在此链上区分延迟连接、schema 曝光和 PreparedMcpCall；分析故障时应分别看发现、可见性与执行绑定。 <a href="https://docs.openhands.dev/sdk/arch/tool-system">对照依据 ↗</a></p>
+    <aside class="design-choice"><strong>设计分析 · 目录可见性与调用绑定分别维护</strong><p><b>收益：</b>延迟曝光减少常驻 schema；调用准备把本次 client 与 metadata 绑定起来。</p><p><b>代价／边界：</b>搜索、连接与调用分别可能失败，排查时必须定位具体阶段。</p></aside>
+<details class="quiz"><summary>自测：issue-tracker 已连接，为什么模型仍可能需要搜索工具？</summary>
+    <p>连接负责与 server 通信，搜索负责将已有目录里的延迟工具定义带入模型可用范围。两者降低的成本、发生的时机都不同；搜索本身也不等于执行。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>继续这个教学分支：假设订单规则还要从一个已配置的 issue-tracker MCP 查询。Skill 说明了工作方法，MCP 提供外部动作；插件可以同时贡献两者，它们却走不同的加载链。</p>
+    <ol class="layers">
+      <li class="layer"><span>01</span>汇集会话、插件和所选执行环境的 server 配置，施加策略约束</li>
+      <li class="layer"><span>02</span>通过 Stdio 或 Streamable HTTP 建立连接，initialize 协商能力</li>
+      <li class="layer"><span>03</span>分页取得工具目录和元数据，构造 MCP binding</li>
+      <li class="layer highlight"><span>04</span>ToolRouter 结合内建、扩展与动态工具，决定本次怎样曝光</li>
+      <li class="layer"><span>05</span>模型发起调用后，检查刷新状态，准备绑定，再处理审批与执行</li>
+    </ol>
+    <p>这是常规连接路径；源码也有缓存目录、预热和条件性的延迟初始化。普通来源使用 Eager，SubAgent 来源选择 LazyWhenCached，后者还需缓存及实现条件满足。不能从“模型已经看到目录”推断 server 已完成初始化。</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="工具曝光方式表，可横向滚动"><table>
+      <thead><tr><th>方式</th><th>怎样进入模型可用范围</th><th>在案例里的含义</th></tr></thead>
+      <tbody>
+        <tr><td>Direct</td><td>本次请求直接带工具 schema</td><td>模型可直接提出查询规则的调用</td></tr>
+        <tr><td>Deferred</td><td>先给目录线索，搜索后返回可加载定义</td><td>先检索 issue 相关工具，再获得参数定义</td></tr>
+        <tr><td>Code Mode</td><td>通过代码入口使用嵌套工具</td><td>外层入口不必列出每个工具为顶层 schema</td></tr>
+        <tr><td>Hidden／排除</td><td>受策略和预算等控制</td><td>配置中存在并不保证模型可以调用</td></tr>
+      </tbody>
+    </table></div>
+    <p><code>tool_search</code> 在当前 deferred 工具目录上建立 BM25 索引，返回可加载的工具定义。它不是联网找一个新 MCP，也不是安装器。搜索是否启用、工具怎样曝光，还取决于模型支持、命名空间设置和工具计划。</p>
+    <h4>同一个查询，在哪一层失败？</h4>
+    <pre><code>目录线索：issue-tracker 可以读取需求记录
+搜索：查找读取订单规则的工具
+加载定义：read_issue(id)       ← 教学简写
+模型调用：read_issue("SHIP-42")
+调用准备：刷新检查 → 当前 binding → PreparedMcpCall
+实际结果：满 100 免运费        ← 假想外部返回</code></pre>
+    <p>搜索有结果只证明找到了定义；连接失败、工具被移除或执行前审批未通过，都不能算查询成功。MCP handler 会在执行前检查 dirty refresh，并把 client、metadata 与配置绑定到本次 prepared call；不能把 StepContext 理解为把外部连接永远冻结。</p>
+    <div class="call pit"><span class="tag">两种 MCP 内容，别混成一种</span>MCP tools 给出可调用动作；MCP resources 提供可读内容。Orchestrator skill 可以经 resource 接口读取，但这不意味着每个 skill 都注册成一个 MCP tool。读 skill、加载 schema、执行工具分别进入不同链路。</div>
+
+
+  </div></details>
+    <p class="source">配置与调用绑定：<a href="../Codex_Harness_Research.html#mcp-loading">手册 §4.6 · MCP 生命周期</a>；曝光、Code Mode 与插件：<a href="../Codex_Harness_Research.html#tool-loading">手册 §4.7 · 工具加载</a></p>
+  </section><p class="chapter-transition">一次输入已经装好。下一章看执行一轮后，这张输入图怎样变化。</p></div><div class="chapter" id="chapter-4"><header class="chapter-head"><span>CHAPTER 04</span><h2>运行中的变化：历史追加与规则更新</h2><p>回到 run_turn，跟随工具结果、用户追加输入与 WorldState 更新。</p><p class="chapter-outcome">读完能在同一条 history 中区分追加观测、追加要求和替换规则的通知。</p><nav aria-label="第 4 章小节"><a href="#step-2">run_turn 每次采样前后做什么</a><a href="#step-5">WorldState 怎样更新与恢复基线</a></nav></header><section class="essay" id="step-2">
+    <div class="section-head"><span class="section-num">04.1</span><h3 class="section-title">run_turn 每次采样前后做什么</h3></div>
+    <p class="section-sub">输入贡献 → 捕获 StepContext → 采样 → 执行与预算检查</p><p class="scene-question">同一个用户回合里，Codex 在什么位置重新准备请求、接收输入和检查压缩？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📥</span><strong>回合输入与贡献项</strong><span class="scene-meaning">处理用户输入、显式 Skills 等内容</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📦</span><strong>capture_step_context</strong><span class="scene-meaning">准备采样使用的模型、工具与环境</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📡</span><strong>ModelClient.stream</strong><span class="scene-meaning">发送 Prompt，处理 ResponseItem 与事件</span></li>
+      <li><span class="scene-icon" aria-hidden="true">↩️</span><strong>工具结果 / 待处理输入 / 预算</strong><span class="scene-meaning">决定续跑、压缩或结束本轮</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>run_turn 负责续跑判断；StepContext 约束采样计划。MCP handler 另在执行前刷新并捕获 PreparedMcpCall，不应把两种绑定混成一个永久快照。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 把模型动作记为 ActionEvent、执行观测记为 ObservationEvent；Codex 用独立 ResponseItem 记录调用／结果。两者都要维护调用关联，不能把“能调用工具”当成结构差异。 <a href="https://docs.openhands.dev/sdk/arch/events">对照依据 ↗</a></p>
+    <details class="quiz"><summary>自测：StepContext 是否保证请求发出后，MCP 目录和连接永不变化？</summary>
+    <p>不保证。它固定采样使用的计划；MCP 执行前仍检查刷新并准备本次调用。模型看到过定义和实际成功执行，是两个需要分别核对的事实。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>在本例中，<code>run_turn</code> 把失败的工具结果写入历史，下一次采样取得更新后的输入。<code>run_turn</code> 在一个用户回合内反复请求模型、执行工具，直到无需续跑且没有待处理输入；这些步骤不是多次独立的用户回合。</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="执行循环图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    U[用户要求修复测试] --> S[Session 接收输入]
+    S --> C[StepContext 冻结本次能力与设置]
+    C --> P[组装模型请求]
+    P --> M[模型采样]
+    M -->|工具调用| T[执行并记录工具结果]
+    T --> B[检查待处理输入与窗口预算]
+    B --> C
+    M -->|无需续跑且无待处理输入| F[结束本轮]
+</code></pre></div>
+      <figcaption>教学简图。真实循环还有 hooks、中断、审批与压缩；文字输出本身不是唯一的结束条件。</figcaption>
+    </figure>
+    <p>每次派发前，harness 会准备一张“本次工作单”，写明可用工具、环境与规则，这就是 <code>StepContext</code>。它为采样时的工具定义、环境和规则提供一致视图。MCP 调用还有执行前刷新与绑定：请求时看到的目录，不保证外部服务到执行时仍完全相同；MCP 加载一节展开这个边界。对 Java 开发者，它接近不可变的 request-scoped 对象；这不意味着外部文件和进程也被冻结。</p>
+    <h4>快照 A：测试失败怎样进入下一次请求</h4>
+    <pre><code>当前初始上下文 I0：权限、环境、R0「JUnit 5」
+U1：满 100 免运费，保持 public API
+
+call c1：读取 ShippingCost.java
+output c1：return amount &gt; 100 ? 0 : 5;
+call c2：运行 ShippingCostTest
+output c2：amount=100，expected=0，actual=5，FAIL
+
+下一次采样：看到以上历史，决定怎样修复</code></pre>
+    <p>输出必须与调用共享 <code>call_id</code>。模型看到测试失败，才有根据把 <code>&gt; 100</code> 改成 <code>&gt;= 100</code>；生成修改建议、执行修改和确认测试通过是不同节点。</p>
+
+
+  </div></details>
+    <p class="source">沿调用链阅读：<a href="../Codex_Harness_Research.html#architecture">手册 §2 · Session 与 StepContext</a></p>
+  </section><section class="essay" id="step-5">
+    <div class="section-head"><span class="section-num">04.2</span><h3 class="section-title">WorldState 怎样更新与恢复基线</h3></div>
+    <p class="section-sub">Known / Absent / Unknown + fragments / merge patch</p><p class="scene-question">历史里还留着旧 AGENTS 文本，精确 snapshot 却丢了，Codex 会怎样发新版？</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🔎</span><strong>Known(snapshot)</strong><span class="scene-meaning">有旧快照：比较差异，必要时更新</span></li>
+      <li><span class="scene-icon" aria-hidden="true">❓</span><strong>Unknown</strong><span class="scene-meaning">有旧片段依据但无精确快照：替换或撤销通知</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📄</span><strong>Absent</strong><span class="scene-meaning">无有效旧依据：当前内容按需全量注入</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>面向模型的是变化 fragments；写入 rollout 的是 full snapshot 或 merge patch。恢复器重放状态与模型读自然语言通知，是两条不同的数据流。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 由事件流构造 LLM View；Codex 另外维护可比较的规则基线，并发送覆盖／撤销通知。这里比较的是历史投影与当前规则管理两种职责，不能据此断言 OpenHands 不处理陈旧规则。 <a href="https://docs.openhands.dev/sdk/arch/condenser">对照依据 ↗</a></p>
+    <aside class="design-choice"><strong>设计分析 · 把规则恢复交给程序状态源</strong><p><b>收益：</b>Known / Unknown / Absent 区分是否需要替换或撤销；full / patch 另供恢复器使用。</p><p><b>代价／边界：</b>状态源若未刷新，差异计算也不会凭空知道文件已改变。</p></aside>
+<p class="map-return"><a href="#context-map">回到输入剖面图，切换阶段检查这些项的位置 →</a></p><details class="quiz"><summary>练习：旧历史有 AGENTS 文本、snapshot 丢了，当前规则已移除。什么都不发可以吗？</summary>
+    <p>不可以。这是 Unknown；旧规则仍可能影响任务，需要明确通知它不再适用。若把它当成 Absent，就会丢掉撤销动作。处理依据是管理器提供的当前状态，不是臆测磁盘已经刷新。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>任务运行时，工作目录、规则或可用能力可能改变。Codex 用 <code>WorldState</code> 把这些内容分成可保存快照、可生成差异的 section。</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="WorldState 更新图，可横向滚动"><pre><code class="language-mermaid">flowchart LR
+    C[本次请求的当前状态] --> D{已有 reference baseline?}
+    D -->|没有| F[构造完整 initial context]
+    D -->|有| X[比较各个 section]
+    X --> A[追加变化片段]
+    F --> B[保存对应 baseline]
+    A --> B
+</code></pre></div>
+      <figcaption>AGENTS.md 被替换或移除时，更新消息会明确表达这个变化，避免只是叠加另一份规则。</figcaption>
+    </figure>
+    <p>项目 AGENTS.md 按 root → cwd 发现，同目录优先选 override，再选普通文件和配置的 fallback；项目内容有共享字节预算。它进入 <strong>user-role context</strong>，不会因为文件名而提升成 system 权限。</p>
+    <p>第三章说明了 Skills 与 MCP 能力怎样加载；这里追踪的是能力变化怎样通知模型。WorldState 中的工具目录状态不等于完整 schema，更不是执行结果的备份。</p>
+    <div class="call pit"><span class="tag">边界 · 状态更新不等于每次重新读盘</span>AGENTS 管理器有缓存与刷新条件。不能把 WorldState 的差异比较解释成“每次采样都重新读取所有 AGENTS.md 和 SKILL.md”。</div>
+    <h4>快照 B：规则更新与旧会话恢复</h4>
+    <p>仍在修运费测试。假设下一轮由客户端把<strong>任务工作目录</strong>切到带子目录规则的位置，管理器刷新得到 R1：“JUnit 5；只跑运费模块测试”。这不是在一次 shell 命令中执行 cd，也不是假设原地编辑会触发监听。</p>
+    <pre><code>已有历史：I0 含 R0 → U1 → c1/output → c2/FAIL
+追加 ΔR：这份 AGENTS.md 取代此前版本；完整 R1
+追加 U2：继续修复，并验证 99、100、101 三个边界
+
+已知旧快照且与 R1 相同：Known → 不重复发
+无旧快照，但历史里能识别旧 AGENTS：Unknown → 替换声明 + R1
+无旧快照也无旧片段依据：Absent → 发 R1，不加替换声明</code></pre>
+    <p>把 R1 看成新版规则页：<strong>Known</strong> 是知道桌上旧页写了什么，可以比较是否有变化；<strong>Unknown</strong> 是认得桌上有旧规则页，却没有可用的精确快照，发新版时必须说明它取代该旧版；<strong>Absent</strong> 是当前保留材料中没有旧页依据，直接放入新版即可，不代表整段会话从未出现过规则。</p>
+    <p>Unknown 与 Absent 都没有精确旧值，处理方式却不同，所以不能合成一个 <code>Optional.empty()</code>。当前规则为空时，Unknown 还需要发撤销通知。这里撤销的是对应的 AGENTS 旧内容，不是把其他来源的所有指令一起废除。</p>
+    <p>写入 rollout 的是另一份数据：第一次 full snapshot，后续 JSON Merge Patch。比如 <code>{"tools":{"db":null}}</code> 表示从工具目录删除 db；它不是发给模型的自然语言通知，也不删除任何数据库数据。</p>
+
+
+  </div></details>
+    <p class="source">三态、快照和缓存：<a href="../Codex_Harness_Research.html#world-state">手册 §5.3</a>、<a href="../Codex_Harness_Research.html#world-state-boundary">工具结果边界</a></p>
+  </section><p class="chapter-transition">历史继续增长。第五章讨论什么时候需要重写它，以及怎样重建可继续工作的输入。</p></div><div class="chapter" id="chapter-5"><header class="chapter-head"><span>CHAPTER 05</span><h2>压缩与恢复：重写历史，但保持任务可续接</h2><p>按触发 → 请求路由 → 产物与布局 → checkpoint 恢复的顺序阅读。</p><p class="chapter-outcome">读完能画出 Local、Remote V2、TokenBudget 三条路径的输入与输出，不把规则重建当成摘要。</p><nav aria-label="第 5 章小节"><a href="#step-6">Codex 在哪些阈值触发 compaction</a><a href="#step-7">Compaction 请求由谁发、走哪条路径</a><a href="#step-8">replacement_history 怎样组成下一窗口</a></nav></header><section class="essay" id="step-6">
+    <div class="section-head"><span class="section-num">05.1</span><h3 class="section-title">Codex 在哪些阈值触发 compaction</h3></div>
+    <p class="section-sub">Total / BodyAfterPrefix + 自动预算 + 完整窗口检查</p><p class="scene-question">用源码 fixture 看两条线：自动预算不是完整可用窗口，250k 配置也不一定等到 250k。</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📥</span><strong>服务端用量 + 本地增量估计</strong><span class="scene-meaning">计量当前活跃上下文</span></li>
+      <li><span class="scene-icon" aria-hidden="true">⚠️</span><strong>自动阈值 A</strong><span class="scene-meaning">Total：min(C, floor(0.9 × W))，C 未设则取后项</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🛑</span><strong>可用窗口 H</strong><span class="scene-meaning">floor(p × W / 100)，另做完整窗口检查</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>采样前、需续跑的工具结果之后、特定模型切换时都可能触发检查。BodyAfterPrefix 的自动预算口径不同，buffer 也会改变条件。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 文档的 LLMSummarizingCondenser 用事件数阈值；Codex 区分总 token 与 BodyAfterPrefix 增长。阈值数值不可直接横比，先统一计量单位。下例固定 W=272,000、C=250,000、p=95、Total、无 buffer、仍需续跑。 <a href="https://docs.openhands.dev/sdk/arch/condenser">对照依据 ↗</a></p><div class="hands-on" id="budget-demo">
+<h4>拖动 token 用量：何时触发压缩？</h4>
+<label for="token-load">当前用量 <output id="token-number" for="token-load">244,000</output> tokens</label>
+<input id="token-load" type="range" min="180000" max="272000" step="100" value="244000" aria-describedby="budget-assumptions budget-state">
+<div class="capacity" aria-hidden="true"><div id="capacity-fill" style="width:89.7059%"></div><i class="auto-mark"></i><i class="hard-mark"></i></div>
+<div class="budget-legend"><span>整理线 A：244,800</span><span>可用上限 H：258,400</span></div>
+<p id="budget-state" role="status">尚未到整理线：可以继续，但新工具结果会增加材料。</p>
+<p class="small-note" id="budget-assumptions">固定教学条件：Total、无 buffer、仍需续跑。不是当前账户的实时 token 用量；其他口径和配置见展开说明。</p>
+</div><details class="quiz"><summary>自测：把配置预算设成 250k，上面的例子会等到 250k 才压缩吗？</summary>
+    <p>不会。普通 Total 口径取 min(250,000, 272,000 × 0.9)，结果为 244,800。真实触发还要结合续跑条件与相关 buffer 配置。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>压缩请求也占用模型窗口：历史与总结指令必须一起放得下，所以系统需要在触及完整窗口上限前安排整理。超窗后有些路径会裁掉部分输入再重试，但可能损失信息。</p>
+    <p>自动压缩的判断由程序执行。计数结合最近一次服务端用量，以及其后新加入的本地内容估计；本地估计并非精确 tokenizer。</p>
+    <p>普通 <code>Total</code> 口径下，自动阈值默认是当前解析窗口的 90%，显式设置只能在这条公式内进一步收紧；完整可用窗口还有独立上限。</p>
+    <pre><code>W = 当前解析的上下文窗口
+C = 显式自动压缩预算（若配置）
+p = effective_context_window_percent
+
+A = 未配置 C 时取 floor(0.90 × W)
+    否则取 min(C, floor(0.90 × W))
+H = floor(p × W / 100)</code></pre>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="源码测试算例，可横向滚动"><table>
+      <thead><tr><th>测试输入</th><th>自动阈值 A</th><th>可用上限 H</th></tr></thead>
+      <tbody><tr><td>W = 272,000<br>C = 250,000<br>p = 95</td><td><strong>244,800</strong></td><td><strong>258,400</strong></td></tr></tbody>
+    </table></div>
+    <p class="source">以上数字来自源码测试 fixture，用于解释公式，不是当前账户的模型规格。</p>
+    <p>还有 <code>BodyAfterPrefix</code> 口径，只把初始 prefix 之后的增长计入自动预算，同时继续检查完整窗口。相应配置还可能加入 fallback buffer，不能把所有路径压成一个固定百分比。</p>
+    <p>检查点包括新回合采样前、需要继续执行的采样／工具结果之后，以及某些模型切换场景。手动压缩则走独立的 CompactTask。</p>
+    <p>回到运费任务：为了演示长任务，在中间省略一段排查与日志。假设采用上面的 Total 配置、<strong>没有 fallback buffer</strong>，工具返回后用量从 244,000 增到 245,000，且仍需继续验证，此时超过 A，应先压缩再采样。不是因为“刚好做了 80 次调用”。</p>
+
+
+  </div></details>
+    <p class="source">公式、口径和调用点：<a href="../Codex_Harness_Research.html#budget">手册 §6 · 压缩触发</a></p>
+  </section><section class="essay" id="step-7">
+    <div class="section-head"><span class="section-num">05.2</span><h3 class="section-title">Compaction 请求由谁发、走哪条路径</h3></div>
+    <p class="section-sub">同一用户 Session；本次 model_info；三种实现</p><p class="scene-question">先看请求与结果：V2 发 trigger、Local 发总结要求、TokenBudget 跳过总结。</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">✉️</span><strong>Remote V2</strong><span class="scene-meaning">Responses + compaction_trigger → 一个 encrypted compaction item</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📝</span><strong>Local 总结</strong><span class="scene-meaning">历史 + 总结提示 → 文本 handoff summary</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧹</span><strong>TokenBudget reset</strong><span class="scene-meaning">start_new_context_window → 不生成摘要</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>普通总结型请求使用本次 turn_context.model_info()，结果写回原 Session。模型切换时可能先用旧模型压缩；服务端是否另用压缩模型，客户端无法证明。</p>
+    <p class="bridge"><strong>实现对照：</strong>LangChain SummarizationMiddleware 可单独配置摘要 model、trigger、keep；Codex 在客户端按 feature／provider 路由 Local、V2 或 TokenBudget。V2 密文产物也不同于可读总结；三条路不是任意可互换的按钮。 <a href="https://docs.langchain.com/oss/python/langchain/short-term-memory#summarize-messages">对照依据 ↗</a></p><div class="hands-on" id="compact-demo">
+<h4>切换源码路径，看活跃历史的替换结果</h4>
+<div class="mode-buttons" role="group" aria-label="比较三种压缩路径">
+<button type="button" data-mode="local" aria-pressed="true" aria-controls="compact-result">📝 Local</button>
+<button type="button" data-mode="remote" aria-pressed="false" aria-controls="compact-result">✉️ Remote V2</button>
+<button type="button" data-mode="reset" aria-pressed="false" aria-controls="compact-result">🧹 TokenBudget</button>
+</div>
+<div class="desk-pair">
+<div class="desk"><h5>压缩前 · 活跃历史</h5><div class="paper-stack"><span>📌 原需求 U1 / U2</span><span>📋 旧规则 R0 → 新规则 R1</span><span>🧾 失败日志、操作记录……</span><span>🛠️ 代码已改，仍待验证</span></div></div>
+<div class="desk after" id="compact-result" aria-live="polite"><h5 id="compact-heading">Local · 可读摘要</h5><div class="paper-stack" id="compact-papers"><span>📌 预算内保留的用户原文</span><span>📋 按时机重建当前规则</span><span>📝 已改比较符，仍需验证边界</span></div><p id="compact-note">摘要内容是教学构造。旧工具输出原始项不会因此完整保留。</p></div>
+</div>
+<p class="small-note">按钮仅比较源码路径。U1：满 100 免运费、public API 不变；U2：验证 99/100/101；R1：JUnit 5、只跑订单模块。假设 U1/U2 在保留预算内，省略图片等特殊候选；规则注入时机见下一节。</p>
+</div>
+<div class="call"><span class="tag">Remote V2 请求形状 · 逻辑投影</span><code>model = turn_context.model_info()</code><br><code>instructions = 原基础指令</code>，<code>tools = 本次工具表</code><br><code>input = 整理后的历史 + compaction_trigger</code><br>经普通 Responses 请求发送 → 要求完成事件与恰好一个 compaction item → 安装到原 Session。服务端内部摘要格式不可见。</div>
+<div class="same-task"><span class="scene-icon" aria-hidden="true">🍽️</span><div><h4>Session 不变；ModelClientSession 与模型选择另看</h4><p>普通总结型压缩沿用同一个用户 Session，请求通常指定当前模型。新建请求层的 ModelClientSession 不等于另开任务。切换模型时，可先让旧模型整理再交接；Remote V2 服务端内部是否另用模型，公开代码无法证明。</p><a href="../Codex_Harness_Research.html#compaction-session-model">看 session / model 的源码边界 →</a></div></div><aside class="design-choice"><strong>设计分析 · 把压缩作为可验证的生命周期</strong><p><b>收益：</b>触发、产物校验、历史替换、基线与持久化由程序承接。</p><p><b>代价／边界：</b>V2 的协议产物可检查数量和类型，却不能在客户端检查语义完整性。</p></aside>
+<details class="quiz"><summary>自测：读完 Local 的公开总结模板，能否说明 Remote V2 使用同样的内部 prompt？</summary>
+    <p>不能。V2 交回不透明的 encrypted_content，公开客户端只展示控制项、传递和保留机制，不能揭示服务端内部摘要格式或算法。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="三条压缩路径图，可横向滚动"><pre><code class="language-mermaid">flowchart TD
+    A[触发 compaction] --> B{TokenBudget 开启?}
+    B -->|是| R[跳过总结，开启新窗口]
+    B -->|否| C{Provider 支持 Remote V2?}
+    C -->|是| V[Responses 流追加 compaction_trigger]
+    V --> K[保留原始消息 + 不透明 compaction item]
+    C -->|否| L[普通模型生成交接总结]
+    L --> S[保留用户消息 + 文本摘要]
+</code></pre></div>
+      <figcaption>TokenBudget 与 context_management 在此快照的源码默认关闭，不能当成所有用户的默认路径。</figcaption>
+    </figure>
+    <h4>Remote V2：把压缩变成协议中的动作</h4>
+    <p>可以把它看作服务端交回的一份不透明压缩项。客户端能保存和传递这个包，但打不开其中的语义内容；不能因为包还在，就断言每条细节都被保留。</p>
+    <p>客户端整理历史、保留基础指令和工具表，追加 <code>{"type":"compaction_trigger"}</code>，通过普通 Responses 流发出。它要求接收恰好一个 compaction item，再安装新的历史。</p>
+    <div class="call"><span class="tag">版本差异 · 别照搬早期文章</span>此快照的 V2 集成测试检查 <code>/v1/responses</code>。早期资料里的独立 <code>/responses/compact</code> 是另一条描述，不能拿来替代当前调用链，也不能据此宣布公共 compact API 已取消。</div>
+    <h4>Local：客户端编排交接总结</h4>
+    <p>这条路径会生成可读摘要：进度、决策、约束、剩余步骤和关键引用，再与近期用户消息拼成新历史。“Local”描述的是客户端编排，模型本身仍可能运行在远程。</p>
+    <h4>TokenBudget：直接切换窗口</h4>
+    <p>这条路径重置历史并重新注入当前上下文，不自动生成旧任务摘要。此前写入的 notes 和按地址检索的 history 还取决于 extension、模型、provider 与认证条件；重置本身不代写笔记，也不保证检索可用。</p>
+    <div class="call"><span class="tag">实验分支 · 提醒之后有事可做</span>若已启用并使用那组模型默认配置，余量不大于 6,144 时可提醒写 notes；模型随后请求 new_context，新窗口再读 notes / history。16,384 是有条件的 fallback buffer，完整窗口硬限仍可先到。Rust feature 默认关闭与模型默认激活关闭是两项判断；后者不是禁止用户显式开启。</div>
+
+
+  </div></details>
+    <p class="source">三条实际调用链：<a href="../Codex_Harness_Research.html#compaction">手册 §7 · Compaction</a>、<a href="../Codex_Harness_Research.html#history-notes">history / notes</a>、<a href="../Codex_Harness_Research.html#pressure">压力提醒的条件</a></p>
+  </section><section class="essay" id="step-8">
+    <div class="section-head"><span class="section-num">05.3</span><h3 class="section-title">replacement_history 怎样组成下一窗口</h3></div>
+    <p class="section-sub">筛选原文 → 重建 initial context → 安装 checkpoint</p><p class="scene-question">压缩后究竟还剩哪些 items？规则、任务进度与工具原文分别怎样处理？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📌</span><strong>筛选保留的原始消息</strong><span class="scene-meaning">V2：共享 64k；Local：用户文本 20k 估算预算</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📋</span><strong>重建 canonical context</strong><span class="scene-meaning">回合中插到最后保留用户消息前；其他时机另处理</span></li>
+      <li><span class="scene-icon" aria-hidden="true">💾</span><strong>安装 replacement_history</strong><span class="scene-meaning">写 checkpoint 与窗口标识，更新基线并重算用量</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>预算限制的是原文保留，不是摘要大小。旧工具输出原始项不属于这两条原文保留路径；其信息是否进摘要，不能从 WorldState 推导。</p>
+    <p class="bridge"><strong>实现对照：</strong>OpenHands 保留事件日志，以 Condensation 指定遗忘集合，再生成 View；Codex 安装 replacement history 并保存恢复基线。对照时要分清“归档还在”和“模型此刻可见”。 <a href="https://docs.openhands.dev/sdk/arch/condenser">对照依据 ↗</a></p>
+    <aside class="design-choice"><strong>设计分析 · 规则与任务进度分开恢复</strong><p><b>收益：</b>当前规则可以重建，摘要／checkpoint 主要负责衔接任务状态。</p><p><b>代价／边界：</b>早期用户特有约束与一次性工具输出仍可能依赖有损摘要或独立归档。</p></aside>
+<p class="map-return"><a href="#context-map">回到输入剖面图，切换阶段检查这些项的位置 →</a></p><details class="quiz"><summary>练习：新窗口里只有“比较符已修改”，可以直接宣布测试通过吗？</summary>
+    <p>不可以。下一步应运行 99、100、101 三个边界测试并检查结果，还应确认 public API 未变。若需要核对修改前的 FAIL，须从原文归档取证；重跑得到的是新观测。摘要里的“已修改”不是“已验证”。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>假设第 80 次工具调用刚结束，模型还需要修测试。Remote V2 按候选筛选与共享 <strong>64k token</strong> 预算保留原始消息；Local 则按 <strong>20k 估算 token</strong> 预算保留用户文本，两者都偏向较新的内容。</p>
+    <p>这两个数字不是摘要大小，也不是窗口大小。V2 还有图片、agent 消息及客户端 developer 消息的不同规则，预算边界处可能截断消息。</p>
+    <figure>
+      <ol class="layers">
+        <li class="layer"><span>RETAIN</span>预算内较早的真实用户消息</li>
+        <li class="layer highlight"><span>REBUILD</span>当前权限、AGENTS.md、环境及其他 initial context</li>
+        <li class="layer"><span>RETAIN</span>最后一条保留的真实用户消息</li>
+        <li class="layer highlight"><span>CHECKPOINT</span>compaction item / 交接摘要，位于历史尾部</li>
+      </ol>
+      <figcaption>回合中总结型 compaction 的典型布局；基础 instructions 独立构造。没有真实用户消息时，插入点有对应回退。</figcaption>
+    </figure>
+    <p>任务摘要写“比较符已改，边界测试待跑”；当前 AGENTS 规则要求“使用 JUnit 5，只跑运费模块”。如果把规则也只交给摘要转述，漏掉一句就可能改变后续做法。因此 <strong>REBUILD</strong> 会从程序维护的当前状态重新生成规则与环境内容，任务进度则交给摘要或检查点。重新生成减少了对摘要保留规则的依赖，并不保证模型必然遵守。</p>
+    <p>手动或回合前压缩会清除 reference baseline，下一次正常构造时再全量注入；回合中则立即插到最后一条真实用户消息之前。程序使用的是当前掌握的状态，仍受前面提到的 AGENTS 缓存刷新条件约束。</p>
+    <p>之后保存 <code>replacement_history</code> 和窗口标识，恢复会话时重建这份模型视图。压缩完成不要求重启整个任务或重置真实工作区。</p>
+    <h4>快照 C：同一个任务，三种 replacement</h4>
+    <p>设修复已将 &gt; 改成 &gt;=，但三个边界尚未重跑。U1、U2 都在原文预算内，无图片、agent 消息或额外 developer 保留项；这是<strong>回合中压缩</strong>。I1 表示按当前 R1 重建的完整初始上下文。</p>
+    <pre><code>压缩前：
+I0(R0) → U1 → c1/output → c2/FAIL → ΔR(R1) → U2
+→ c3「将 &gt; 改为 &gt;=」/修改成功 → 后续排查项……
+
+Local：
+U1 → I1(R1) → U2 → S「已改比较符；原测试曾失败；
+需验证 99/100/101；保持 public API」
+S 是人为构造的好摘要示例，不是实测输出。
+
+Remote V2：
+U1 → I1(R1) → U2 → Compaction{encrypted_content: "…"}
+无法从密文判断“已改比较符”有没有保留，不能伪造其内容。
+
+TokenBudget reset：
+I1(R1，当前/前一窗口 ID，可用的窗口提示)
+不自动带 U1、U2 和 S；若已写 notes 且检索工具可用，
+下一次采样先读检查点，再按 ID 回捞所需证据。</code></pre>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="压缩后证据去向，可横向滚动"><table>
+      <thead><tr><th>案例对象</th><th>总结路径中的去向</th><th>不能推断什么</th></tr></thead>
+      <tbody>
+        <tr><td>U1 / U2</td><td>本例预算内原文保留</td><td>不能推广到无限长用户历史</td></tr>
+        <tr><td>旧 R0 / 更新 ΔR</td><td>由当前 I1(R1) 重新表达规则</td><td>不是让摘要器决定哪份规则生效</td></tr>
+        <tr><td>c2 的 FAIL 日志</td><td>原始 item 不保留；部分信息可能进摘要</td><td>WorldState 没有备份这份日志</td></tr>
+        <tr><td>磁盘上的 &gt;= 修改</td><td>继续存在，可重新读取</td><td>重读当前文件不等于恢复过去输出</td></tr>
+      </tbody>
+    </table></div>
+
+
+  </div></details>
+    <p class="source">筛选细节与恢复布局：<a href="../Codex_Harness_Research.html#compaction">手册 §7</a>、<a href="../Codex_Harness_Research.html#recovery">§8</a></p>
+  </section><p class="chapter-transition">机制已经串起来。最后把它放回其他 harness 中，评价收益、代价和证据。</p></div><div class="chapter" id="chapter-6"><header class="chapter-head"><span>CHAPTER 06</span><h2>比较与评价：巧妙在哪里，代价是什么</h2><p>先比较责任分配，再解释缓存影响，最后用一条 trace 检验整套理解。</p><p class="chapter-outcome">读完能把“源码做了什么”“为什么这样设计”“是否更有效”分开讨论。</p><nav aria-label="第 6 章小节"><a href="#harness-comparison">放回其他 harness 中，Codex 选了哪种组织方式？</a><a href="#step-9">Codex 的请求增量与缓存边界</a><a href="#step-10">用一条 Codex trace 串起所有对象</a></nav></header><section class="essay" id="harness-comparison">
+<div class="section-head"><span class="section-num">06.1</span><h3 class="section-title">放回其他 harness 中，Codex 选了哪种组织方式？</h3></div>
+<p class="section-sub">比较相同问题的责任分配，不用功能数量排高低</p>
+<p class="scene-question">都要把长历史变成下一次模型输入，为什么会出现三种不同结构？</p>
+<figure class="story-scene"><ol class="scene-grid compare">
+<li><span class="scene-icon" aria-hidden="true">📦</span><strong>Codex</strong><span class="scene-meaning">类型化活跃历史 → replacement checkpoint → 重建 canonical context</span></li>
+<li><span class="scene-icon" aria-hidden="true">📜</span><strong>OpenHands SDK</strong><span class="scene-meaning">追加事件 → Condensation → 下次从事件流构造 View</span></li>
+<li><span class="scene-icon" aria-hidden="true">🧩</span><strong>LangChain agent / LangGraph</strong><span class="scene-meaning">messages state + checkpointer → 配置总结 middleware</span></li>
+</ol><figcaption>Codex 按固定源码提交；其他两项按本次读取的官方架构文档。比较数据流，不比较未实测的效果。</figcaption></figure>
+<div class="tbl-wrap" tabindex="0" role="region" aria-label="Harness 责任分配比较"><table><thead><tr><th>共同问题</th><th>Codex 的选择</th><th>对照与启发</th></tr></thead><tbody>
+<tr><td>历史改短后怎样恢复？</td><td>保存 replacement history 与对应状态基线</td><td>OpenHands 把 Condensation 加入事件流，下次生成过滤并插入摘要的 View</td></tr>
+<tr><td>谁选摘要模型与策略？</td><td>普通压缩路径取本次 model_info；V2 返回不透明产物</td><td>LangChain SummarizationMiddleware 可配置摘要模型、trigger、keep</td></tr>
+<tr><td>指令和真实用户输入怎样区分？</td><td>role + content_kind + 来源元数据共同表达</td><td>OpenHands 也区分 Event.source 和 LLM role；“role 不是来源”不是 Codex 独有发现</td></tr>
+</tbody></table></div>
+<p class="one-idea"><span>这里的判断</span>Codex 的特点是把模型目录、请求协议、类型化历史和规则重建整合在一个客户端里。优势是这些边界可以共同维护；代价是分支条件更多，V2 压缩内容也无法由客户端解释。</p>
+<p class="bridge"><strong>实现对照：</strong>比较单位是同一个问题的处理路径：OpenHands SDK 的事件投影、LangChain agent 的消息中间件、Codex 的客户端历史生命周期。它们处于不同抽象层，接口差异不能直接换算为效果优劣。</p>
+<details class="quiz"><summary>讨论：有 role 和持久化，为什么仍不足以证明 Codex 的方案更好？</summary><p>这些是共同需求。要比较规则保留、任务完成率、可恢复原文、压缩成本和延迟，并控制任务、模型与预算；不能只凭结构推断效果。</p></details>
+<details class="deep-dive"><summary>展开比较依据与边界</summary><p>OpenHands 的 Condenser 可返回 View 或 Condensation；后者作为事件追加并在下一步处理。LangChain 文档展示在使用 LangGraph checkpointer 的 agent 中配置 SummarizationMiddleware，它不是所有 LangGraph 应用自动启用的策略。这里没有把框架层与成品 coding agent 当作同一产品比较。</p><p>本章只讨论能由官方资料支持的责任分配。Codex V2 的模型内部实现、各家线上默认配置以及谁更省 token，不在本次证据范围。</p></details>
+<p class="source"><a href="https://docs.openhands.dev/sdk/arch/condenser">OpenHands Condenser</a> · <a href="https://docs.openhands.dev/sdk/arch/events">Event.source 与 role</a> · <a href="https://docs.langchain.com/oss/python/langchain/short-term-memory#summarize-messages">LangChain 总结中间件</a> · <a href="../Codex_Harness_Research.html#harness-relations">手册：比较与设计取舍</a></p>
+</section><section class="essay" id="step-9">
+    <div class="section-head"><span class="section-num">06.2</span><h3 class="section-title">Codex 的请求增量与缓存边界</h3></div>
+    <p class="section-sub">previous_response_id / 稳定前缀 ID / prompt_cache_key</p><p class="scene-question">请求只传 delta、输入有稳定 ID、历史被压短，这三种现象分别能证明什么？</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📨</span><strong>WebSocket 增量</strong><span class="scene-meaning">属性匹配且 input 延续旧请求与输出，才发送 delta</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🏷️</span><strong>Responses Lite 前缀 ID</strong><span class="scene-meaning">UUIDv5(thread namespace, payload)：稳定身份</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧮</span><strong>Prompt caching</strong><span class="scene-meaning">服务端复用计算；须用 cached tokens 等观测</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>安装 replacement history 通常打破旧历史的严格扩展关系。V2 追加 trigger 有利于保留前缀，但不保证压缩全程命中缓存。</p>
+    <p class="bridge"><strong>实现对照：</strong>LangChain 将 provider 缓存支持列为独立 middleware。Codex 这里也必须分开观察传输 delta、稳定前缀身份与 cached tokens；客户端结构只能说明复用条件，不能保证命中。 <a href="https://docs.langchain.com/oss/python/langchain/middleware/built-in#provider-specific-middleware">对照依据 ↗</a></p>
+    <details class="quiz"><summary>自测：网络日志显示第二次只发送了工具结果，模型是否已经看不见最初需求？</summary>
+    <p>不一定。满足增量条件时，服务端通过上一 response ID 延续已接受的输入。要看完整逻辑请求，不能只看本次传输的 delta。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <p>同一请求可以同时使用增量传输、前缀缓存和压缩历史。三者的计量单位分别是传输字节、复用计算和活跃上下文 token，必须分开观测。</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="缓存与上下文机制对比，可横向滚动"><table>
+      <thead><tr><th>机制</th><th>主要减少什么</th><th>不能推出什么</th></tr></thead>
+      <tbody>
+        <tr><td>Prompt cache</td><td>重复前缀的模型计算</td><td>缓存命中不代表上下文不占窗口</td></tr>
+        <tr><td>WebSocket 增量</td><td>重复传输的 payload</td><td>网络只发增量不代表模型只看增量</td></tr>
+        <tr><td>Compaction</td><td>活跃窗口中的历史内容</td><td>变短不代表无损或下一轮必然命中缓存</td></tr>
+      </tbody>
+    </table></div>
+    <p>当前 WebSocket 路径已支持 <code>previous_response_id</code>：请求属性匹配、input 是此前请求加输出的扩展时，才可发送增量。早期“Codex 不使用 previous_response_id”的说法不适用于这份源码的全部路径。</p>
+    <p>Remote V2 追加 trigger 的请求结构可能保留原前缀；但压缩前的整理、工具变化、模型切换都会改变条件，压缩后安装的新历史通常也不再是旧历史的严格扩展。</p>
+    <p>Lite 前缀 ID 由 <code>UUIDv5(thread namespace, payload 字节)</code> 确定。它让同一任务重试时的身份稳定，但不是缓存命中证明；<code>store:false</code> 也不排除 WebSocket 的临时连接状态。案例里追加 ΔR 可能保留旧前缀，而安装快照 C 会重写历史结构，两者的缓存条件不同。</p>
+    <div class="call pit"><span class="tag">推论边界</span>压缩比不是任务质量，缓存命中率也不是任务质量。应同时记录任务是否完成、约束是否保留、重复操作次数、token 与延迟。</div>
+
+
+  </div></details>
+    <p class="source">缓存条件和增量匹配：<a href="../Codex_Harness_Research.html#cache">手册 §9 · 三种机制</a></p>
+  </section><section class="essay" id="step-10">
+    <div class="section-head"><span class="section-num">06.3</span><h3 class="section-title">用一条 Codex trace 串起所有对象</h3></div>
+    <p class="section-sub">StepContext → 请求 → compaction item → replacement checkpoint</p><p class="scene-question">固定一组条件：TokenBudget 关闭、provider 支持 V2、需要续跑且预算到限。沿什么证据检查？</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📦</span><strong>StepContext / turn_context</strong><span class="scene-meaning">确认模型、provider、工具表与触发原因</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📡</span><strong>run_remote_compact_v2_attempt</strong><span class="scene-meaning">核对原 instructions / tools、历史与追加 trigger</span></li>
+      <li><span class="scene-icon" aria-hidden="true">✉️</span><strong>collect_compaction_output</strong><span class="scene-meaning">完成事件 + 恰好一个 compaction item</span></li>
+      <li><span class="scene-icon" aria-hidden="true">💾</span><strong>replace_compacted_history</strong><span class="scene-meaning">核对保留项、initial context、基线与窗口记录</span></li></ol><figcaption>Codex 固定源码快照的结构投影；分支条件与引用见本节展开内容和手册。</figcaption></figure>
+    <p class="one-idea"><span>Codex 的实现要点</span>这条 trace 解释的是 Codex 如何压缩和续接；压缩语义质量仍需单独评测。读取源码测试断言也不能报告为已经运行测试。</p>
+    <p class="bridge">代码案例继续：确认 replacement 后能取得 U1/U2 的边界约束、R1 的模块规则，再运行 99 / 100 / 101，核对真实工具结果。</p>
+    <details class="quiz"><summary>参考答案：怎样证明分支走对了，又怎样证明任务做完了？</summary>
+    <p>分支证据是入口条件、实际请求结构、保留与重建规则、checkpoint 的安装和恢复。任务证据则是快照 D 的三个边界断言和 public API 检查；只有“换窗成功”或“比较符已改”都不够。加密压缩项的内部语义和真实质量仍需服务端资料或实测支持，本页构造的 PASS 不能充当实测结果。</p></details>
+    <details class="deep-dive"><summary>展开源码推演与订单测试案例</summary>
+    <div class="deep-content">
+    <h4>快照 D：恢复任务，还要恢复验证义务</h4>
+    <p>接快照 C：Local 从 S 读到待办；Remote V2 的模型可能从压缩项续接，但我们不能审计密文里的细节；TokenBudget 路径则先读已写的 notes，必要时用窗口与 item ID 取回历史。三条路径最后都要用当前代码的观测完成验证。</p>
+    <pre><code>新窗口中的下一步（教学轨迹，未运行真实项目）：
+读取当前 ShippingCost.java → 比较符为 &gt;=
+检查当前 R1 → JUnit 5，只运行订单模块测试
+检查 U1/U2 的约束 → public API 不变；覆盖 99/100/101
+运行边界测试 → 运费分别为 5 / 0 / 0，三个断言通过
+检查 diff → 方法签名未变
+现在才可以报告：修复完成，已验证三个边界，public API 未改。</code></pre>
+    <p>若找不到 U1/U2 的原始约束，也没有可信检查点，不能把上面的预期轨迹当作事实填进去。应先尝试可用的历史回捞，仍无法恢复再请求澄清。<strong>WorldState 恢复 R1，检查点或历史帮助恢复待办，重新执行产生验证证据</strong>；这三件事缺一不可。</p>
+    <p>回看 Skills / MCP 分支，也要逐层核对：技能目录能否定位到正文和引用资源；查询工具定义是否已加载；执行时是否成功取得调用绑定与实际结果。恢复后若还需这些材料，应走可用的重读或历史路径，不能把先前的目录线索当作完整证据。</p>
+    <p>读开源 harness 时，最容易犯的错是看到一个函数，就把它当成产品默认行为。用下面这个练习把入口、条件、数据和结果连起来。</p>
+    <div class="call"><span class="tag">练习场景 · 人为指定条件</span>TokenBudget 关闭，provider 声明 Remote V2；当前请求仍需续跑，窗口预算到限。你要解释下一次模型请求看见什么。这里是在分析假设路径，不是在描述当前账户的运行状态。</div>
+    <ol class="practice">
+      <li>从 <code>session/turn.rs</code> 找到预算检查与 <code>run_auto_compact</code>，确认路由条件。</li>
+      <li>到 <code>compact_remote_v2_attempt.rs</code>，找到压缩请求保留了哪些字段、追加了什么控制项。</li>
+      <li>到 <code>compact_remote_v2.rs</code>，检查输出数量、保留候选、64k 预算及顺序。</li>
+      <li>到 <code>compact.rs</code>，确认 <code>BeforeLastUserMessage</code> 的插入点。</li>
+      <li>到 <code>session/mod.rs</code>，追踪 replacement history、WorldState 基线与 token 重算。</li>
+      <li>最后读相关测试断言，检查请求路径和恢复视图；把“读过测试”和“运行通过”分别记录。</li>
+    </ol>
+
+    <h4>把 Codex 的状态边界串起来</h4>
+    <p>ContextManager 维护调用配对与活跃历史；StepContext 固定采样计划；MCP handler 准备执行绑定；Skills extension 分阶段贡献指令；WorldState 重建当前规则；replacement checkpoint 保存压缩后的模型视图。沿这些对象检查同一条 trace，才能解释 Codex 在哪里保留、加载或替换了信息。</p>
+
+  </div></details>
+    <p class="source">深入阅读：<a href="../Codex_Harness_Research.html#evidence">源码顺序与验证边界</a> · <a href="../../agent-context-compression/learn/">上下文压缩的通用设计</a> · <a href="../../agent-evals/learn/">怎样验证 agent 真的更好</a></p>
+  </section><p class="chapter-transition">回到第二章的输入剖面：如果能解释每一项来自哪里、为何在这里、何时被替换，就掌握了这套实现的主线。</p></div></main>
+<footer>
+  <div class="foot-inner">
+    <p>本页与参考手册采用同一官方源码提交 <code>944d6fd1ba4baab69dbedd205282dc72ec20abb5</code>。流程图是教学投影，常量与启用条件以手册链接的源码为准。内容区分源码行为、工程解释与练习假设，不报告真实模型压缩质量，也不把源码默认值当作线上部署状态。</p>
+    <p><a href="../Codex_Harness_Research.html">打开源码参考手册</a> · <a href="#main">回到六章大纲</a> · <a href="../../">返回学习笔记</a></p>
+  </div>
+</footer>
+<script type="module" src="../../assets/js/util/mermaid-render.js"></script>
+<script src="context-map.js" defer></script>
+
+<script>
+(() => {
+  const slider = document.getElementById('token-load');
+  const updateBudget = () => {
+    const value = Number(slider.value);
+    document.getElementById('token-number').textContent = value.toLocaleString('en-US');
+    const fill = document.getElementById('capacity-fill');
+    fill.style.width = (value / 272000 * 100) + '%';
+    fill.style.background = value >= 258400 ? 'var(--rose)' : value >= 244800 ? 'var(--amber)' : 'var(--phosphor)';
+    document.getElementById('budget-state').textContent = value >= 258400
+      ? '已到可用上限：普通采样不能照常继续，必须处理窗口压力。'
+      : value >= 244800 ? '已到整理线：按本例条件，先压缩，再继续采样。'
+      : '尚未到整理线：可以继续，但新工具结果会增加材料。';
+  };
+  slider.addEventListener('input', updateBudget);
+  const modes = {
+    local: ['Local · 可读摘要', ['📌 预算内保留的用户原文', '📋 按时机重建当前规则', '📝 已改比较符，仍需验证边界'], '摘要内容是教学构造。旧工具输出原始项不会因此完整保留。'],
+    remote: ['Remote V2 · 不透明压缩项', ['📌 按规则和预算保留的原文', '📋 按时机重建当前规则', '✉️ Compaction：encrypted_content'], '客户端打不开这个包。不能伪造其内部内容，也不能保证每条细节都被保留。'],
+    reset: ['TokenBudget · 无总结的新窗口', ['📋 当前 initial context', '🔖 窗口标识及可用提示'], '不自动带用户原文或摘要。若之前写过 notes 且接口可用，下一步可读笔记或回捞历史。']
+  };
+  document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
+    const [heading, papers, note] = modes[button.dataset.mode];
+    document.querySelectorAll('[data-mode]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    document.getElementById('compact-heading').textContent = heading;
+    const stack = document.getElementById('compact-papers');
+    stack.replaceChildren(...papers.map(text => { const paper = document.createElement('span'); paper.textContent = text; return paper; }));
+    document.getElementById('compact-note').textContent = note;
+  }));
+})();
+</script>
+</body>
+</html>
