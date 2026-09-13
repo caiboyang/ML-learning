@@ -1,0 +1,4 @@
+interface:
+  display_name: "学习笔记写作"
+  short_description: "先熟读背景，再设计教学大纲，用图解、贯穿案例和贴切类比讲清技术"
+  default_prompt: "请用 $learning-notes 编写这次主题的学习笔记：先熟读背景，明确读者前提，再按教学大纲用图解和贯穿案例讲清机制与取舍。"
