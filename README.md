@@ -18,6 +18,13 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ### 4. Agent Engineering
 
+* 🎓 [Codex Harness 分析：从请求到执行与恢复](https://caiboyang.github.io/ML-learning/codex-harness/learn/)
+  * *面向已经理解 harness 的读者，按“整体地图 → 请求解剖 → 输入加载 → 执行变化 → 压缩恢复 → 横向评价”六章推进。交互剖面标出 instructions / tools、input history 与程序状态的位置；逐项查看 role、内容类别、来源，并切换执行阶段与 Responses / Lite 前缀。最后比较 OpenHands SDK、LangChain agent 的责任分配，讨论 Codex 的设计收益与代价。*
+  * *源码推演与运费边界测试案例按需展开，保留四份 transcript 快照、三态分析和自测。与下面的源码手册配套：**图解展示 Codex 的实现，手册核对调用链、常量与证据边界**；实现对照点名来源，示例输出明确标为教学构造。*
+
+* 📚 [Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理](https://caiboyang.github.io/ML-learning/codex-harness/Codex_Harness_Research.html)（[Markdown 原文](codex-harness/Codex_Harness_Research.md)）
+  * *基于 OpenAI 官方仓库固定提交 `944d6fd1ba4b` 的调用链审计，拆解执行循环、Skills 多来源发现与按需读取、MCP 生命周期、Direct / Deferred / Code Mode 工具曝光，以及压缩与 checkpoint、WorldState 三态和 merge patch、ModelMessages 与指令 provenance。追踪 fragment 的请求元数据、history/notes 与压力提醒的启用条件，以及 Responses Lite 和 WebSocket 的缓存边界；源码事实、设计解释和未验证的服务端行为分别说明。*
+
 * 🎓 [从一个 Agent 到一支可控团队 — Multi-Agent Systems 十步学习路径](https://caiboyang.github.io/ML-learning/multi-agent-systems/learn/)
   * *从 single-agent baseline 开始，用十步建立多智能体系统的决策与工程坐标：什么时候值得拆分、为什么要按上下文边界拆、ADK 的 hierarchy / Sequential / Parallel / Loop 如何表达控制流，以及 planning 为什么不等于 multi-agent。后半程用任务合同、局部失败恢复、single-agent 对照评测和一个最小研究 Lab，把“多开几个 agent”变成可验证的系统设计。页面提供步骤导航与可展开自测答案。*
   * *与下面的研究笔记配套：**这篇给取舍和顺序，那篇给完整 schema、失败轨迹、评估矩阵与来源边界**。建议先走完十步，再把研究笔记当作实现参考。*
