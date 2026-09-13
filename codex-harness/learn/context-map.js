@@ -3,6 +3,13 @@
   const stage = document.getElementById('history-stage');
   const wire = document.getElementById('wire-mode');
   const records = {
+    developerBundle: ['聚合 developer 消息', 'rule', 'I0/I1 · 槽位 1', 'developer', '每个 content 保留 kind；例如 skills.catalog / model_switch.instructions', '扩展贡献 + WorldState 的 developer fragments', '存在 ModelSwitchInstructions 时提到本组最前；其余内容在同一消息内聚合。基础 instructions 不应无条件在这里再复制一遍。'],
+    separateDeveloper: ['独立 developer 片段（条件性）', 'rule', 'I0/I1 · 槽位 2，可有多条', 'developer', 'token_budget.context_window / multi_agent.role_instructions 等', '窗口提示 + WorldState 中要求独立的片段', '每个片段各建一条消息；TokenBudgetContext 需要对应 feature 和已知窗口。角色相同并不意味着必然合并。'],
+    multiAgentMode: ['Multi-agent mode（条件性）', 'rule', 'I0/I1 · 槽位 3', 'developer', 'multi_agent.mode_instructions', 'WorldState 暂存后单独输出', '放在独立 developer 片段之后、contextual user 之前；与 MultiAgentRole 是不同片段。'],
+    contextualUser: ['聚合 contextual user 消息', 'rule', 'I0/I1 · 槽位 4', 'user', '例如 agents_md.instructions / plugins.recommendations', '项目规则、推荐插件及 WorldState 的 user fragments', '本例 I0 含 R0，重建 I1 含当前 R1。user role 不代表真实用户输入；显式选中 Skill 正文另走注入路径，不固定属于本组。'],
+    guardian: ['Guardian policy（条件性）', 'rule', 'I0/I1 · 槽位 5', 'developer', 'guardian.policy', '符合 session source 条件且非空的 developer instructions', '源码在 contextual user 消息之后追加本项；不能用“所有 developer 都排在 user 前面”概括。'],
+    managed: ['Managed developer instructions（条件性）', 'rule', 'I0/I1 · 槽位 6', 'developer', 'managed_config.developer_instructions', 'WorldState 暂存的托管 developer 指令', '存在时最后追加到初始上下文组。后续真实用户消息、历史位置和 compaction 尾部产物另由外层装配决定。'],
+    selectedSkill: ['类别探针：选中的 Skill 正文', 'rule', '独立注入路径；不固定属于 I0/I1', 'user', 'skills.selected_skill_instructions', 'Skills extension 读取显式选择的技能正文', '此按钮用于对照目录与正文，不额外插入示例 history。目录是 developer / skills.catalog；正文经 SkillInstructions 注入，模型自主读取则还要看实际工具输出。'],
     base: ['基础行为指令', 'rule', '顶层 instructions', '无 message.role 字段', '基础指令字段，不是 history content_kind', '显式配置 → 会话继承 → 模型目录', '通常独立于历史装配；不是把它混入摘要。'],
     schema: ['模型可见工具定义', 'call', '顶层 tools', '非消息', '工具 schema，不是 function_call', 'StepContext 的 ToolRouter.model_visible_specs()', '工具能力目录和一次工具的执行结果是不同对象；延迟工具不必全部常驻。'],
     liteBase: ['基础指令前缀', 'rule', 'input 前缀', 'developer', 'model.base_instructions', 'Responses Lite 请求转换', '这是客户端的 wire 装配分支，不能由此推导服务端 system prompt。'],
@@ -47,12 +54,23 @@
     const badge=document.createElement('span');badge.textContent=record[3]+' · '+record[4];
     button.append(name,badge);button.addEventListener('click',()=>inspect(key,button));return button;
   }
+  function breakdown(key) {
+    const detail=document.createElement('details');detail.className='context-breakdown';
+    const summary=document.createElement('summary');summary.textContent=`展开 ${key==='i0'?'I0':'I1'}：内部位置与类别`;
+    const note=document.createElement('p');note.textContent='下面是构造器的有序槽位。无内容的槽位省略；条件项不表示同时启用，编号不是实际 wire index。';
+    const slots=document.createElement('ol');
+    ['developerBundle','separateDeveloper','multiAgentMode','contextualUser','guardian','managed'].forEach((name,i)=>{
+      const li=document.createElement('li');li.append(item(name,`${i+1}. `));slots.append(li);
+    });
+    const skillNote=document.createElement('p');skillNote.textContent='分组外的注入类别（不占上面六个槽位）：';
+    detail.append(summary,note,slots,skillNote,item('selectedSkill',''));return detail;
+  }
   function render() {
     const [keys,note]=stages[stage.value];const top=document.getElementById('request-top');
     const list=document.getElementById('history-items');top.replaceChildren();list.replaceChildren();
     if(wire.value==='responses')top.append(item('base',''),item('schema',''));
     const prefix=wire.value==='lite'?['liteTools','liteBase']:[];
-    [...prefix,...keys].forEach((key,i)=>{const li=document.createElement('li');li.append(item(key,`${i+1}. `));list.append(li);});
+    [...prefix,...keys].forEach((key,i)=>{const li=document.createElement('li');li.append(item(key,`${i+1}. `));if(['i0','i1','reset'].includes(key))li.append(breakdown(key));list.append(li);});
     document.getElementById('history-change').textContent=note;
     const first=list.querySelector('button');inspect(first.dataset.item,first);
   }

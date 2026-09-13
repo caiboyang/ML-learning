@@ -3356,7 +3356,7 @@ dsh 在另一头：section 最多（8 个），且把「不许缺」写成了硬
 
 **tool 输出是 token 大头**，十一家里确认八家为它单独设了一层处理（下表）。opencode 的 `TOOL_OUTPUT_MAX_CHARS = 2_000` 属于最简形态；OpenHands 走通用事件截断、Codex 在本地总结重组中不保留 tool result 原始项；**kimi-code 未见独立的 tool-result 层**（`compactionOps.ts` 未通读，存疑）。
 
-三个例外值得说明，且三者的性质各不相同：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 在 §6.2 所述的本地总结重组中直接不保留 tool result 原始项，这不代表它在入历史或构造压缩请求时没有输出整理，较新快照另见 [Harness 手册 §3.2](../codex-harness/Codex_Harness_Research.md#input-preparation)；**kimi-code** 是第三种情况——它**有** tool 侧机制，但那不是压缩管道里的一层：`toolResultTruncationService` 在**工具返回的当下**就把超过 `TOOL_RESULT_MAX_CHARS = 50_000` 的文本结果落盘，只在上下文里留 2K 预览加一个 `output_path`，让模型需要时自己 Read 回来。这是**卸载**不是压缩，发生在信息进入历史之前，因此不计入「压缩时优先处理 tool result」这一档。
+三个例外值得说明，且三者的性质各不相同：**OpenHands** 没有 tool-result 专用层——它做的是通用的事件区间 condensation，失败重试时按 `max_event_str_length` **无差别截断每一条事件**（§5.5），不区分 tool result 与其他事件；**Codex** 在 §6.2 所述的本地总结重组中直接不保留 tool result 原始项，这不代表它在入历史或构造压缩请求时没有输出整理，较新快照另见 [Harness 手册 §5.2](../codex-harness/Codex_Harness_Research.md#input-preparation)；**kimi-code** 是第三种情况——它**有** tool 侧机制，但那不是压缩管道里的一层：`toolResultTruncationService` 在**工具返回的当下**就把超过 `TOOL_RESULT_MAX_CHARS = 50_000` 的文本结果落盘，只在上下文里留 2K 预览加一个 `output_path`，让模型需要时自己 Read 回来。这是**卸载**不是压缩，发生在信息进入历史之前，因此不计入「压缩时优先处理 tool result」这一档。
 
 > 顺带一提，kimi-code 这条其实更接近 §15.2 的架构取向：**与其压缩，不如让它别进来**。同样是应对大宗 tool 输出，本报告多数平台的答案是「进来之后优先压它」，kimi-code 的答案是「进来之前就换成一个指针」。
 >
