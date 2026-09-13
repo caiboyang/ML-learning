@@ -2,6 +2,11 @@
 
 Welcome to my Machine Learning and AI study notes repository! This repository contains structured study notes, deep dives, and visual guides on various ML topics.
 
+## Writing Study Notes
+
+* [学习笔记写作 Skill](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/learning-notes/SKILL.md)：先熟读背景与一手材料，确认读者前提，再设计从整体到局部的教学大纲；用图解、贯穿案例和适合读者的类比解释机制与取舍。
+  * *在本仓库写作时可用 `$learning-notes` 调用，例如：「请用 $learning-notes，面向已经理解 agent harness 的工程师，编写这个实现的学习笔记。」*
+
 ## Contents
 
 ### 1. Reinforcement Learning from Human Feedback (RLHF)
