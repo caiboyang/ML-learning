@@ -5,7 +5,9 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 ## Writing Study Notes
 
 * [学习笔记写作 Skill](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/learning-notes/SKILL.md)：先熟读背景与一手材料，确认读者前提，再设计从整体到局部的教学大纲；用图解、贯穿案例和适合读者的类比解释机制与取舍。
-  * *在本仓库写作时可用 `$learning-notes` 调用，例如：「请用 $learning-notes，面向已经理解 agent harness 的工程师，编写这个实现的学习笔记。」*
+  * *用 `$learning-notes` 调用，例如：「请用 $learning-notes，面向已经理解 agent harness 的工程师，编写这个实现的学习笔记。」呈现阶段会读取下面的配套风格 skill。*
+* [学习笔记风格 Skill](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/learning-notes-style/SKILL.md)：独立定义行文、深色配色、字体、阅读宽度、章节节奏、图表与展开区；附自带 CSS 的 HTML 起点，无需原仓库或构建工具，也可单独用 `$learning-notes-style` 调用。
+  * *迁移时把 `.agents/skills/` 下的 `learning-notes` 与 `learning-notes-style` 两个完整文件夹放到目标环境的 skill 目录，保持同级并保留 `assets/`；无需复制任何已有专题。Markdown 按行文和层级规则呈现，HTML 使用配套样式。*
 
 ## Contents
 
