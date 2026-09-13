@@ -1,0 +1,4 @@
+interface:
+  display_name: "学习笔记风格"
+  short_description: "独立复现学习笔记的行文、深色排版与图解风格，附离线可用的网页起点"
+  default_prompt: "请用 $learning-notes-style 呈现这份学习材料，按输出格式应用行文、排版与图解规则，不依赖现成仓库页面。"
