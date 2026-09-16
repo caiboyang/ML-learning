@@ -7,6 +7,8 @@ layout: null
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="面向已理解 harness 的读者，图解 Codex 的对象关系、请求装配、Skills / MCP 加载，以及 context、compaction 与恢复的源码实现。">
+  <link rel="alternate" hreflang="zh-Hans" href="./">
+  <link rel="alternate" hreflang="en" href="en.html">
   <title>Codex Harness 分析：从请求到执行与恢复</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,6 +41,7 @@ layout: null
     code { font: .84em 'JetBrains Mono', monospace; color: var(--phosphor-glow); background: rgba(123,227,215,.07); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
     p { margin: 0 0 20px; }
     strong { color: var(--paper); font-weight: 600; }
+    .language-nav { margin: 0 0 22px; font: 14px/1.7 system-ui, sans-serif; }
     .mono { font: 12px/1.7 'JetBrains Mono', monospace; letter-spacing: .09em; text-transform: uppercase; }
     .skip { position: absolute; top: -80px; left: 20px; z-index: 1; padding: 10px 18px; background: var(--surface); }
     .skip:focus { top: 12px; }
@@ -211,6 +214,7 @@ layout: null
 <header class="hero">
   <div class="hero-inner">
     <nav class="crumbs mono" aria-label="面包屑"><a href="../../">ML Learning Notes</a><span aria-hidden="true">/</span><span>Agent Engineering</span><span aria-hidden="true">/</span><span>学习路径</span></nav>
+    <nav class="language-nav" aria-label="语言"><span aria-current="page" lang="zh-Hans">中文</span> · <a href="en.html" hreflang="en" lang="en">English</a></nav>
     <div class="eyebrow mono">Codex Harness · 固定源码快照 · 对象、请求与状态变化</div>
     <h1>Codex Harness 分析<br><span class="accent">从请求到执行与恢复</span></h1>
     <p class="lede">先看 Codex 的整体地图，再拆开一次模型请求：指令放哪里，history 有哪些类别，Skills / MCP 怎样填入，执行与压缩又怎样改变它。沿这条主线走完六章，最后比较其他 harness 的选择与代价。</p>
