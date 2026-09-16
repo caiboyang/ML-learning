@@ -1,0 +1,811 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A source-grounded guide to Codex objects, request assembly, Skills and MCP loading, context, compaction, and recovery for readers familiar with harnesses.">
+  <link rel="alternate" hreflang="zh-Hans" href="./">
+  <link rel="alternate" hreflang="en" href="en.html">
+  <title>The Codex Harness: From Requests to Execution and Recovery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&amp;family=Inter+Tight:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Noto+Serif+SC:wght@400;600&amp;family=Noto+Sans+SC:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void: #07090F;
+      --night: #0E1320;
+      --surface: #141A2A;
+      --rule: #232C44;
+      --paper: #E8E5DD;
+      --paper-dim: #B6B2A6;
+      --paper-muted: #A39C92;
+      --phosphor: #7BE3D7;
+      --phosphor-glow: #A7F2EA;
+      --amber: #FFB57A;
+      --rose: #FF8FA3;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0; background: var(--void); color: var(--paper);
+      font: 19px/1.78 'Newsreader', 'Noto Serif SC', serif;
+      -webkit-font-smoothing: antialiased;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><circle cx='1' cy='1' r='1' fill='%23232C44' opacity='0.45'/></svg>");
+    }
+    a { color: var(--phosphor); text-underline-offset: 4px; text-decoration-color: rgba(123,227,215,.45); overflow-wrap: anywhere; }
+    a:hover { color: var(--phosphor-glow); }
+    a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 4px; }
+    code { font: .84em 'JetBrains Mono', monospace; color: var(--phosphor-glow); background: rgba(123,227,215,.07); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    p { margin: 0 0 20px; }
+    strong { color: var(--paper); font-weight: 600; }
+    .language-nav { margin: 0 0 22px; font: 14px/1.7 system-ui, sans-serif; }
+    .mono { font: 12px/1.7 'JetBrains Mono', monospace; letter-spacing: .09em; text-transform: uppercase; }
+    .skip { position: absolute; top: -80px; left: 20px; z-index: 1; padding: 10px 18px; background: var(--surface); }
+    .skip:focus { top: 12px; }
+    .hero { position: relative; padding: 84px 28px 56px; border-bottom: 1px solid var(--rule); background: radial-gradient(900px 450px at 85% 0%, rgba(123,227,215,.12), transparent 70%), var(--night); }
+    .hero-inner { max-width: 880px; margin: auto; }
+    .crumbs { display: flex; flex-wrap: wrap; gap: 14px; color: var(--paper-muted); }
+    .eyebrow { color: var(--phosphor); margin: 30px 0 18px; }
+    h1 { font: 700 clamp(36px, 6vw, 66px)/1.15 'Inter Tight', 'Noto Sans SC', sans-serif; letter-spacing: -.025em; margin: 0 0 26px; }
+    h1 .accent { color: var(--phosphor); }
+    .lede { max-width: 760px; color: var(--paper-dim); font-size: 21px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 38px; padding: 24px 0; border-block: 1px solid var(--rule); }
+    .label { color: var(--paper-muted); font: 11px/1.7 'JetBrains Mono', monospace; letter-spacing: .1em; }
+    .value { margin-top: 7px; font: 15px/1.6 'Inter', 'Noto Sans SC', sans-serif; }
+    main { max-width: 836px; margin: auto; padding: 40px 28px 0; }
+    .toc { border: 1px solid var(--rule); border-radius: 10px; background: var(--night); padding: 22px; }
+    .toc h2 { font: 600 17px 'Inter Tight', 'Noto Sans SC', sans-serif; margin: 0 0 18px; }
+    .toc ol { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px; margin: 0; padding-left: 25px; font: 14px/1.6 'Inter', 'Noto Sans SC', sans-serif; }
+    .toc li::marker { color: var(--paper-muted); }
+    section.essay { margin: 76px 0; }
+    .section-head { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--rule); padding-top: 24px; margin-bottom: 10px; }
+    .section-num { color: var(--phosphor); white-space: nowrap; font: 12px 'JetBrains Mono', monospace; }
+    .section-title { margin: 0; font: 700 28px/1.35 'Inter Tight', 'Noto Sans SC', sans-serif; }
+    .section-sub { margin: 0 0 26px; color: var(--paper-muted); font: 12px/1.6 'JetBrains Mono', 'Noto Sans SC', sans-serif; }
+    h3 { margin: 30px 0 14px; font: 600 20px/1.45 'Inter Tight', 'Noto Sans SC', sans-serif; }
+    .deck { border-left: 2px solid var(--phosphor); padding-left: 16px; color: var(--phosphor-glow); font-size: 21px; }
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 26px 0; }
+    .tile { padding: 19px 16px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+    .tile h3 { font-size: 17px; margin: 7px 0 12px; }
+    .tile p { margin: 0; color: var(--paper-dim); font: 14px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .call { border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 8px; padding: 18px 20px; margin: 26px 0; background: var(--surface); color: var(--paper-dim); font: 15px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    .call.pit { border-left-color: var(--rose); }
+    .call .tag { display: block; color: var(--amber); font-size: 12px; letter-spacing: .08em; margin-bottom: 10px; }
+    .call.pit .tag { color: var(--rose); }
+    .tbl-wrap { overflow-x: auto; margin: 26px 0; }
+    table { width: 100%; border-collapse: collapse; font: 14px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+    th { color: var(--phosphor); font-weight: 500; }
+    td { color: var(--paper-dim); }
+    pre { overflow-x: auto; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; margin: 24px 0; }
+    pre code { padding: 0; background: none; color: var(--paper-dim); font: 13px/1.8 'JetBrains Mono', monospace; overflow-wrap: normal; }
+    figure { margin: 28px 0; }
+    .diagram { background: #F5F5F0; color: #222; border-radius: 10px; padding: 20px 12px; overflow-x: auto; }
+    .diagram pre { background: transparent; border: 0; margin: 0; }
+    .diagram code { color: #222; }
+    .diagram .mermaid-diagram { min-width: 440px; }
+    figcaption, .source { margin-top: 12px; color: var(--paper-muted); font: 13px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .layers { padding: 0; list-style: none; margin: 26px 0; }
+    .layer { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; margin: 9px 0; padding: 14px 18px; font: 15px/1.65 'Inter', 'Noto Sans SC', sans-serif; }
+    .layer.highlight { border-color: var(--phosphor); }
+    .layer span { display: inline-block; color: var(--phosphor); font: 11px 'JetBrains Mono', monospace; margin-right: 12px; }
+    details { margin: 26px 0; padding: 16px 20px; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; font: 15px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    summary { cursor: pointer; color: var(--phosphor); }
+    details p { margin: 15px 0 0; color: var(--paper-dim); }
+    ol.practice { padding-left: 25px; font: 16px/1.8 'Inter', 'Noto Sans SC', sans-serif; color: var(--paper-dim); }
+    ol.practice li { margin-bottom: 12px; }
+    footer { border-top: 1px solid var(--rule); padding: 40px 28px 70px; }
+    .foot-inner { max-width: 780px; margin: auto; color: var(--paper-muted); font: 14px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    @media (max-width: 640px) {
+      .hero { padding: 60px 22px 36px; }
+      main { padding-inline: 22px; }
+      .meta-grid { grid-template-columns: 1fr 1fr; }
+      .tiles, .toc ol { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      .section-num { display: block; margin-bottom: 12px; }
+      .section-title { font-size: 25px; }
+      .tbl-wrap table { min-width: 520px; }
+      body { font-size: 18px; }
+      .lede, .deck { font-size: 20px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    .scene-question { font-size: 23px; color: var(--paper); max-width: 680px; }
+    .story-scene { margin: 24px 0; }
+    .scene-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 22px; list-style: none; padding: 0; margin: 0; }
+    .scene-grid li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 23px 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+    .scene-grid.flow li:not(:last-child)::after { content: '→'; position: absolute; right: -20px; top: 51px; color: var(--phosphor); font: 21px sans-serif; }
+    .scene-icon { display: block; font: 34px/1.3 system-ui; margin-bottom: 18px; }
+    .scene-grid strong { overflow-wrap: anywhere; font: 600 17px/1.5 'Inter', 'Noto Sans SC', sans-serif; }
+    .scene-meaning { overflow-wrap: anywhere; display: block; margin-top: 13px; color: var(--phosphor); font: 12px/1.7 'Inter', 'Noto Sans SC', sans-serif; }
+    .one-idea { border-left: 3px solid var(--phosphor); padding: 8px 0 8px 18px; font-size: 20px; }
+    .one-idea > span { display: block; color: var(--phosphor); font: 12px/1.7 'Inter', 'Noto Sans SC', sans-serif; margin-bottom: 6px; }
+    .bridge { color: var(--paper-dim); font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .deep-dive { border-style: dashed; background: transparent; }
+    .deep-content { padding-top: 20px; }
+    .deep-content p { margin-bottom: 18px; }
+    .next-step { display: inline-block; margin-top: 14px; font: 14px/1.6 'Inter', sans-serif; }
+    .reading-map { margin: 0 0 28px; padding: 22px; background: var(--night); border: 1px solid var(--rule); border-radius: 10px; font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .reading-map h2 { margin-top: 0; font-size: 20px; }
+    .reading-map p:last-child { margin-bottom: 0; }
+    .hands-on { background: var(--night); border: 1px solid var(--rule); border-radius: 12px; padding: 24px; margin: 28px 0; font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .hands-on h3 { margin: 0 0 20px; }
+    .hands-on input[type=range] { display: block; width: 100%; margin: 22px 0; accent-color: var(--phosphor); cursor: pointer; }
+    .hands-on input:focus-visible, button:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 5px; }
+    .capacity { position: relative; height: 40px; border: 1px solid var(--rule); border-radius: 7px; background: var(--surface); overflow: hidden; }
+    #capacity-fill { height: 100%; background: var(--phosphor); }
+    .capacity i { position: absolute; top: 0; height: 100%; border-left: 3px dashed var(--night); }
+    .auto-mark { left: 90%; } .hard-mark { left: 95%; }
+    .budget-legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 10px 0 18px; font-size: 12px; }
+    .small-note { font: 12px/1.8 'Inter', 'Noto Sans SC', sans-serif; color: var(--paper-muted); margin: 18px 0 0; }
+    .mode-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+    .mode-buttons button { background: var(--surface); color: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; font: inherit; cursor: pointer; }
+    .mode-buttons button[aria-pressed=true] { color: var(--night); background: var(--phosphor); }
+    .desk-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .desk { padding: 16px; border: 1px solid var(--rule); border-bottom: 8px solid #69543f; border-radius: 8px; background: #191d27; }
+    .desk h4 { font-size: 15px; margin: 0 0 18px; }
+    .paper-stack span { display: block; padding: 12px; margin: 0 0 10px; background: #ebe5d8; color: #242935; border-radius: 3px; font-size: 13px; }
+    .desk:not(.after) .paper-stack span:nth-child(even) { transform: rotate(-2deg); }
+    .desk:not(.after) .paper-stack span:nth-child(odd) { transform: rotate(2deg); }
+    .desk.after { border-color: var(--phosphor); border-bottom-color: #69543f; }
+    .desk p { color: var(--paper-dim); font-size: 12px; margin: 14px 0 0; }
+    .same-task { display: flex; gap: 22px; margin: 28px 0; padding: 22px; border: 1px solid var(--rule); border-radius: 10px; }
+    .same-task h3 { margin: 0 0 12px; } .same-task p, .same-task a { font: 14px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    @media (max-width: 640px) {
+      .scene-grid { grid-template-columns: 1fr; gap: 20px; }
+      .scene-grid li { display: grid; grid-template-columns: 58px 1fr; text-align: left; align-items: center; padding: 18px; column-gap: 12px; }
+      .scene-icon { grid-row: span 2; margin: 0; font-size: 38px; }
+      .scene-meaning { margin-top: 5px; } .scene-grid strong { font-size: 16px; }
+      .scene-grid.flow li:not(:last-child)::after { content: '↓'; top: auto; right: 50%; bottom: -22px; }
+      .scene-question { font-size: 21px; } .hands-on { padding: 18px; }
+      .desk-pair { grid-template-columns: 1fr; } .same-task { display: block; }
+      .same-task .scene-icon { margin-bottom: 15px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    .syllabus ol { list-style: none; padding: 0; }
+    .syllabus li { padding: 14px; border: 1px solid var(--rule); border-radius: 8px; }
+    .syllabus p { font-size: 12px; color: var(--paper-dim); margin: 10px 0 0; }
+    .chapter-head { margin: 80px 0 30px; padding: 28px; background: var(--night); border-top: 3px solid var(--phosphor); }
+    .chapter-head > span { font: 12px 'JetBrains Mono', monospace; color: var(--phosphor); }
+    .chapter-head h2 { font: 600 30px/1.4 'Inter', 'Noto Sans SC', sans-serif; margin: 18px 0; }
+    .chapter-head p { font: 16px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .chapter-outcome { color: var(--phosphor); }
+    .chapter-head nav { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 14px; }
+    .chapter-transition { border-bottom: 1px solid var(--rule); padding: 0 0 25px; color: var(--phosphor); font-size: 17px; }
+    .design-choice { margin: 26px 0; padding: 20px; border-left: 3px solid var(--amber); background: var(--surface); font: 15px/1.8 'Inter', 'Noto Sans SC', sans-serif; }
+    .design-choice strong { color: var(--amber); } .design-choice p { margin: 10px 0 0; }
+    .map-return { font-size: 15px; }
+    .context-lab { margin: 28px 0; padding: 22px; background: var(--night); border: 1px solid var(--rule); border-radius: 12px; font: 14px/1.75 'Inter', 'Noto Sans SC', sans-serif; }
+    .context-lab h4 { font-size: 21px; margin: 0 0 16px; } .context-lab h5 { font-size: 15px; margin: 0 0 14px; }
+    .context-controls { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
+    .context-controls label { flex: 1; min-width: 200px; }
+    .context-controls select { display: block; width: 100%; margin-top: 8px; padding: 12px; color: var(--paper); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; font: inherit; }
+    .context-legend { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0; }
+    .context-legend span { border-left: 4px solid var(--item-color); padding-left: 8px; font-size: 11px; }
+    .kind-rule { --item-color: #7BE3D7; } .kind-user { --item-color: #B7B3FF; } .kind-call { --item-color: #FFB57A; } .kind-summary { --item-color: #FF8FA3; }
+    .context-columns { display: grid; grid-template-columns: 0.8fr 1.4fr; gap: 18px; align-items: start; }
+    .state-bank { padding: 15px; border: 1px dashed var(--rule); border-radius: 8px; }
+    .state-bank > div { padding: 15px 0; border-top: 1px solid var(--rule); } .state-bank small, .state-bank p { color: var(--paper-dim); font-size: 12px; }
+    .request-shell { padding: 15px; border: 1px solid var(--phosphor); border-radius: 8px; }
+    .input-label { padding: 12px 0 7px; font-family: monospace; color: var(--paper-dim); }
+    #history-items { list-style: none; padding: 0; margin: 0; }
+    .history-item { display: block; width: 100%; text-align: left; cursor: pointer; padding: 12px; margin-bottom: 10px; background: var(--surface); color: var(--paper); border: 1px solid var(--rule); border-left: 4px solid var(--item-color); border-radius: 5px; font: inherit; overflow-wrap: anywhere; }
+    .history-item strong { font-size: 13px; } .history-item span { display: block; font: 11px/1.7 'JetBrains Mono', monospace; color: var(--paper-dim); margin-top: 6px; }
+    .history-item[aria-pressed=true] { outline: 2px solid var(--item-color); outline-offset: 1px; }
+    .context-breakdown { margin: 0 0 18px; padding: 12px; border: 1px dashed var(--rule); border-radius: 6px; }
+    .context-breakdown summary { cursor: pointer; color: var(--phosphor); }
+    .context-breakdown ol { padding: 0; list-style: none; }
+    .context-breakdown p { font-size: 12px; color: var(--paper-dim); }
+    .context-inspector { margin-top: 20px; padding: 18px; border: 1px solid var(--rule); border-radius: 8px; overflow-wrap: anywhere; }
+    .context-inspector dl { display: grid; grid-template-columns: 85px 1fr; gap: 10px; margin: 0 0 16px; } .context-inspector dd { margin: 0; } .context-inspector dt { color: var(--phosphor); }
+    .context-change { color: var(--amber); padding-top: 16px; margin-bottom: 0; }
+    .context-lab select:focus-visible { outline: 2px solid var(--phosphor); }
+    .deep-content h4 { font: 600 20px/1.45 'Inter', 'Noto Sans SC', sans-serif; }
+    .hands-on h4 { font-size: 20px; margin-top: 0; } .desk h5 { font-size: 15px; margin: 0 0 18px; }
+    @media (max-width: 640px) { .context-columns { grid-template-columns: 1fr; } .request-shell { order: -1; } .context-lab { padding: 14px; } .chapter-head { padding: 20px; } .chapter-head h2 { font-size: 25px; } }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="hero">
+  <div class="hero-inner">
+    <nav class="crumbs mono" aria-label="Breadcrumb"><a href="../../">ML Learning Notes</a><span aria-hidden="true">/</span><span>Agent Engineering</span><span aria-hidden="true">/</span><span>Learning path</span></nav>
+    <nav class="language-nav" aria-label="Language"><a href="./" hreflang="zh-Hans" lang="zh-Hans">中文</a> · <span aria-current="page" lang="en">English</span></nav>
+    <div class="eyebrow mono">Codex Harness · Pinned source snapshot · Objects, requests, and state changes</div>
+    <h1>The Codex Harness<br><span class="accent">From requests to execution and recovery</span></h1>
+    <p class="lede">Start with the overall architecture, then dissect a model request: where instructions live, which kinds of history items it contains, how Skills and MCP populate it, and how execution and compaction change it. Follow this thread through six chapters, then compare the choices and tradeoffs of other harnesses.</p>
+    <div class="meta-grid">
+      <div><div class="label">Prerequisites</div><div class="value">Familiarity with harnesses and tool calls</div></div>
+      <div><div class="label">Learning outcome</div><div class="value">Trace loading, execution, and context transitions</div></div>
+      <div><div class="label">Source snapshot</div><div class="value"><a href="https://github.com/openai/codex/tree/944d6fd1ba4baab69dbedd205282dc72ec20abb5">944d6fd1ba4b</a> · 2026-09-11 PDT</div></div>
+      <div><div class="label">Companion material</div><div class="value"><a href="../Codex_Harness_Research.en.html">Source reference manual ↗</a></div></div>
+    </div>
+  </div>
+</header>
+<main id="main">
+  <aside class="reading-map" aria-labelledby="reading-title"><h2 id="reading-title">Learning path: architecture → input → loading → updates → compaction → evaluation</h2><p>Prerequisite: you already understand agent harnesses. This guide follows one question: <strong>How does Codex keep constructing the next model input?</strong> Identify the modules, dissect a request, then trace how history changes.</p><p>Running example: U1 asks for free shipping at 100 or above with no public API change; R0 requires JUnit 5. Later, R1 restricts testing to the orders module, and U2 requests checks at 99/100/101. All transcripts are constructed teaching examples.</p><p><a href="#context-map">Open the history / context input explorer ↗</a> · <a href="#harness-comparison">Compare other harnesses ↗</a></p></aside><nav class="toc syllabus" aria-labelledby="toc-title"><h2 id="toc-title">Six chapters · Each answers a question raised by the previous one</h2><ol><li><a href="#chapter-1"><b>01 · Architecture: locate the parts</b></a><p>From Session and StepContext to history and storage, locate the component each later chapter examines.</p></li><li><a href="#chapter-2"><b>02 · Request anatomy: what does the model actually see?</b></a><p>Distinguish position, role, content kind, source, and visibility before reading the loading code.</p></li><li><a href="#chapter-3"><b>03 · Assembling input: instructions, Skills, and MCP</b></a><p>Follow three loading chains: base instructions, workflow guidance, and callable tools.</p></li><li><a href="#chapter-4"><b>04 · Runtime updates: appending history and changing rules</b></a><p>Return to run_turn and follow tool results, additional user input, and WorldState updates.</p></li><li><a href="#chapter-5"><b>05 · Compaction and recovery: rewrite history while keeping the task resumable</b></a><p>Follow triggers, request routing, outputs and layout, then checkpoint recovery.</p></li><li><a href="#chapter-6"><b>06 · Comparison and evaluation: benefits and tradeoffs</b></a><p>Compare responsibilities, explain cache effects, then test your understanding against one trace.</p></li></ol></nav><div class="chapter" id="chapter-1"><header class="chapter-head"><span>CHAPTER 01</span><h2>Architecture: locate the parts</h2><p>From Session and StepContext to history and storage, locate the component each later chapter examines.</p><p class="chapter-outcome">After this chapter, you can draw two paths: requests flowing to models and tools, and state retained in the program and archives.</p><nav aria-label="Chapter 1 sections"><a href="#step-1">How Codex modules connect</a></nav></header><section class="essay" id="step-1">
+    <div class="section-head"><span class="section-num">01.1</span><h3 class="section-title">How Codex modules connect</h3></div>
+    <p class="section-sub">ThreadManager → Session → StepContext → ModelClient / ToolRouter</p><p class="scene-question">Locate objects and their lifetimes: which state belongs to the whole task, and which belongs to one sampling step?</p>
+    <figure><div class="diagram" tabindex="0" role="region" aria-label="Codex module diagram; scroll horizontally"><pre><code class="language-mermaid">flowchart TD
+    UI[CLI / TUI / app-server] --> S[ThreadManager / Session]
+    S --> R[run_turn]
+    R --> C[StepContext]
+    C --> P[Prompt: history / base instructions / tools]
+    P --> M[ModelClient: Responses]
+    M --> T[ToolRouter / tool execution runtime]
+    T --> H[ContextManager: record results]
+    H --> R
+    S -.Current state and change notifications.-> W[WorldState]
+    W --> P
+    S -.Persistence and recovery.-> D[Rollout / checkpoint]</code></pre></div><figcaption>This diagram locates the core objects. Focus on StepContext's consistency boundary, ContextManager's typed history, and WorldState's comparable state. Later sections cover compaction, cancellation, approvals, and MCP binding before execution.</figcaption></figure>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">🧵</span><strong>ThreadManager / Session</strong><span class="scene-meaning">Task lifecycle, history, and shared services</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📦</span><strong>StepContext</strong><span class="scene-meaning">Snapshot of this request's model, environment, tool plan, and rules</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🔀</span><strong>ModelClient / ToolRouter</strong><span class="scene-meaning">Send Responses requests; dispatch model-proposed tool calls</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>Codex separates session state, per-request capability snapshots, model transport, and tool execution into distinct components. Loading and compaction follow these same object relationships.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> OpenHands' <code>Agent.step()</code> advances one inference step from an event view; Codex repeatedly captures StepContext inside <code>run_turn</code>. The comparison concerns sampling boundaries; the loop itself is not a unique design. <a href="https://docs.openhands.dev/sdk/arch/agent">Comparison source ↗</a></p>
+    <aside class="design-choice"><strong>Design analysis · A request snapshot defines the sampling boundary</strong><p><b>Benefit:</b> One sampling plan uses consistent model, environment, and tool definitions.</p><p><b>Cost / boundary:</b> External connections can still change, so MCP execution also needs its own PreparedMcpCall boundary.</p></aside>
+<details class="quiz"><summary>Check the diagram: why separate a task's Session from a request's StepContext?</summary><p>Session retains long-lived task history and services; StepContext fixes the model, tool, and environment view for one sampling step. The next step can recapture capabilities, and MCP has a separate call binding before execution.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>Source entry points: <code>core/src/thread_manager.rs</code> manages tasks, <code>core/src/session/turn.rs</code> manages turn execution, <code>core/src/session/step_context.rs</code> fixes the sampling state, and <code>core/src/client.rs</code> and <code>core/src/tools/router.rs</code> handle model requests and tool routing, respectively.</p>
+    <div class="call"><span class="tag">Running example · Shipping boundary test</span><strong>User request U1:</strong> “Fix ShippingCostTest: orders of 100 or more get free shipping; keep the public API unchanged.”<br><strong>Project rule R0:</strong> The root AGENTS.md requires JUnit 5. We follow this one task throughout. Code, message IDs, and outputs are constructed examples, not results from a real project run. Tool names are shorthand, not directly callable APIs.</div>
+
+
+  </div></details>
+    <p class="source">Source and boundaries: <a href="../Codex_Harness_Research.en.html#architecture">Manual §2 · Core objects</a></p>
+  </section><p class="chapter-transition">The architecture locates the modules, but does not yet show what the model receives. Next, we open up one request.</p></div><div class="chapter" id="chapter-2"><header class="chapter-head"><span>CHAPTER 02</span><h2>Request anatomy: what does the model actually see?</h2><p>Distinguish position, role, content kind, source, and visibility before reading the loading code.</p><p class="chapter-outcome">After this chapter, you can locate instructions, tools, input history, and program state.</p><nav aria-label="Chapter 2 sections"><a href="#step-3">Which typed state does ContextManager retain?</a></nav></header><section class="essay" id="step-3">
+    <div class="section-head"><span class="section-num">02.1</span><h3 class="section-title">Which typed state does ContextManager retain?</h3></div>
+    <p class="section-sub">ResponseItemEnvelope / WorldState baseline / Rollout</p><p class="scene-question">Where do Codex's active history, current state sources, and recovery records take responsibility?</p>
+    <div class="context-lab" id="context-map">
+  <h4>Input anatomy for the same task: position × kind × source</h4>
+  <p>Switch from the initial request through post-compaction states. In the request panel, <code>input[]</code> runs from oldest at the top to newest at the bottom. Select an item to inspect its role, kind, source, and retention behavior; expand I0/I1 to see internal ordering.</p>
+  <div class="context-controls">
+    <label for="history-stage">Execution stage<select id="history-stage"><option value="initial">① Initial request</option><option value="tools">② After tool results</option><option value="updated">③ Rule update and added requirement</option><option value="local">④ After Local compaction</option><option value="v2">⑤ After Remote V2 compaction</option><option value="reset">⑥ New TokenBudget window</option></select></label>
+    <label for="wire-mode">Request format<select id="wire-mode"><option value="responses">Standard Responses</option><option value="lite">Responses Lite</option></select></label>
+  </div>
+  <div class="context-legend"><span class="kind-rule">Rules / instructions</span><span class="kind-user">Actual user input</span><span class="kind-call">Tool definitions / calls / results</span><span class="kind-summary">Summary / compaction item</span></div>
+  <div class="context-columns">
+    <aside class="state-bank"><h5>Program-owned · Not sent automatically</h5><div>⚙️ Configuration + model catalog<br><small>Select base instructions</small></div><div>📋 Current canonical state<br><small>WorldState → render rule / environment fragments</small></div><div>🔧 Tool registry + MCP binding<br><small>ToolRouter → definitions visible in this request</small></div><div>🗄️ Rollout / checkpoint<br><small>Save recovery state; not the full input for every turn</small></div><p>State reaches the right-hand panel through assembly, injection, or recovery. History and notes also have separate registration and service requirements.</p></aside>
+    <div class="request-shell"><h5>This model request</h5><div id="request-top"></div><div class="input-label">input[] · Earlier at top, later at bottom ↓</div><ol id="history-items"></ol></div>
+  </div>
+  <div class="context-inspector" aria-live="polite"><h5 id="item-title">Select a history item to inspect its identity</h5><dl id="item-fields"></dl><p id="item-explanation"></p></div>
+  <p class="context-change" id="history-change" role="status"></p>
+  <p class="small-note">This illustrates the pinned source semantics; it is not a captured wire dump. Expand I0/I1 to see assembly slots. Conditional slots are not necessarily all enabled, and a group is not one protocol item. Permissions, modalities, reasoning, and some extensions are omitted. U1/U2 fit within retention budgets. Local/V2 show mid-turn compaction, with current initial context inserted before the last retained user message. Responses Lite changes the prefix view only; this does not imply arbitrary combinations with every compaction branch.</p>
+  <p class="source"><a href="../Codex_Harness_Research.en.html#input-anatomy">Full comparison of request position, role, content_kind, and verbatim retention →</a></p>
+  <noscript><p>JavaScript is disabled. Standard requests put base instructions and tools at the top level; input contains current rules and ordered history. A simplified mid-turn Local/V2 replacement is U1 → I1(R1) → U2 → summary / compaction item. Tool outputs are outside these two verbatim-retention paths. The source walkthrough below remains readable.</p></noscript>
+</div>
+<figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🗂️</span><strong>ContextManager</strong><span class="scene-meaning">Arc&lt;Vec&lt;ResponseItemEnvelope&gt;&gt;: items and metadata</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📋</span><strong>WorldState sections</strong><span class="scene-meaning">Comparable state for environment, rules, permissions, model, and capabilities</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🗄️</span><strong>Rollout / checkpoint</strong><span class="scene-meaning">Save recovery records; they do not automatically become model input</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>History is not one large string. call_id maintains call/result pairing; content_kind distinguishes actual user input from injected rules. Sharing the user role does not imply the same retention policy.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> OpenHands also separates Event.source from LLM role. Codex additionally carries content_kind on Responses content items. Both distinguish source from role, but encode and recover that information differently. <a href="https://docs.openhands.dev/sdk/arch/events">Comparison source ↗</a></p>
+    <aside class="design-choice"><strong>Design analysis · Identify content by kind as well as role</strong><p><b>Benefit:</b> AGENTS rules, actual user requests, and summaries can have different retention and reconstruction rules even when all use the user role.</p><p><b>Cost / boundary:</b> This adds metadata and legacy-marker compatibility costs. An analysis based only on textual roles misses this layer.</p></aside>
+<details class="quiz"><summary>Self-check: if the complete conversation remains on disk, can you conclude that the model has not forgotten it?</summary>
+    <p>No. Persistence determines what is saved; the model window determines what is currently visible. An explicit retrieval or reinjection path is needed to bring saved content into the current request.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>More tool calls produce longer logs in history. When diagnosing context problems, ask what this request sends, what the program still knows, and what actually reached disk. These answers determine whether to compact history, reinject rules, or read archives next.</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Three state categories; scroll horizontally"><table>
+      <thead><tr><th>State</th><th>Contents</th><th>Use and changes</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Model history view</strong><br>Active model history</td><td>Messages, tool calls, results, reasoning, compaction items</td><td>Prepared for each request according to model capabilities and budgets; compaction can replace history items</td></tr>
+        <tr><td><strong>Current state sources</strong><br>Current canonical state</td><td>Permissions, AGENTS.md, environment, modes, and capabilities</td><td>The program maintains comparison baselines and renders visible fragments; refresh remains subject to manager caching conditions</td></tr>
+        <tr><td><strong>Persistent records</strong><br>Recovery and archives</td><td>Rollout, replacement checkpoints, window identifiers</td><td>Recovery reads records actually saved; not every original output is guaranteed to reach disk, and model retrieval needs an available interface</td></tr>
+      </tbody>
+    </table></div>
+    <p>Rewriting active history, updating canonical state, and reading archives are separate actions. State becomes visible only after rendering into a request; archives contain only what was actually saved. <code>ContextManager</code> keeps types and metadata on history items to identify actual user input, distinguish injected content, and maintain tool call/result pairs.</p>
+    <p>R0 and U1 may both use <code>role=user</code>, but their kinds differ: R0 is <code>agents_md.instructions</code>, while U1's text is <code>user.text</code>. An injected fragment's <code>content_kind</code> travels with its content into internal wire metadata. Each content item keeps its label when fragments merge. These internal fields are stripped before sending to non-OpenAI providers.</p>
+    <div class="call pit"><span class="tag">Case interpretation · Three locations for the same FAIL</span>The FAIL may be in active history and may also be saved in persistent records. <code>WorldState</code> records rules and environment; it does not automatically back up this failure log. Rerunning the test and getting PASS cannot reconstruct the original FAIL output.</div>
+    <p>Context reduction starts when tool results enter history: large outputs are limited, then pairing and unsupported modalities are handled before sending. The visible compaction notice is only one part of context management.</p>
+
+
+  </div></details>
+    <p class="source">Structures and input preparation: <a href="../Codex_Harness_Research.en.html#context">Manual §5 · ContextManager</a>, <a href="../Codex_Harness_Research.en.html#fragments">From fragment to wire</a></p>
+  </section><p class="chapter-transition">Now that we know the input slots, the next chapter traces who fills them.</p></div><div class="chapter" id="chapter-3"><header class="chapter-head"><span>CHAPTER 03</span><h2>Assembling input: instructions, Skills, and MCP</h2><p>Follow three loading chains: base instructions, workflow guidance, and callable tools.</p><p class="chapter-outcome">After this chapter, you can explain why loading a model catalog, Skill body, MCP connection, and exposed schema are different operations.</p><nav aria-label="Chapter 3 sections"><a href="#step-4">How Codex selects and assembles base instructions</a><a href="#skills-step">Skill sources, selection, and injection</a><a href="#mcp-step">MCP: from configuration to PreparedMcpCall</a></nav></header><section class="essay" id="step-4">
+    <div class="section-head"><span class="section-num">03.1</span><h3 class="section-title">How Codex selects and assembles base instructions</h3></div>
+    <p class="section-sub">Configuration priority + ModelMessages + provenance + wire branches</p><p class="scene-question">Why does opening prompt.md in the repository still not identify this request's base instructions?</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📌</span><strong>config.base_instructions</strong><span class="scene-meaning">Base source after resolving explicit overrides / file contents</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📒</span><strong>session_meta.base_instructions</strong><span class="scene-meaning">Use restored / forked inheritance when no explicit override exists</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>Model instructions_template</strong><span class="scene-meaning">Fall back to the model catalog if neither earlier source is available</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>ModelMessages includes tool descriptions, approval wording, and mode messages in model metadata. Custom / Model provenance prevents model defaults from being mistaken for user overrides.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> LangChain's <code>system_prompt</code> accepts text or a SystemMessage; middleware can supply dynamic prompts. Codex embeds configuration, inheritance, model-catalog, and Custom/Model provenance handling in the client. The difference concerns lifecycle responsibility, not merely where a string lives. <a href="https://docs.langchain.com/oss/python/langchain/agents#system-prompt">Comparison source ↗</a></p>
+    <aside class="design-choice"><strong>Design analysis · Save who the text came from</strong><p><b>Benefit:</b> Custom / Model provenance protects user overrides while allowing a new model to use its own default template.</p><p><b>Cost / boundary:</b> Old history without provenance permits only limited inference; similar text cannot recover the user's actual intent.</p></aside>
+<details class="quiz"><summary>Self-check: does restoring an old session after a client update necessarily use the repository's latest default prompt?</summary>
+    <p>No. Without an explicit override, saved session base instructions take priority over the current model template. Inspect the actual model catalog and inherited session state too.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>Finding a <code>prompt.md</code> on GitHub does not determine what a session uses. Session initialization chooses base instructions in this order, stopping at the first available source:</p>
+    <ol class="layers">
+      <li class="layer highlight"><span>01</span>Explicitly configured base instructions, including resolved instruction-file contents</li>
+      <li class="layer"><span>02</span><code>session_meta.base_instructions</code> saved in restored or forked history</li>
+      <li class="layer"><span>03</span>The current model catalog's <code>instructions_template</code></li>
+    </ol>
+    <p>The model catalog has a compiled-in version as well as remote metadata and a disk cache. <code>model_instructions_file</code> replaces the base source; <code>developer_instructions</code> is a separate path for additional content.</p>
+    <p><code>ModelMessages</code> also places tool descriptions, approval wording, mode messages, and budget hints in model metadata, so capability and behavior text can evolve together. Missing fields have their own built-in fallbacks; this does not mean prompts exist only on the server.</p>
+    <h4>When the same task switches from model A to B, which instructions should stay and which should change?</h4>
+    <p>Suppose the task changes models midway. The difficulty is deciding whether the text was chosen by the user or supplied as model A's default, not copying the string.</p>
+    <ul>
+      <li><strong>Custom:</strong> User-selected base instructions remain a user override after the switch.</li>
+      <li><strong>Model { A }:</strong> A's default instructions should not prevent B from using its own template; configuration construction filters out this old-model override.</li>
+      <li><strong>Unknown source:</strong> When old history cannot establish provenance reliably, the text cannot simply be treated as a replaceable default.</li>
+    </ul>
+    <p><strong>Provenance metadata</strong> preserves evidence for this decision. New instructions may also enter history as model-switch developer messages; this does not directly rewrite the persisted SessionMeta base text into B's template.</p>
+    <div class="call"><span class="tag">A further distinction · The wire structure can change too</span>Standard Responses uses top-level <code>instructions</code> and <code>tools</code>. A model branch with <code>use_responses_lite</code> puts base instructions in a developer message and tools in <code>AdditionalTools</code> ahead of <code>input</code>.</div>
+    <p>So whenever someone says “system prompt,” ask whether they mean the server-side system layer, client base instructions, or developer/user context in history. These are different fields.</p>
+
+
+  </div></details>
+    <p class="source">Full precedence and Lite branch: <a href="../Codex_Harness_Research.en.html#instructions">Manual §4 · Instruction loading</a>, <a href="../Codex_Harness_Research.en.html#provenance">Custom / Model provenance</a></p>
+  </section><section class="essay" id="skills-step">
+    <div class="section-head"><span class="section-num">03.2</span><h3 class="section-title">Skill sources, selection, and injection</h3></div>
+    <p class="section-sub">Host / Executor / Orchestrator → catalog → selected fragments</p><p class="scene-question">Does the runtime inject the body, or wait for the model to read it? Codex supports both paths.</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📚</span><strong>Discover three source types</strong><span class="scene-meaning">Host roots; Executor environments; Orchestrator MCP resources</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📑</span><strong>Catalog and budget</strong><span class="scene-meaning">Names, descriptions, path aliases; not every full body</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📖</span><strong>Explicit selection / model-initiated reading</strong><span class="scene-meaning">selection → body injection; or file tools / skills.read</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧾</span><strong>Referenced resources and tool execution</strong><span class="scene-meaning">Address by package / resource; reading instructions is not execution</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>The Skills extension's catalog fragment uses the developer role; selected bodies use the user role and skills.selected_skill_instructions. Core also has Host injection and deduplication paths.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> OpenHands KeywordTrigger matches messages; PathTrigger can add rules to tool observations. Codex catalog discovery, explicit body injection, and model-initiated reading are different entry points. A shared Skill filename does not imply identical triggers or placement. <a href="https://docs.openhands.dev/sdk/arch/skill">Comparison source ↗</a></p>
+    <aside class="design-choice"><strong>Design analysis · Separate discovery, body reading, and execution</strong><p><b>Benefit:</b> The catalog supplies selection cues; bodies and referenced resources enter context as needed.</p><p><b>Cost / boundary:</b> This adds read steps and requires source, cache, deduplication, and injection-size handling.</p></aside>
+<details class="quiz"><summary>Self-check: if order-tests is in the catalog, has the model read its body and installed its dependencies?</summary>
+    <p>No. Catalogs, bodies, dependency installation, and execution have separate entry points. Explicit selection may inject the body, but MCP dependency installation also depends on features, source, policy, and installation choices.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>Add a teaching branch to the shipping example: the user explicitly selects <code>$order-tests</code>, an imaginary Skill explaining how to add boundary tests. How does the model obtain its instructions? First distinguish the source, then who triggers the read.</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Skill sources; scroll horizontally"><table>
+      <thead><tr><th>Source</th><th>Discovery entry point</th><th>Reading boundary</th></tr></thead>
+      <tbody>
+        <tr><td>Host</td><td>Configured roots, user and repository .agents/skills, system and plugin directories</td><td>Read SKILL.md through the corresponding filesystem</td></tr>
+        <tr><td>Executor</td><td>Capability snapshot or directories of the selected execution environment</td><td>Read in the owning environment and validate package ownership</td></tr>
+        <tr><td>Orchestrator</td><td>MCP resources marked mcp/skill</td><td>Read through resource interfaces; separate enablement conditions apply</td></tr>
+      </tbody>
+    </table></div>
+    <p>The model usually first receives a Skill catalog: names, descriptions, and sources. The scanner may already have read files to extract metadata without sending the complete bodies to the model. Catalogs have budgets and short path aliases; the Host service caches snapshots by cwd and configuration. Progressive disclosure describes staged model visibility, not a process that has never read the files.</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="Skill loading diagram; scroll horizontally"><pre><code class="language-mermaid">flowchart TD
+    C[Discover sources and build Skill catalog] --> S{How is it selected?}
+    S -->|Explicit user mention| I[Runtime reads and injects body]
+    S -->|Model judges relevance| R[Model calls file tool or skills.read]
+    I --> B[Model receives workflow]
+    R --> B
+    B --> F[Read referenced files as needed]
+    F --> T[Use tools to execute scripts or other actions]</code></pre></div>
+      <figcaption>Capabilities and feature conditions determine which sources and reading tools exist; not every session enables every branch.</figcaption>
+    </figure>
+    <h4>Explicit selection need not wait for a model-initiated file read</h4>
+    <p>Selection recognizes structured Skill input, resource/file mentions, and explicit textual mentions. The extension can read selected bodies and inject them during turn input. Core retains Host loading and deduplication paths. When the user does not name a Skill, the model may judge relevance from the catalog and call a reading tool itself. Neither path means all relevant Skills load automatically.</p>
+    <p>The Skills extension's catalog fragment uses the <code>developer</code> role; selected bodies are <code>skills.selected_skill_instructions</code>-classified <code>user</code> fragments. This does not promote every Skill body to a system prompt. Automatic injections, file-read results, and later script outputs also have different history types and budgets.</p>
+    <h4>Case branch: from a Skill name to actual test actions</h4>
+    <pre><code>User: use $order-tests to add these boundary tests
+Catalog: order-tests — order boundary testing workflow — source location
+Selected body: read references/boundaries.md, then add tests
+Resource read: check inputs below, at, and above the threshold
+Model-proposed action: add tests for 99 / 100 / 101
+Tool execution: edit files, run tests, return output</code></pre>
+    <p>The Skill name, body, and resources are constructed examples. For resource-backed sources, <code>skills.read</code> addresses a package and optional resource. Omitting resource reads the main file; referenced resources use returned identifiers. Reading script instructions is not execution; execution still uses registered tools and the appropriate environment.</p>
+    <div class="call"><span class="tag">Connection to context management</span>Catalog budgets limit resident selection cues; bodies and resources enter history as needed, and tool results have separate output limits. Compaction later organizes material already in the window. Knowing the Skill catalog does not automatically restore the original text of every resource read.</div>
+
+
+  </div></details>
+    <p class="source">Sources, budgets, roles, and read paths: <a href="../Codex_Harness_Research.en.html#skills-loading">Manual §4.5 · Skill loading</a></p>
+  </section><section class="essay" id="mcp-step">
+    <div class="section-head"><span class="section-num">03.3</span><h3 class="section-title">MCP: from configuration to PreparedMcpCall</h3></div>
+    <p class="section-sub">runtime → initialize / list_tools → binding → exposure → call</p><p class="scene-question">If a server is connected, why might tools still need discovery? Why check the binding again before a call?</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">⚙️</span><strong>Gather runtime configuration</strong><span class="scene-meaning">Session, plugins, selected environment, and policy</span></li>
+      <li><span class="scene-icon" aria-hidden="true">☎️</span><strong>Connection and catalog</strong><span class="scene-meaning">Stdio / HTTP; initialize; paginated list_tools</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📜</span><strong>ToolRouter exposure plan</strong><span class="scene-meaning">Direct / Deferred / Code Mode; search the existing catalog</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🔗</span><strong>PreparedMcpCall</strong><span class="scene-meaning">dirty refresh → current call binding → approval and execution</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>The catalog binding used for sampling and the prepared execution binding are adjacent boundaries. Ordinary sources use Eager; a SubAgent's LazyWhenCached also requires the relevant cache conditions.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> OpenHands discovers tools from mcp_config during initialization and wraps them as MCPToolDefinition. Codex also distinguishes deferred connection, schema exposure, and PreparedMcpCall along this chain. Diagnose discovery, visibility, and execution binding separately. <a href="https://docs.openhands.dev/sdk/arch/tool-system">Comparison source ↗</a></p>
+    <aside class="design-choice"><strong>Design analysis · Maintain catalog visibility and call binding separately</strong><p><b>Benefit:</b> Deferred exposure reduces resident schemas; call preparation binds the client and metadata for this execution.</p><p><b>Cost / boundary:</b> Search, connection, and invocation can fail independently, so diagnosis must locate the stage.</p></aside>
+<details class="quiz"><summary>Self-check: why might the model still need tool search when issue-tracker is connected?</summary>
+    <p>Connection handles communication with the server; search brings deferred definitions from an existing catalog into the model's available tools. They reduce different costs at different times. Search is not execution either.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>Continue this teaching branch: suppose order rules must also be queried from a configured issue-tracker MCP. The Skill supplies the workflow; MCP supplies external actions. A plugin can contribute both, but they follow different loading chains.</p>
+    <ol class="layers">
+      <li class="layer"><span>01</span>Gather server configurations from the session, plugins, and selected environment; apply policy constraints</li>
+      <li class="layer"><span>02</span>Connect over Stdio or Streamable HTTP and negotiate capabilities with initialize</li>
+      <li class="layer"><span>03</span>Fetch the tool catalog and metadata in pages, then construct an MCP binding</li>
+      <li class="layer highlight"><span>04</span>ToolRouter combines built-in, extension, and dynamic tools to choose exposure for this request</li>
+      <li class="layer"><span>05</span>After the model proposes a call, check refresh state, prepare the binding, then handle approval and execution</li>
+    </ol>
+    <p>This is the ordinary connection path. The source also supports cached catalogs, prewarming, and conditional lazy initialization. Ordinary sources use Eager; SubAgent sources select LazyWhenCached, subject to cache and implementation conditions. Seeing a catalog does not prove that the server has finished initializing.</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Tool exposure modes; scroll horizontally"><table>
+      <thead><tr><th>Mode</th><th>How it becomes available to the model</th><th>Meaning in this example</th></tr></thead>
+      <tbody>
+        <tr><td>Direct</td><td>The request directly includes the tool schema</td><td>The model can directly propose a rule query</td></tr>
+        <tr><td>Deferred</td><td>Catalog cues first; search returns loadable definitions</td><td>Search for issue-related tools, then obtain parameter definitions</td></tr>
+        <tr><td>Code Mode</td><td>Use nested tools through a code entry point</td><td>The outer entry need not list every nested tool as a top-level schema</td></tr>
+        <tr><td>Hidden / excluded</td><td>Controlled by policy, budgets, and other conditions</td><td>Presence in configuration does not guarantee the model can invoke it</td></tr>
+      </tbody>
+    </table></div>
+    <p><code>tool_search</code> builds a BM25 index over the current deferred tool catalog and returns loadable definitions. It does not find new MCP servers on the internet or install them. Search availability and exposure also depend on model support, namespace settings, and the tool plan.</p>
+    <h4>At which layer did the same query fail?</h4>
+    <pre><code>Catalog cue: issue-tracker can read requirement records
+Search: find the tool for reading order rules
+Loaded definition: read_issue(id)       ← teaching shorthand
+Model call: read_issue("SHIP-42")
+Call preparation: refresh check → current binding → PreparedMcpCall
+Actual result: free shipping at 100 or above ← hypothetical external response</code></pre>
+    <p>A search hit only proves a definition was found. Connection failure, tool removal, or denied approval does not count as a successful query. Before execution, the MCP handler checks dirty refresh and binds the client, metadata, and configuration to this prepared call. StepContext does not freeze external connections permanently.</p>
+    <div class="call pit"><span class="tag">Two kinds of MCP content</span>MCP tools expose callable actions; MCP resources expose readable content. An Orchestrator Skill can be read through resource interfaces without each Skill being registered as an MCP tool. Reading a Skill, loading a schema, and executing a tool follow distinct chains.</div>
+
+
+  </div></details>
+    <p class="source">Configuration and call binding: <a href="../Codex_Harness_Research.en.html#mcp-loading">Manual §4.6 · MCP lifecycle</a>; exposure, Code Mode, and plugins: <a href="../Codex_Harness_Research.en.html#tool-loading">Manual §4.7 · Tool loading</a></p>
+  </section><p class="chapter-transition">One input is now assembled. Next, see how its structure changes after execution.</p></div><div class="chapter" id="chapter-4"><header class="chapter-head"><span>CHAPTER 04</span><h2>Runtime updates: appending history and changing rules</h2><p>Return to run_turn and follow tool results, additional user input, and WorldState updates.</p><p class="chapter-outcome">After this chapter, you can distinguish appended observations, added requirements, and rule-replacement notices within one history.</p><nav aria-label="Chapter 4 sections"><a href="#step-2">What run_turn does around each sampling step</a><a href="#step-5">How WorldState updates and restores baselines</a></nav></header><section class="essay" id="step-2">
+    <div class="section-head"><span class="section-num">04.1</span><h3 class="section-title">What run_turn does around each sampling step</h3></div>
+    <p class="section-sub">Input contributions → capture StepContext → sample → execution and budget checks</p><p class="scene-question">Within one user turn, where does Codex prepare another request, receive input, and check for compaction?</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📥</span><strong>Turn input and contributions</strong><span class="scene-meaning">Process user input, explicitly selected Skills, and other contributions</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📦</span><strong>capture_step_context</strong><span class="scene-meaning">Prepare the model, tools, and environment for sampling</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📡</span><strong>ModelClient.stream</strong><span class="scene-meaning">Send Prompt; process ResponseItem values and events</span></li>
+      <li><span class="scene-icon" aria-hidden="true">↩️</span><strong>Tool results / pending input / budget</strong><span class="scene-meaning">Decide whether to continue, compact, or end the turn</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>run_turn decides whether execution continues; StepContext constrains the sampling plan. The MCP handler separately refreshes and captures PreparedMcpCall before execution. These bindings are not one permanent snapshot.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> OpenHands records model actions as ActionEvent and observations as ObservationEvent; Codex records calls/results as separate ResponseItem values. Both must preserve call associations. Tool-calling ability alone is not a structural difference. <a href="https://docs.openhands.dev/sdk/arch/events">Comparison source ↗</a></p>
+    <details class="quiz"><summary>Self-check: does StepContext guarantee that the MCP catalog and connections never change after sending the request?</summary>
+    <p>No. It fixes the sampling plan. MCP still checks refresh state and prepares the current call before execution. The model having seen a definition and the call actually succeeding are separate facts to verify.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>In this example, the agent reads code, runs the test, sees FAIL, then decides what to change. <code>run_turn</code> writes each tool result to history and asks the model for the next step. The loop continues while execution or pending input requires it. All these sampling steps and tool executions can occur within one user turn.</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="Execution loop; scroll horizontally"><pre><code class="language-mermaid">flowchart TD
+    U[User requests test fix] --> S[Session receives input]
+    S --> C[StepContext snapshots capabilities and settings]
+    C --> P[Assemble model request]
+    P --> M[Model sampling]
+    M -->|Tool call| T[Execute and record result]
+    T --> B[Check pending input and window budget]
+    B --> C
+    M -->|No continuation or pending input| F[End turn]</code></pre></div>
+      <figcaption>Teaching simplification. The real loop also handles hooks, interruption, approval, and compaction; text output alone is not the only end condition.</figcaption>
+    </figure>
+    <p>Why prepare <code>StepContext</code> before each sampling step? Reading changing configuration separately while assembling one request could mix versions of tool definitions, environment, and rules. The snapshot supplies a consistent sampling plan. It does not lock external services: MCP still refreshes and obtains <code>PreparedMcpCall</code> before execution. Sampling-plan consistency and execution-time connection binding are separate boundaries.</p>
+    <h4>Snapshot A: how a failing test enters the next request</h4>
+    <pre><code>Current initial context I0: permissions, environment, R0 “JUnit 5”
+U1: free shipping at 100 or above; preserve public API
+
+call c1: read ShippingCost.java
+output c1: return amount &gt; 100 ? 0 : 5;
+call c2: run ShippingCostTest
+output c2: amount=100, expected=0, actual=5, FAIL
+
+Next sampling step: inspect this history and decide how to fix it</code></pre>
+    <p>An output must share the call's <code>call_id</code>. The failing test gives the model grounds to change <code>&gt; 100</code> to <code>&gt;= 100</code>. Proposing an edit, executing it, and verifying the tests are distinct steps.</p>
+
+
+  </div></details>
+    <p class="source">Follow the call chain: <a href="../Codex_Harness_Research.en.html#architecture">Manual §2 · Session and StepContext</a></p>
+  </section><section class="essay" id="step-5">
+    <div class="section-head"><span class="section-num">04.2</span><h3 class="section-title">How WorldState updates and restores baselines</h3></div>
+    <p class="section-sub">Known / Absent / Unknown + fragments / merge patch</p><p class="scene-question">Old AGENTS text remains in history, but its exact snapshot is lost. How does Codex send the new version?</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">🔎</span><strong>Known(snapshot)</strong><span class="scene-meaning">Exact previous snapshot: compare and update if needed</span></li>
+      <li><span class="scene-icon" aria-hidden="true">❓</span><strong>Unknown</strong><span class="scene-meaning">Evidence of an old fragment but no exact snapshot: replace or revoke</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📄</span><strong>Absent</strong><span class="scene-meaning">No usable prior evidence: inject current content in full if needed</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>The model receives change fragments; rollout receives a full snapshot or merge patch. State replay by the recovery system and natural-language notices read by the model are distinct data flows.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> OpenHands constructs an LLM View from events. Codex additionally maintains comparable rule baselines and sends replacement/revocation notices. This compares history projection with current-rule management; it does not establish that OpenHands ignores stale rules. <a href="https://docs.openhands.dev/sdk/arch/condenser">Comparison source ↗</a></p>
+    <aside class="design-choice"><strong>Design analysis · Reconstruct rules from program-owned state</strong><p><b>Benefit:</b> Known / Unknown / Absent distinguish replacement and revocation needs; full snapshots and patches separately serve recovery.</p><p><b>Cost / boundary:</b> If the source has not refreshed, a diff cannot discover a changed file by itself.</p></aside>
+<p class="map-return"><a href="#context-map">Return to the input explorer and check item positions across stages →</a></p><details class="quiz"><summary>Exercise: old AGENTS text remains, the snapshot is lost, and the current rules have been removed. Is sending nothing safe?</summary>
+    <p>No. This is Unknown: old rules may still affect the task, so they must explicitly be declared inapplicable. Treating it as Absent loses the revocation. The decision uses current state supplied by the manager, not an assumption that disk state has refreshed.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>The working directory, rules, or capabilities can change during a task. Codex uses <code>WorldState</code> to organize them into sections that support snapshots and diffs.</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="WorldState updates; scroll horizontally"><pre><code class="language-mermaid">flowchart LR
+    C[Current state for this request] --> D{Reference baseline exists?}
+    D -->|No| F[Build full initial context]
+    D -->|Yes| X[Compare sections]
+    X --> A[Append changed fragments]
+    F --> B[Save corresponding baseline]
+    A --> B</code></pre></div>
+      <figcaption>When AGENTS.md is replaced or removed, the update explicitly says so, rather than merely adding another rule set.</figcaption>
+    </figure>
+    <p>Project AGENTS.md discovery proceeds from root to cwd. Within each directory, override wins over the normal file and configured fallbacks; project text shares a byte budget. It enters <strong>user-role context</strong> and gains no system-level authority from its filename.</p>
+    <p>Chapter 3 explained capability loading through Skills and MCP. Here we trace how capability changes reach the model. WorldState tool-catalog state is neither the complete schema nor a backup of execution results.</p>
+    <div class="call pit"><span class="tag">Boundary · A state update is not a fresh disk read every time</span>The AGENTS manager has caching and refresh conditions. WorldState diffing does not mean all AGENTS.md and SKILL.md files are reread before every sampling step.</div>
+    <h4>Snapshot B: rule updates and old-session recovery</h4>
+    <p>We are still fixing the shipping test. Suppose the client changes the <strong>task working directory</strong> to a location with subdirectory rules, and the refreshed manager returns R1: “JUnit 5; run only shipping-module tests.” This is not a cd inside one shell command, nor an assumption that editing a file in place triggers a watcher.</p>
+    <pre><code>Existing history: I0 contains R0 → U1 → c1/output → c2/FAIL
+Append ΔR: this AGENTS.md replaces the prior version; full R1
+Append U2: continue the fix and verify boundaries at 99, 100, and 101
+
+Exact old snapshot matches R1: Known → do not repeat
+No old snapshot, but old AGENTS text recognized: Unknown → replacement notice + R1
+No old snapshot or fragment evidence: Absent → send R1 without replacement wording</code></pre>
+    <p><strong>Known</strong> has an exact old value to compare; <strong>Unknown</strong> only identifies old rules in history, so sending R1 requires replacement wording; <strong>Absent</strong> has no usable prior state or fragment evidence, so it sends R1 without replacement wording. Absent does not mean rules never appeared anywhere in the session.</p>
+    <p>Why not use only <code>Option</code> to distinguish a present versus missing snapshot? If current rules are empty, Unknown may still leave old rules in effect and needs revocation; Absent has no such evidence and may send nothing. Known also needs revocation if it records old rules. The revocation applies to the corresponding AGENTS content, not every instruction from other sources.</p>
+    <p>Rollout receives separate data: a full snapshot first, then JSON Merge Patch. For example, <code>{"tools":{"db":null}}</code> removes db from the tool catalog. It is neither the model-facing natural-language notice nor an operation deleting database data.</p>
+
+
+  </div></details>
+    <p class="source">Three states, snapshots, and caching: <a href="../Codex_Harness_Research.en.html#world-state">Manual §5.3</a>, <a href="../Codex_Harness_Research.en.html#world-state-boundary">Tool-result boundary</a></p>
+  </section><p class="chapter-transition">History continues growing. Chapter 5 asks when to rewrite it and how to reconstruct input that can continue the task.</p></div><div class="chapter" id="chapter-5"><header class="chapter-head"><span>CHAPTER 05</span><h2>Compaction and recovery: rewrite history while keeping the task resumable</h2><p>Follow triggers, request routing, outputs and layout, then checkpoint recovery.</p><p class="chapter-outcome">After this chapter, you can draw the inputs and outputs of Local, Remote V2, and TokenBudget without confusing rule reconstruction with summarization.</p><nav aria-label="Chapter 5 sections"><a href="#step-6">Which thresholds trigger compaction in Codex?</a><a href="#step-7">Who sends compaction requests, and which route do they take?</a><a href="#step-8">How replacement_history forms the next window</a></nav></header><section class="essay" id="step-6">
+    <div class="section-head"><span class="section-num">05.1</span><h3 class="section-title">Which thresholds trigger compaction in Codex?</h3></div>
+    <p class="section-sub">Total / BodyAfterPrefix + automatic budget + full-window check</p><p class="scene-question">Use a source fixture to distinguish two limits: the automatic budget differs from the usable window, and a 250k setting need not wait until 250k.</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📥</span><strong>Server usage + estimated local additions</strong><span class="scene-meaning">Measure the active context</span></li>
+      <li><span class="scene-icon" aria-hidden="true">⚠️</span><strong>Automatic threshold A</strong><span class="scene-meaning">Total: min(C, floor(0.9 × W)); omit C if unset</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🛑</span><strong>Usable window H</strong><span class="scene-meaning">floor(p × W / 100), with a separate full-window check</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>Checks may run before sampling, after tool results when continuation is needed, or during certain model switches. BodyAfterPrefix uses a different automatic-budget scope; buffers also change the conditions.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> The documented OpenHands LLMSummarizingCondenser uses event counts; Codex distinguishes total tokens from BodyAfterPrefix growth. Normalize units before comparing thresholds. This example fixes W=272,000, C=250,000, p=95, Total scope, no buffer, and continued execution. <a href="https://docs.openhands.dev/sdk/arch/condenser">Comparison source ↗</a></p><div class="hands-on" id="budget-demo">
+<h4>Adjust token usage: when does compaction trigger?</h4>
+<label for="token-load">Current usage<output id="token-number" for="token-load">244,000</output> tokens</label>
+<input id="token-load" type="range" min="180000" max="272000" step="100" value="244000" aria-describedby="budget-assumptions budget-state">
+<div class="capacity" aria-hidden="true"><div id="capacity-fill" style="width:89.7059%"></div><i class="auto-mark"></i><i class="hard-mark"></i></div>
+<div class="budget-legend"><span>Compaction threshold A: 244,800</span><span>Usable limit H: 258,400</span></div>
+<p id="budget-state" role="status">Below the compaction threshold: execution can continue, but new tool results add material.</p>
+<p class="small-note" id="budget-assumptions">Fixed teaching conditions: Total scope, no buffer, and continuation required. This is not live account usage; see the expanded explanation for other scopes and settings.</p>
+</div><details class="quiz"><summary>Self-check: with a 250k configured budget, does this example wait until 250k to compact?</summary>
+    <p>No. Standard Total scope uses min(250,000, 272,000 × 0.9), yielding 244,800. Actual triggering also depends on continuation and relevant buffer settings.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>Why not wait until the window is full? Summarizing compaction must construct another model request that fits both history and summarization instructions. Earlier triggering leaves some room, but the source's 90% threshold does not prove that every path needs exactly 10%, or guarantee success. Some overflow paths prepare input or retry; TokenBudget does not automatically call a model to summarize.</p>
+    <p>The program decides when to compact. Counting combines the latest server usage report with estimates of subsequently added local content; the local estimator is not an exact tokenizer.</p>
+    <p>Under standard <code>Total</code> scope, the default automatic threshold is 90% of the resolved window. Explicit configuration can only tighten that formula; the full usable window has a separate limit.</p>
+    <pre><code>W = currently resolved context window
+C = explicit automatic-compaction budget, if configured
+p = effective_context_window_percent
+
+A = floor(0.90 × W) when C is unset
+    otherwise min(C, floor(0.90 × W))
+H = floor(p × W / 100)</code></pre>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Source test fixture; scroll horizontally"><table>
+      <thead><tr><th>Test input</th><th>Automatic threshold A</th><th>Usable limit H</th></tr></thead>
+      <tbody><tr><td>W = 272,000<br>C = 250,000<br>p = 95</td><td><strong>244,800</strong></td><td><strong>258,400</strong></td></tr></tbody>
+    </table></div>
+    <p class="source">These numbers come from a source test fixture to explain the formula; they are not the current account's model specifications.</p>
+    <p>The <code>BodyAfterPrefix</code> scope counts only growth after the initial prefix toward the automatic budget, while still checking the full window. Relevant configuration can add a fallback buffer; the paths cannot all be reduced to one fixed percentage.</p>
+    <p>Checks occur before a new turn's sampling, after sampling/tool results when execution must continue, and during certain model switches. Manual compaction uses a separate CompactTask.</p>
+    <p>Return to shipping: we omit some investigation and logs to illustrate a long task. Assume the Total settings above, <strong>no fallback buffer</strong>, usage rising from 244,000 to 245,000 after a tool result, and verification still pending. Usage now exceeds A, so compaction precedes the next sample. The trigger is not “exactly 80 tool calls.”</p>
+
+
+  </div></details>
+    <p class="source">Formulas, scopes, and call sites: <a href="../Codex_Harness_Research.en.html#budget">Manual §6 · Compaction triggers</a></p>
+  </section><section class="essay" id="step-7">
+    <div class="section-head"><span class="section-num">05.2</span><h3 class="section-title">Who sends compaction requests, and which route do they take?</h3></div>
+    <p class="section-sub">Same user Session; current model_info; three implementations</p><p class="scene-question">Start with request and result: V2 sends a trigger, Local sends a summarization instruction, and TokenBudget skips summarization.</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">✉️</span><strong>Remote V2</strong><span class="scene-meaning">Responses + compaction_trigger → one encrypted compaction item</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📝</span><strong>Local summarization</strong><span class="scene-meaning">History + summarization prompt → readable handoff summary</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧹</span><strong>TokenBudget reset</strong><span class="scene-meaning">start_new_context_window → no summary generated</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>Ordinary summarizing requests use the current turn_context.model_info() and write back to the original Session. A model switch may first compact with the old model; the client cannot prove whether the server internally uses another compression model.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> LangChain SummarizationMiddleware can separately configure model, trigger, and keep. Codex routes Local, V2, and TokenBudget by client feature/provider conditions. V2's encrypted output differs from a readable summary; the three routes are not freely interchangeable buttons. <a href="https://docs.langchain.com/oss/python/langchain/short-term-memory#summarize-messages">Comparison source ↗</a></p><div class="hands-on" id="compact-demo">
+<h4>Switch source paths to inspect active-history replacement</h4>
+<div class="mode-buttons" role="group" aria-label="Compare three compaction paths">
+<button type="button" data-mode="local" aria-pressed="true" aria-controls="compact-result">📝 Local</button>
+<button type="button" data-mode="remote" aria-pressed="false" aria-controls="compact-result">✉️ Remote V2</button>
+<button type="button" data-mode="reset" aria-pressed="false" aria-controls="compact-result">🧹 TokenBudget</button>
+</div>
+<div class="desk-pair">
+<div class="desk"><h5>Before compaction · Active history</h5><div class="paper-stack"><span>📌 Original requirements U1 / U2</span><span>📋 Old rules R0 → current rules R1</span><span>🧾 Failure logs, action records…</span><span>🛠️ Code changed; verification pending</span></div></div>
+<div class="desk after" id="compact-result" aria-live="polite"><h5 id="compact-heading">Local · Readable summary</h5><div class="paper-stack" id="compact-papers"><span>📌 User text retained within budget</span><span>📋 Current rules rebuilt at the appropriate point</span><span>📝 Comparison changed; boundary tests still pending</span></div><p id="compact-note">The summary is a teaching example. It does not retain all original tool-output items.</p></div>
+</div>
+<p class="small-note">These buttons compare source paths only. U1: free shipping at 100+, unchanged public API. U2: verify 99/100/101. R1: JUnit 5, orders-module tests only. U1/U2 fit within retention budgets; special candidates such as images are omitted. The next section explains rule-injection timing.</p>
+</div>
+<div class="call"><span class="tag">Remote V2 request · Logical projection</span><code>model = turn_context.model_info()</code><br><code>instructions = original base instructions</code>，<code>tools = current tool definitions</code><br><code>input = prepared history + compaction_trigger</code><br>Sent through ordinary Responses → require completion and exactly one compaction item → install in the original Session. The server's internal summary format is not visible.</div>
+<div class="same-task"><span class="scene-icon" aria-hidden="true">🍽️</span><div><h4>Session stays; inspect ModelClientSession and model selection separately</h4><p>Ordinary summarizing compaction retains the user Session and usually specifies the current model. A new request-level ModelClientSession does not create a new task. During model switching, the old model may compact before handoff. Public client code cannot establish whether Remote V2 internally uses a different model.</p><a href="../Codex_Harness_Research.en.html#compaction-session-model">Inspect the session / model source boundary →</a></div></div><aside class="design-choice"><strong>Design analysis · Make compaction a verifiable lifecycle</strong><p><b>Benefit:</b> The program handles triggers, output validation, history replacement, baselines, and persistence.</p><p><b>Cost / boundary:</b> V2 output count and type can be checked, but its semantic completeness cannot be inspected by the client.</p></aside>
+<details class="quiz"><summary>Self-check: does reading Local's public summary template reveal Remote V2's internal prompt?</summary>
+    <p>No. V2 returns opaque encrypted_content. The public client exposes control items, transport, and retention mechanisms, not the server's internal summary format or algorithm.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="Three compaction paths; scroll horizontally"><pre><code class="language-mermaid">flowchart TD
+    A[Compaction triggered] --> B{TokenBudget enabled?}
+    B -->|Yes| R[Skip summary and start new window]
+    B -->|No| C{Provider supports Remote V2?}
+    C -->|Yes| V[Append compaction_trigger to Responses stream]
+    V --> K[Retained original messages + opaque compaction item]
+    C -->|No| L[Ordinary model generates handoff summary]
+    L --> S[Retained user messages + text summary]</code></pre></div>
+      <figcaption>TokenBudget and context_management default to off in this source snapshot; they are not the default path for every user.</figcaption>
+    </figure>
+    <h4>Remote V2: compaction as a protocol action</h4>
+    <p>The server returns an opaque compaction item; the client validates, saves, and supplies it in later requests. The client need not implement the internal compression algorithm, but cannot directly inspect which facts it preserves.</p>
+    <p>The client prepares history, retains base instructions and tool definitions, appends <code>{"type":"compaction_trigger"}</code>, and sends it through ordinary Responses streaming. It requires exactly one compaction item before installing replacement history.</p>
+    <div class="call"><span class="tag">Version difference · Do not substitute the older article's path</span>This snapshot's V2 integration tests check <code>/v1/responses</code>. The separate <code>/responses/compact</code> endpoint described in earlier material is a different account; it does not replace this call chain, nor establish that the public compact API was removed.</div>
+    <h4>Local: client-orchestrated handoff summarization</h4>
+    <p>The client requests a readable summary, then combines it with user messages retained within budget. The summary is inspectable but may omit information. “Local” describes orchestration; the model can still run remotely. Lack of V2 support is not the only condition to examine; use the routing diagram and manual for entry points.</p>
+    <h4>TokenBudget: switch windows directly</h4>
+    <p>History is reset and current context reinjected, skipping automatic model summarization. Task progress is not automatically saved. Notes can provide previously written continuation cues, and history can retrieve records when available; support depends on extensions, model, provider, and authentication. The new window contains current context, not empty input, but notes and retrievable old evidence are not guaranteed.</p>
+    <div class="call"><span class="tag">Experimental branch · Act on the pressure warning</span>With the feature enabled and that model-default configuration in use, remaining capacity at or below 6,144 can trigger a reminder to write notes. The model may then request new_context and read notes/history in the new window. The 16,384 fallback buffer is conditional; the full-window limit may be reached first. A Rust feature defaulting off and model-default activation being off are distinct facts; the latter does not prohibit explicit enablement.</div>
+
+
+  </div></details>
+    <p class="source">The three actual call chains: <a href="../Codex_Harness_Research.en.html#compaction">Manual §7 · Compaction</a>, <a href="../Codex_Harness_Research.en.html#history-notes">history / notes</a>, <a href="../Codex_Harness_Research.en.html#pressure">Pressure-warning conditions</a></p>
+  </section><section class="essay" id="step-8">
+    <div class="section-head"><span class="section-num">05.3</span><h3 class="section-title">How replacement_history forms the next window</h3></div>
+    <p class="section-sub">Select verbatim items → rebuild initial context → install checkpoint</p><p class="scene-question">Which items remain after compaction? How are rules, task progress, and original tool outputs handled?</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📌</span><strong>Select original messages to retain</strong><span class="scene-meaning">V2: shared 64k budget; Local: estimated 20k-token user-text budget</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📋</span><strong>Rebuild canonical context</strong><span class="scene-meaning">Mid-turn: before the last retained user message; other timings differ</span></li>
+      <li><span class="scene-icon" aria-hidden="true">💾</span><strong>Install replacement_history</strong><span class="scene-meaning">Write checkpoint and window IDs, update baselines, and recalculate usage</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>These budgets limit verbatim retention, not summary size. Original tool-output items do not belong to these two retention paths. WorldState cannot establish whether their information entered the summary.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> OpenHands keeps an event log, uses Condensation to specify a forgotten set, then generates a View. Codex installs replacement history and saves recovery baselines. Distinguish archived content from what the model can currently see. <a href="https://docs.openhands.dev/sdk/arch/condenser">Comparison source ↗</a></p>
+    <aside class="design-choice"><strong>Design analysis · Recover rules and task progress separately</strong><p><b>Benefit:</b> Current rules can be rebuilt; summaries/checkpoints primarily bridge task state.</p><p><b>Cost / boundary:</b> Early user-specific constraints and one-time tool outputs may still depend on lossy summaries or separate archives.</p></aside>
+<p class="map-return"><a href="#context-map">Return to the input explorer and check item positions across stages →</a></p><details class="quiz"><summary>Exercise: if the new window only says “comparison changed,” can the agent report that tests passed?</summary>
+    <p>No. Run and inspect the 99, 100, and 101 boundary tests and verify that the public API is unchanged. To inspect the earlier FAIL, retrieve original archived evidence; a rerun produces a new observation. “Changed” in a summary is not “verified.”</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>Suppose the 80th tool call just finished and the model still needs to fix tests. Remote V2 selects candidates under a shared <strong>64k token</strong> verbatim-retention budget. Local retains user text under an <strong>estimated 20k-token</strong> budget. Both favor newer content.</p>
+    <p>Neither number is a summary-size or window-size limit. V2 has additional rules for images, agent messages, and client-authored developer messages; messages may be truncated at the budget boundary.</p>
+    <figure>
+      <ol class="layers">
+        <li class="layer"><span>RETAIN</span>Earlier actual user messages that fit the budget</li>
+        <li class="layer highlight"><span>REBUILD</span>Current permissions, AGENTS.md, environment, and other initial context</li>
+        <li class="layer"><span>RETAIN</span>Last retained actual user message</li>
+        <li class="layer highlight"><span>CHECKPOINT</span>Compaction item / handoff summary at the history tail</li>
+      </ol>
+      <figcaption>Typical mid-turn summarizing-compaction layout; base instructions are assembled separately. A fallback insertion point handles histories with no actual user message.</figcaption>
+    </figure>
+    <p><strong>Why does REBUILD help?</strong> AGENTS rules such as “use JUnit 5; run only shipping-module tests” have program-maintained sources and can be rebuilt directly. The summary need not paraphrase them. But U1's “free shipping at 100” is a business requirement, not automatically a WorldState rule. It still needs retained user text, a summary, or another reliable record. Rebuilding reduces dependence on summarization for current configuration; it does not guarantee lossless recovery of every constraint.</p>
+    <p>Manual or pre-turn compaction clears the reference baseline, so the next ordinary construction reinjects full context. Mid-turn compaction inserts it immediately before the last actual user message. The program uses state it currently knows, subject to the AGENTS refresh and caching conditions already discussed.</p>
+    <p>The program then saves <code>replacement_history</code> and window identifiers, allowing session recovery to rebuild this model view. Compaction does not require restarting the whole task or resetting the real workspace.</p>
+    <h4>Snapshot C: one task, three replacements</h4>
+    <p>Assume &gt; has been changed to &gt;=, but the three boundaries have not been rerun. U1/U2 fit the verbatim budget; no images, agent messages, or additional developer items are retained. This is <strong>mid-turn compaction</strong>. I1 denotes full initial context rebuilt from current R1.</p>
+    <pre><code>Before compaction:
+I0(R0) → U1 → c1/output → c2/FAIL → ΔR(R1) → U2
+→ c3 “change &gt; to &gt;=” / edit succeeded → later investigation…
+
+Local:
+U1 → I1(R1) → U2 → S “Comparison changed; original test failed;
+verify 99/100/101; preserve public API.”
+S is a constructed good-summary example, not measured output.
+
+Remote V2:
+U1 → I1(R1) → U2 → Compaction{encrypted_content: "…"}
+The ciphertext does not reveal whether the edit was preserved; do not invent its contents.
+
+TokenBudget reset:
+I1(R1, current/previous window IDs, available window hints)
+U1, U2, and S are not carried automatically. If notes were written and retrieval is available,
+the next sample reads the checkpoint and retrieves needed evidence by ID.</code></pre>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Evidence after compaction; scroll horizontally"><table>
+      <thead><tr><th>Case object</th><th>Destination in summarizing paths</th><th>What cannot be inferred</th></tr></thead>
+      <tbody>
+        <tr><td>U1 / U2</td><td>Retained verbatim within this example's budget</td><td>Does not generalize to unlimited user history</td></tr>
+        <tr><td>Old R0 / update ΔR</td><td>Rules re-expressed through current I1(R1)</td><td>The summarizer does not decide which rules apply</td></tr>
+        <tr><td>c2 FAIL log</td><td>Original item not retained; some information may enter the summary</td><td>WorldState has not backed up this log</td></tr>
+        <tr><td>The &gt;= edit on disk</td><td>Still exists and can be reread</td><td>Reading the current file is not recovering a past output</td></tr>
+      </tbody>
+    </table></div>
+
+
+  </div></details>
+    <p class="source">Selection details and recovery layout: <a href="../Codex_Harness_Research.en.html#compaction">Manual §7</a>, <a href="../Codex_Harness_Research.en.html#recovery">§8</a></p>
+  </section><p class="chapter-transition">The mechanisms now connect. Finally, compare them with other harnesses and assess benefits, costs, and evidence.</p></div><div class="chapter" id="chapter-6"><header class="chapter-head"><span>CHAPTER 06</span><h2>Comparison and evaluation: benefits and tradeoffs</h2><p>Compare responsibilities, explain cache effects, then test your understanding against one trace.</p><p class="chapter-outcome">After this chapter, you can distinguish what the code does, why it might be designed that way, and whether it works better.</p><nav aria-label="Chapter 6 sections"><a href="#harness-comparison">Which organization does Codex choose among other harnesses?</a><a href="#step-9">Codex request deltas and cache boundaries</a><a href="#step-10">Connect every object through one Codex trace</a></nav></header><section class="essay" id="harness-comparison">
+<div class="section-head"><span class="section-num">06.1</span><h3 class="section-title">Which organization does Codex choose among other harnesses?</h3></div>
+<p class="section-sub">Compare responsibility for the same problem, not feature counts</p>
+<p class="scene-question">Why do three different structures emerge when each must turn long history into the next model input?</p>
+<figure class="story-scene"><ol class="scene-grid compare">
+<li><span class="scene-icon" aria-hidden="true">📦</span><strong>Codex</strong><span class="scene-meaning">Typed active history → replacement checkpoint → rebuilt canonical context</span></li>
+<li><span class="scene-icon" aria-hidden="true">📜</span><strong>OpenHands SDK</strong><span class="scene-meaning">Append events → Condensation → next View projected from events</span></li>
+<li><span class="scene-icon" aria-hidden="true">🧩</span><strong>LangChain agent / LangGraph</strong><span class="scene-meaning">Messages state + checkpointer → configured summarization middleware</span></li>
+</ol><figcaption>Codex uses the pinned source commit; the other two use the official architecture documents read for this study. This compares data flow, not unmeasured effectiveness.</figcaption></figure>
+<div class="tbl-wrap" tabindex="0" role="region" aria-label="Harness responsibility comparison"><table><thead><tr><th>Shared problem</th><th>Codex's choice</th><th>Comparison and implications</th></tr></thead><tbody>
+<tr><td>How does recovery work after shortening history?</td><td>Save replacement history and its state baseline</td><td>OpenHands appends Condensation to events, then produces a filtered View with a summary</td></tr>
+<tr><td>Who selects the summary model and policy?</td><td>Ordinary compaction uses current model_info; V2 returns an opaque output</td><td>LangChain SummarizationMiddleware configures model, trigger, and keep</td></tr>
+<tr><td>How are instructions distinguished from actual user input?</td><td>role + content_kind + provenance metadata</td><td>OpenHands also separates Event.source from LLM role; distinguishing role from source is not unique to Codex</td></tr>
+</tbody></table></div>
+<p class="one-idea"><span>Assessment</span>Codex integrates the model catalog, request protocol, typed history, and rule reconstruction in one client. These boundaries can be maintained together, at the cost of more branching conditions and V2 content that the client cannot interpret.</p>
+<p class="bridge"><strong>Implementation comparison:</strong> Compare paths that solve the same problem: OpenHands SDK event projection, LangChain agent message middleware, and Codex's client history lifecycle. They operate at different abstraction levels; interface differences do not directly imply better results.</p>
+<details class="quiz"><summary>Discussion: why do roles and persistence still fail to prove Codex's approach is better?</summary><p>These are shared requirements. Compare rule retention, task completion, recoverable original text, compaction cost, and latency while controlling tasks, models, and budgets. Structure alone does not establish effectiveness.</p></details>
+<details class="deep-dive"><summary>Expand comparison evidence and boundaries</summary><p>An OpenHands Condenser can return a View or a Condensation; the latter is appended as an event and processed on the next step. LangChain documents configuring SummarizationMiddleware in an agent using a LangGraph checkpointer. It is not automatically enabled in every LangGraph application. This is not a comparison treating a framework and a finished coding agent as the same product.</p><p>This chapter covers responsibilities supported by official sources. Codex V2 model internals, deployed defaults across products, and which system saves more tokens are outside the evidence collected here.</p></details>
+<p class="source"><a href="https://docs.openhands.dev/sdk/arch/condenser">OpenHands Condenser</a> · <a href="https://docs.openhands.dev/sdk/arch/events">Event.source and role</a> · <a href="https://docs.langchain.com/oss/python/langchain/short-term-memory#summarize-messages">LangChain summarization middleware</a> · <a href="../Codex_Harness_Research.en.html#harness-relations">Manual: comparisons and design tradeoffs</a></p>
+</section><section class="essay" id="step-9">
+    <div class="section-head"><span class="section-num">06.2</span><h3 class="section-title">Codex request deltas and cache boundaries</h3></div>
+    <p class="section-sub">previous_response_id / stable prefix IDs / prompt_cache_key</p><p class="scene-question">What can delta-only transmission, stable input IDs, and shortened history each prove?</p>
+    <figure class="story-scene"><ol class="scene-grid compare"><li><span class="scene-icon" aria-hidden="true">📨</span><strong>WebSocket deltas</strong><span class="scene-meaning">Send a delta only when properties match and input extends the previous request and output</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🏷️</span><strong>Responses Lite prefix IDs</strong><span class="scene-meaning">UUIDv5(thread namespace, payload): stable identity</span></li>
+      <li><span class="scene-icon" aria-hidden="true">🧮</span><strong>Prompt caching</strong><span class="scene-meaning">Server-side computation reuse; observe cached tokens and related metrics</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>Installing replacement history usually breaks strict extension of old history. Appending a V2 trigger helps preserve a prefix, but does not guarantee cache hits throughout compaction.</p>
+    <p class="bridge"><strong>Implementation comparison:</strong> LangChain lists provider caching as separate middleware. Here too, distinguish transport deltas, stable prefix identity, and cached tokens. Client structure establishes reuse conditions, not guaranteed hits. <a href="https://docs.langchain.com/oss/python/langchain/middleware/built-in#provider-specific-middleware">Comparison source ↗</a></p>
+    <details class="quiz"><summary>Self-check: if a network log shows only tool results in the second transmission, has the model lost the original requirement?</summary>
+    <p>Not necessarily. When delta conditions hold, the server continues accepted input through the previous response ID. Inspect the complete logical request, not just this transmission's delta.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <p>A request can use delta transport, prefix caching, and compacted history together. Their units are transmitted bytes, reused computation, and active-context tokens; observe them separately.</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="Cache and context mechanisms; scroll horizontally"><table>
+      <thead><tr><th>Mechanism</th><th>Layer</th><th>What it primarily reduces</th><th>What does not follow</th></tr></thead>
+      <tbody>
+        <tr><td>Prompt cache</td><td>Server-side computation reuse</td><td>Repeated-prefix computation; benefits depend on hits and server policy</td><td>Reusing computation does not remove input or free the context window</td></tr>
+        <tr><td>WebSocket deltas</td><td>Network transport</td><td>Avoid resending an accepted history prefix when conditions hold</td><td>Sending less does not mean seeing less: the server continues prior context, so visible input cannot be counted from the delta alone</td></tr>
+        <tr><td>Compaction</td><td>Active context</td><td>Rewrite or reset history to reduce later input</td><td>Shorter does not mean lossless or guaranteed cache hits; truncation and selection also reduce input</td></tr>
+      </tbody>
+    </table></div>
+    <p>The current WebSocket path supports <code>previous_response_id</code>: deltas are allowed when request properties match and input extends the prior request plus output. The older claim that Codex does not use previous_response_id does not apply to every path in this snapshot.</p>
+    <p>A Remote V2 request that appends a trigger may preserve the original prefix. But pre-compaction preparation, tool changes, and model switches alter those conditions; replacement history after compaction usually no longer strictly extends the old history.</p>
+    <p>Lite prefix IDs derive from <code>UUIDv5(thread namespace, payload bytes)</code>. This stabilizes identity across retries in one task, but does not prove a cache hit. <code>store:false</code> also does not exclude temporary WebSocket connection state. In the example, appending ΔR may preserve the old prefix, while installing snapshot C rewrites history; the cache conditions differ.</p>
+    <div class="call pit"><span class="tag">Inference boundary</span>Compression ratio is not task quality, and neither is cache-hit rate. Also record task completion, constraint retention, repeated actions, tokens, and latency.</div>
+
+
+  </div></details>
+    <p class="source">Cache conditions and delta matching: <a href="../Codex_Harness_Research.en.html#cache">Manual §9 · Three mechanisms</a></p>
+  </section><section class="essay" id="step-10">
+    <div class="section-head"><span class="section-num">06.3</span><h3 class="section-title">Connect every object through one Codex trace</h3></div>
+    <p class="section-sub">StepContext → request → compaction item → replacement checkpoint</p><p class="scene-question">Fix these conditions: TokenBudget off, provider supports V2, continuation needed, budget reached. Which evidence should you follow?</p>
+    <figure class="story-scene"><ol class="scene-grid flow"><li><span class="scene-icon" aria-hidden="true">📦</span><strong>StepContext / turn_context</strong><span class="scene-meaning">Confirm model, provider, tool definitions, and trigger reason</span></li>
+      <li><span class="scene-icon" aria-hidden="true">📡</span><strong>run_remote_compact_v2_attempt</strong><span class="scene-meaning">Check original instructions/tools, history, and appended trigger</span></li>
+      <li><span class="scene-icon" aria-hidden="true">✉️</span><strong>collect_compaction_output</strong><span class="scene-meaning">Completion event + exactly one compaction item</span></li>
+      <li><span class="scene-icon" aria-hidden="true">💾</span><strong>replace_compacted_history</strong><span class="scene-meaning">Check retained items, initial context, baseline, and window records</span></li></ol><figcaption>A structural teaching projection of the pinned Codex source. See the expanded section and manual for branch conditions and references.</figcaption></figure>
+    <p class="one-idea"><span>Codex implementation takeaway</span>This trace explains how Codex compacts and resumes; semantic compaction quality needs separate evaluation. Reading source test assertions is not running the tests.</p>
+    <p class="bridge">Continue the code example: after replacement, verify that U1/U2's boundary constraints and R1's module rules are available. Then run 99/100/101 and inspect actual tool results.</p>
+    <details class="quiz"><summary>Reference answer: how do you prove the branch was correct and the task was completed?</summary>
+    <p>Branch evidence comprises entry conditions, actual request structure, retention/reconstruction rules, and checkpoint installation and recovery. Task evidence comprises snapshot D's three boundary assertions and public API check. Successful window switching or a changed comparison is insufficient. Encrypted compaction semantics and real quality require server evidence or experiments; this page's constructed PASS is not a measured result.</p></details>
+    <details class="deep-dive"><summary>Expand the source walkthrough and orders test example</summary>
+    <div class="deep-content">
+    <h4>Snapshot D: recover the task and its verification obligations</h4>
+    <p>Continue from C: Local reads pending work from S. A Remote V2 model may continue from the compaction item, but we cannot audit its ciphertext details. TokenBudget first reads previously written notes and retrieves history by window/item IDs if needed. Every path must ultimately verify using observations of current code.</p>
+    <pre><code>Next steps in the new window (teaching trace, no real project run):
+Read current ShippingCost.java → comparison is &gt;=
+Check current R1 → JUnit 5, orders-module tests only
+Check U1/U2 → unchanged public API; cover 99/100/101
+Run boundary tests → shipping costs 5 / 0 / 0; three assertions pass
+Check diff → method signatures unchanged
+Only now report: fix complete, three boundaries verified, public API unchanged.</code></pre>
+    <p>If U1/U2's original constraints and a trustworthy checkpoint are unavailable, do not fill in this expected trace as fact. Try available history retrieval first, then ask for clarification if recovery still fails. <strong>WorldState restores R1; checkpoints or history recover pending work; fresh execution supplies verification evidence</strong>. All three are needed.</p>
+    <p>Recheck the Skills/MCP branch layer by layer: can the catalog locate the body and references; was the query definition loaded; did preparation obtain a call binding and a real result? After recovery, use available rereading or history paths when these materials are needed. Earlier catalog cues are not complete evidence.</p>
+    <p>A common mistake when reading an open-source harness is treating the existence of a function as the product default. Use this exercise to connect entry points, conditions, data, and results.</p>
+    <div class="call"><span class="tag">Exercise · Explicitly assumed conditions</span>TokenBudget is off; the provider declares Remote V2; the request needs continuation and has reached the window budget. Explain what the next model request sees. This analyzes a hypothetical path, not the current account's runtime state.</div>
+    <ol class="practice">
+      <li>In <code>session/turn.rs</code>, find the budget checks and <code>run_auto_compact</code> to confirm routing conditions.</li>
+      <li>In <code>compact_remote_v2_attempt.rs</code>, identify retained request fields and the appended control item.</li>
+      <li>In <code>compact_remote_v2.rs</code>, check output count, retention candidates, the 64k budget, and ordering.</li>
+      <li>In <code>compact.rs</code>, confirm the insertion point for <code>BeforeLastUserMessage</code>.</li>
+      <li>In <code>session/mod.rs</code>, trace replacement history, the WorldState baseline, and token recalculation.</li>
+      <li>Finally, read the relevant test assertions for request paths and recovery views. Record “tests read” separately from “tests run and passed.”</li>
+    </ol>
+
+    <h4>Turn the implementation into five engineering checks</h4>
+    <ol class="practice">
+      <li><strong>Calls and results:</strong> Check call_id pairing and missing-result handling so emitted history follows the protocol.</li>
+      <li><strong>Sampling and execution:</strong> Assemble a request from a consistent snapshot, then inspect the actual execution binding. Neither implies permanent freezing.</li>
+      <li><strong>Rules and task requirements:</strong> Rebuild program-maintained current rules; separately establish how user business constraints survive.</li>
+      <li><strong>Budgets and recovery:</strong> Verify automatic thresholds, full-window limits, and failure handling. A 10% margin is not a universal guarantee.</li>
+      <li><strong>Completion evidence:</strong> The example's boundary tests still need to run and be checked. Successful compaction or a summary saying “edited” cannot replace verification.</li>
+    </ol>
+    <p>These checks locate harness engineering problems. Task results still depend on models, tools, context, and verification; no single component explains them all.</p>
+
+  </div></details>
+    <p class="source">Further reading: <a href="../Codex_Harness_Research.en.html#evidence">Source reading order and verification boundaries</a> · <a href="../../agent-context-compression/learn/">General context-compaction designs (Chinese)</a> · <a href="../../agent-evals/learn/">How to evaluate agent improvements (Chinese)</a></p>
+  </section><p class="chapter-transition">Return to Chapter 2's input explorer. If you can explain where each item came from, why it is here, and when it is replaced, you understand the main structure of this implementation.</p></div></main>
+<footer>
+  <div class="foot-inner">
+    <p>This page and its reference manual use the same official source commit, <code>944d6fd1ba4baab69dbedd205282dc72ec20abb5</code>. Diagrams are teaching projections; constants and enablement conditions are defined by the source linked in the manual. Source behavior, engineering interpretation, and exercise assumptions remain distinct. This page neither measures real model compaction quality nor treats source defaults as deployed product state.</p>
+    <p><a href="../Codex_Harness_Research.en.html">Open the source reference manual</a> · <a href="#main">Return to the six-chapter outline</a> · <a href="../../">Back to learning notes</a></p>
+  </div>
+</footer>
+<script type="module" src="../../assets/js/util/mermaid-render.js"></script>
+<script src="context-map.en.js" defer></script>
+
+<script>
+(() => {
+  const slider = document.getElementById('token-load');
+  const updateBudget = () => {
+    const value = Number(slider.value);
+    document.getElementById('token-number').textContent = value.toLocaleString('en-US');
+    const fill = document.getElementById('capacity-fill');
+    fill.style.width = (value / 272000 * 100) + '%';
+    fill.style.background = value >= 258400 ? 'var(--rose)' : value >= 244800 ? 'var(--amber)' : 'var(--phosphor)';
+    document.getElementById('budget-state').textContent = value >= 258400
+      ? "Usable limit reached: ordinary sampling cannot continue unchanged; address window pressure."
+      : value >= 244800 ? "Compaction threshold reached: under these conditions, compact before sampling again."
+      : "Below the compaction threshold: execution can continue, but new tool results add material.";
+  };
+  slider.addEventListener('input', updateBudget);
+  const modes = {
+    local: ["Local · Readable summary", ["📌 User text retained within budget", "📋 Current rules rebuilt at the appropriate point", "📝 Comparison changed; boundary tests still pending"], "The summary is a teaching example. It does not retain all original tool-output items."],
+    remote: ["Remote V2 · Opaque compaction item", ["📌 Original text retained by policy and budget", "📋 Current rules rebuilt at the appropriate point", "✉️ Compaction: encrypted_content"], "The client cannot inspect this payload. Its contents cannot be invented, and not every detail is guaranteed to survive."],
+    reset: ["TokenBudget · New window without a summary", ["📋 Current initial context", "🔖 Window IDs and available hints"], "No automatic user-text or summary carryover. If notes were written and interfaces are available, read notes or retrieve history next."]
+  };
+  document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
+    const [heading, papers, note] = modes[button.dataset.mode];
+    document.querySelectorAll('[data-mode]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    document.getElementById('compact-heading').textContent = heading;
+    const stack = document.getElementById('compact-papers');
+    stack.replaceChildren(...papers.map(text => { const paper = document.createElement('span'); paper.textContent = text; return paper; }));
+    document.getElementById('compact-note').textContent = note;
+  }));
+})();
+</script>
+</body>
+</html>
