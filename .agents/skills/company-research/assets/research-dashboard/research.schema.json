@@ -1,0 +1,347 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Company research dashboard data",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "asOf": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notice": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "title",
+        "question",
+        "asOf",
+        "scope",
+        "notice"
+      ],
+      "additionalProperties": false
+    },
+    "companies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "period": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "period"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/record"
+      },
+      "minItems": 1
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nature": {
+            "type": "string",
+            "minLength": 1
+          },
+          "date": {
+            "type": "string",
+            "minLength": 1
+          },
+          "locator": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^https?://"
+          },
+          "support": {
+            "type": "string",
+            "minLength": 1
+          },
+          "limitation": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "nature",
+          "date",
+          "locator",
+          "url",
+          "support",
+          "limitation"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "meta",
+    "companies",
+    "records",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "record": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "companyId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "section": {
+          "enum": [
+            "verdict",
+            "assets",
+            "paths",
+            "choices",
+            "validation",
+            "questions"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "fact",
+            "inference",
+            "recommendation"
+          ]
+        },
+        "role": {
+          "enum": [
+            "judgment",
+            "metric",
+            "asset",
+            "profile",
+            "step",
+            "tradeoff",
+            "loop",
+            "transfer",
+            "route",
+            "gate",
+            "action",
+            "contract",
+            "question",
+            "comparison"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limitation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "uniqueItems": true
+        },
+        "relatedIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "uniqueItems": true
+        },
+        "stage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "metric": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "value",
+            "unit",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "fact",
+                  "inference",
+                  "recommendation"
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mechanism": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidenceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "mechanism",
+              "status",
+              "evidenceIds"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "comparisonIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "uniqueItems": true,
+          "minItems": 2
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "section",
+        "kind",
+        "role",
+        "status",
+        "title",
+        "text",
+        "limitation",
+        "evidenceIds",
+        "relatedIds"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
