@@ -2,6 +2,12 @@
 
 Welcome to my Machine Learning and AI study notes repository! This repository contains structured study notes, deep dives, and visual guides on various ML topics.
 
+## Company Research
+
+* [公司调研执行 Skill](.agents/skills/company-research/SKILL.md)：给 Agent 使用的公司分析工作规范。完整调研默认至少达到 [Stoody GTM Lab](https://stoody-zero-to-one.vercel.app/) 的分析深度，覆盖业务事实、早期路径、渠道资源、机制对标和行动依据；公开资料无法回答、且用户可能掌握的关键问题，采用分轮问答补齐，并据回答更新结论。
+  * 用 `$company-research` 调用，例如：「分析这家公司的早期客户、产品和增长路径，判断哪些经验适合我的业务；缺少内部信息时分轮问我。」也适用于自然语言提出的完整公司调研任务。执行标准与问答示例见 [研究合同](.agents/skills/company-research/references/research-contract.md)。
+* [公司调研方法报告](company-research/Company_Research_Methodology_Report.md) · [Word 版](company-research/公司调研方法报告.docx)：方法解释、八个调查角度、虚构案例和六份模板，供 Agent 查阅。执行顺序、深度验收和用户问答以以上 skill 为准；报告是参考材料。
+
 ## Contents
 
 ### 1. Reinforcement Learning from Human Feedback (RLHF)
