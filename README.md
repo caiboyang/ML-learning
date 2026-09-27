@@ -4,10 +4,10 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ## Company Research
 
-* [公司调研执行 Skill](.agents/skills/company-research/SKILL.md)：给 Agent 使用的通用公司分析工作规范。完整调研需要覆盖业务事实、早期路径、渠道资源、经营机制、对标迁移和行动依据，每项关键判断都要有证据、适用条件与待验证问题；公开资料无法回答、且用户可能掌握的关键问题，采用分轮问答补齐，并据回答更新结论。
-  * 用 `$company-research` 调用，例如：「分析这家公司的早期客户、产品和增长路径，判断哪些经验适合我的业务；缺少内部信息时分轮问我。」也适用于自然语言提出的完整公司调研任务。执行标准与问答示例见 [研究合同](.agents/skills/company-research/references/research-contract.md)。
-  * [结果组织与呈现规范](.agents/skills/company-research/references/result-presentation.md) 定义六部分信息架构、总览与详情分工、页面骨架、排版层级、数据图表、搜索筛选、窄屏适配和证据跳转。结果既要有分析依据，也要让读者能迅速判断、横向比较和深入核实。
-* [公司调研方法报告](company-research/Company_Research_Methodology_Report.md)：方法解释、八个调查角度、虚构案例和六份模板，供 Agent 查阅。执行顺序、深度验收和用户问答以以上 skill 为准；报告是参考材料。
+* [公司调研执行 Skill](.agents/skills/company-research/SKILL.md)：给 Agent 使用的通用工作规范。以证明状态、可调用起步资产、对标行为路径、分阶段迁移为主线，收敛当前路线，交付四道门槛、验证计划与经营数据合同。缺少用户可知的信息时分轮提问，并据回答更新判断。
+  * 用 `$company-research` 调用，例如：「分析这家公司的起步资产、首批客户和发展动作，判断哪些经验现在能用于我的业务；缺少内部信息时分轮问我。」深度、案例模板、决策门槛和问答要求见 [研究合同](.agents/skills/company-research/references/research-contract.md)。
+  * [结果呈现规范](.agents/skills/company-research/references/result-presentation.md) 定义六部分信息架构、公司专题、决策与数据页、图表、排版和交互；[数据与模板约定](.agents/skills/company-research/references/dashboard-data.md) 提供可运行 HTML/CSS/JS 起点及 JSON schema。模板使用虚构数据，不代表真实研究结果。
+* [公司调研方法报告](company-research/Company_Research_Methodology_Report.md)：核心流程、补充调查工具、贯穿案例与可复用模板，仅保留 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
 
 ## Contents
 
