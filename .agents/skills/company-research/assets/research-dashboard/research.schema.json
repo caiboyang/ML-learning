@@ -25,6 +25,16 @@
         "notice": {
           "type": "string",
           "minLength": 1
+        },
+        "verdictId": {
+          "$ref": "#/definitions/id"
+        },
+        "keyMetricIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/id"
+          },
+          "uniqueItems": true
         }
       },
       "required": [
@@ -32,7 +42,9 @@
         "question",
         "asOf",
         "scope",
-        "notice"
+        "notice",
+        "verdictId",
+        "keyMetricIds"
       ],
       "additionalProperties": false
     },
@@ -53,6 +65,9 @@
           "period": {
             "type": "string",
             "minLength": 1
+          },
+          "case": {
+            "$ref": "#/definitions/case"
           }
         },
         "required": [
@@ -126,13 +141,21 @@
         "additionalProperties": false
       },
       "minItems": 1
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/section"
+      },
+      "minItems": 6
     }
   },
   "required": [
     "meta",
     "companies",
     "records",
-    "evidence"
+    "evidence",
+    "sections"
   ],
   "additionalProperties": false,
   "definitions": {
@@ -183,7 +206,10 @@
             "action",
             "contract",
             "question",
-            "comparison"
+            "comparison",
+            "proof",
+            "meeting",
+            "advice"
           ]
         },
         "status": {
@@ -326,6 +352,151 @@
           },
           "uniqueItems": true,
           "minItems": 2
+        },
+        "proof": {
+          "type": "object",
+          "properties": {
+            "proposition": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "enum": [
+                "已证明",
+                "有信号",
+                "未证明",
+                "反证"
+              ]
+            },
+            "evidence": {
+              "type": "string",
+              "minLength": 1
+            },
+            "gap": {
+              "type": "string",
+              "minLength": 1
+            },
+            "next": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "proposition",
+            "state",
+            "evidence",
+            "gap",
+            "next"
+          ],
+          "additionalProperties": false
+        },
+        "meeting": {
+          "type": "object",
+          "properties": {
+            "confirmationType": {
+              "enum": [
+                "必须确认",
+                "信任底线",
+                "产品边界",
+                "明确删除"
+              ]
+            },
+            "decision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "condition": {
+              "type": "string",
+              "minLength": 1
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reviewAt": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "confirmationType",
+            "decision",
+            "basis",
+            "condition",
+            "owner",
+            "reviewAt"
+          ],
+          "additionalProperties": false
+        },
+        "route": {
+          "type": "object",
+          "properties": {
+            "priority": {
+              "enum": [
+                "当前推荐",
+                "第二阶段",
+                "暂缓"
+              ]
+            },
+            "condition": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "priority",
+            "condition"
+          ],
+          "additionalProperties": false
+        },
+        "adoption": {
+          "enum": [
+            "立即采用",
+            "带条件采用",
+            "明确删除",
+            "待确认"
+          ]
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "period": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1
+              },
+              "observe": {
+                "type": "string",
+                "minLength": 1
+              },
+              "decision": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "period",
+              "action",
+              "owner",
+              "observe",
+              "decision"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
         }
       },
       "required": [
@@ -340,6 +511,164 @@
         "limitation",
         "evidenceIds",
         "relatedIds"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "proof"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "proof"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "meeting"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "meeting"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "route"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "route"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "advice"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "adoption"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "action"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "milestones"
+            ]
+          }
+        }
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "section": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "thesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conclusion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/id"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "thesis",
+        "conclusion",
+        "evidenceIds"
+      ],
+      "additionalProperties": false
+    },
+    "case": {
+      "type": "object",
+      "properties": {
+        "verdictId": {
+          "$ref": "#/definitions/id"
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/id"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "thesis": {
+                "type": "string",
+                "minLength": 1
+              },
+              "conclusion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "recordIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/id"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "thesis",
+              "conclusion",
+              "recordIds"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 4
+        }
+      },
+      "required": [
+        "verdictId",
+        "modules"
       ],
       "additionalProperties": false
     }

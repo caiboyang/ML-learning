@@ -2,9 +2,15 @@
   "meta": {
     "title": "公司研究：从起步资产到当前路线",
     "question": "LoopDesk 下一阶段扩大销售，还是先验证交付？",
-    "asOf": "2026-09-27",
+    "asOf": "2026-09-28",
     "scope": "三个虚构公司；一个 90 天批次；展示一次问答之后的阶段性判断。",
-    "notice": "全部内容为虚构教学数据，不代表真实经营事实。事实标签仅表示案例内的记录身份。"
+    "notice": "全部内容为虚构教学数据，不代表真实经营事实。事实标签仅表示案例内的记录身份。",
+    "verdictId": "c-overview",
+    "keyMetricIds": [
+      "c-retention",
+      "c-commitment",
+      "c-capacity"
+    ]
   },
   "companies": [
     {
@@ -15,7 +21,51 @@
     {
       "id": "servicebench",
       "name": "ServiceBench",
-      "period": "早期路径"
+      "period": "早期路径",
+      "case": {
+        "verdictId": "c-case-verdict",
+        "modules": [
+          {
+            "id": "case-assets",
+            "title": "01 互补起点资产",
+            "thesis": "客户信任和实施经验共同降低启动阻力。",
+            "conclusion": "资产必须转为投入与交易，能联系客户不等于已有订单。",
+            "recordIds": [
+              "c-profile"
+            ]
+          },
+          {
+            "id": "case-validation",
+            "title": "02 首次交易与交付验证",
+            "thesis": "先看真实动作，再解释它为什么有用。",
+            "conclusion": "从同系统服务到重复配置，再到第二实施者，后一步依赖前一步证据。",
+            "recordIds": [
+              "s-one",
+              "s-two",
+              "s-three"
+            ]
+          },
+          {
+            "id": "case-tradeoffs",
+            "title": "03 取舍与反模式",
+            "thesis": "有证据的取舍与研究者的建议分别标记。",
+            "conclusion": "没有开放市场不证明曾经主动拒绝；不替历史补写动机。",
+            "recordIds": [
+              "c-tradeoff"
+            ]
+          },
+          {
+            "id": "case-engine",
+            "title": "04 回路与迁移",
+            "thesis": "逐条检验交付是否改善下一单成本与质量。",
+            "conclusion": "当前可借鉴有限服务试验；复制与平台化仍需补证。",
+            "recordIds": [
+              "c-loop",
+              "c-transfer"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "flowhub",
@@ -33,7 +83,7 @@
       "status": "阶段性判断",
       "title": "先验证一个场景的交付，再决定扩张",
       "text": "已有付款与短期留存信号；收到补充回答后，当前验证从多个共同配置客户收窄为一个客户、一个系统和一个验收任务。",
-      "limitation": "全部为教学构造，不代表真实公司；结论只在案例给定范围内成立。",
+      "limitation": "尚未验证客户业务成果、有效使用和第二实施者复制；全部为教学构造，不能用于真实经营判断。",
       "evidenceIds": [
         "e-case",
         "e-answer"
@@ -126,6 +176,11 @@
         {
           "label": "起点资产",
           "value": "老客户信任与工程交付能力。"
+        },
+        {
+          "label": "资产如何配合",
+          "value": "创始人通过老客户关系组织需求确认，实施者用交付经验识别重复配置；意向转付款及具体投入仍逐项记录。",
+          "kind": "inference"
         },
         {
           "label": "第一批用户",
@@ -417,7 +472,11 @@
         "c-gates",
         "a-one",
         "q-one"
-      ]
+      ],
+      "route": {
+        "priority": "当前推荐",
+        "condition": "客户确认系统、付费范围、验收与工程师排期。"
+      }
     },
     {
       "id": "c-gates",
@@ -460,10 +519,10 @@
       "companyId": null,
       "section": "choices",
       "kind": "recommendation",
-      "role": "route",
+      "role": "meeting",
       "status": "待确认",
-      "title": "会议摘要：每条结论要求什么决定",
-      "text": "以当前案例为例；角色均待团队确认。",
+      "title": "确认试验范围与投入",
+      "text": "先获得明确决定，再安排交付。",
       "limitation": "全部为教学构造，不代表真实公司；结论只在案例给定范围内成立。",
       "evidenceIds": [
         "e-answer"
@@ -471,24 +530,14 @@
       "relatedIds": [
         "c-route"
       ],
-      "fields": [
-        {
-          "label": "必须确认",
-          "value": "负责人在排期前确认客户、范围及工程师投入；每周复盘工时。"
-        },
-        {
-          "label": "信任底线",
-          "value": "研究负责人核对数字，不将条件性回收期宣传为实际利润。"
-        },
-        {
-          "label": "产品边界",
-          "value": "交付负责人确认仅支持约定系统与人工复核流程。"
-        },
-        {
-          "label": "明确删除",
-          "value": "本周期不建设开放伙伴市场；出现伙伴网络与重复交付证据后再评估。"
-        }
-      ]
+      "meeting": {
+        "confirmationType": "必须确认",
+        "decision": "确认客户、系统、验收范围及工程师投入。",
+        "basis": "Q1 仅一家愿意试点且没有额外工时。",
+        "condition": "客户与两位实施者均确认范围。",
+        "owner": "销售与实施负责人（待确认）",
+        "reviewAt": "排期前确认；每周复盘工时。"
+      }
     },
     {
       "id": "a-one",
@@ -524,6 +573,36 @@
         {
           "label": "停止条件",
           "value": "无法确认资源或验收；支持成本抵消节省；先复盘原因。"
+        }
+      ],
+      "milestones": [
+        {
+          "period": "0–14 天",
+          "action": "确认客户、范围和记录方式",
+          "owner": "销售与实施负责人（待确认）",
+          "observe": "付费承诺、验收定义与可用时间",
+          "decision": "范围或资源无法确认则不排期。"
+        },
+        {
+          "period": "15–45 天",
+          "action": "在约定系统内完成试点",
+          "owner": "实施负责人（待确认）",
+          "observe": "配置、支持、复核和返工工时",
+          "decision": "超出范围时暂停新增承诺并复盘。"
+        },
+        {
+          "period": "46–75 天",
+          "action": "观察成本、使用和验收",
+          "owner": "客户成功与实施（待确认）",
+          "observe": "有效使用、结果和总工时",
+          "decision": "节省被支持成本抵消时先修交付。"
+        },
+        {
+          "period": "76–90 天",
+          "action": "决定是否测试第二实施者",
+          "owner": "业务负责人（待确认）",
+          "observe": "验收、成本及下一单条件",
+          "decision": "条件满足再安排下一周期，不自动扩张。"
         }
       ]
     },
@@ -608,6 +687,368 @@
           "value": "2026-09-27；教学构造，非实际用户回答。"
         }
       ]
+    },
+    {
+      "id": "c-commitment",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "fact",
+      "role": "metric",
+      "status": "教学构造",
+      "title": "新试点付费意向",
+      "text": "三家可联系的老客户中，一家表示愿意付费试点；尚未签订新订单。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "metric": {
+        "value": "1 / 3",
+        "unit": "家",
+        "basis": "Q1 回答；意向不是实际付款，与既有 8 家付费客户不是同一统计口径。"
+      }
+    },
+    {
+      "id": "c-capacity",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "fact",
+      "role": "metric",
+      "status": "教学构造",
+      "title": "六周实施容量",
+      "text": "两名工程师各承诺六周、每周十小时。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "metric": {
+        "value": "120",
+        "unit": "小时",
+        "basis": "2 人 × 6 周 × 10 小时；承诺容量，不是已消耗工时。"
+      }
+    },
+    {
+      "id": "p-delivery",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "proof",
+      "status": "有信号",
+      "title": "组织交付",
+      "text": "已有客户使用及工程师投入承诺。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "组织交付",
+        "state": "有信号",
+        "evidence": "已有客户使用及工程师投入承诺。",
+        "gap": "缺少跨人交付与验收明细。",
+        "next": "记录下一次交付的负责人、工时及验收。"
+      }
+    },
+    {
+      "id": "p-payment",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "proof",
+      "status": "已证明",
+      "title": "付款",
+      "text": "设定中的同批次 8 家客户曾实际付费。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "付款",
+        "state": "已证明",
+        "evidence": "设定中的同批次 8 家客户曾实际付费。",
+        "gap": "仅证明该批付款，不证明可持续获客或利润。",
+        "next": "逐笔核对实付、退款和来源。"
+      }
+    },
+    {
+      "id": "p-outcome",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "proof",
+      "status": "未证明",
+      "title": "客户结果",
+      "text": "有使用记录，尚无约定业务成果的测量。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "客户结果",
+        "state": "未证明",
+        "evidence": "有使用记录，尚无约定业务成果的测量。",
+        "gap": "缺少验收标准、基线和结果记录。",
+        "next": "先定义一个可验收任务与观察窗口。"
+      }
+    },
+    {
+      "id": "p-usage",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "proof",
+      "status": "有信号",
+      "title": "持续使用",
+      "text": "同批次 8 家中 6 家在 90 天时仍付费。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "持续使用",
+        "state": "有信号",
+        "evidence": "同批次 8 家中 6 家在 90 天时仍付费。",
+        "gap": "付费状态不等于有效使用；年度窗口未到。",
+        "next": "补每周有效使用与退出原因。"
+      }
+    },
+    {
+      "id": "p-repayment",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "proof",
+      "status": "未证明",
+      "title": "再次付款",
+      "text": "仅设定了短期付费留存。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "再次付款",
+        "state": "未证明",
+        "evidence": "仅设定了短期付费留存。",
+        "gap": "未单列再次购买机会和独立订单。",
+        "next": "在下一购买窗口记录是否再次实付。"
+      }
+    },
+    {
+      "id": "p-supply",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "proof",
+      "status": "未证明",
+      "title": "供给复制",
+      "text": "已有两名工程师的有限投入承诺。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "供给复制",
+        "state": "未证明",
+        "evidence": "已有两名工程师的有限投入承诺。",
+        "gap": "尚无第二实施者独立完成相同任务的记录。",
+        "next": "用同一结果标准验证第二人交付。"
+      }
+    },
+    {
+      "id": "c-route-standard",
+      "companyId": "loopdesk",
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "route",
+      "status": "教学构造",
+      "title": "第二阶段：固化重复配置",
+      "text": "将已验证的重复步骤做成模板，再验证第二位实施者。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "route": {
+        "priority": "第二阶段",
+        "condition": "先有多次相同配置、总工时和验收记录。"
+      }
+    },
+    {
+      "id": "c-route-market",
+      "companyId": "loopdesk",
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "route",
+      "status": "教学构造",
+      "title": "暂缓：开放伙伴市场",
+      "text": "先保留伙伴网络为缺口，不用开放平台替代交付验证。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "route": {
+        "priority": "暂缓",
+        "condition": "拥有可调用伙伴网络，并证明不同供给者的重复交付。"
+      }
+    },
+    {
+      "id": "adopt-scope",
+      "companyId": "loopdesk",
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "advice",
+      "status": "教学构造",
+      "title": "锁定试验边界",
+      "text": "先确认一客户、一系统和一项验收，不追加广泛承诺。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "adoption": "立即采用"
+    },
+    {
+      "id": "adopt-template",
+      "companyId": "loopdesk",
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "advice",
+      "status": "教学构造",
+      "title": "再投入模板化",
+      "text": "出现重复配置后再固化模板，以总实施与支持工时验证收益。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "adoption": "带条件采用"
+    },
+    {
+      "id": "adopt-delete",
+      "companyId": "loopdesk",
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "advice",
+      "status": "教学构造",
+      "title": "删除本周期市场建设",
+      "text": "本周期没有伙伴网络与可复制交付证据，删除开放市场排期。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "adoption": "明确删除"
+    },
+    {
+      "id": "meeting-trust",
+      "companyId": null,
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "meeting",
+      "status": "教学构造",
+      "title": "核对数字并区分构造数据、估计与实绩。",
+      "text": "当前示例全部是教学构造。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "meeting": {
+        "confirmationType": "信任底线",
+        "decision": "核对数字并区分构造数据、估计与实绩。",
+        "basis": "当前示例全部是教学构造。",
+        "condition": "获得真实明细后才能对外引用。",
+        "owner": "研究负责人（待确认）",
+        "reviewAt": "每次发布前"
+      }
+    },
+    {
+      "id": "meeting-boundary",
+      "companyId": null,
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "meeting",
+      "status": "教学构造",
+      "title": "仅支持约定系统与人工复核流程。",
+      "text": "配置脚本未验证跨系统交付。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "meeting": {
+        "confirmationType": "产品边界",
+        "decision": "仅支持约定系统与人工复核流程。",
+        "basis": "配置脚本未验证跨系统交付。",
+        "condition": "先获得明确验收标准。",
+        "owner": "交付负责人（待确认）",
+        "reviewAt": "每次范围变更前"
+      }
+    },
+    {
+      "id": "meeting-delete",
+      "companyId": null,
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "meeting",
+      "status": "教学构造",
+      "title": "取消本周期开放伙伴市场排期。",
+      "text": "目前没有伙伴网络和第二人交付证据。",
+      "limitation": "全部为教学构造，不代表真实公司；判断仅适用于设定范围。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ],
+      "relatedIds": [],
+      "meeting": {
+        "confirmationType": "明确删除",
+        "decision": "取消本周期开放伙伴市场排期。",
+        "basis": "目前没有伙伴网络和第二人交付证据。",
+        "condition": "上述证据补齐后重新评估。",
+        "owner": "业务负责人（待确认）",
+        "reviewAt": "第 90 天或新证据出现时"
+      }
+    },
+    {
+      "id": "c-case-verdict",
+      "companyId": "servicebench",
+      "section": "paths",
+      "kind": "inference",
+      "role": "judgment",
+      "status": "教学构造",
+      "title": "先借老客户信任验证服务，再验证复制",
+      "text": "客户信任帮助启动交易，实施经验帮助发现重复步骤；只有第二人交付仍保持结果，模板化才支持扩张。",
+      "limitation": "本例未给出第二实施者独立交付的结果，不能认定复制已成立；全部为教学构造。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [
+        "c-profile",
+        "c-loop",
+        "c-transfer"
+      ]
     }
   ],
   "evidence": [
@@ -630,6 +1071,62 @@
       "url": null,
       "support": "示范收到客户意向、系统差异和工时限制后怎样下调原路线。",
       "limitation": "不是本任务用户提供的业务数据；不得作为实际客户承诺。"
+    }
+  ],
+  "sections": [
+    {
+      "id": "verdict",
+      "thesis": "付款和短期留存有信号，可复制交付仍缺证据。",
+      "conclusion": "优先补齐验收与第二实施者记录；不能把 90 天观察外推为稳定经营。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "assets",
+      "thesis": "比较真正能投入的资源，再判断可启动的范围。",
+      "conclusion": "客户关系和有限工程时间支持小范围试验，伙伴市场所需的分发资产尚不具备。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "paths",
+      "thesis": "学起步资产怎样转为交易，不照抄成熟形态。",
+      "conclusion": "ServiceBench 的同系统服务路径更接近当前资源；共同配置仍需重新验证。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "choices",
+      "thesis": "迁移顺序、路线选择和建议采纳分别判断。",
+      "conclusion": "当前只推进有边界的付费试验；标准化与伙伴市场各自等待进入条件。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "validation",
+      "thesis": "把每个未知变成有负责人、窗口和停止条件的记录。",
+      "conclusion": "先确认资源与验收，再观察总工时和实际结果；90 天是示例计划，不是经营承诺。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "questions",
+      "thesis": "回答必须改变判断和行动，不能只追加记录。",
+      "conclusion": "Q1 已降低多客户复制的信心，并同步收窄路线；下一问聚焦客户验收与可投入时间。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
     }
   ]
 }

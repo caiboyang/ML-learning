@@ -2,13 +2,6 @@
 
 Welcome to my Machine Learning and AI study notes repository! This repository contains structured study notes, deep dives, and visual guides on various ML topics.
 
-## Company Research
-
-* [公司调研执行 Skill](.agents/skills/company-research/SKILL.md)：给 Agent 使用的通用工作规范。以证明状态、可调用起步资产、对标行为路径、分阶段迁移为主线，收敛当前路线，交付四道门槛、验证计划与经营数据合同。缺少用户可知的信息时分轮提问，并据回答更新判断。
-  * 用 `$company-research` 调用，例如：「分析这家公司的起步资产、首批客户和发展动作，判断哪些经验现在能用于我的业务；缺少内部信息时分轮问我。」深度、案例模板、决策门槛和问答要求见 [研究合同](.agents/skills/company-research/references/research-contract.md)。
-  * [结果呈现规范](.agents/skills/company-research/references/result-presentation.md) 定义六部分信息架构、公司专题、决策与数据页、图表、排版和交互；[数据与模板约定](.agents/skills/company-research/references/dashboard-data.md) 提供可运行 HTML/CSS/JS 起点及 JSON schema。模板使用虚构数据，不代表真实研究结果。
-* [公司调研方法报告](company-research/Company_Research_Methodology_Report.md)：核心流程、补充调查工具、贯穿案例与可复用模板，仅保留 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
-
 ## Contents
 
 ### 1. Reinforcement Learning from Human Feedback (RLHF)
@@ -79,6 +72,15 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *三个 deep dive 子页从主线进入：**三个算法**逐行拆解（截面动量含一段会报错的参考代码 vs 修正版；统计套利的 PCA → 残差 → OU → s-score 全流程，及 Sharpe **1.44 → 0.90** 的衰减为何比 1.44 本身更重要；做市的保留价格与最优价差，及模型未建模的逆向选择）；**验证与自欺**是全专题最重要的一页（5 年日线 + 45 个独立配置，最好那个的样本内 Sharpe 期望就到 1，配 Harvey-Liu-Zhu 的 t &gt; 3.0、Hou-Xue-Zhang 的 65%/82% 复制失败率、McLean-Pontiff 的发表后 −58%，串成「发现→发表→套利」三段衰减链，另含回测偏差七条查表与 DSR 的六项最小记录清单）；**书单与论文表**给 24 篇论文 + 8 本书的直达链接，逐条标注正式版与工作稿的年份差异、以及本次核对到了哪一层。*
   * *另附一个纯标准库的可运行实验：**默认模式的合成数据里故意不含任何动量**，先看框架在纯噪声上交出什么。它把 240 个月与 60 个月的 Sharpe 分布并排画出来——毛期望为 0 的策略，短样本里最幸运的种子仍能跑到 Sharpe +1.19。把「种子」换成「你调过的参数」，就是那条 45 次尝试的机制在你自己机器上的重现。*
   * *⚠️ 技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，用于说明方法的性质与局限，不代表未来表现。*
+
+### 6. Company Research
+
+* [公司调研执行 Skill](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/SKILL.md)：给 Agent 使用的通用工作规范。以证明状态、可调用起步资产、对标行为路径、分阶段迁移为主线，收敛当前路线，交付四道门槛、验证计划与经营数据合同。缺少用户可知的信息时分轮提问，并据回答更新判断。
+  * Codex 用 `$company-research` 调用；Claude Code 用 `/company-research` 调用（仓库通过 `.claude/skills/company-research` 软链接共享同一份规范），例如：「分析这家公司的起步资产、首批客户和发展动作，判断哪些经验现在能用于我的业务；缺少内部信息时分轮问我。」深度、案例模板、决策门槛和问答要求见 [研究合同](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/research-contract.md)。
+  * [结果呈现规范](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/result-presentation.md) 定义六部分信息架构、公司专题、决策与数据页、图表、排版和交互；[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md) 提供可运行 HTML/CSS/JS 起点及 JSON schema。模板使用虚构数据，不代表真实研究结果。
+* [公司调研方法报告](https://caiboyang.github.io/ML-learning/company-research/Company_Research_Methodology_Report.html)（[Markdown 原文](company-research/Company_Research_Methodology_Report.md)）：核心流程、补充调查工具、贯穿案例与可复用模板，仅保留 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
+
+* [交互示例](https://caiboyang.github.io/ML-learning/company-research/demo/) · [四模块公司专题](https://caiboyang.github.io/ML-learning/company-research/demo/?view=case&company=servicebench)：全部为虚构数据。演示由源模板生成，更新或检查方法见 [演示同步脚本](scripts/sync-company-research-demo.py)。
 
 ---
 *More notes will be added here soon...*
