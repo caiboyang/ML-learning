@@ -18,8 +18,9 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 | 对象 | 字段 | 含义 |
 | --- | --- | --- |
-| `meta` | `title, question, asOf, scope, notice` | 对象、研究问题、截止日、范围与证据边界；所有视图共用 |
-| `companies[]` | `id, name, period` | 可切换对象及分析时期；不把当前形态当早期形态 |
+| `meta` | `title, question, asOf, scope, notice, verdictId, keyMetricIds` | 对象、研究问题、截止日、范围与证据边界；首屏引用已有判断与指标 ID，不另抄数字 |
+| `companies[]` | `id, name, period, case?` | 可切换对象及分析时期；不把当前形态当早期形态 |
+| `sections[]` | `id, thesis, conclusion, evidenceIds` | 六部分的本次研究论点、节末结论与证据；ID 顺序与目录一致 |
 | `records[]` | `id, companyId, section, kind, role` | 一条可定位记录；`companyId: null` 为明确标识的全局内容 |
 | 记录正文 | `title, text, status, limitation` | 判断、叙述、证明或决策状态、始终可见的限制 |
 | 记录关系 | `evidenceIds, relatedIds` | 来源 ID 与相关结论、问题、行动 ID；不可悬空 |
@@ -30,12 +31,17 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 `kind` 是 `fact`、`inference` 或 `recommendation`；`status` 单独解释已证明、有信号、待验证、现在复制等状态。内部自报不会因为选了 `fact` 而变成独立核验事实，证据的 `nature` 与记录的 `limitation` 必须保留。
 
-`role` 表达记录作用：`judgment / metric / asset / profile / step / tradeoff / loop / transfer / route / gate / action / contract / question / comparison`。它帮助组织语义，不自动推断事实或检查业务是否完整。
+`role` 表达记录作用：`judgment / metric / proof / asset / profile / step / tradeoff / loop / transfer / route / advice / gate / meeting / action / contract / question / comparison`。它决定展示语义与对应组件，不自动推断事实或证明业务完整。指标用指标行，证明命题用表，步骤用时间线，建议用采纳看板，路线用阶段卡，计划用分段时间表，会议用独立决定条目；解释与合同保留正文和字段表。
 
 - `metric` 含显示值 `value`、单位 `unit`、分母／时间／对象口径 `basis`。这是展示值，不会自动做经营计算；研究者先复算再填写。
 - `fields` 是 `{label, value, kind?}` 数组；混合记录的解释字段应标 `kind: inference`，事实筛选会隐藏该解释字段，但保留口径与限制。其余字段继承记录性质，适用于公司档案、门槛、迁移与数据合同。替换为真实客户、资产、动作和记录，不保留空壳。
 - `comparisonIds` 指向公司档案记录，矩阵直接读取其统一字段，避免在矩阵和详情中维护两套值。
 - `edges` 每条含 `from, to, mechanism, status, evidenceIds`，说明回流发生的方式与证据；未闭合的链路称为流程，不称已成立的飞轮。
+- `proof` 必须包含 `proposition, state, evidence, gap, next`；`state` 为已证明／有信号／未证明／反证。分别评估组织交付、付款、客户结果、持续使用、再次付款和供给复制；不适用时说明原因。证明状态是判断，通常标为 `kind: inference`，证据记录另标身份。
+- `meeting` 必须包含 `confirmationType, decision, basis, condition, owner, reviewAt`；确认类型为必须确认／信任底线／产品边界／明确删除。每条决定独立记录，不借用路线类型。
+- `route` 包含 `priority, condition`，明确当前推荐／第二阶段／暂缓及进入条件；`advice` 的 `adoption` 为立即采用／带条件采用／明确删除／待确认。这两种分类互不替代。
+- `action` 的 `milestones[]` 包含 `period, action, owner, observe, decision`：阶段、动作、负责人、观察与继续／停止条件；不能只有日期。
+- `companies[].case` 包含 `verdictId` 和四个 `modules[]`；每个模块含 `id, title, thesis, conclusion, recordIds`，按互补资产、交易交付、取舍、回路迁移组织。记录可复用，不复制正文。没有充分材料的公司不生成空专题。
 - 问答用 `role: question` 记录问题、回答、日期、原判断和变化，并通过 `relatedIds` 指向受影响的结论与行动。页面不保存回答、不调用模型；Agent 完成核对和推理后更新数据，再刷新呈现。
 
 最小记录示例（仍需放进完整数据并提供关联证据）：
@@ -58,16 +64,20 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 ## 视图与更新约定
 
-公司、搜索词、内容性质按 AND 组合。公司条件保留全局记录；搜索覆盖记录、公司名称和关联来源，界面显示匹配条数和条件。这些条数是文档记录数，不是客户或财务合计。全局结论不随公司切换重算，必须在界面中说明。
+公司、搜索词、内容性质按 AND 组合。公司条件保留全局记录；默认搜索可见正文和公司名称，勾选“包含关联来源”才搜索来源全文。界面单独标记仅来源命中，显示匹配条数和条件。这些条数是文档记录数，不是客户或财务合计。全局结论和首屏目标业务指标不随正文公司筛选重算，界面明确标识；指标不属于筛选结果的经营汇总。选择事实时隐藏首屏推论、章节论点与结论，以及混合记录中的解释字段，仍保留事实口径和限制。
 
-来源明细始终保留完整支持边界；“只看事实”不隐藏记录自身的限制。点击关联记录或来源的返回链接时，若目标被过滤，会恢复能显示它的条件，再定位并聚焦。直接访问记录锚点也应可用。少量内容可以删除不必要的筛选，但不能删来源和口径。
+来源明细始终保留完整支持边界；“只看事实”不隐藏记录自身的限制。点击关联记录或来源的返回链接时，若目标被过滤，会恢复能显示它的条件，再定位并聚焦。直接访问记录锚点也应可用。`?view=case&company=servicebench` 直接打开四模块专题；专题末尾返回总览的验证与数据合同。若关联目标在专题之外，恢复总览后定位。少量内容可以删除不必要的筛选，但不能删来源和口径。
 
 JSON 是唯一内容来源。每次用户回答后检查：证明状态、资产可用性、对标匹配、迁移分类、主路线、门槛、行动、摘要和图表。模板不会根据一句回答自动推理这些变化；Agent 负责更新所有受影响记录，并记录原因。
 
 ## 验收
 
-先用支持 Draft 7 的 JSON Schema 校验器验证结构，再检查 schema 不表达的语义：ID 全局唯一；不与页面固定 ID 重复；公司、来源、关联记录全部存在；每个关键判断有证据或明确缺口；实际金额与比率复算一致。校验 schema 不等于核实业务事实。
+先用支持 Draft 7 的 JSON Schema 校验器验证结构，再检查 schema 不表达的语义：ID 全局唯一；不与页面固定 ID 重复；公司、来源、关联记录全部存在；首屏引用角色正确；六节 ID、专题模块与记录引用完整；每个关键判断有证据或明确缺口；实际金额与比率复算一致。校验 schema 不等于核实业务事实。
 
-在 1280px 和 390px 宽度操作公司切换、组合搜索、性质筛选、空结果、重置、目录、证据链接及返回；从带记录 hash 的 URL 重新进入，检查可读、聚焦与导航。检查控制台、正文溢出和键盘操作。打印当前视图时保留日期、范围和记录边界；需要全量打印时先重置筛选。
+在 1280px 和 390px 宽度操作公司切换、组合搜索、性质筛选、空结果、重置、目录、证据链接及返回；从带记录 hash 的 URL 重新进入，检查可读、聚焦与导航。检查控制台、正文溢出和键盘操作；还要从窄屏拉宽，确认目录自动展开，测试专题直达、返回行动、仅来源命中及隐藏判断的事实视图。打印当前视图时保留日期、范围和记录边界；需要全量打印时先重置筛选。
 
-模板依赖 JavaScript 渲染正文，禁用脚本时只显示说明。若任务要求无脚本阅读或完整离线单文件，应由 Agent 生成带正文的静态 HTML，不把此动态模板声称为已满足该要求。它演示的是最小交互结构；真实研究仍须按研究合同补齐专题与证据深度。
+模板依赖 JavaScript 渲染正文，禁用脚本时只显示说明。若任务要求无脚本阅读或完整离线单文件，应由 Agent 生成带正文的静态 HTML，不把此动态模板声称为已满足该要求。它演示的是可复用的展示与交互结构；真实研究仍须按研究合同补齐专题与证据深度。
+
+## 仓库在线演示
+
+仓库的 `company-research/demo/` 是上述五个源文件的生成副本，仅用于 GitHub Pages 展示，不单独编辑。从仓库根目录运行 `python3 scripts/sync-company-research-demo.py` 更新，运行同一命令加 `--check` 检查漂移；它不联网、不部署。模板仍可整目录复制到其他项目使用，运行时不依赖该脚本。报告与 README 指向隐藏 skill 目录的链接使用 GitHub 源码绝对链接，避免 Jekyll 默认排除点目录带来的失效链接。
