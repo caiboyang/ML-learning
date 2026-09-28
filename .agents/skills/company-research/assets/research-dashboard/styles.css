@@ -80,7 +80,9 @@ footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); p
   h2 { font-size:23px; }
 }
 @media print {
-  .top,aside,.toolbar,.skip,footer { display:none; }
+  aside,.toolbar,.skip,footer { display:none; }
+  .top { position:static; height:auto; min-height:0; padding:0 0 12px; background:white; color:var(--ink); }
+  .top span { color:var(--muted); }
   body { background:white; font-size:11pt; }
   main { margin:0; padding:0; max-width:none; }
   .grid { display:block; }
