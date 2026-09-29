@@ -77,11 +77,11 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 * [公司调研执行 Skill](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/SKILL.md)：给 Agent 使用的通用工作规范。以证明状态、可调用起步资产、对标行为路径、分阶段迁移为主线，收敛当前路线，交付四道门槛、验证计划与经营数据合同。缺少用户可知的信息时分轮提问，并据回答更新判断。
   * Codex 用 `$company-research` 调用；Claude Code 用 `/company-research` 调用（仓库通过 `.claude/skills/company-research` 软链接共享同一份规范），例如：「分析这家公司的起步资产、首批客户和发展动作，判断哪些经验现在能用于我的业务；缺少内部信息时分轮问我。」深度、案例模板、决策门槛和问答要求见 [研究合同](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/research-contract.md)。
-  * [结果呈现规范](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/result-presentation.md) 定义六部分信息架构、公司专题、决策与数据页、图表、排版和交互；[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md) 提供可运行 HTML/CSS/JS 起点及 JSON schema。模板使用虚构数据，不代表真实研究结果。
-* [公司调研方法报告](https://caiboyang.github.io/ML-learning/company-research/Company_Research_Methodology_Report.html)（[Markdown 原文](company-research/Company_Research_Methodology_Report.md)）：核心流程、补充调查工具、贯穿案例与可复用模板，仅保留 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
+  * [结果呈现规范](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/result-presentation.md) 定义具体议题目录、主报告与子页关系、公司专题、决策与数据页、图表、排版和交互；[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md) 提供可运行 HTML/CSS/JS 起点及 JSON schema。模板使用虚构数据，不代表真实研究结果。
+* [公司调研方法报告（Markdown）](https://github.com/caiboyang/ML-learning/blob/main/company-research/Company_Research_Methodology_Report.md)：核心流程、补充调查工具、贯穿案例与可复用模板，仅保留 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
 
 * [交互示例](https://caiboyang.github.io/ML-learning/company-research/demo/) · [四模块公司专题](https://caiboyang.github.io/ML-learning/company-research/demo/?view=case&company=servicebench)：全部为虚构数据。演示由源模板生成，更新或检查方法见 [演示同步脚本](scripts/sync-company-research-demo.py)。
-* [单文件 HTML 示例](company-research/demo/report.html) · [导出脚本](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/scripts/export-report.py)：完整调研默认交付可离线打开的 HTML；提供横向对照、建议复盘、决策和数据核验专题，不自动部署。
+* [自有业务 HTML 示例](company-research/demo/report.html) · [外部公司 HTML 示例](company-research/demo/external.html) · [导出脚本](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/scripts/export-report.py)：完整调研默认交付可离线打开的 HTML；提供横向对照、建议复盘、决策和数据核验专题，不自动部署。验证依赖与命令见[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md#可复现的仓库验证)。
 
 ---
 *More notes will be added here soon...*

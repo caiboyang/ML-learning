@@ -1,5 +1,5 @@
 'use strict';
-const sectionTitles = {verdict:'阶段与决策', assets:'业务与起步资产', paths:'对标路径与机制', decisions:'关键决策复盘', choices:'迁移与路线', validation:'验证与数据合同', questions:'证据与问答'};
+const partOrder = ['verdict', 'assets', 'decisions', 'choices', 'validation', 'paths', 'questions'];
 const profileColumns = ['起点资产', '第一批用户', '第一个产品', '第一种收入'];
 const names = {fact:'事实记录', inference:'机制解释', recommendation:'行动建议'};
 const byId = id => document.getElementById(id);
@@ -26,20 +26,30 @@ async function start() {
   const companies = new Map(data.companies.map(c => [c.id, c]));
   const records = new Map(data.records.map(r => [r.id, r]));
   const evidence = new Map(data.evidence.map(e => [e.id, e]));
+  const sections = data.sections.slice().sort((a,b) => partOrder.indexOf(a.part) - partOrder.indexOf(b.part));
+  const sectionById = new Map(sections.map(s => [s.id, s]));
+  const detailViews = [
+    ...data.topics.map(t => ({data:t, title:t.title, query:`?view=${t.id}`, topic:t})),
+    ...data.companies.filter(c => c.case).map(c => ({data:c.case, title:`${c.name} 案例`, query:`?view=case&company=${c.id}`, company:c}))
+  ];
   const company = byId('company'), search = byId('search'), kind = byId('kind'), sourceSearch = byId('source-search');
   const query = new URLSearchParams(location.search);
   let caseCompany = query.get('view') === 'case' ? companies.get(query.get('company')) : null;
   if (!caseCompany?.case) caseCompany = null;
   let topic = (data.topics || []).find(t => t.id === query.get('view')) || null;
   const external = data.meta.taskType === 'external-company';
-  const titles = {...sectionTitles, ...(external ? {verdict:'阶段与判断', choices:'借鉴顺序', validation:'下一步调查与数据缺口'} : {})};
-  if (external) byId('reading-path').textContent = '证明状态 → 起步资产 → 行为与决策 → 借鉴 → 调查与新证据';
+  byId('reading-path').textContent = '研究对象 → 决策与下一步 → 公司对标 → 证据';
   const view = () => caseCompany?.case || topic;
   byId('overview-link').href = pageLink('').href;
-  for (const t of data.topics || []) byId('case-links').append(pageLink(t.title, `?view=${t.id}`));
+  for (const [benchmark, label] of [[false, `${companies.get(data.meta.subjectCompanyId).name} 研究`], [true, '公司对标']]) {
+    const items = detailViews.filter(v => (sectionById.get(v.data.parentSectionId).part === 'paths') === benchmark);
+    if (!items.length) continue;
+    const group = el('div', undefined, 'topic-group'); group.append(el('strong', label));
+    for (const v of items) group.append(pageLink(v.title, v.query));
+    byId('case-links').append(group);
+  }
   for (const c of companies.values()) {
     const option = el('option', `${c.name} · ${c.period}`); option.value = c.id; company.append(option);
-    if (c.case) byId('case-links').append(pageLink(`${c.name} 四模块专题 →`, `?view=case&company=${encodeURIComponent(c.id)}`));
   }
   company.value = companies.has(query.get('company')) ? query.get('company') : 'all';
   for (const [id, value] of Object.entries({question:data.meta.question, scope:data.meta.scope, notice:data.meta.notice, date:`更新 ${data.meta.asOf}`})) byId(id).textContent = value;
@@ -169,7 +179,7 @@ async function start() {
     const max = Math.max(0, ...r.series.points.map(p => p.value ?? 0));
     for (const point of r.series.points) {
       const row = el('tr'), value = el('td'), sources = el('td');
-      value.append(el('span', point.value === null ? '未披露／未到观察期' : `${point.value} ${r.series.unit}`));
+      value.append(el('span', point.value === null ? point.missingReason : `${point.value} ${r.series.unit}`));
       if (point.value !== null) { const bar = el('span', undefined, 'data-bar'); bar.style.width = `${max ? point.value / max * 100 : 0}%`; bar.setAttribute('aria-hidden','true'); value.append(bar); }
       sources.append(citations(point.evidenceIds)); row.append(el('th', point.period), value, el('td', point.basis), sources); body.append(row);
     }
@@ -236,6 +246,14 @@ async function start() {
     byId('scope').textContent = caseCompany ? `${caseCompany.period}；按起点资产、交易交付、取舍与回路迁移展开。` : data.meta.scope;
     byId('summary-label').textContent = view() ? '专题判断 · 不随正文筛选重算' : '研究整体判断 · 不随正文公司筛选重算';
     byId('overview-link').hidden = !view();
+    document.body.classList.toggle('detail-view', !!view());
+    byId('argument-route').hidden = !view();
+    byId('argument-route').textContent = view() ? view().argument.join(' → ') : '';
+    if (view()) {
+      const parent = sectionById.get(view().parentSectionId);
+      byId('overview-link').href = pageLink('', '', `#${parent.id}`).href;
+      byId('overview-link').textContent = `返回总览：${parent.title} →`;
+    }
     byId('company-control').hidden = !!caseCompany;
     const verdict = byId('hero-verdict'); verdict.replaceChildren(); verdict.hidden = kind.value === 'fact';
     if (!verdict.hidden) verdict.append(el('p', names[judgment.kind], 'eyebrow'), el('h2', judgment.title), el('p', judgment.text), citations(judgment.evidenceIds));
@@ -251,8 +269,11 @@ async function start() {
     const article = el('article', undefined, 'evidence'); article.id = source.id; article.tabIndex = -1;
     article.append(el('h3', `${source.id} · ${source.title}`), el('p', `${source.nature} · ${source.date} · ${source.locator}`), el('p', source.support), el('p', `支持边界：${source.limitation}`, 'limit'));
     if (source.url) {
-      const url = new URL(source.url); if (!['https:', 'http:'].includes(url.protocol)) throw new Error('来源链接必须使用 HTTP 或 HTTPS。');
-      const a = el('a', '打开原始来源'); a.href = url.href; article.append(a);
+      let url;
+      try { url = new URL(source.url); } catch { /* Preserve this source's text when its URL is invalid. */ }
+      if (url && ['https:', 'http:'].includes(url.protocol) && /^https?:\/\/[^/?#\s]+(?:[/?#]|$)/.test(source.url)) {
+        const a = el('a', '打开原始来源'); a.href = url.href; article.append(a);
+      } else article.append(el('p', '来源链接无效；请按上述记录位置核对原始材料。', 'notice'));
     }
     const uses = data.records.filter(r => sourceIds(r).includes(source.id));
     const backlinks = el('div', undefined, 'related');
@@ -269,17 +290,17 @@ async function start() {
       (r.milestones || []).map(item => Object.values(item)), (r.edges || []).map(e => [e.from,e.to,e.mechanism,e.status]),
       (r.people || []).map(p => [p.name,p.role,p.background,p.responsibility,p.commitment]),
       Object.values(r.decision || {}), Object.values(r.change || {}), r.series?.unit, r.series?.definition,
-      (r.series?.points || []).map(p => [p.period,p.value,p.basis]), r.funnel?.cohort, r.funnel?.overlap,
+      (r.series?.points || []).map(p => [p.period,p.value,p.basis,p.missingReason]), r.funnel?.cohort, r.funnel?.overlap,
       (r.funnel?.nodes || []).map(p => [p.label,p.count,p.denominator,p.basis,p.proved,p.unproved]),
       companies.get(r.companyId)?.name, comparisonFields].flat(Infinity).filter(v => v !== undefined).join(' ').toLocaleLowerCase();
   }
   function render() {
     hero(); sourceOnly = new Set();
     const term = search.value.trim().toLocaleLowerCase();
-    const modules = view()?.modules || data.sections;
-    const caseIds = view() ? new Set(modules.flatMap(m => m.recordIds)) : null;
+    const modules = view()?.modules || sections;
+    const caseIds = new Set(modules.flatMap(m => view() ? m.recordIds : m.overviewIds));
     const visible = data.records.filter(r => {
-      if (caseIds && !caseIds.has(r.id)) return false;
+      if (!caseIds.has(r.id)) return false;
       if (!caseCompany && company.value !== 'all' && r.companyId && r.companyId !== company.value) return false;
       if (kind.value !== 'all' && r.kind !== kind.value) return false;
       const ownMatch = !term || recordText(r).includes(term);
@@ -289,37 +310,37 @@ async function start() {
     });
     const content = byId('content'); content.replaceChildren(); nav.replaceChildren();
     for (const [index, module] of modules.entries()) {
-      const subset = caseIds ? module.recordIds.map(id => records.get(id)).filter(r => visible.includes(r)) : visible.filter(r => r.section === module.id);
-      const title = module.title || `${String(index + 1).padStart(2,'0')} ${titles[module.id]}`;
-      const navGroup = el('div', undefined, 'nav-group'); navGroup.append(link(title, module.id)); nav.append(navGroup);
+      const subset = (view() ? module.recordIds : module.overviewIds).map(id => records.get(id)).filter(r => visible.includes(r));
+      const title = view() ? module.title : `${String(index + 1).padStart(2,'0')} ${module.title}`;
+      if (!view()) nav.append(link(title, module.id));
       const section = el('section'); section.id = module.id; section.tabIndex = -1;
       const heading = el('header', undefined, 'section-heading'); heading.append(el('h2', title));
       if (kind.value === 'all') heading.append(el('p', module.thesis, 'section-intro'));
       section.append(heading);
-      if (!subset.length) section.append(el('p', '当前组合条件下，本节没有匹配记录。'));
+      if (!subset.length && caseIds.size && (view() || module.overviewIds.length)) section.append(el('p', '当前组合条件下，本节没有匹配记录。'));
       else {
         section.append(grouped(subset));
-        const children = el('ul', undefined, 'nav-records');
-        for (const node of section.querySelectorAll('[id]')) {
-          const r = records.get(node.id); if (!r) continue;
-          const item = el('li'); item.append(link(r.title, r.id)); children.append(item);
-        }
-        navGroup.append(children);
         if (kind.value === 'all') {
           const conclusion = el('div', undefined, 'section-conclusion');
-          conclusion.append(el('strong', caseIds ? '专题结论' : '本研究整体结论 · 不随筛选重算'), el('p', module.conclusion));
+          conclusion.append(el('strong', view() ? '专题结论' : '本研究整体结论 · 不随筛选重算'), el('p', module.conclusion));
           if (module.evidenceIds) conclusion.append(citations(module.evidenceIds)); section.append(conclusion);
         }
+      }
+      if (!view()) {
+        const details = el('div', undefined, 'detail-links');
+        for (const v of detailViews.filter(v => v.data.parentSectionId === module.id)) details.append(pageLink(`打开完整${v.title} →`, v.query));
+        section.append(details);
       }
       content.append(section);
     }
     if (view()) {
-      const next = el('div', undefined, 'action-return'); next.append(el('strong','把分析接回下一步'), pageLink(`返回${titles.validation} →`,'','#validation')); content.append(next);
+      const action = sectionById.get(data.meta.actionSectionId);
+      const next = el('div', undefined, 'action-return'); next.append(el('strong', external ? '把分析接回下一步调查' : '把分析接回下一步行动'), pageLink(`返回${action.title} →`,'',`#${action.id}`)); content.append(next);
     }
-    nav.append(link('证据明细','sources'));
-    const scope = caseCompany ? `${caseCompany.name} 四模块专题` : `${topic ? `${topic.title}；` : ''}${company.value === 'all' ? '全部公司' : companies.get(company.value).name}＋全局记录`;
-    byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。匹配 ${visible.length} / ${data.records.length} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。摘要不随正文筛选重算；证据明细保持完整。`;
-    byId('empty').hidden = visible.length > 0; syncLayout(); updateActiveSection();
+    if (!view()) nav.append(link(`${String(sections.length + 1).padStart(2,'0')} 证据库`,'sources'));
+    const scope = caseCompany ? `${caseCompany.name} 案例专题` : `${topic ? `${topic.title}；` : '总览摘要；'}${company.value === 'all' ? '全部公司' : companies.get(company.value).name}＋全局记录`;
+    byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。当前页匹配 ${visible.length} / ${caseIds.size} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。详细记录请进入对应专题搜索；摘要不随正文筛选重算；证据明细保持完整。`;
+    byId('empty').hidden = visible.length > 0 || caseIds.size === 0; syncLayout(); updateActiveSection();
   }
   const narrow = window.matchMedia('(max-width:1000px)');
   function syncLayout() {
@@ -330,19 +351,19 @@ async function start() {
     const line = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--anchor-offset')) + 2;
     const sections = [...document.querySelectorAll('main section')]; let active = sections[0];
     for (const section of sections) if (section.getBoundingClientRect().top <= line) active = section;
-    let target = active;
-    for (const node of active.querySelectorAll('[id]')) if (records.has(node.id) && node.getBoundingClientRect().top <= line) target = node;
     for (const a of nav.querySelectorAll('a')) {
-      if (a.hash === `#${target.id}`) a.setAttribute('aria-current','location'); else a.removeAttribute('aria-current');
+      if (a.hash === `#${active.id}`) a.setAttribute('aria-current','location'); else a.removeAttribute('aria-current');
     }
   }
   function revealHash() {
     let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
     const record = records.get(id);
     if (record && !byId(id)) {
-      if (view() && !view().modules.some(m => m.recordIds.includes(id))) {
-        caseCompany = null; topic = null;
-        const url = new URL(location.href); url.searchParams.delete('view'); url.searchParams.delete('company'); history.replaceState(null,'',url);
+      const inCurrentView = view() ? view().modules.some(m => m.recordIds.includes(id)) : sections.some(s => s.overviewIds.includes(id));
+      if (!inCurrentView) {
+        const destination = sections.some(s => s.overviewIds.includes(id)) ? null : detailViews.find(v => v.data.modules.some(m => m.recordIds.includes(id)));
+        caseCompany = destination?.company || null; topic = destination?.topic || null;
+        const url = new URL(location.href); url.search = destination?.query || ''; history.replaceState(null,'',url);
       }
       company.value = record.companyId || 'all'; search.value = ''; kind.value = 'all'; render();
     }

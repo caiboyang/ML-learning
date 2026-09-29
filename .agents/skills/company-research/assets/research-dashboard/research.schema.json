@@ -41,6 +41,12 @@
             "own-business",
             "external-company"
           ]
+        },
+        "subjectCompanyId": {
+          "$ref": "#/definitions/id"
+        },
+        "actionSectionId": {
+          "$ref": "#/definitions/id"
         }
       },
       "required": [
@@ -51,7 +57,9 @@
         "notice",
         "verdictId",
         "keyMetricIds",
-        "taskType"
+        "taskType",
+        "subjectCompanyId",
+        "actionSectionId"
       ],
       "additionalProperties": false
     },
@@ -124,7 +132,8 @@
               "string",
               "null"
             ],
-            "pattern": "^https?://"
+            "pattern": "^https?://[^/?#\\s]+(?:[/?#]|$)",
+            "format": "uri"
           },
           "support": {
             "type": "string",
@@ -154,7 +163,7 @@
       "items": {
         "$ref": "#/definitions/section"
       },
-      "minItems": 6
+      "minItems": 1
     },
     "topics": {
       "type": "array",
@@ -162,11 +171,15 @@
         "type": "object",
         "properties": {
           "id": {
-            "enum": [
-              "comparisons",
-              "advice",
-              "decision",
-              "audit"
+            "allOf": [
+              {
+                "$ref": "#/definitions/id"
+              },
+              {
+                "not": {
+                  "const": "case"
+                }
+              }
             ]
           },
           "title": {
@@ -181,18 +194,33 @@
             "items": {
               "$ref": "#/definitions/module"
             },
-            "minItems": 1
+            "minItems": 3,
+            "maxItems": 6
+          },
+          "parentSectionId": {
+            "$ref": "#/definitions/id"
+          },
+          "argument": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 3,
+            "maxItems": 6
           }
         },
         "required": [
           "id",
           "title",
           "verdictId",
-          "modules"
+          "modules",
+          "parentSectionId",
+          "argument"
         ],
         "additionalProperties": false
       },
-      "minItems": 1
+      "minItems": 0
     }
   },
   "required": [
@@ -221,15 +249,7 @@
           "pattern": "^[a-z][a-z0-9-]*$"
         },
         "section": {
-          "enum": [
-            "verdict",
-            "assets",
-            "paths",
-            "decisions",
-            "choices",
-            "validation",
-            "questions"
-          ]
+          "$ref": "#/definitions/id"
         },
         "kind": {
           "enum": [
@@ -715,6 +735,10 @@
                       "$ref": "#/definitions/id"
                     },
                     "uniqueItems": true
+                  },
+                  "missingReason": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [
@@ -723,7 +747,23 @@
                   "basis",
                   "evidenceIds"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "value": {
+                          "type": "null"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "missingReason"
+                      ]
+                    }
+                  }
+                ]
               },
               "minItems": 1
             }
@@ -1080,16 +1120,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/definitions/id",
-          "enum": [
-            "verdict",
-            "assets",
-            "paths",
-            "decisions",
-            "choices",
-            "validation",
-            "questions"
-          ]
+          "$ref": "#/definitions/id"
         },
         "thesis": {
           "type": "string",
@@ -1109,13 +1140,34 @@
         "title": {
           "type": "string",
           "minLength": 1
+        },
+        "part": {
+          "enum": [
+            "verdict",
+            "assets",
+            "decisions",
+            "choices",
+            "validation",
+            "paths",
+            "questions"
+          ]
+        },
+        "overviewIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/id"
+          },
+          "uniqueItems": true
         }
       },
       "required": [
         "id",
         "thesis",
         "conclusion",
-        "evidenceIds"
+        "evidenceIds",
+        "title",
+        "part",
+        "overviewIds"
       ],
       "additionalProperties": false
     },
@@ -1130,12 +1182,27 @@
           "items": {
             "$ref": "#/definitions/module"
           },
-          "minItems": 4
+          "minItems": 3,
+          "maxItems": 6
+        },
+        "parentSectionId": {
+          "$ref": "#/definitions/id"
+        },
+        "argument": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 3,
+          "maxItems": 6
         }
       },
       "required": [
         "verdictId",
-        "modules"
+        "modules",
+        "parentSectionId",
+        "argument"
       ],
       "additionalProperties": false
     },

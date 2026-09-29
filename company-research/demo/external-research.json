@@ -1,0 +1,1719 @@
+{
+  "meta": {
+    "title": "EchoCircle 外部公司研究 · 虚构示例",
+    "question": "一次爆发式获客后，为什么没有形成可重复的讨论习惯？哪些做法值得借鉴？",
+    "asOf": "2026-09-29",
+    "scope": "虚构消费社区的起步、增长、放缓与历史选择；所有数字、团队和来源均为教学构造。",
+    "notice": "这是外部公司研究的结构演示，不是真实公司结论；无运营授权，不替目标公司安排预算或产品排期。",
+    "verdictId": "x-verdict",
+    "keyMetricIds": [
+      "x-weekly",
+      "x-return"
+    ],
+    "taskType": "external-company",
+    "subjectCompanyId": "echocircle",
+    "actionSectionId": "next-investigation"
+  },
+  "companies": [
+    {
+      "id": "echocircle",
+      "name": "EchoCircle",
+      "period": "第 1–6 月，教学构造"
+    },
+    {
+      "id": "roomguild",
+      "name": "RoomGuild",
+      "period": "早期，教学构造"
+    },
+    {
+      "id": "clipnet",
+      "name": "ClipNet",
+      "period": "早期，教学构造"
+    }
+  ],
+  "records": [
+    {
+      "id": "x-verdict",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "judgment",
+      "status": "教学构造",
+      "title": "获得注意力不等于形成讨论习惯",
+      "text": "邀请制带来一批注册，但同批有效参与与返回明显少于注册；需要区分环境回落、竞争替代和自身匹配失败，当前不能归因于单一原因。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": []
+    },
+    {
+      "id": "x-weekly",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "fact",
+      "role": "metric",
+      "status": "教学构造",
+      "title": "第 6 月周参与账户",
+      "text": "事件为一周内至少参加一次讨论；去重账户，不是注册数。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "metric": {
+        "value": "600",
+        "unit": "账户／周",
+        "basis": "第 6 月最后完整自然周；非固定 cohort，与第 1 月同口径对照。"
+      }
+    },
+    {
+      "id": "x-return",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "fact",
+      "role": "metric",
+      "status": "教学构造",
+      "title": "首批邀请用户返回",
+      "text": "同一批次中至少一次再次有效参与。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "metric": {
+        "value": "24 / 80",
+        "unit": "已激活账户",
+        "basis": "200 个受邀账户中 80 个在 7 天内有效参与；其中 24 个在第 8–30 天返回。"
+      }
+    },
+    {
+      "id": "x-status",
+      "companyId": "echocircle",
+      "section": "company-status",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "公司现状：仍有活动，增长习惯未证实",
+      "text": "第 6 月仍有每周讨论；存在持续使用不代表增长回路成立，也不能把放缓写成公司关闭。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "当前状态",
+          "value": "600 个周参与账户；未掌握成本与现金状况。"
+        },
+        {
+          "label": "阶段",
+          "value": "已有启动与参与信号，稳定留存和规模效率尚未证明。"
+        },
+        {
+          "label": "盈利",
+          "value": "核心产品免费；商业化路径没有可核对实验。"
+        }
+      ]
+    },
+    {
+      "id": "x-products",
+      "companyId": "echocircle",
+      "section": "product-map",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "产品盘点：即时讨论与预约小组",
+      "text": "即时讨论降低加入门槛；预约小组试图增加可预期性，两者需要分开观察。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "使用者",
+          "value": "对同一兴趣话题有讨论需要的个人。"
+        },
+        {
+          "label": "产品一",
+          "value": "即时房间：发现后加入，主持人实时组织；没有独立留存拆分。"
+        },
+        {
+          "label": "产品二",
+          "value": "第 5 月开始的预约小组：按主题与固定时间加入；观察窗口不足。"
+        },
+        {
+          "label": "付款人",
+          "value": "核心参与免费，尚未验证谁愿为哪种结果付款。"
+        }
+      ]
+    },
+    {
+      "id": "x-channels",
+      "companyId": "echocircle",
+      "section": "channel-map",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "渠道盘点：邀请链、自有通知与公共曝光",
+      "text": "注册由哪条入口产生，和入口带来多少持续参与，需要分别记录。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "邀请链",
+          "value": "首批 200 个受邀账户；来源码完整，无法代表公共入口质量。"
+        },
+        {
+          "label": "自有通知",
+          "value": "预约提醒触达已有账户；缺少送达、打开与返回拆分。"
+        },
+        {
+          "label": "公共曝光",
+          "value": "第 3 月引入公共发现入口；有同期周参与变化，无可比渠道 cohort。"
+        }
+      ]
+    },
+    {
+      "id": "x-assets",
+      "companyId": "echocircle",
+      "section": "asset-map",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "起步资产：主持关系可以组织首批场次",
+      "text": "创始人的主持人关系与同步音频工具共同降低第一场组织成本；不能直接推导持续供给。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "关系资产",
+          "value": "可接触 5 位主题主持人；后续留存与报酬承诺未知。"
+        },
+        {
+          "label": "技术资产",
+          "value": "可运行音频房间与邀请流程；缺少跨主题匹配评测。"
+        },
+        {
+          "label": "稀缺约束",
+          "value": "主持人时间与共同在线窗口；均不能由注册量衡量。"
+        }
+      ]
+    },
+    {
+      "id": "x-team",
+      "companyId": "echocircle",
+      "section": "team-map",
+      "kind": "fact",
+      "role": "team",
+      "status": "教学构造",
+      "title": "团队与分工",
+      "text": "区分真实执行、背景与未披露投入。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "people": [
+        {
+          "name": "成员 A（虚构）",
+          "role": "发起人",
+          "background": "组织过小型话题活动",
+          "responsibility": "台账记录其负责邀请主持人与主持首场",
+          "commitment": "全职状态、持股与后续投入未披露",
+          "evidenceIds": [
+            "x-source"
+          ]
+        },
+        {
+          "name": "成员 B（虚构）",
+          "role": "工程",
+          "background": "有音频工具开发经验",
+          "responsibility": "台账记录其负责房间与邀请工具",
+          "commitment": "承诺工时与维护成本未知",
+          "evidenceIds": [
+            "x-source"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "x-history-summary",
+      "companyId": "echocircle",
+      "section": "own-origin",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "自身 0→1 路径",
+      "text": "第 1 月先组织邀请场；第 3 月扩展公共发现；第 5 月试预约小组。每一步的“做了什么”和“是否奏效”分别记录。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": []
+    },
+    {
+      "id": "x-first",
+      "companyId": "echocircle",
+      "section": "own-origin",
+      "kind": "inference",
+      "role": "step",
+      "status": "教学构造",
+      "title": "邀请主持人完成首批讨论",
+      "text": "先用关系资产解决“谁来组织第一场”，再观察受邀者参与。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "stage": "第 1 月",
+      "fields": [
+        {
+          "label": "动作",
+          "value": "邀请 5 位主持人组织讨论，向 200 个账户发送邀请。"
+        },
+        {
+          "label": "结果",
+          "value": "7 天内 80 个账户有效参与，8–30 天 24 个账户再次参与。"
+        },
+        {
+          "label": "机制",
+          "value": "可预期的主持与主题可能降低冷启动成本；无随机对照。"
+        }
+      ]
+    },
+    {
+      "id": "x-open",
+      "companyId": "echocircle",
+      "section": "own-origin",
+      "kind": "inference",
+      "role": "step",
+      "status": "教学构造",
+      "title": "从邀请扩展到公共发现",
+      "text": "把陌生人接入已有房间；同时改变用户构成和内容匹配难度。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "stage": "第 3 月",
+      "fields": [
+        {
+          "label": "动作",
+          "value": "开启公共发现入口。"
+        },
+        {
+          "label": "结果",
+          "value": "周参与为 900，相较第 1 月 1200 下降；非同批、不能据此认定入口造成下降。"
+        },
+        {
+          "label": "机制",
+          "value": "更宽的入口可能稀释相关性，需要入口 cohort 和房间供给共同检验。"
+        }
+      ]
+    },
+    {
+      "id": "x-groups",
+      "companyId": "echocircle",
+      "section": "own-origin",
+      "kind": "inference",
+      "role": "step",
+      "status": "教学构造",
+      "title": "试验预约小组",
+      "text": "从即时发现转向可计划的主题与时间。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "stage": "第 5 月",
+      "fields": [
+        {
+          "label": "动作",
+          "value": "上线预约小组并发送提醒。"
+        },
+        {
+          "label": "结果",
+          "value": "尚未取得完整 30 天 cohort；第 6 月整体周参与 600 不能代表该功能效果。"
+        },
+        {
+          "label": "机制",
+          "value": "预期是改善时间协调，而不是已经证明留存提高。"
+        }
+      ]
+    },
+    {
+      "id": "x-loop-summary",
+      "companyId": "echocircle",
+      "section": "own-growth",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "自身增长回路：供给和回访之间仍有断点",
+      "text": "假设链是好讨论 → 再参与 → 新主持人 → 更多好讨论；目前仅记录首批参与和返回，主持留存、内容质量与邀请转化缺失。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": []
+    },
+    {
+      "id": "x-loop",
+      "companyId": "echocircle",
+      "section": "own-growth",
+      "kind": "inference",
+      "role": "loop",
+      "status": "教学构造",
+      "title": "自身增长回路逐边核验",
+      "text": "不是每一条活动流程都形成正反馈。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "edges": [
+        {
+          "from": "主持人组织",
+          "to": "首次参与",
+          "mechanism": "主题与组织降低加入成本",
+          "status": "有参与数据；动因未独立核验",
+          "evidenceIds": [
+            "x-source"
+          ]
+        },
+        {
+          "from": "首次参与",
+          "to": "再次参与",
+          "mechanism": "获得相关讨论价值才可能回来",
+          "status": "24/80 有信号；无基准组",
+          "evidenceIds": [
+            "x-source"
+          ]
+        },
+        {
+          "from": "再次参与",
+          "to": "新主持供给",
+          "mechanism": "参与者愿意组织下一场以扩大供给",
+          "status": "5/80 曾主持；与 24 名返回者交集未知",
+          "evidenceIds": [
+            "x-source"
+          ]
+        },
+        {
+          "from": "新主持供给",
+          "to": "更多好讨论",
+          "mechanism": "主持持续投入并提高内容相关性",
+          "status": "缺主持留存和质量指标；回路未闭合",
+          "evidenceIds": [
+            "x-source"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "x-decision-summary",
+      "companyId": "echocircle",
+      "section": "historical-choices",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "关键决策复盘：扩入口与改节奏",
+      "text": "公共发现扩展和预约小组是两次不同选择；前者改变分发与匹配，后者改变协调方式。二者都缺少可比结果，不能以事后下降替代决策分析。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": []
+    },
+    {
+      "id": "x-open-decision",
+      "companyId": "echocircle",
+      "section": "historical-choices",
+      "kind": "inference",
+      "role": "decision",
+      "status": "教学构造",
+      "title": "公共发现扩展",
+      "text": "复盘当时信息与之后观察，保留因果限制。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "decision": {
+        "period": "第 3 月",
+        "context": "邀请入口覆盖有限；房间相关性可能随陌生人增加而下降。",
+        "knownThen": "知道首批参与与返回人数；不知道公共入口 cohort 留存。",
+        "options": "实际扩入口；保持邀请制是研究者构造的反事实，未掌握内部讨论。",
+        "chosen": "开启公共发现。",
+        "outcome": "同口径周参与第 1 月 1200、第 3 月 900；用户构成不同。",
+        "tradeoff": "可能扩大触达，也增加发现与审核成本；成本未知。",
+        "assessment": "与放缓同期不构成因果证据。",
+        "falsifier": "同主题、同供给水平下的入口留存与曝光实验。"
+      }
+    },
+    {
+      "id": "x-group-decision",
+      "companyId": "echocircle",
+      "section": "historical-choices",
+      "kind": "inference",
+      "role": "decision",
+      "status": "教学构造",
+      "title": "转向预约小组",
+      "text": "复盘当时信息与之后观察，保留因果限制。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "decision": {
+        "period": "第 5 月",
+        "context": "同步房间要求共同在线；错过场次可能破坏回访。",
+        "knownThen": "整体周参与下降；没有分群退出原因。",
+        "options": "实际增加预约；异步内容是研究者备选，非已知内部选项。",
+        "chosen": "新增预约小组，保留即时房间。",
+        "outcome": "截至第 6 月未取得完整新功能 cohort。",
+        "tradeoff": "协调成本可能降低，也可能增加组织负担；净效果未知。",
+        "assessment": "这是针对协调问题的试验，尚未证明策略逆转。",
+        "falsifier": "预约送达、参与、30 天返回与主持工时，按新旧用户拆分。"
+      }
+    },
+    {
+      "id": "x-decline",
+      "companyId": "echocircle",
+      "section": "decline-diagnosis",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "衰退诊断：三类解释仍待区分",
+      "text": "周参与下降是现象；环境回落、竞争替代和自身回路不闭合可以同时存在。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "环境变化",
+          "value": "支持：总体参与下降；反证与缺口：没有同类平台基准。需对照同季节活动。"
+        },
+        {
+          "label": "竞争替代",
+          "value": "支持：暂无可核验迁移数据；不能把竞品发布当作用户转移。需退出访谈与替代使用记录。"
+        },
+        {
+          "label": "自身回路",
+          "value": "支持：首批参与后返回有限，主持留存未知；反证：仍有持续讨论，不是完全无价值。需按主题、渠道、主持与时间段分层。"
+        },
+        {
+          "label": "归因边界",
+          "value": "没有自然实验、可比 cohort 或完整供给记录；当前只能列优先调查假设。"
+        }
+      ]
+    },
+    {
+      "id": "x-transfer",
+      "companyId": "echocircle",
+      "section": "transfer-order",
+      "kind": "recommendation",
+      "role": "transfer",
+      "status": "教学构造",
+      "title": "借鉴顺序与条件",
+      "text": "可以先学组织首场的顺序，再验证回访与主持供给；不能先复制开放入口。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "现在借鉴",
+          "value": "已有主题与主持关系时，先做可控的预约小组；观察参与后的具体价值。"
+        },
+        {
+          "label": "以后借鉴",
+          "value": "当主题质量与主持持续供给成立，再扩发现入口。"
+        },
+        {
+          "label": "谨慎借鉴",
+          "value": "邀请机制需要真实相关性；限额不等于需求。"
+        },
+        {
+          "label": "暂不借鉴",
+          "value": "以注册量证明留存或商业化；用整体回落否定所有细分群体。"
+        }
+      ]
+    },
+    {
+      "id": "x-investigation",
+      "companyId": "echocircle",
+      "section": "next-investigation",
+      "kind": "recommendation",
+      "role": "action",
+      "status": "教学构造",
+      "title": "下一步调查计划",
+      "text": "研究者先补能区分解释的材料，不给目标公司安排运营排期。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "milestones": [
+        {
+          "period": "第一轮",
+          "action": "查公开产品更新、指标口径与同业基准",
+          "owner": "研究 Agent；访谈需用户另行授权",
+          "observe": "参与事件是否一致、是否有完整观察窗口",
+          "decision": "口径不同则停止直接趋势比较，拆序列。"
+        },
+        {
+          "period": "第二轮",
+          "action": "向用户询问可获得的退出原因与主持记录",
+          "owner": "研究 Agent；访谈需用户另行授权",
+          "observe": "能否获得匿名 cohort、渠道与主持投入字段",
+          "decision": "没有资料就保留三类解释，不编造动机。"
+        },
+        {
+          "period": "第三轮",
+          "action": "按证据重新排序假设与借鉴条件",
+          "owner": "研究 Agent；访谈需用户另行授权",
+          "observe": "同群体、同时段的参与与供给关系",
+          "decision": "若新证据反驳匹配失败，下调该解释并更新主判断。"
+        }
+      ]
+    },
+    {
+      "id": "x-data-contract",
+      "companyId": "echocircle",
+      "section": "next-investigation",
+      "kind": "recommendation",
+      "role": "contract",
+      "status": "教学构造",
+      "title": "所需数据与目前缺口",
+      "text": "列清对象、事件、时间窗、来源和可获得性。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "参与事件",
+          "value": "去重账户在房间有效参与的阈值；当前示例未定义时长，真实研究必须补齐。"
+        },
+        {
+          "label": "观察窗口",
+          "value": "同 cohort 第 0–7 天激活、第 8–30 天返回；未到期与缺记录分开。"
+        },
+        {
+          "label": "供给与退出",
+          "value": "主持次数、持续时长、工时与退出原因；公开资料没有时询问用户能否提供。"
+        },
+        {
+          "label": "更新责任",
+          "value": "研究 Agent 记录查询时间与覆盖范围；不假定能接触目标公司后台。"
+        }
+      ]
+    },
+    {
+      "id": "x-question",
+      "companyId": "echocircle",
+      "section": "next-investigation",
+      "kind": "recommendation",
+      "role": "question",
+      "status": "教学构造",
+      "title": "下一轮问答",
+      "text": "你是否有可分享的同批参与与主持记录？如果只有摘要，先提供事件定义、窗口和汇总范围，原始个人信息不需要进入报告。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "影响",
+          "value": "决定能否区分获客质量、产品匹配和供给流失。"
+        },
+        {
+          "label": "当前处理",
+          "value": "公开材料无法回答，保留未知；不把无回答当同意。"
+        }
+      ]
+    },
+    {
+      "id": "x-series",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "fact",
+      "role": "series",
+      "status": "教学构造",
+      "title": "同口径周参与序列",
+      "text": "这是各观察周的活跃账户，不能当成固定批次留存。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "series": {
+        "unit": "账户／周",
+        "definition": "每个观察月最后完整自然周内至少一次有效参与的去重账户",
+        "points": [
+          {
+            "period": "第 1 月",
+            "value": 1200,
+            "basis": "同事件定义；每周成员可变化，非固定 cohort。",
+            "evidenceIds": [
+              "x-source"
+            ]
+          },
+          {
+            "period": "第 2 月",
+            "value": null,
+            "basis": "同事件定义；每周成员可变化，非固定 cohort。",
+            "evidenceIds": [
+              "x-source"
+            ],
+            "missingReason": "已查演示台账，没有找到可靠的第 2 月数据"
+          },
+          {
+            "period": "第 3 月",
+            "value": 900,
+            "basis": "同事件定义；每周成员可变化，非固定 cohort。",
+            "evidenceIds": [
+              "x-source"
+            ]
+          },
+          {
+            "period": "第 6 月",
+            "value": 600,
+            "basis": "同事件定义；每周成员可变化，非固定 cohort。",
+            "evidenceIds": [
+              "x-source"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "x-funnel",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "funnel",
+      "status": "教学构造",
+      "title": "首批邀请的同批漏斗与主持分支",
+      "text": "主持和回访可能重叠，不能相加或画成前后转化。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "funnel": {
+        "cohort": "第 1 月受邀的同一批 200 个账户",
+        "overlap": "24 个返回账户与 5 个曾主持账户交集未知，不合并计算。",
+        "nodes": [
+          {
+            "id": "invited",
+            "parentId": null,
+            "label": "受邀",
+            "count": 200,
+            "denominator": 200,
+            "basis": "第 0 天发出邀请；非参与",
+            "proved": "触达范围",
+            "unproved": "需求与留存",
+            "evidenceIds": [
+              "x-source"
+            ]
+          },
+          {
+            "id": "activated",
+            "parentId": "invited",
+            "label": "有效参与",
+            "count": 80,
+            "denominator": 200,
+            "basis": "第 0–7 天至少一次参与",
+            "proved": "首批激活信号",
+            "unproved": "长期习惯",
+            "evidenceIds": [
+              "x-source"
+            ]
+          },
+          {
+            "id": "returned",
+            "parentId": "activated",
+            "label": "返回",
+            "count": 24,
+            "denominator": 80,
+            "basis": "第 8–30 天再次有效参与",
+            "proved": "同批返回信号",
+            "unproved": "长期留存和价值成果",
+            "evidenceIds": [
+              "x-source"
+            ]
+          },
+          {
+            "id": "hosted",
+            "parentId": "activated",
+            "label": "曾主持",
+            "count": 5,
+            "denominator": 80,
+            "basis": "第 0–30 天至少主持一次",
+            "proved": "开始供给的信号",
+            "unproved": "主持留存与参与者交集",
+            "evidenceIds": [
+              "x-source"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "x-proof-activation",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "proof",
+      "status": "教学构造",
+      "title": "受邀后激活",
+      "text": "80/200 在 7 天内参与",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "受邀后激活",
+        "state": "有信号",
+        "evidence": "80/200 在 7 天内参与",
+        "gap": "缺可比入口 cohort",
+        "next": "查事件定义与入口构成"
+      }
+    },
+    {
+      "id": "x-proof-retention",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "proof",
+      "status": "教学构造",
+      "title": "同批返回与频次",
+      "text": "24/80 在 8–30 天返回",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "同批返回与频次",
+        "state": "有信号",
+        "evidence": "24/80 在 8–30 天返回",
+        "gap": "只有至少一次，缺频次及更长窗口",
+        "next": "查 60/90 天同批观察"
+      }
+    },
+    {
+      "id": "x-proof-creators",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "proof",
+      "status": "教学构造",
+      "title": "内容供给持续",
+      "text": "5/80 曾主持",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "内容供给持续",
+        "state": "未证明",
+        "evidence": "5/80 曾主持",
+        "gap": "主持一次不等于持续贡献；工时与报酬未知",
+        "next": "查主持留存与每场质量"
+      }
+    },
+    {
+      "id": "x-proof-repayment",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "proof",
+      "status": "教学构造",
+      "title": "订阅续费",
+      "text": "核心服务免费，没有订阅合同",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "订阅续费",
+        "state": "不适用",
+        "evidence": "核心服务免费，没有订阅合同",
+        "gap": "不能机械计算续费",
+        "next": "改查商业化前提",
+        "naReason": "研究阶段无订阅服务；另分析商业化条件"
+      }
+    },
+    {
+      "id": "x-proof-monetization",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "proof",
+      "status": "教学构造",
+      "title": "商业化条件",
+      "text": "尚无可核对付款实验",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "商业化条件",
+        "state": "未证明",
+        "evidence": "尚无可核对付款实验",
+        "gap": "付款人、承诺结果与供给成本未知",
+        "next": "查历史收费实验或付费访谈，未授权不开展销售"
+      }
+    },
+    {
+      "id": "x-change",
+      "companyId": "echocircle",
+      "section": "executive-summary",
+      "kind": "inference",
+      "role": "change",
+      "status": "教学构造",
+      "title": "口径更正使“高激活”判断下调",
+      "text": "新信息把注册与有效参与分开，影响摘要和调查。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source",
+        "x-correction"
+      ],
+      "relatedIds": [],
+      "change": {
+        "before": "曾把 200 个注册账户视为有效参与。",
+        "newEvidence": "虚构纠错回答：200 受邀，80 有效参与；是用户提供口径，不是独立核验。",
+        "direction": "下调",
+        "after": "仅 80/200 支持首批激活；24/80 是后续返回，不能写成 24/200 的激活后留存。",
+        "impact": "首屏与漏斗已采用更正口径；优先调查参与事件定义和入口质量。"
+      }
+    },
+    {
+      "id": "roomguild-profile",
+      "companyId": "roomguild",
+      "section": "peer-comparison",
+      "kind": "fact",
+      "role": "profile",
+      "status": "教学构造",
+      "title": "RoomGuild 起点档案",
+      "text": "比较起点资产和验证顺序，不照抄终局功能。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "起点资产",
+          "value": "行业主持人的专业信誉与固定时间"
+        },
+        {
+          "label": "第一批用户",
+          "value": "已有行业联系中的小组成员"
+        },
+        {
+          "label": "第一个产品",
+          "value": "预约讨论与问题整理"
+        },
+        {
+          "label": "第一种收入",
+          "value": "小组会员费；实际续费结果未知"
+        },
+        {
+          "label": "结果",
+          "value": "仅展示虚构动作，长期留存与单位经济待查。"
+        },
+        {
+          "label": "启示",
+          "value": "可学组织密度，付费前提不能直接迁移"
+        }
+      ]
+    },
+    {
+      "id": "roomguild-verdict",
+      "companyId": "roomguild",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "judgment",
+      "status": "教学构造",
+      "title": "RoomGuild 机制判断",
+      "text": "可学组织密度，付费前提不能直接迁移",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": []
+    },
+    {
+      "id": "roomguild-first",
+      "companyId": "roomguild",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "step",
+      "status": "教学构造",
+      "title": "RoomGuild 首次价值交付",
+      "text": "先限定一个主题与首批用户，再完成一次具体讨论或资料整理。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "stage": "早期第一步",
+      "fields": [
+        {
+          "label": "动作",
+          "value": "利用已有关系组织第一批参与。"
+        },
+        {
+          "label": "结果",
+          "value": "完成首轮交付，长期结果未验证。"
+        },
+        {
+          "label": "边界",
+          "value": "单次交付不能证明规模。"
+        }
+      ]
+    },
+    {
+      "id": "roomguild-repeat",
+      "companyId": "roomguild",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "step",
+      "status": "教学构造",
+      "title": "RoomGuild 重复验证",
+      "text": "再观察第二次使用与组织投入，暂不扩大入口。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "stage": "早期第二步",
+      "fields": [
+        {
+          "label": "动作",
+          "value": "向原批次提供后续讨论或更新。"
+        },
+        {
+          "label": "结果",
+          "value": "缺可靠重复使用与工时记录，回路保持待验证。"
+        },
+        {
+          "label": "边界",
+          "value": "不能用功能上线替代结果。"
+        }
+      ]
+    },
+    {
+      "id": "roomguild-loop",
+      "companyId": "roomguild",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "loop",
+      "status": "教学构造",
+      "title": "RoomGuild 回路及限制",
+      "text": "内容与参与反馈必须能改善下一轮。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "edges": [
+        {
+          "from": "主题内容",
+          "to": "相关参与",
+          "mechanism": "相关性降低寻找成本",
+          "status": "机制假设；缺归因证据",
+          "evidenceIds": [
+            "x-source"
+          ]
+        },
+        {
+          "from": "参与反馈",
+          "to": "下一轮内容",
+          "mechanism": "反馈提高选题质量",
+          "status": "缺重复窗口和供给成本，尚未闭合",
+          "evidenceIds": [
+            "x-source"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roomguild-transfer",
+      "companyId": "roomguild",
+      "section": "peer-comparison",
+      "kind": "recommendation",
+      "role": "transfer",
+      "status": "教学构造",
+      "title": "RoomGuild 借鉴与风险",
+      "text": "可学组织密度，付费前提不能直接迁移",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "可迁移",
+          "value": "先匹配主题与用户，再验证回访。"
+        },
+        {
+          "label": "缺失前提",
+          "value": "是否有相同主持信誉、参与动机和内容资产。"
+        },
+        {
+          "label": "不可照搬",
+          "value": "收费或异步形式本身不证明目标业务成立。"
+        }
+      ]
+    },
+    {
+      "id": "clipnet-profile",
+      "companyId": "clipnet",
+      "section": "peer-comparison",
+      "kind": "fact",
+      "role": "profile",
+      "status": "教学构造",
+      "title": "ClipNet 起点档案",
+      "text": "比较起点资产和验证顺序，不照抄终局功能。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "起点资产",
+          "value": "异步内容整理工具与主题档案"
+        },
+        {
+          "label": "第一批用户",
+          "value": "围绕已有资料的读者"
+        },
+        {
+          "label": "第一个产品",
+          "value": "异步讨论串和摘要"
+        },
+        {
+          "label": "第一种收入",
+          "value": "免费阶段，收入尚未验证"
+        },
+        {
+          "label": "结果",
+          "value": "仅展示虚构动作，长期留存与单位经济待查。"
+        },
+        {
+          "label": "启示",
+          "value": "可学降低同步协调成本，不能据此证明参与质量"
+        }
+      ]
+    },
+    {
+      "id": "clipnet-verdict",
+      "companyId": "clipnet",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "judgment",
+      "status": "教学构造",
+      "title": "ClipNet 机制判断",
+      "text": "可学降低同步协调成本，不能据此证明参与质量",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": []
+    },
+    {
+      "id": "clipnet-first",
+      "companyId": "clipnet",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "step",
+      "status": "教学构造",
+      "title": "ClipNet 首次价值交付",
+      "text": "先限定一个主题与首批用户，再完成一次具体讨论或资料整理。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "stage": "早期第一步",
+      "fields": [
+        {
+          "label": "动作",
+          "value": "利用已有关系组织第一批参与。"
+        },
+        {
+          "label": "结果",
+          "value": "完成首轮交付，长期结果未验证。"
+        },
+        {
+          "label": "边界",
+          "value": "单次交付不能证明规模。"
+        }
+      ]
+    },
+    {
+      "id": "clipnet-repeat",
+      "companyId": "clipnet",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "step",
+      "status": "教学构造",
+      "title": "ClipNet 重复验证",
+      "text": "再观察第二次使用与组织投入，暂不扩大入口。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "stage": "早期第二步",
+      "fields": [
+        {
+          "label": "动作",
+          "value": "向原批次提供后续讨论或更新。"
+        },
+        {
+          "label": "结果",
+          "value": "缺可靠重复使用与工时记录，回路保持待验证。"
+        },
+        {
+          "label": "边界",
+          "value": "不能用功能上线替代结果。"
+        }
+      ]
+    },
+    {
+      "id": "clipnet-loop",
+      "companyId": "clipnet",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "loop",
+      "status": "教学构造",
+      "title": "ClipNet 回路及限制",
+      "text": "内容与参与反馈必须能改善下一轮。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "edges": [
+        {
+          "from": "主题内容",
+          "to": "相关参与",
+          "mechanism": "相关性降低寻找成本",
+          "status": "机制假设；缺归因证据",
+          "evidenceIds": [
+            "x-source"
+          ]
+        },
+        {
+          "from": "参与反馈",
+          "to": "下一轮内容",
+          "mechanism": "反馈提高选题质量",
+          "status": "缺重复窗口和供给成本，尚未闭合",
+          "evidenceIds": [
+            "x-source"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clipnet-transfer",
+      "companyId": "clipnet",
+      "section": "peer-comparison",
+      "kind": "recommendation",
+      "role": "transfer",
+      "status": "教学构造",
+      "title": "ClipNet 借鉴与风险",
+      "text": "可学降低同步协调成本，不能据此证明参与质量",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "可迁移",
+          "value": "先匹配主题与用户，再验证回访。"
+        },
+        {
+          "label": "缺失前提",
+          "value": "是否有相同主持信誉、参与动机和内容资产。"
+        },
+        {
+          "label": "不可照搬",
+          "value": "收费或异步形式本身不证明目标业务成立。"
+        }
+      ]
+    },
+    {
+      "id": "x-comparison",
+      "companyId": null,
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "comparison",
+      "status": "教学构造",
+      "title": "对标的起点、用户与结果",
+      "text": "先了解 EchoCircle 自身，再比较不同组织方式。",
+      "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [],
+      "comparisonIds": [
+        "roomguild-profile",
+        "clipnet-profile"
+      ],
+      "columns": [
+        "起点资产",
+        "第一批用户",
+        "结果",
+        "启示"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "x-source",
+      "title": "虚构事件与指标台账",
+      "nature": "教学构造，不是第三方事实",
+      "date": "2026-09-29",
+      "locator": "external-research.json 中的演示事件与指标；无真实原始资料",
+      "url": null,
+      "support": "仅用于检查结构、口径、筛选和引用链路。",
+      "limitation": "不能据此判断真实公司的增长、因果或商业价值。"
+    },
+    {
+      "id": "x-correction",
+      "title": "虚构口径更正记录",
+      "nature": "教学构造的纠错回答",
+      "date": "2026-09-29",
+      "locator": "更正“注册”与“有效参与”事件定义",
+      "url": null,
+      "support": "演示新信息如何下调判断并改变调查优先级。",
+      "limitation": "不是访谈或运营系统导出的真实数据。"
+    }
+  ],
+  "sections": [
+    {
+      "id": "executive-summary",
+      "title": "执行结论",
+      "part": "verdict",
+      "overviewIds": [],
+      "thesis": "激活与返回有信号，持续供给和商业化未证实。",
+      "conclusion": "三类下降解释仍需区分，进入核验专题查看口径与判断变更。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "company-status",
+      "title": "公司现状",
+      "part": "assets",
+      "overviewIds": [
+        "x-status"
+      ],
+      "thesis": "仍在运转与形成稳定增长是两种判断。",
+      "conclusion": "不能把放缓写成停止运营。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "product-map",
+      "title": "产品盘点",
+      "part": "assets",
+      "overviewIds": [
+        "x-products"
+      ],
+      "thesis": "即时讨论与预约小组对应不同协调问题。",
+      "conclusion": "分别检查 cohort，避免整体数据覆盖产品差异。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "channel-map",
+      "title": "渠道盘点",
+      "part": "assets",
+      "overviewIds": [
+        "x-channels"
+      ],
+      "thesis": "入口数量不是有效参与质量。",
+      "conclusion": "自有、邀请与公共入口分开核验。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "asset-map",
+      "title": "起步资产图谱",
+      "part": "assets",
+      "overviewIds": [
+        "x-assets"
+      ],
+      "thesis": "关系和工具可启动首场，不能保证持续供给。",
+      "conclusion": "约束是相关主持与共同在线时间。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "team-map",
+      "title": "团队与分工",
+      "part": "assets",
+      "overviewIds": [
+        "x-team"
+      ],
+      "thesis": "背景、责任和投入分开记录。",
+      "conclusion": "未披露投入不能计为可调用资源。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "own-origin",
+      "title": "自身 0→1 路径",
+      "part": "assets",
+      "overviewIds": [
+        "x-history-summary"
+      ],
+      "thesis": "先邀请，再扩入口，后试预约。",
+      "conclusion": "每一步都保留实际行为与效果证据之间的差距。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "own-growth",
+      "title": "自身增长回路",
+      "part": "assets",
+      "overviewIds": [
+        "x-loop-summary"
+      ],
+      "thesis": "讨论价值必须反馈到返回和持续主持。",
+      "conclusion": "当前链路未闭合，缺口不能用注册增长填补。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "historical-choices",
+      "title": "关键决策复盘",
+      "part": "decisions",
+      "overviewIds": [
+        "x-decision-summary"
+      ],
+      "thesis": "扩入口和改节奏分别改变分发与协调。",
+      "conclusion": "保留当时信息与真实选择，不代写内部动机。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "decline-diagnosis",
+      "title": "衰退诊断",
+      "part": "decisions",
+      "overviewIds": [
+        "x-decline"
+      ],
+      "thesis": "环境、竞争与自身回路同时检验。",
+      "conclusion": "目前无法定单一原因，需用下一轮资料区分。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "transfer-order",
+      "title": "借鉴顺序",
+      "part": "choices",
+      "overviewIds": [
+        "x-transfer"
+      ],
+      "thesis": "先复制验证顺序，后考虑扩张形式。",
+      "conclusion": "需要相同资产与用户动机；不以终局功能为起点。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "next-investigation",
+      "title": "下一步调查",
+      "part": "validation",
+      "overviewIds": [
+        "x-investigation",
+        "x-question"
+      ],
+      "thesis": "调查责任属于研究者，不是目标公司排期。",
+      "conclusion": "拿不到资料时保留范围与影响，得到回答后重写结论。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "peer-comparison",
+      "title": "横向对照",
+      "part": "paths",
+      "overviewIds": [
+        "x-comparison"
+      ],
+      "thesis": "用组织方式不同的对照检验机制。",
+      "conclusion": "预约信誉与异步内容提供不同前提，不能一概照搬。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "audit",
+      "title": "数据核验",
+      "parentSectionId": "executive-summary",
+      "argument": [
+        "事件定义",
+        "序列与同批分支",
+        "证明边界",
+        "判断更新"
+      ],
+      "verdictId": "x-verdict",
+      "modules": [
+        {
+          "id": "external-audit-scope",
+          "title": "01 对象与口径",
+          "recordIds": [
+            "x-verdict",
+            "x-weekly",
+            "x-return"
+          ],
+          "thesis": "周参与与同批返回不能混用。",
+          "conclusion": "保留分母与窗口。"
+        },
+        {
+          "id": "external-audit-data",
+          "title": "02 序列与分支",
+          "recordIds": [
+            "x-series",
+            "x-funnel"
+          ],
+          "thesis": "缺数据不等于零，分支不相加。",
+          "conclusion": "观察到下降但不能独立归因。"
+        },
+        {
+          "id": "external-audit-proof",
+          "title": "03 证明状态",
+          "recordIds": [
+            "x-proof-activation",
+            "x-proof-retention",
+            "x-proof-creators",
+            "x-proof-repayment",
+            "x-proof-monetization"
+          ],
+          "thesis": "免费社区需检验参与、供给和商业化条件。",
+          "conclusion": "订阅续费不适用不意味着跳过商业模式。"
+        },
+        {
+          "id": "external-audit-change",
+          "title": "04 更正与数据缺口",
+          "recordIds": [
+            "x-change",
+            "x-data-contract"
+          ],
+          "thesis": "回答改变结论与后续调查。",
+          "conclusion": "当前指标与结论已应用更正。"
+        }
+      ]
+    },
+    {
+      "id": "origin",
+      "title": "自身路径分析",
+      "parentSectionId": "own-origin",
+      "argument": [
+        "第一场",
+        "扩展入口",
+        "改变节奏"
+      ],
+      "verdictId": "x-verdict",
+      "modules": [
+        {
+          "id": "origin-1",
+          "title": "01 邀请主持人完成首批讨论",
+          "recordIds": [
+            "x-first"
+          ],
+          "thesis": "先用关系资产解决“谁来组织第一场”，再观察受邀者参与。",
+          "conclusion": "本步行为与效果保持分开。"
+        },
+        {
+          "id": "origin-2",
+          "title": "02 从邀请扩展到公共发现",
+          "recordIds": [
+            "x-open"
+          ],
+          "thesis": "把陌生人接入已有房间；同时改变用户构成和内容匹配难度。",
+          "conclusion": "本步行为与效果保持分开。"
+        },
+        {
+          "id": "origin-3",
+          "title": "03 试验预约小组",
+          "recordIds": [
+            "x-groups"
+          ],
+          "thesis": "从即时发现转向可计划的主题与时间。",
+          "conclusion": "本步行为与效果保持分开。"
+        }
+      ]
+    },
+    {
+      "id": "growth",
+      "title": "增长回路核验",
+      "parentSectionId": "own-growth",
+      "argument": [
+        "回路假设",
+        "参与与分支",
+        "持续供给"
+      ],
+      "verdictId": "x-verdict",
+      "modules": [
+        {
+          "id": "growth-loop",
+          "title": "01 每条反馈边",
+          "recordIds": [
+            "x-loop"
+          ],
+          "thesis": "逐边说明机制和证据。",
+          "conclusion": "当前回路尚未闭合。"
+        },
+        {
+          "id": "growth-cohort",
+          "title": "02 同批参与与返回",
+          "recordIds": [
+            "x-funnel"
+          ],
+          "thesis": "先保留事件窗口和分母。",
+          "conclusion": "激活不能替代习惯。"
+        },
+        {
+          "id": "growth-supply",
+          "title": "03 主持与商业化条件",
+          "recordIds": [
+            "x-proof-creators",
+            "x-proof-monetization"
+          ],
+          "thesis": "供给成本与付款意愿分别验证。",
+          "conclusion": "增长与商业可持续均需补证。"
+        }
+      ]
+    },
+    {
+      "id": "decision",
+      "title": "历史决策复盘",
+      "parentSectionId": "historical-choices",
+      "argument": [
+        "扩入口",
+        "改节奏",
+        "竞争解释"
+      ],
+      "verdictId": "x-verdict",
+      "modules": [
+        {
+          "id": "history-open",
+          "title": "01 公共发现",
+          "recordIds": [
+            "x-open-decision"
+          ],
+          "thesis": "先看当时可知信息。",
+          "conclusion": "同期下降不证明选择导致下降。"
+        },
+        {
+          "id": "history-groups",
+          "title": "02 预约小组",
+          "recordIds": [
+            "x-group-decision"
+          ],
+          "thesis": "试验目的与观测结果分开。",
+          "conclusion": "窗口不足，不能写成转型成功。"
+        },
+        {
+          "id": "history-alternatives",
+          "title": "03 衰退解释与反证",
+          "recordIds": [
+            "x-decline"
+          ],
+          "thesis": "同时检验环境、竞争和产品机制。",
+          "conclusion": "调查优先级来自能区分解释的证据。"
+        }
+      ]
+    },
+    {
+      "id": "comparisons",
+      "title": "横向对照详解",
+      "parentSectionId": "peer-comparison",
+      "argument": [
+        "统一维度",
+        "RoomGuild",
+        "ClipNet"
+      ],
+      "verdictId": "x-verdict",
+      "modules": [
+        {
+          "id": "external-matrix",
+          "title": "01 起点与结果矩阵",
+          "recordIds": [
+            "x-comparison"
+          ],
+          "thesis": "同字段比较不同机制。",
+          "conclusion": "不把形式相似等同于资源相同。"
+        },
+        {
+          "id": "external-roomguild",
+          "title": "02 RoomGuild",
+          "recordIds": [
+            "roomguild-verdict",
+            "roomguild-profile",
+            "roomguild-first",
+            "roomguild-repeat",
+            "roomguild-loop",
+            "roomguild-transfer"
+          ],
+          "thesis": "按同一顺序拆起点、行为、反馈与迁移。",
+          "conclusion": "只迁移前提满足的动作；未知结果保持未知。"
+        },
+        {
+          "id": "external-clipnet",
+          "title": "03 ClipNet",
+          "recordIds": [
+            "clipnet-verdict",
+            "clipnet-profile",
+            "clipnet-first",
+            "clipnet-repeat",
+            "clipnet-loop",
+            "clipnet-transfer"
+          ],
+          "thesis": "按同一顺序拆起点、行为、反馈与迁移。",
+          "conclusion": "只迁移前提满足的动作；未知结果保持未知。"
+        }
+      ]
+    }
+  ]
+}

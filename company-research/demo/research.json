@@ -2,7 +2,7 @@
   "meta": {
     "title": "公司研究：从起步资产到当前路线",
     "question": "LoopDesk 下一阶段扩大销售，还是先验证交付？",
-    "asOf": "2026-09-28",
+    "asOf": "2026-09-29",
     "scope": "三个虚构公司；一个 90 天批次；展示一次问答之后的阶段性判断。",
     "notice": "全部内容为虚构教学数据，不代表真实经营事实。事实标签仅表示案例内的记录身份。",
     "verdictId": "c-overview",
@@ -11,7 +11,9 @@
       "c-commitment",
       "c-capacity"
     ],
-    "taskType": "own-business"
+    "taskType": "own-business",
+    "subjectCompanyId": "loopdesk",
+    "actionSectionId": "validation-plan"
   },
   "companies": [
     {
@@ -65,6 +67,13 @@
               "c-transfer"
             ]
           }
+        ],
+        "parentSectionId": "benchmark-comparison",
+        "argument": [
+          "互补资产",
+          "交易与交付",
+          "取舍",
+          "回路与迁移"
         ]
       }
     },
@@ -78,7 +87,7 @@
     {
       "id": "c-overview",
       "companyId": null,
-      "section": "verdict",
+      "section": "executive-conclusion",
       "kind": "inference",
       "role": "judgment",
       "status": "阶段性判断",
@@ -98,7 +107,7 @@
     {
       "id": "c-retention",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "fact",
       "role": "metric",
       "status": "案例给定",
@@ -120,7 +129,7 @@
     {
       "id": "c-assets",
       "companyId": "loopdesk",
-      "section": "assets",
+      "section": "starting-assets",
       "kind": "fact",
       "role": "asset",
       "status": "案例给定",
@@ -157,7 +166,7 @@
     {
       "id": "c-profile",
       "companyId": "servicebench",
-      "section": "assets",
+      "section": "benchmark-comparison",
       "kind": "fact",
       "role": "profile",
       "status": "教学设定",
@@ -213,7 +222,7 @@
     {
       "id": "c-alternative",
       "companyId": "flowhub",
-      "section": "assets",
+      "section": "benchmark-comparison",
       "kind": "fact",
       "role": "profile",
       "status": "教学设定",
@@ -261,7 +270,7 @@
     {
       "id": "c-matrix",
       "companyId": null,
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "comparison",
       "status": "起点对照",
@@ -290,7 +299,7 @@
     {
       "id": "s-one",
       "companyId": "servicebench",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "fact",
       "role": "step",
       "status": "教学设定",
@@ -319,7 +328,7 @@
     {
       "id": "s-two",
       "companyId": "servicebench",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "fact",
       "role": "step",
       "status": "教学设定",
@@ -348,7 +357,7 @@
     {
       "id": "s-three",
       "companyId": "servicebench",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "step",
       "status": "后续验证",
@@ -377,7 +386,7 @@
     {
       "id": "c-tradeoff",
       "companyId": "servicebench",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "tradeoff",
       "status": "证据边界",
@@ -406,7 +415,7 @@
     {
       "id": "c-loop",
       "companyId": "servicebench",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "loop",
       "status": "待验证",
@@ -450,7 +459,7 @@
     {
       "id": "c-transfer",
       "companyId": null,
-      "section": "choices",
+      "section": "benchmark-comparison",
       "kind": "recommendation",
       "role": "transfer",
       "status": "带条件采用",
@@ -487,7 +496,7 @@
     {
       "id": "c-route",
       "companyId": "loopdesk",
-      "section": "choices",
+      "section": "route-options",
       "kind": "recommendation",
       "role": "route",
       "status": "待确认范围",
@@ -510,7 +519,7 @@
     {
       "id": "c-gates",
       "companyId": "loopdesk",
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "gate",
       "status": "部分待确认",
@@ -546,7 +555,7 @@
     {
       "id": "c-meeting",
       "companyId": null,
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "meeting",
       "status": "待确认",
@@ -571,7 +580,7 @@
     {
       "id": "a-one",
       "companyId": "loopdesk",
-      "section": "validation",
+      "section": "validation-plan",
       "kind": "recommendation",
       "role": "action",
       "status": "建议周期",
@@ -638,7 +647,7 @@
     {
       "id": "d-contract",
       "companyId": "loopdesk",
-      "section": "validation",
+      "section": "validation-plan",
       "kind": "recommendation",
       "role": "contract",
       "status": "角色与记录位置待确认",
@@ -678,7 +687,7 @@
     {
       "id": "q-one",
       "companyId": "loopdesk",
-      "section": "questions",
+      "section": "research-questions",
       "kind": "fact",
       "role": "question",
       "status": "虚构回答已记录",
@@ -720,7 +729,7 @@
     {
       "id": "c-commitment",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "fact",
       "role": "metric",
       "status": "教学构造",
@@ -741,7 +750,7 @@
     {
       "id": "c-capacity",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "fact",
       "role": "metric",
       "status": "教学构造",
@@ -762,7 +771,7 @@
     {
       "id": "p-delivery",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "proof",
       "status": "有信号",
@@ -785,7 +794,7 @@
     {
       "id": "p-payment",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "proof",
       "status": "已证明",
@@ -808,7 +817,7 @@
     {
       "id": "p-outcome",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "proof",
       "status": "未证明",
@@ -831,7 +840,7 @@
     {
       "id": "p-usage",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "proof",
       "status": "有信号",
@@ -854,7 +863,7 @@
     {
       "id": "p-repayment",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "proof",
       "status": "未证明",
@@ -877,7 +886,7 @@
     {
       "id": "p-supply",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "proof",
       "status": "未证明",
@@ -900,7 +909,7 @@
     {
       "id": "c-route-standard",
       "companyId": "loopdesk",
-      "section": "choices",
+      "section": "route-options",
       "kind": "recommendation",
       "role": "route",
       "status": "教学构造",
@@ -920,7 +929,7 @@
     {
       "id": "c-route-market",
       "companyId": "loopdesk",
-      "section": "choices",
+      "section": "route-options",
       "kind": "recommendation",
       "role": "route",
       "status": "教学构造",
@@ -940,7 +949,7 @@
     {
       "id": "adopt-scope",
       "companyId": "loopdesk",
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "advice",
       "status": "教学构造",
@@ -957,7 +966,7 @@
     {
       "id": "adopt-template",
       "companyId": "loopdesk",
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "advice",
       "status": "教学构造",
@@ -974,7 +983,7 @@
     {
       "id": "adopt-delete",
       "companyId": "loopdesk",
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "advice",
       "status": "教学构造",
@@ -991,7 +1000,7 @@
     {
       "id": "meeting-trust",
       "companyId": null,
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "meeting",
       "status": "教学构造",
@@ -1015,7 +1024,7 @@
     {
       "id": "meeting-boundary",
       "companyId": null,
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "meeting",
       "status": "教学构造",
@@ -1039,7 +1048,7 @@
     {
       "id": "meeting-delete",
       "companyId": null,
-      "section": "choices",
+      "section": "advice-review",
       "kind": "recommendation",
       "role": "meeting",
       "status": "教学构造",
@@ -1063,7 +1072,7 @@
     {
       "id": "c-case-verdict",
       "companyId": "servicebench",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "judgment",
       "status": "教学构造",
@@ -1082,7 +1091,7 @@
     {
       "id": "c-team",
       "companyId": "loopdesk",
-      "section": "assets",
+      "section": "team-ownership",
       "kind": "fact",
       "role": "team",
       "status": "教学构造",
@@ -1130,7 +1139,7 @@
     {
       "id": "f-verdict",
       "companyId": "flowhub",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "judgment",
       "status": "教学构造",
@@ -1145,7 +1154,7 @@
     {
       "id": "f-one",
       "companyId": "flowhub",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "fact",
       "role": "step",
       "status": "教学构造",
@@ -1172,7 +1181,7 @@
     {
       "id": "f-two",
       "companyId": "flowhub",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "fact",
       "role": "step",
       "status": "教学构造",
@@ -1199,7 +1208,7 @@
     {
       "id": "f-loop",
       "companyId": "flowhub",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "loop",
       "status": "教学构造",
@@ -1234,7 +1243,7 @@
     {
       "id": "f-transfer",
       "companyId": "flowhub",
-      "section": "choices",
+      "section": "benchmark-comparison",
       "kind": "recommendation",
       "role": "transfer",
       "status": "教学构造",
@@ -1267,7 +1276,7 @@
     {
       "id": "s-decision",
       "companyId": "servicebench",
-      "section": "paths",
+      "section": "benchmark-comparison",
       "kind": "inference",
       "role": "decision",
       "status": "教学构造",
@@ -1293,7 +1302,7 @@
     {
       "id": "audit-boundary",
       "companyId": "loopdesk",
-      "section": "questions",
+      "section": "research-questions",
       "kind": "fact",
       "role": "contract",
       "status": "教学构造",
@@ -1326,7 +1335,7 @@
     {
       "id": "audit-series",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "fact",
       "role": "series",
       "status": "教学构造",
@@ -1355,7 +1364,8 @@
             "basis": "同批中间观察值未设定，不记为零。",
             "evidenceIds": [
               "e-case"
-            ]
+            ],
+            "missingReason": "没有留下可核对的第 30 天记录"
           },
           {
             "period": "第 90 天",
@@ -1371,7 +1381,7 @@
     {
       "id": "audit-funnel",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "funnel",
       "status": "教学构造",
@@ -1470,7 +1480,7 @@
     {
       "id": "audit-change",
       "companyId": "loopdesk",
-      "section": "questions",
+      "section": "evidence-changes",
       "kind": "inference",
       "role": "change",
       "status": "教学构造",
@@ -1496,7 +1506,7 @@
     {
       "id": "p-advertising",
       "companyId": "loopdesk",
-      "section": "verdict",
+      "section": "data-audit",
       "kind": "inference",
       "role": "proof",
       "status": "教学构造",
@@ -1515,6 +1525,64 @@
         "gap": "不纳入当前成立条件，不记为商业验证失败。",
         "next": "如果研究范围包含广告业务，再定义对应命题。"
       }
+    },
+    {
+      "id": "c-products",
+      "companyId": "loopdesk",
+      "section": "product-inventory",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "产品与交付边界",
+      "text": "当前是一项固定范围的 CRM 清理服务，尚未验证自助工具或开放市场。",
+      "limitation": "虚构教学数据，不能作为市场证据。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "使用者与付款人",
+          "value": "CRM 运营团队使用，由业务负责人付费。"
+        },
+        {
+          "label": "交付与结果",
+          "value": "工程师人工清理与核对，客户验收；90 天留存不是业务结果证明。"
+        },
+        {
+          "label": "成熟度",
+          "value": "付费交付有信号；自助流程、第二交付者和标准化效果待验证。"
+        }
+      ]
+    },
+    {
+      "id": "c-channels",
+      "companyId": "loopdesk",
+      "section": "channel-inventory",
+      "kind": "inference",
+      "role": "asset",
+      "status": "教学构造",
+      "title": "渠道盘点：客户关系可调用，伙伴渠道待核对",
+      "text": "旧客户关系支持小范围触达；不能从一次意向外推稳定获客。",
+      "limitation": "虚构教学数据，不能作为市场证据。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "自有入口",
+          "value": "3 个旧客户中 1 个表达试验意向；不是新增付款。"
+        },
+        {
+          "label": "伙伴入口",
+          "value": "伙伴市场仅为备选，没有确认流量、分成或获客成本。"
+        },
+        {
+          "label": "优先核验",
+          "value": "记录独立线索来源、触达数、付费与退款；不同批次不拼接。"
+        }
+      ]
     }
   ],
   "evidence": [
@@ -1541,54 +1609,162 @@
   ],
   "sections": [
     {
-      "id": "verdict",
-      "thesis": "付款和短期留存有信号，可复制交付仍缺证据。",
-      "conclusion": "优先补齐验收与第二实施者记录；不能把 90 天观察外推为稳定经营。",
+      "id": "executive-conclusion",
+      "title": "执行结论",
+      "part": "verdict",
+      "overviewIds": [],
+      "thesis": "付款和短期留存有信号，复制交付仍缺证据。",
+      "conclusion": "当前只支持有限付费试验；首屏判断的口径和证据在数据核验专题展开。",
       "evidenceIds": [
         "e-case",
         "e-answer"
       ]
     },
     {
-      "id": "assets",
-      "thesis": "比较真正能投入的资源，再判断可启动的范围。",
-      "conclusion": "客户关系和有限工程时间支持小范围试验，伙伴市场所需的分发资产尚不具备。",
+      "id": "product-inventory",
+      "title": "产品盘点",
+      "part": "assets",
+      "overviewIds": [
+        "c-products"
+      ],
+      "thesis": "先看实际交付，再看设想功能。",
+      "conclusion": "现有资源适合单一范围服务；产品化需要独立验证。",
       "evidenceIds": [
         "e-case",
         "e-answer"
       ]
     },
     {
-      "id": "paths",
-      "thesis": "学起步资产怎样转为交易，不照抄成熟形态。",
-      "conclusion": "ServiceBench 的同系统服务路径更接近当前资源；共同配置仍需重新验证。",
+      "id": "channel-inventory",
+      "title": "渠道盘点",
+      "part": "assets",
+      "overviewIds": [
+        "c-channels"
+      ],
+      "thesis": "渠道可调用程度决定本轮获客范围。",
+      "conclusion": "先向可触达客户验证，不把伙伴设想计作已有分发。",
       "evidenceIds": [
         "e-case",
         "e-answer"
       ]
     },
     {
-      "id": "choices",
-      "thesis": "迁移顺序、路线选择和建议采纳分别判断。",
-      "conclusion": "当前只推进有边界的付费试验；标准化与伙伴市场各自等待进入条件。",
+      "id": "starting-assets",
+      "title": "起步资产图谱",
+      "part": "assets",
+      "overviewIds": [
+        "c-assets"
+      ],
+      "thesis": "资源必须连到承诺与限制。",
+      "conclusion": "旧客户关系与有限工程时间可用，市场分发与规模供给缺证据。",
       "evidenceIds": [
         "e-case",
         "e-answer"
       ]
     },
     {
-      "id": "validation",
-      "thesis": "把每个未知变成有负责人、窗口和停止条件的记录。",
-      "conclusion": "先确认资源与验收，再观察总工时和实际结果；90 天是示例计划，不是经营承诺。",
+      "id": "team-ownership",
+      "title": "团队与分工",
+      "part": "assets",
+      "overviewIds": [
+        "c-team"
+      ],
+      "thesis": "逐人核对背景、实际职责与承诺。",
+      "conclusion": "责任人和投入没有确认前，不把计划工时计作现成产能。",
       "evidenceIds": [
         "e-case",
         "e-answer"
       ]
     },
     {
-      "id": "questions",
-      "thesis": "回答必须改变判断和行动，不能只追加记录。",
-      "conclusion": "Q1 已降低多客户复制的信心，并同步收窄路线；下一问聚焦客户验收与可投入时间。",
+      "id": "data-audit",
+      "title": "经营数据核验",
+      "part": "assets",
+      "overviewIds": [],
+      "thesis": "8 个付款客户中 6 个观察到第 90 天仍付费；第 30 天没有可核对记录。",
+      "conclusion": "这只支持短期付款留存，不能代替使用、成果、再次购买或独立交付证明。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "route-options",
+      "title": "路线选择",
+      "part": "choices",
+      "overviewIds": [
+        "c-route"
+      ],
+      "thesis": "先选当前可承担的路径，再列升级条件。",
+      "conclusion": "有限试验优先；标准化和伙伴市场分别等待复用与分发证据。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "advice-review",
+      "title": "建议复盘",
+      "part": "choices",
+      "overviewIds": [],
+      "thesis": "收窄交付范围可以采纳，标准化有条件，开放市场暂删。",
+      "conclusion": "建议、承诺边界和会议确认在专题中逐项核对。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "validation-plan",
+      "title": "90 天验证计划",
+      "part": "validation",
+      "overviewIds": [
+        "a-one"
+      ],
+      "thesis": "先确认范围，再观察交付和再售。",
+      "conclusion": "下一轮先补验收、总工时与第二实施者记录；停止条件必须先约定。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "research-questions",
+      "title": "待确认问题",
+      "part": "validation",
+      "overviewIds": [
+        "q-one"
+      ],
+      "thesis": "只问会改变路线的缺口。",
+      "conclusion": "已回答的投入约束已反映在当前路线；下一问聚焦验收记录。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "benchmark-comparison",
+      "title": "横向对照",
+      "part": "paths",
+      "overviewIds": [
+        "c-matrix"
+      ],
+      "thesis": "在了解目标业务后再看借鉴对象。",
+      "conclusion": "ServiceBench 的有限服务路径较接近；FlowHub 的伙伴分发条件尚不具备。",
+      "evidenceIds": [
+        "e-case",
+        "e-answer"
+      ]
+    },
+    {
+      "id": "evidence-changes",
+      "title": "证据与判断变更",
+      "part": "questions",
+      "overviewIds": [
+        "audit-change"
+      ],
+      "thesis": "新回答必须落实到路线和行动。",
+      "conclusion": "保留原判断、新证据性质和变更原因；来源库在下方可追溯。",
       "evidenceIds": [
         "e-case",
         "e-answer"
@@ -1640,6 +1816,12 @@
             "f-transfer"
           ]
         }
+      ],
+      "parentSectionId": "benchmark-comparison",
+      "argument": [
+        "同字段比较",
+        "逐家公司路径",
+        "迁移条件"
       ]
     },
     {
@@ -1660,17 +1842,31 @@
         },
         {
           "id": "advice-gates",
-          "title": "02 门槛与确认",
+          "title": "02 进入门槛",
           "thesis": "采纳建议之前核对承诺边界。",
           "conclusion": "四道门槛和确认责任不能靠愿望替代。",
           "recordIds": [
-            "c-gates",
+            "c-gates"
+          ]
+        },
+        {
+          "id": "advice-confirmations",
+          "title": "03 会议确认",
+          "thesis": "明确谁确认、何时复盘。",
+          "conclusion": "预算与时间承诺需要逐项确认。",
+          "recordIds": [
             "c-meeting",
             "meeting-trust",
             "meeting-boundary",
             "meeting-delete"
           ]
         }
+      ],
+      "parentSectionId": "advice-review",
+      "argument": [
+        "采纳分类",
+        "进入门槛",
+        "责任确认"
       ]
     },
     {
@@ -1710,6 +1906,12 @@
             "meeting-boundary"
           ]
         }
+      ],
+      "parentSectionId": "route-options",
+      "argument": [
+        "当前备选",
+        "机会成本",
+        "决定与验证"
       ]
     },
     {
@@ -1723,7 +1925,8 @@
           "thesis": "先核对对象和数据身份。",
           "conclusion": "意向批次不能拼入历史付款漏斗。",
           "recordIds": [
-            "audit-boundary"
+            "audit-boundary",
+            "c-overview"
           ]
         },
         {
@@ -1732,6 +1935,9 @@
           "thesis": "每个观察值保留窗口与分母。",
           "conclusion": "付费留存不证明使用、成果和供给复制。",
           "recordIds": [
+            "c-retention",
+            "c-commitment",
+            "c-capacity",
             "audit-series",
             "audit-funnel"
           ]
@@ -1742,9 +1948,11 @@
           "thesis": "新数据可以改变路线。",
           "conclusion": "降低多客户复制预期，但不抹掉已有付款。",
           "recordIds": [
+            "p-delivery",
             "p-payment",
-            "p-usage",
             "p-outcome",
+            "p-usage",
+            "p-repayment",
             "p-supply",
             "p-advertising",
             "audit-change"
@@ -1759,6 +1967,13 @@
             "d-contract"
           ]
         }
+      ],
+      "parentSectionId": "data-audit",
+      "argument": [
+        "数据身份",
+        "同批观察",
+        "证明边界",
+        "下一轮记录"
       ]
     }
   ]

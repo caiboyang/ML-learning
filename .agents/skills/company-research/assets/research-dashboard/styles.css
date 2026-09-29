@@ -14,12 +14,15 @@ input { cursor:text; min-width:0; }
 aside { position:fixed; top:60px; bottom:0; width:var(--sidebar); padding:24px 18px; background:var(--nav); color:#d1dce9; overflow:auto; }
 aside p { font-size:14px; padding:10px; }
 summary { font-weight:700; }
-nav { display:grid; gap:8px; margin-top:18px; }
-nav a { padding:10px 12px; color:#d1dce9; text-decoration:none; border-left:3px solid transparent; font-size:15px; }
+nav { display:grid; gap:3px; margin-top:18px; }
+nav a { padding:7px 10px; color:#d1dce9; text-decoration:none; border-left:3px solid transparent; font-size:15px; }
 nav a[aria-current="location"] { color:#7ae1dd; border-color:#7ae1dd; background:#172738; }
-.nav-group > a { display:block; font-weight:650; }
-.nav-records { list-style:none; margin:0 0 8px; padding-left:10px; }
-.nav-records a { display:block; padding:5px 10px; font-size:13px; line-height:1.5; }
+.detail-view aside { display:none; }
+.detail-view main { margin:60px auto 0; max-width:1280px; }
+.topic-group { display:flex; flex-wrap:wrap; gap:8px 16px; flex-basis:100%; }
+.topic-group strong { min-width:10em; }
+.argument-route { border-block:1px solid var(--line); padding:14px 0; color:var(--accent); }
+.detail-links { display:flex; flex-wrap:wrap; gap:12px 24px; margin-top:20px; font-weight:600; }
 main { margin:60px 0 0 var(--sidebar); padding:32px; max-width:1550px; }
 .intro { margin-bottom:28px; }
 .eyebrow { font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--accent); }
@@ -110,6 +113,7 @@ footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); p
   aside { position:relative; top:auto; width:auto; padding:12px 20px; }
   aside p { display:none; } nav { grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:10px; }
   main { margin:0; padding:24px 20px; }
+  .detail-view main { margin-top:0; }
   .toolbar { position:static; }
   section,.record,.evidence,tr { scroll-margin-top:20px; }
 }
@@ -129,7 +133,7 @@ footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); p
   .top { position:static; height:auto; min-height:0; padding:0 0 12px; background:white; color:var(--ink); }
   .top span { color:var(--muted); }
   body { background:white; font-size:11pt; }
-  main { margin:0; padding:0; max-width:none; }
+  main,.detail-view main { margin:0; padding:0; max-width:none; }
   .hero-verdict { background:white; color:var(--ink); border:1px solid var(--line); }
   .hero-verdict a,.hero-verdict .eyebrow { color:var(--accent); }
   .metric-row,.metric-group,.route-group,.advice-board,.meeting-group,.milestones { display:block; }
