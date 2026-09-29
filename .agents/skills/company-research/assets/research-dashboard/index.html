@@ -12,19 +12,19 @@
   <header class="top"><strong>公司研究工作台</strong><span id="date">可复用页面模板</span></header>
   <aside>
     <details open id="directory"><summary>研究目录</summary><nav id="navigation" aria-label="研究章节"></nav></details>
-    <p>证明状态 → 起步资产 → 对标路径 → 当前路线 → 验证与新证据</p>
+    <p id="reading-path">证明状态 → 起步资产 → 对标路径 → 当前路线 → 验证与新证据</p>
   </aside>
   <main id="main" tabindex="-1">
     <header class="intro">
       <p class="eyebrow">RESEARCH → DECISION</p>
       <h1 id="title">公司研究页面起点</h1>
-      <p id="question">正在读取同目录的 research.json。</p>
+      <p id="question">正在读取研究数据。</p>
       <p id="scope"></p>
       <p id="summary-label" class="eyebrow"></p>
       <div id="hero-verdict" class="hero-verdict"></div>
       <p id="hero-boundary" class="limit"></p>
       <div id="hero-metrics" class="metric-row"></div>
-      <div id="case-links" class="related"><a id="overview-link" href="./index.html" hidden>返回研究总览 →</a></div>
+      <div id="case-links" class="related" aria-label="研究专题"><a id="overview-link" href="#" hidden>返回研究总览 →</a></div>
       <p class="notice" id="notice">示例仅用于展示方法，不代表任何真实公司的事实。</p>
     </header>
     <form id="filters" class="toolbar" role="search" aria-label="研究内容筛选">
@@ -36,7 +36,7 @@
     </form>
     <p id="results" role="status" aria-live="polite"></p>
     <p id="empty" hidden>没有匹配记录。请修改搜索词或重置筛选。</p>
-    <noscript><p class="notice">交互模板需要 JavaScript 读取数据。请查看同目录 research.json；正式交付若需无脚本阅读，应同时生成包含正文的静态 HTML。</p></noscript>
+    <noscript><p class="notice">此交互报告需要启用 JavaScript；单文件版不需要网络或本地服务。若需无脚本阅读，可要求提供文字版。</p></noscript>
     <div id="content"></div>
     <section id="sources" tabindex="-1"><h2>证据明细</h2><p>来源明细完整保留，不随内容筛选隐藏。证据性质与支持边界始终可查。</p><div id="evidence-list"></div></section>
     <footer>问答由研究 Agent 处理；此页展示已记录的回答和判断变化，不收集或保存输入。</footer>
