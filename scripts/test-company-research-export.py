@@ -41,10 +41,12 @@ class Page(HTMLParser):
 
 class ExportTests(unittest.TestCase):
     def test_bundle_is_self_contained_and_preserves_data(self):
-        page = Page(BUILD(DATA))
-        self.assertEqual(page.resources, [])
-        self.assertEqual(len(page.scripts), 2)
-        self.assertEqual(json.loads(page.data), json.loads(DATA.read_text()))
+        for source in [DATA, DATA.with_name('external-research.json')]:
+            with self.subTest(source=source.name):
+                page = Page(BUILD(source))
+                self.assertEqual(page.resources, [])
+                self.assertEqual(len(page.scripts), 2)
+                self.assertEqual(json.loads(page.data), json.loads(source.read_text()))
 
     def test_supplied_text_cannot_escape_data_or_title(self):
         data = json.loads(DATA.read_text())

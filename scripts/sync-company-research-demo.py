@@ -11,14 +11,16 @@ args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 source = root / '.agents/skills/company-research/assets/research-dashboard'
 target = root / 'company-research/demo'
-files = ('index.html', 'styles.css', 'app.js', 'research.json', 'research.schema.json')
+files = ('index.html', 'styles.css', 'app.js', 'research.json', 'external-research.json', 'research.schema.json')
 exporter = runpy.run_path(str(root / '.agents/skills/company-research/scripts/export-report.py'))
-standalone = exporter['build_html'](source / 'research.json')
+standalone = {name: exporter['build_html'](source / data) for name, data in
+              [('report.html', 'research.json'), ('external.html', 'external-research.json')]}
 if args.check:
     changed = [name for name in files if not (target / name).is_file()
                or (target / name).read_bytes() != (source / name).read_bytes()]
-    if not (target / 'report.html').is_file() or (target / 'report.html').read_text(encoding='utf-8') != standalone:
-        changed.append('report.html')
+    for name, html in standalone.items():
+        if not (target / name).is_file() or (target / name).read_text(encoding='utf-8') != html:
+            changed.append(name)
     if changed:
         parser.exit(1, 'Demo needs regeneration: ' + ', '.join(changed) + '\n')
     print('Demo matches source assets and the single-file export.')
@@ -26,5 +28,6 @@ else:
     target.mkdir(parents=True, exist_ok=True)
     for name in files:
         shutil.copyfile(source / name, target / name)
-    (target / 'report.html').write_text(standalone, encoding='utf-8')
+    for name, html in standalone.items():
+        (target / name).write_text(html, encoding='utf-8')
     print('Generated company-research/demo from skill assets.')
