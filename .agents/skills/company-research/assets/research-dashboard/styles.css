@@ -17,6 +17,9 @@ summary { font-weight:700; }
 nav { display:grid; gap:8px; margin-top:18px; }
 nav a { padding:10px 12px; color:#d1dce9; text-decoration:none; border-left:3px solid transparent; font-size:15px; }
 nav a[aria-current="location"] { color:#7ae1dd; border-color:#7ae1dd; background:#172738; }
+.nav-group > a { display:block; font-weight:650; }
+.nav-records { list-style:none; margin:0 0 8px; padding-left:10px; }
+.nav-records a { display:block; padding:5px 10px; font-size:13px; line-height:1.5; }
 main { margin:60px 0 0 var(--sidebar); padding:32px; max-width:1550px; }
 .intro { margin-bottom:28px; }
 .eyebrow { font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--accent); }
@@ -57,6 +60,9 @@ section { margin:44px 0; scroll-margin-top:var(--anchor-offset,230px); }
 .record.judgment { border-left:4px solid var(--accent); padding:8px 0 8px 20px; }
 .metric-group .record,.route-group .record,.meeting-group .record { margin:0; }
 .record.gate,.record.contract,.record.transfer,.record.tradeoff { padding:18px 0; border-block:1px solid var(--line); }
+.record.decision,.record.change { border-left:4px solid var(--accent); padding:16px 20px; background:white; }
+.data-bar { display:block; height:7px; background:var(--accent); margin-top:6px; }
+.chart-note { color:var(--muted); font-size:13px; }
 .meta { font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
 .badge { padding:1px 7px; background:#eef3fa; border:1px solid #d4deeb; }
 .badge.inference { color:#65358a; background:#f5effa; }

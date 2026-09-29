@@ -10,7 +10,8 @@
       "c-retention",
       "c-commitment",
       "c-capacity"
-    ]
+    ],
+    "taskType": "own-business"
   },
   "companies": [
     {
@@ -197,6 +198,15 @@
         {
           "label": "扩张依据",
           "value": "模板与第二位实施者的交付记录；后者仍需验证。"
+        },
+        {
+          "label": "结果",
+          "value": "已运行限定范围的人工服务；第二人独立交付仍未验证。"
+        },
+        {
+          "label": "启示",
+          "value": "先借老客户信任，再验证重复配置与跨人交付。",
+          "kind": "inference"
         }
       ]
     },
@@ -214,7 +224,11 @@
         "e-case"
       ],
       "relatedIds": [
-        "c-transfer"
+        "f-one",
+        "f-two",
+        "f-loop",
+        "f-transfer",
+        "f-verdict"
       ],
       "fields": [
         {
@@ -232,6 +246,15 @@
         {
           "label": "第一种收入",
           "value": "案例未设定金额与具体收费结构，保留未知。"
+        },
+        {
+          "label": "结果",
+          "value": "伙伴参与早期交付并开放插件入口；活跃、收入与续用均未设定。"
+        },
+        {
+          "label": "启示",
+          "value": "渠道资产必须先存在；开放市场不自动带来分发。",
+          "kind": "inference"
         }
       ]
     },
@@ -256,6 +279,12 @@
       "comparisonIds": [
         "c-profile",
         "c-alternative"
+      ],
+      "columns": [
+        "起点资产",
+        "第一批用户",
+        "结果",
+        "启示"
       ]
     },
     {
@@ -1049,6 +1078,443 @@
         "c-loop",
         "c-transfer"
       ]
+    },
+    {
+      "id": "c-team",
+      "companyId": "loopdesk",
+      "section": "assets",
+      "kind": "fact",
+      "role": "team",
+      "status": "教学构造",
+      "title": "团队与分工：承诺和待确认责任分开",
+      "text": "按成员核对职责；同一人可承担多个角色，拟议任务不写成已任命。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "people": [
+        {
+          "name": "创始人（姓名未设定）",
+          "role": "客户关系",
+          "background": "可联系三家老客户；其他履历未知。",
+          "responsibility": "案例给定：维护客户联系。拟负责销售记录，尚待确认。",
+          "commitment": "只有一家表达试点意向；无额外工程时间。",
+          "evidenceIds": [
+            "e-case",
+            "e-answer"
+          ]
+        },
+        {
+          "name": "实施工程师甲",
+          "role": "实施",
+          "background": "已有实施经验；具体年限未知。",
+          "responsibility": "案例给定：参与配置交付；验收记录负责人待确认。",
+          "commitment": "未来六周每周十小时，共六十小时。",
+          "evidenceIds": [
+            "e-case"
+          ]
+        },
+        {
+          "name": "实施工程师乙",
+          "role": "实施",
+          "background": "工程背景；独立交付能力尚未证明。",
+          "responsibility": "拟承担第二实施者试验，未确认任命与结果。",
+          "commitment": "未来六周每周十小时，共六十小时；不是额外容量。",
+          "evidenceIds": [
+            "e-case"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-verdict",
+      "companyId": "flowhub",
+      "section": "paths",
+      "kind": "inference",
+      "role": "judgment",
+      "status": "教学构造",
+      "title": "FlowHub：伙伴先带来客户，市场只是后续入口",
+      "text": "渠道资产先于市场功能出现；案例没有证明开放市场带来了新增收入或持续活跃。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": []
+    },
+    {
+      "id": "f-one",
+      "companyId": "flowhub",
+      "section": "paths",
+      "kind": "fact",
+      "role": "step",
+      "status": "教学构造",
+      "title": "01 由已有伙伴引入客户",
+      "text": "早期先用伙伴能够交付的集成工具服务伙伴原有客户。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "stage": "渠道与切入点",
+      "fields": [
+        {
+          "label": "结果",
+          "value": "案例设定有客户进入；没有给出人数、转化率或金额。"
+        },
+        {
+          "label": "机制判断",
+          "value": "伙伴已有关系可能降低触达与信任成本，需要归因证据。",
+          "kind": "inference"
+        }
+      ]
+    },
+    {
+      "id": "f-two",
+      "companyId": "flowhub",
+      "section": "paths",
+      "kind": "fact",
+      "role": "step",
+      "status": "教学构造",
+      "title": "02 在伙伴服务之后开放插件入口",
+      "text": "随后开放插件市场；不能把发布功能直接当成交易流动性。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "stage": "供给扩展",
+      "fields": [
+        {
+          "label": "结果",
+          "value": "有市场入口；活跃供给、交易和留存仍未知。"
+        },
+        {
+          "label": "机制判断",
+          "value": "更多插件只有改善客户结果、带回伙伴投入，才形成反馈。",
+          "kind": "inference"
+        }
+      ]
+    },
+    {
+      "id": "f-loop",
+      "companyId": "flowhub",
+      "section": "paths",
+      "kind": "inference",
+      "role": "loop",
+      "status": "教学构造",
+      "title": "伙伴回路：已知入口与未知反馈",
+      "text": "伙伴带客户是设定中的起点；回流是否成立需要新记录。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "edges": [
+        {
+          "from": "伙伴关系",
+          "to": "客户交付",
+          "mechanism": "伙伴引入原有客户并承担集成服务。",
+          "status": "教学设定",
+          "evidenceIds": [
+            "e-case"
+          ]
+        },
+        {
+          "from": "客户结果",
+          "to": "伙伴再次投入",
+          "mechanism": "若客户结果和伙伴收益成立，伙伴可能再次投入；目前结果与收益均未知。",
+          "status": "假设，尚无闭环证据",
+          "evidenceIds": [
+            "e-case"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f-transfer",
+      "companyId": "flowhub",
+      "section": "choices",
+      "kind": "recommendation",
+      "role": "transfer",
+      "status": "教学构造",
+      "title": "FlowHub 的借鉴边界",
+      "text": "先检验伙伴是否真实可调用，再考虑复制市场入口。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "现在可学",
+          "value": "核对渠道归属、客户去重与伙伴的实际投入。"
+        },
+        {
+          "label": "以后再学",
+          "value": "出现稳定客户结果与伙伴再次投入后，测试受控的供给扩展。"
+        },
+        {
+          "label": "不可照搬",
+          "value": "目标业务没有伙伴网络，不能直接复制开放市场。"
+        },
+        {
+          "label": "风险",
+          "value": "伙伴只介绍一次、线索归属冲突、交付责任不清，都可能让反馈中断。"
+        }
+      ]
+    },
+    {
+      "id": "s-decision",
+      "companyId": "servicebench",
+      "section": "paths",
+      "kind": "inference",
+      "role": "decision",
+      "status": "教学构造",
+      "title": "关键决策复盘：限定同系统服务",
+      "text": "复盘一项真实存在于案例设定的取舍；备选路径由研究者提出，不能冒充公司的内部讨论。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "decision": {
+        "period": "早期交付阶段；具体日期未设定",
+        "context": "只有有限实施经验，需要完成首批交付。",
+        "knownThen": "已有三家客户意向；尚无跨系统和第二实施者结果。",
+        "options": "实际采取：同系统服务。研究者备选：接受跨系统定制；未证明公司曾正式讨论此项。",
+        "chosen": "限定同一系统与任务，放弃其他定制需求。",
+        "outcome": "随后运行人工配置并发现重复步骤；第二人交付结果未知。",
+        "tradeoff": "可能错过其他定制收入，金额与被拒订单未知。",
+        "assessment": "限制范围可能减少适配差异，但不能从前后顺序证明成本因此下降。",
+        "falsifier": "如果相同范围工时仍高，或客户结果无法重复，应下调标准化判断。"
+      }
+    },
+    {
+      "id": "audit-boundary",
+      "companyId": "loopdesk",
+      "section": "questions",
+      "kind": "fact",
+      "role": "contract",
+      "status": "教学构造",
+      "title": "数据边界：来源身份与批次不可混用",
+      "text": "以下数量均为教学设定。真实研究必须逐项标自报、独立核验、原始记录或估计。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "fields": [
+        {
+          "label": "原始批次",
+          "value": "第十章的 100 家线索、40 家评估、8 家付费与 90 天时仍付费的 6 家。"
+        },
+        {
+          "label": "新回答",
+          "value": "三家老客户中的一家试点意向是另一批对象，不能拼入原批次漏斗。"
+        },
+        {
+          "label": "留存口径",
+          "value": "这里观察仍付费的客户数，不能解释为有效使用或成果达标。"
+        },
+        {
+          "label": "对账范围",
+          "value": "未给订单、退款、日志与核验人；不宣称独立审计。"
+        }
+      ]
+    },
+    {
+      "id": "audit-series",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "fact",
+      "role": "series",
+      "status": "教学构造",
+      "title": "同批付费留存随观察期变化",
+      "text": "保留中间窗口缺失，避免用首尾指标暗示平滑趋势。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "series": {
+        "unit": "家",
+        "definition": "原始八家付费客户在各观察点仍付费的数量；不是新增客户或使用活跃",
+        "points": [
+          {
+            "period": "起点",
+            "value": 8,
+            "basis": "原始八家付费客户；分母八家。",
+            "evidenceIds": [
+              "e-case"
+            ]
+          },
+          {
+            "period": "第 30 天",
+            "value": null,
+            "basis": "同批中间观察值未设定，不记为零。",
+            "evidenceIds": [
+              "e-case"
+            ]
+          },
+          {
+            "period": "第 90 天",
+            "value": 6,
+            "basis": "八家都已观察满九十天；六家仍付费。",
+            "evidenceIds": [
+              "e-case"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "audit-funnel",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "funnel",
+      "status": "教学构造",
+      "title": "同批漏斗与不同后续行为",
+      "text": "付费之后分为留存、再次使用、转为供给方；后两项尚无数量。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "funnel": {
+        "cohort": "同一批一百家获客线索，跟踪至首批付费后九十天。",
+        "overlap": "三个付费后分支可能重叠，交集未知，不相加，也不把它们串成连续转化。",
+        "nodes": [
+          {
+            "id": "leads",
+            "parentId": null,
+            "label": "线索",
+            "count": 100,
+            "denominator": 100,
+            "basis": "同一获客批次；独立公司去重。",
+            "proved": "有触达记录",
+            "unproved": "付款意愿",
+            "evidenceIds": [
+              "e-case"
+            ]
+          },
+          {
+            "id": "evaluated",
+            "parentId": "leads",
+            "label": "完成评估",
+            "count": 40,
+            "denominator": 100,
+            "basis": "原一百家线索中完成评估的公司。",
+            "proved": "进入评估",
+            "unproved": "实际购买",
+            "evidenceIds": [
+              "e-case"
+            ]
+          },
+          {
+            "id": "paid",
+            "parentId": "evaluated",
+            "label": "付费",
+            "count": 8,
+            "denominator": 40,
+            "basis": "原四十家评估公司中付费的八家。",
+            "proved": "该批出现付款",
+            "unproved": "成果与可持续利润",
+            "evidenceIds": [
+              "e-case"
+            ]
+          },
+          {
+            "id": "retained",
+            "parentId": "paid",
+            "label": "九十天仍付费",
+            "count": 6,
+            "denominator": 8,
+            "basis": "原八家付费公司全部到观察期。",
+            "proved": "该窗口付费留存",
+            "unproved": "有效使用与客户结果",
+            "evidenceIds": [
+              "e-case"
+            ]
+          },
+          {
+            "id": "reused",
+            "parentId": "paid",
+            "label": "再次有效使用",
+            "count": null,
+            "denominator": 8,
+            "basis": "原八家客户在九十天窗口内再次完成有效任务；数量未设定。",
+            "proved": "目前无新增证据",
+            "unproved": "使用复用",
+            "evidenceIds": [
+              "e-case"
+            ]
+          },
+          {
+            "id": "suppliers",
+            "parentId": "paid",
+            "label": "转为供给方",
+            "count": null,
+            "denominator": 8,
+            "basis": "原八家客户中承担一次独立交付者；数量未设定。",
+            "proved": "目前无新增证据",
+            "unproved": "供给复制",
+            "evidenceIds": [
+              "e-case"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "audit-change",
+      "companyId": "loopdesk",
+      "section": "questions",
+      "kind": "inference",
+      "role": "change",
+      "status": "教学构造",
+      "title": "Q1 令多客户复制判断下调",
+      "text": "新信息改变的是当前可执行范围，不否定历史批次已经发生的付款。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-answer"
+      ],
+      "relatedIds": [
+        "q-one",
+        "c-route",
+        "a-one"
+      ],
+      "change": {
+        "before": "拟选择多家共同配置客户。",
+        "newEvidence": "虚构 Q1：只有一家愿意试点，系统不同，不能追加工时；不是独立核验记录。",
+        "direction": "下调",
+        "after": "收窄至一家客户、一个系统，先补验收和总工时。",
+        "impact": "已更新主路线、资产表、首屏容量与意向、验证计划；下次问答先确认验收标准。"
+      }
+    },
+    {
+      "id": "p-advertising",
+      "companyId": "loopdesk",
+      "section": "verdict",
+      "kind": "inference",
+      "role": "proof",
+      "status": "教学构造",
+      "title": "广告变现不属于本次服务业务",
+      "text": "证明命题应适合当前收入模式。",
+      "limitation": "全部为虚构教学构造；不支持任何真实公司的事实或因果判断。",
+      "evidenceIds": [
+        "e-case"
+      ],
+      "relatedIds": [],
+      "proof": {
+        "proposition": "广告变现",
+        "state": "不适用",
+        "naReason": "本次范围是企业实施服务，没有广告产品或广告收入假设。",
+        "evidence": "案例设定按交付收费。",
+        "gap": "不纳入当前成立条件，不记为商业验证失败。",
+        "next": "如果研究范围包含广告业务，再定义对应命题。"
+      }
     }
   ],
   "evidence": [
@@ -1126,6 +1592,173 @@
       "evidenceIds": [
         "e-case",
         "e-answer"
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "comparisons",
+      "title": "横向对照",
+      "verdictId": "c-case-verdict",
+      "modules": [
+        {
+          "id": "compare-matrix",
+          "title": "01 起点与结果矩阵",
+          "thesis": "用同一组维度比较。",
+          "conclusion": "ServiceBench 更接近现有客户关系；FlowHub 依赖另一类渠道资产。",
+          "recordIds": [
+            "c-matrix"
+          ]
+        },
+        {
+          "id": "compare-servicebench",
+          "title": "02 ServiceBench：服务先于复制",
+          "thesis": "先给判断，再追踪动作与反馈。",
+          "conclusion": "当前可学有限服务；复制与平台化尚未证明。",
+          "recordIds": [
+            "c-case-verdict",
+            "c-profile",
+            "s-one",
+            "s-two",
+            "s-three",
+            "c-loop",
+            "c-tradeoff",
+            "c-transfer"
+          ]
+        },
+        {
+          "id": "compare-flowhub",
+          "title": "03 FlowHub：伙伴先于市场",
+          "thesis": "伙伴关系先于开放入口。",
+          "conclusion": "可学渠道核对，不能照搬市场功能。",
+          "recordIds": [
+            "f-verdict",
+            "c-alternative",
+            "f-one",
+            "f-two",
+            "f-loop",
+            "f-transfer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advice",
+      "title": "建议复盘",
+      "verdictId": "c-overview",
+      "modules": [
+        {
+          "id": "advice-adoption",
+          "title": "01 逐项采纳",
+          "thesis": "按证据与条件拆既有建议。",
+          "conclusion": "只让当前可承担的动作进入本轮。",
+          "recordIds": [
+            "adopt-scope",
+            "adopt-template",
+            "adopt-delete"
+          ]
+        },
+        {
+          "id": "advice-gates",
+          "title": "02 门槛与确认",
+          "thesis": "采纳建议之前核对承诺边界。",
+          "conclusion": "四道门槛和确认责任不能靠愿望替代。",
+          "recordIds": [
+            "c-gates",
+            "c-meeting",
+            "meeting-trust",
+            "meeting-boundary",
+            "meeting-delete"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "decision",
+      "title": "路线与决策",
+      "verdictId": "c-overview",
+      "modules": [
+        {
+          "id": "decision-routes",
+          "title": "01 当前路线及机会成本",
+          "thesis": "在现有投入内比较实际可行路径。",
+          "conclusion": "当前试验先于标准化与市场。",
+          "recordIds": [
+            "c-route",
+            "c-route-standard",
+            "c-route-market",
+            "c-transfer"
+          ]
+        },
+        {
+          "id": "decision-history",
+          "title": "02 对标的历史取舍",
+          "thesis": "当时信息与事后解释分开。",
+          "conclusion": "历史顺序支持提出机制，不能独立证明因果。",
+          "recordIds": [
+            "s-decision"
+          ]
+        },
+        {
+          "id": "decision-commitment",
+          "title": "03 决定与验证责任",
+          "thesis": "把选择连到门槛和待确认责任。",
+          "conclusion": "先确认范围、负责人和复盘时间。",
+          "recordIds": [
+            "c-gates",
+            "c-meeting",
+            "meeting-boundary"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "title": "数据核验",
+      "verdictId": "c-overview",
+      "modules": [
+        {
+          "id": "audit-scope",
+          "title": "01 身份与口径",
+          "thesis": "先核对对象和数据身份。",
+          "conclusion": "意向批次不能拼入历史付款漏斗。",
+          "recordIds": [
+            "audit-boundary"
+          ]
+        },
+        {
+          "id": "audit-observations",
+          "title": "02 同批变化与分支",
+          "thesis": "每个观察值保留窗口与分母。",
+          "conclusion": "付费留存不证明使用、成果和供给复制。",
+          "recordIds": [
+            "audit-series",
+            "audit-funnel"
+          ]
+        },
+        {
+          "id": "audit-judgments",
+          "title": "03 证明与判断变化",
+          "thesis": "新数据可以改变路线。",
+          "conclusion": "降低多客户复制预期，但不抹掉已有付款。",
+          "recordIds": [
+            "p-payment",
+            "p-usage",
+            "p-outcome",
+            "p-supply",
+            "p-advertising",
+            "audit-change"
+          ]
+        },
+        {
+          "id": "audit-next",
+          "title": "04 下一轮数据合同",
+          "thesis": "先补能改变判断的记录。",
+          "conclusion": "来源、责任、窗口与字段一起确认。",
+          "recordIds": [
+            "d-contract"
+          ]
+        }
       ]
     }
   ]

@@ -35,6 +35,12 @@
             "$ref": "#/definitions/id"
           },
           "uniqueItems": true
+        },
+        "taskType": {
+          "enum": [
+            "own-business",
+            "external-company"
+          ]
         }
       },
       "required": [
@@ -44,7 +50,8 @@
         "scope",
         "notice",
         "verdictId",
-        "keyMetricIds"
+        "keyMetricIds",
+        "taskType"
       ],
       "additionalProperties": false
     },
@@ -148,6 +155,44 @@
         "$ref": "#/definitions/section"
       },
       "minItems": 6
+    },
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "enum": [
+              "comparisons",
+              "advice",
+              "decision",
+              "audit"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verdictId": {
+            "$ref": "#/definitions/id"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/module"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "verdictId",
+          "modules"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
     }
   },
   "required": [
@@ -155,7 +200,8 @@
     "companies",
     "records",
     "evidence",
-    "sections"
+    "sections",
+    "topics"
   ],
   "additionalProperties": false,
   "definitions": {
@@ -179,6 +225,7 @@
             "verdict",
             "assets",
             "paths",
+            "decisions",
             "choices",
             "validation",
             "questions"
@@ -209,7 +256,12 @@
             "comparison",
             "proof",
             "meeting",
-            "advice"
+            "advice",
+            "team",
+            "decision",
+            "series",
+            "funnel",
+            "change"
           ]
         },
         "status": {
@@ -365,7 +417,8 @@
                 "已证明",
                 "有信号",
                 "未证明",
-                "反证"
+                "反证",
+                "不适用"
               ]
             },
             "evidence": {
@@ -379,6 +432,10 @@
             "next": {
               "type": "string",
               "minLength": 1
+            },
+            "naReason": {
+              "type": "string",
+              "minLength": 1
             }
           },
           "required": [
@@ -388,7 +445,23 @@
             "gap",
             "next"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "不适用"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "naReason"
+                ]
+              }
+            }
+          ]
         },
         "meeting": {
           "type": "object",
@@ -497,6 +570,293 @@
             "additionalProperties": false
           },
           "minItems": 1
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "people": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "background": {
+                "type": "string",
+                "minLength": 1
+              },
+              "responsibility": {
+                "type": "string",
+                "minLength": 1
+              },
+              "commitment": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidenceIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/id"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "name",
+              "role",
+              "background",
+              "responsibility",
+              "commitment",
+              "evidenceIds"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "decision": {
+          "type": "object",
+          "properties": {
+            "period": {
+              "type": "string",
+              "minLength": 1
+            },
+            "context": {
+              "type": "string",
+              "minLength": 1
+            },
+            "knownThen": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "string",
+              "minLength": 1
+            },
+            "chosen": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outcome": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tradeoff": {
+              "type": "string",
+              "minLength": 1
+            },
+            "assessment": {
+              "type": "string",
+              "minLength": 1
+            },
+            "falsifier": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "period",
+            "context",
+            "knownThen",
+            "options",
+            "chosen",
+            "outcome",
+            "tradeoff",
+            "assessment",
+            "falsifier"
+          ],
+          "additionalProperties": false
+        },
+        "series": {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "type": "string",
+              "minLength": 1
+            },
+            "definition": {
+              "type": "string",
+              "minLength": 1
+            },
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "period": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidenceIds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/id"
+                    },
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "period",
+                  "value",
+                  "basis",
+                  "evidenceIds"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "unit",
+            "definition",
+            "points"
+          ],
+          "additionalProperties": false
+        },
+        "funnel": {
+          "type": "object",
+          "properties": {
+            "cohort": {
+              "type": "string",
+              "minLength": 1
+            },
+            "overlap": {
+              "type": "string",
+              "minLength": 1
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/id"
+                  },
+                  "parentId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "count": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "denominator": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "proved": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "unproved": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidenceIds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/id"
+                    },
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "parentId",
+                  "label",
+                  "count",
+                  "denominator",
+                  "basis",
+                  "proved",
+                  "unproved",
+                  "evidenceIds"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "cohort",
+            "overlap",
+            "nodes"
+          ],
+          "additionalProperties": false
+        },
+        "change": {
+          "type": "object",
+          "properties": {
+            "before": {
+              "type": "string",
+              "minLength": 1
+            },
+            "newEvidence": {
+              "type": "string",
+              "minLength": 1
+            },
+            "after": {
+              "type": "string",
+              "minLength": 1
+            },
+            "impact": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "enum": [
+                "上调",
+                "下调",
+                "维持"
+              ]
+            }
+          },
+          "required": [
+            "before",
+            "newEvidence",
+            "after",
+            "impact",
+            "direction"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -583,6 +943,132 @@
               "milestones"
             ]
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "metric"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "metric"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "loop"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "edges"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "comparison"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "comparisonIds"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "profile"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "fields"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "team"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "people"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "decision"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "decision"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "series"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "series"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "funnel"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "funnel"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "change"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "change"
+            ]
+          }
         }
       ]
     },
@@ -594,7 +1080,16 @@
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/definitions/id"
+          "$ref": "#/definitions/id",
+          "enum": [
+            "verdict",
+            "assets",
+            "paths",
+            "decisions",
+            "choices",
+            "validation",
+            "questions"
+          ]
         },
         "thesis": {
           "type": "string",
@@ -610,6 +1105,10 @@
             "$ref": "#/definitions/id"
           },
           "uniqueItems": true
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -629,39 +1128,7 @@
         "modules": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "$ref": "#/definitions/id"
-              },
-              "title": {
-                "type": "string",
-                "minLength": 1
-              },
-              "thesis": {
-                "type": "string",
-                "minLength": 1
-              },
-              "conclusion": {
-                "type": "string",
-                "minLength": 1
-              },
-              "recordIds": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/definitions/id"
-                },
-                "uniqueItems": true
-              }
-            },
-            "required": [
-              "id",
-              "title",
-              "thesis",
-              "conclusion",
-              "recordIds"
-            ],
-            "additionalProperties": false
+            "$ref": "#/definitions/module"
           },
           "minItems": 4
         }
@@ -669,6 +1136,42 @@
       "required": [
         "verdictId",
         "modules"
+      ],
+      "additionalProperties": false
+    },
+    "module": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conclusion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recordIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/id"
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "thesis",
+        "conclusion",
+        "recordIds"
       ],
       "additionalProperties": false
     }

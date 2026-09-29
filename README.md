@@ -81,6 +81,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 * [公司调研方法报告](https://caiboyang.github.io/ML-learning/company-research/Company_Research_Methodology_Report.html)（[Markdown 原文](company-research/Company_Research_Methodology_Report.md)）：核心流程、补充调查工具、贯穿案例与可复用模板，仅保留 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
 
 * [交互示例](https://caiboyang.github.io/ML-learning/company-research/demo/) · [四模块公司专题](https://caiboyang.github.io/ML-learning/company-research/demo/?view=case&company=servicebench)：全部为虚构数据。演示由源模板生成，更新或检查方法见 [演示同步脚本](scripts/sync-company-research-demo.py)。
+* [单文件 HTML 示例](company-research/demo/report.html) · [导出脚本](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/scripts/export-report.py)：完整调研默认交付可离线打开的 HTML；提供横向对照、建议复盘、决策和数据核验专题，不自动部署。
 
 ---
 *More notes will be added here soon...*
