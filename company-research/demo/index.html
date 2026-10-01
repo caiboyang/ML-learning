@@ -3,9 +3,152 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>公司研究工作台 · 模板</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="app.js" defer></script>
+  <title>Clubhouse：从快速获客到持续价值的证据缺口</title>
+  <style>
+:root { color-scheme:light; --nav:#0b1423; --paper:#f2f5f9; --ink:#172435; --muted:#526276; --line:#d8e0ea; --accent:#087e86; --sidebar:272px; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.75 system-ui,-apple-system,"PingFang SC",sans-serif; }
+a { color:#006b77; text-underline-offset:3px; }
+button,input,select { font:inherit; }
+button,input,select,summary { cursor:pointer; }
+input { cursor:text; min-width:0; }
+:focus-visible { outline:3px solid #0b8f98; outline-offset:3px; }
+[hidden] { display:none !important; }
+.skip { position:fixed; top:-100px; left:12px; z-index:10; background:white; padding:12px; }
+.skip:focus { top:8px; }
+.top { position:fixed; inset:0 0 auto; height:60px; z-index:4; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:0 24px; background:var(--nav); color:white; }
+.top span { font-size:13px; color:#bfcddd; }
+aside { position:fixed; top:60px; bottom:0; width:var(--sidebar); padding:24px 18px; background:var(--nav); color:#d1dce9; overflow:auto; }
+aside p { font-size:14px; padding:10px; }
+summary { font-weight:700; }
+nav { display:grid; gap:3px; margin-top:18px; }
+nav a { padding:7px 10px; color:#d1dce9; text-decoration:none; border-left:3px solid transparent; font-size:15px; }
+nav a[aria-current="location"] { color:#7ae1dd; border-color:#7ae1dd; background:#172738; }
+.detail-view aside { display:none; }
+.detail-view main { margin:60px auto 0; max-width:1280px; }
+.topic-group { display:flex; flex-wrap:wrap; gap:8px 16px; flex-basis:100%; }
+.topic-group strong { min-width:10em; }
+.argument-route { border-block:1px solid var(--line); padding:14px 0; color:var(--accent); }
+.detail-links { display:flex; flex-wrap:wrap; gap:12px 24px; margin-top:20px; font-weight:600; }
+main { margin:60px 0 0 var(--sidebar); padding:32px; max-width:1550px; }
+.intro { margin-bottom:28px; }
+.eyebrow { font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--accent); }
+h1 { font-size:clamp(28px,3vw,40px); line-height:1.3; margin:10px 0 18px; }
+h2 { font-size:25px; line-height:1.4; margin:0 0 8px; }
+h3 { font-size:19px; line-height:1.5; margin:10px 0; }
+h4 { font-size:16px; margin:8px 0; }
+p { margin:10px 0; }
+.intro p { max-width:78ch; }
+.hero-verdict { padding:20px 24px; background:var(--nav); color:white; margin:18px 0; }
+.hero-verdict .eyebrow,.hero-verdict a { color:#7ae1dd; }
+.hero-verdict h2 { font-size:24px; }
+.hero-verdict .sources { margin:8px 0 0; }
+.metric-row,.metric-group { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.metric-summary { background:white; border:1px solid var(--line); padding:16px; }
+.metric-summary h2 { font-size:15px; }
+.metric-summary p,.metric-summary a { font-size:13px; }
+.metric-value,.metric-summary .metric-value { font-size:30px; line-height:1.3; font-variant-numeric:tabular-nums; font-weight:750; margin:14px 0 4px; }
+.metric-value span { font-size:14px; font-weight:400; margin-left:8px; }
+.notice { border-left:4px solid #af6b0c; padding:10px 14px; background:#fff5e4; font-size:14px; }
+.toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:14px; border:1px solid var(--line); background:white; position:sticky; top:60px; z-index:3; }
+.toolbar label { display:grid; gap:4px; font-size:13px; }
+.toolbar select,.toolbar input:not([type="checkbox"]),button { min-height:42px; border:1px solid #96a8bb; border-radius:3px; background:white; color:var(--ink); padding:6px 10px; }
+.search-label { flex:1; min-width:150px; }
+.toolbar .source-toggle { display:flex; align-items:center; min-height:42px; }
+.source-toggle input { width:18px; height:18px; }
+button { font-size:14px; }
+#results { color:var(--muted); font-size:14px; }
+section { margin:44px 0; scroll-margin-top:var(--anchor-offset,230px); }
+.section-heading { display:flex; align-items:start; justify-content:space-between; gap:24px; border-top:2px solid var(--ink); padding-top:20px; margin-bottom:20px; }
+.section-heading h2 { flex:1; }
+.section-intro { flex:1; margin:0; color:var(--muted); font-size:15px; }
+.section-conclusion { margin-top:24px; padding:16px 20px; background:#e3f1f0; border-left:4px solid var(--accent); }
+.section-conclusion strong { font-size:13px; color:var(--accent); }
+.section-content > div,.section-content > ol { margin-top:20px; }
+.record { min-width:0; margin:18px 0; scroll-margin-top:var(--anchor-offset,230px); }
+.record.asset,.record.profile,.record.metric,.record.route,.record.advice,.record.meeting,.record.question { background:white; border:1px solid var(--line); padding:20px; }
+.record.judgment { border-left:4px solid var(--accent); padding:8px 0 8px 20px; }
+.metric-group .record,.route-group .record,.meeting-group .record { margin:0; }
+.record.gate,.record.contract,.record.transfer,.record.tradeoff { padding:18px 0; border-block:1px solid var(--line); }
+.record.decision,.record.change { border-left:4px solid var(--accent); padding:16px 20px; background:white; }
+.data-bar { display:block; height:7px; background:var(--accent); margin-top:6px; }
+.chart-note { color:var(--muted); font-size:13px; }
+.meta { font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.badge { padding:1px 7px; background:#eef3fa; border:1px solid #d4deeb; }
+.badge.inference { color:#65358a; background:#f5effa; }
+.badge.recommendation { color:#865015; background:#fff3df; }
+dl { margin:14px 0; }
+.field { display:grid; grid-template-columns:minmax(80px,22%) 1fr; gap:14px; padding:9px 0; border-top:1px solid var(--line); }
+dt { font-size:14px; color:var(--muted); } dd { margin:0; }
+.limit { border-left:3px solid #c8a262; padding-left:10px; color:#62491d; font-size:13px; }
+.sources,.related { display:flex; gap:8px 12px; flex-wrap:wrap; font-size:13px; margin-top:12px; }
+.route-group,.advice-board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.route-priority { color:var(--accent); font-size:13px; font-weight:700; }
+.record.route[data-priority="当前推荐"] { border-top:4px solid var(--accent); }
+.route-condition { border-top:1px solid var(--line); padding-top:12px; font-size:14px; }
+.advice-lane { background:#e7edf4; padding:12px; }
+.advice-lane > h3 { padding:0 8px; font-size:16px; }
+.advice-lane .record { padding:14px; margin:12px 0 0; }
+.meeting-group { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.timeline { padding-left:28px; list-style:none; border-left:2px solid var(--accent); }
+.timeline .step { position:relative; padding:0 0 24px; border-bottom:1px solid var(--line); }
+.timeline .step::before { content:""; position:absolute; left:-35px; top:8px; width:12px; height:12px; border:3px solid var(--accent); background:var(--paper); border-radius:50%; }
+.stage { color:var(--accent); font-weight:700; font-size:13px; }
+.milestones { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:0; list-style:none; }
+.milestones li { background:white; border-top:3px solid var(--accent); padding:18px; }
+.milestones strong { color:var(--accent); }
+.loop { padding-left:24px; }
+.loop li { padding:8px 0; }
+.loop small { display:block; color:var(--muted); }
+.evidence { border-top:1px solid var(--line); padding:20px 0; scroll-margin-top:var(--anchor-offset,230px); }
+:target { outline:3px solid var(--accent); outline-offset:4px; }
+.record p,.field dd,.evidence p,td,th { overflow-wrap:anywhere; }
+.table-scroll { overflow-x:auto; margin:18px 0; }
+table { border-collapse:collapse; width:100%; min-width:760px; font-size:14px; }
+caption { text-align:left; color:var(--muted); padding-bottom:8px; }
+th,td { text-align:left; vertical-align:top; border:1px solid var(--line); padding:14px; }
+th { background:#eef3f8; } tbody th { font-weight:400; width:18%; }
+tr { scroll-margin-top:var(--anchor-offset,230px); }
+.proof-state { font-weight:700; color:var(--accent); }
+.action-return { display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px; padding:24px; background:#e3f1f0; }
+footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); padding:24px 0; }
+@media(max-width:1200px) {
+  .route-group,.advice-board { grid-template-columns:1fr; }
+}
+@media(max-width:1000px) {
+  .top { position:relative; height:auto; min-height:60px; padding:12px 20px; }
+  aside { position:relative; top:auto; width:auto; padding:12px 20px; }
+  aside p { display:none; } nav { grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:10px; }
+  main { margin:0; padding:24px 20px; }
+  .detail-view main { margin-top:0; }
+  .toolbar { position:static; }
+  section,.record,.evidence,tr { scroll-margin-top:20px; }
+}
+@media(max-width:600px) {
+  .top { align-items:start; flex-direction:column; gap:2px; }
+  .metric-row,.metric-group,.meeting-group,.milestones { grid-template-columns:1fr; }
+  .record.asset,.record.profile,.record.metric,.record.route,.record.meeting,.record.question { padding:16px; }
+  .toolbar label { flex:1 1 100%; }
+  .toolbar button { width:100%; }
+  .field { grid-template-columns:1fr; gap:2px; }
+  .section-heading { display:block; } .section-intro { margin-top:12px; }
+  h2 { font-size:23px; }
+  .hero-verdict { padding:18px; }
+}
+@media print {
+  aside,.toolbar,.skip,footer,#case-links { display:none; }
+  .top { position:static; height:auto; min-height:0; padding:0 0 12px; background:white; color:var(--ink); }
+  .top span { color:var(--muted); }
+  body { background:white; font-size:11pt; }
+  main,.detail-view main { margin:0; padding:0; max-width:none; }
+  .hero-verdict { background:white; color:var(--ink); border:1px solid var(--line); }
+  .hero-verdict a,.hero-verdict .eyebrow { color:var(--accent); }
+  .metric-row,.metric-group,.route-group,.advice-board,.meeting-group,.milestones { display:block; }
+  .record,.metric-summary,.milestones li { margin:12px 0; break-inside:avoid; }
+  .table-scroll { overflow:visible; } table { min-width:0; font-size:9pt; } th,td { padding:8px; }
+  h2,h3,h4 { break-after:avoid; } section { margin:20px 0; }
+}
+</style>
 </head>
 <body>
   <a class="skip" href="#main">跳到正文</a>
@@ -42,5 +185,390 @@
     <section id="sources" tabindex="-1"><h2>证据明细</h2><p>来源明细完整保留，不随内容筛选隐藏。证据性质与支持边界始终可查。</p><div id="evidence-list"></div></section>
     <footer>问答由研究 Agent 处理；此页展示已记录的回答和判断变化，不收集或保存输入。</footer>
   </main>
+<script type="application/json" id="research-data">{"meta": {"title": "Clubhouse：从快速获客到持续价值的证据缺口", "question": "它如何启动和扩张，哪些机制已有证据，哪些经验可以迁移？", "asOf": "2026-10-01", "scope": "2020–2023 年发展路径，补核截至 2026-10-01 的公开产品与收费机制；对照 Houseparty、Twitter Spaces、Discord 的特定历史阶段。", "notice": "真实公司案例。官方披露、第三方估算与研究者解释分开；当前已有 Plus 订阅与 Coins 付费机制。本次核对材料未提供可比的同批留存、净收入和单位经济，不能据此判断今天的经营成败。", "verdictId": "c-verdict", "keyMetricIds": ["m-wau", "m-downloads", "m-valuation"], "taskType": "external-company", "subjectCompanyId": "clubhouse", "actionSectionId": "next"}, "companies": [{"id": "clubhouse", "name": "Clubhouse", "period": "2020–2026 · 历史与现状分列"}, {"id": "houseparty", "name": "Houseparty", "period": "2020–2021 · 同类资产对照"}, {"id": "spaces", "name": "Twitter Spaces", "period": "2020–2021 · 巨头复制对照"}, {"id": "discord", "name": "Discord", "period": "2021 · 持续社区对照"}], "sections": [{"id": "exec", "title": "执行结论", "part": "verdict", "overviewIds": ["m-revenue", "aud-verdict"], "thesis": "快速获客、持续使用与经营结果分别判断。", "conclusion": "当前收费机制存在；留存与净收入仍是关键缺口。", "evidenceIds": ["e26", "e27", "e28", "e6", "e8"]}, {"id": "status", "title": "Clubhouse 现状", "part": "verdict", "overviewIds": ["p-activation", "p-cohort", "p-revisit", "p-content", "p-creator", "p-monetize"], "thesis": "六项命题完整列出，状态只由对应证据支持。", "conclusion": "没有把安装回落或产品上线升级成留存结论。", "evidenceIds": ["e10", "e11", "e13", "e15", "e16", "e25", "e26", "e27", "e28", "e6", "e8", "e9"]}, {"id": "products", "title": "产品盘点", "part": "assets", "overviewIds": ["a-products", "a-portfolio"], "thesis": "按历史与当前拆出交付、参与和收费功能。", "conclusion": "已有付费机制，主收入贡献尚不能指定。", "evidenceIds": ["e11", "e13", "e16", "e25", "e26", "e27"]}, {"id": "channels", "title": "渠道盘点", "part": "assets", "overviewIds": ["a-channels"], "thesis": "区分准入、社区运营、外部分发和转化入口。", "conclusion": "没有可归因数据，不指定主渠道或断言渠道耗尽。", "evidenceIds": ["e13", "e17"]}, {"id": "assets-map", "title": "起步资产图谱", "part": "assets", "overviewIds": ["a-assets", "pf-clubhouse"], "thesis": "资产只有连到可控制动作才有迁移意义。", "conclusion": "团队经验与组织动作可研究，外部窗口不能保证复制。", "evidenceIds": ["e11", "e13", "e15", "e24", "e26", "e6"]}, {"id": "team-map", "title": "团队与分工", "part": "assets", "overviewIds": ["team"], "thesis": "逐人列公开背景、职责证据与投入缺口。", "conclusion": "不把履历写成未核实的内部责任。", "evidenceIds": ["e15", "e6"]}, {"id": "origin", "title": "自身 0→1 路径", "part": "assets", "overviewIds": ["s-summary", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"], "thesis": "全部九个步骤在此可读，子页进一步解释资产与取舍。", "conclusion": "可重建动作顺序，不能靠顺序证明因果。", "evidenceIds": ["e10", "e11", "e13", "e15", "e16", "e24", "e26", "e27", "e6", "e8"]}, {"id": "growth", "title": "自身增长回路", "part": "assets", "overviewIds": ["c-loop"], "thesis": "每条反馈边单独标状态。", "conclusion": "入口、供给和复用机制有记录；闭环效果仍需验证。", "evidenceIds": ["e13", "e15", "e25"]}, {"id": "decisions", "title": "关键决策复盘", "part": "decisions", "overviewIds": ["dec-verdict", "dec-2021-scale", "dec-2021-open", "dec-2023-reset"], "thesis": "全部三项关键选择分开当时信息与事后观察。", "conclusion": "研究者备选与真实选择明确区分。", "evidenceIds": ["e13", "e15", "e16", "e24", "e8", "e9"]}, {"id": "decline", "title": "衰退诊断", "part": "decisions", "overviewIds": ["dx-decline"], "thesis": "环境、竞争与自身参与障碍共同检验。", "conclusion": "缺反事实与同批数据，不认定唯一原因。", "evidenceIds": ["e15", "e16", "e21", "e23", "e8"]}, {"id": "transfer", "title": "借鉴顺序", "part": "choices", "overviewIds": ["c-external", "c-transfer"], "thesis": "把研究结论变成有条件的行动顺序。", "conclusion": "是否可迁移取决于用户实际资产和验证结果。", "evidenceIds": ["e13", "e15", "e24"]}, {"id": "next", "title": "下一步调查", "part": "validation", "overviewIds": ["d-gaps", "a-next", "q-purpose", "q-data", "cov-check"], "thesis": "调查优先补留存与付费结果，公开事实由研究者继续核对。", "conclusion": "不能拿 MAU、排名或评分变化代替 cohort 证据。", "evidenceIds": ["e15", "e26", "e27", "e8"]}, {"id": "peers", "title": "横向对照", "part": "paths", "overviewIds": ["cmp-verdict", "c-matrix"], "thesis": "矩阵显示起点差异，子页保留每家动作与判断边界。", "conclusion": "功能采用、用户留存、战略关停是不同证据。", "evidenceIds": ["e18", "e19", "e21", "e23"]}], "topics": [{"id": "audit", "title": "数据核验", "parentSectionId": "status", "verdictId": "aud-verdict", "argument": ["口径", "序列", "证明边界", "判断更新"], "modules": [{"id": "tp-aud-scope", "title": "01 主判断与关键指标的口径", "thesis": "区分历史统计、当前机制与经营结果。", "conclusion": "指标各自保留口径，互不代替。", "recordIds": ["c-verdict", "m-wau", "m-downloads", "m-valuation", "m-revenue"]}, {"id": "tp-aud-series", "title": "02 下载与周活序列", "thesis": "安装序列只衡量获取变化。", "conclusion": "未知留空，范围变化不拼接。", "recordIds": ["ser-downloads", "ser-wau"]}, {"id": "tp-aud-proof", "title": "03 证明边界", "thesis": "重新检查六个不同命题。", "conclusion": "有功能或收费机制，仍可能缺经营结果。", "recordIds": ["p-activation", "p-cohort", "p-revisit", "p-content", "p-creator", "p-monetize"]}, {"id": "tp-aud-change", "title": "04 判断更新", "thesis": "当前官方资料推翻草稿中的旧判断。", "conclusion": "首页、产品和下一调查同时更新。", "recordIds": ["chg-revisit"]}]}, {"id": "origin-detail", "title": "自身路径拆解", "parentSectionId": "origin", "verdictId": "s-summary", "argument": ["互补资产", "首次交付", "取舍", "回路与迁移"], "modules": [{"id": "tp-og-assets", "title": "01 互补起点资产", "thesis": "核对经验、可组织动作与外部时机。", "conclusion": "可控性与实际结果要分别证明。", "recordIds": ["pf-clubhouse", "team", "a-assets"]}, {"id": "tp-og-delivery", "title": "02 首次交付与验证", "thesis": "先读准入与社区运营，再区分供给激励和收入。", "conclusion": "人工动作可借鉴，效果需用批次记录验证。", "recordIds": ["s2", "s3", "s4", "s5", "p-monetize"]}, {"id": "tp-og-tradeoff", "title": "03 取舍与反模式", "thesis": "区分实际取舍、构造备选与未知动机。", "conclusion": "不以事后收缩认定当时扩张必然错误。", "recordIds": ["c-tradeoff", "dec-2021-scale"]}, {"id": "tp-og-loop", "title": "04 回路与迁移", "thesis": "每条边回答上一轮怎样影响下一轮。", "conclusion": "没有结果证据的边保持待验证。", "recordIds": ["c-loop", "c-transfer"]}]}, {"id": "comparisons", "title": "三家对标", "parentSectionId": "peers", "verdictId": "cmp-verdict", "argument": ["同类时机资产", "巨头复制", "持续社区"], "modules": [{"id": "tp-cmp-hp", "title": "01 Houseparty", "thesis": "战略关停不能独立识别留存原因。", "conclusion": "比较窗口增长与长期价值，还要看资源选择。", "recordIds": ["pf-houseparty", "hp-s1", "hp-s2", "hp-transfer"]}, {"id": "tp-cmp-sp", "title": "02 Twitter Spaces", "thesis": "已有分发改变功能试验的起点。", "conclusion": "功能开放并不证明转化或竞争因果。", "recordIds": ["pf-spaces", "sp-s1", "sp-s2", "sp-transfer"]}, {"id": "tp-cmp-dc", "title": "03 Discord", "thesis": "社区内活动和公开发现是两项任务。", "conclusion": "采用披露支持使用，不证明留存优势。", "recordIds": ["pf-discord", "dc-s1", "dc-s2", "dc-transfer"]}]}], "records": [{"id": "c-verdict", "companyId": "clubhouse", "section": "exec", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "快速获客有证据，持续价值与经营结果仍需分别验证", "text": "邀请、小范围社区运营与后来开放注册构成可追溯路径。下载曾明显回落；这不直接等于同批用户流失。当前付费机制已经存在，收入规模和可持续性仍未知。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e8", "e13", "e26", "e27"], "relatedIds": ["p-cohort", "p-monetize", "a-next"]}, {"id": "m-wau", "companyId": "clubhouse", "section": "exec", "kind": "fact", "role": "metric", "status": "公司自报", "title": "历史周访问规模", "text": "公司在 2021 年 1 月披露。", "limitation": "公司没有给出可复算的活跃事件与去重定义；不是当前指标。", "evidenceIds": ["e6"], "relatedIds": [], "metric": {"value": "约 200", "unit": "万人", "basis": "2021-01 公告所述前一周访问；不是留存分母"}}, {"id": "m-downloads", "companyId": "clubhouse", "section": "exec", "kind": "fact", "role": "metric", "status": "第三方估算", "title": "月安装量回落", "text": "同一测量方的相邻月份比较。", "limitation": "安装不等于活跃，也不能定位是哪批用户流失。", "evidenceIds": ["e8"], "relatedIds": [], "metric": {"value": "960 → 270", "unit": "万次", "basis": "2021-02 → 03，全球安装估算；下降约 72%"}}, {"id": "m-valuation", "companyId": "clubhouse", "section": "exec", "kind": "fact", "role": "metric", "status": "媒体报道", "title": "历史融资估值", "text": "仅用于融资背景。", "limitation": "不是当前价值、现金或收入。", "evidenceIds": ["e12"], "relatedIds": [], "metric": {"value": "约 40", "unit": "亿美元", "basis": "2021-04 C 轮报道估值，未经交易文件核实"}}, {"id": "m-revenue", "companyId": "clubhouse", "section": "exec", "kind": "fact", "role": "metric", "status": "本次核对缺口", "title": "当前收入规模", "text": "已核实收费机制，未获得收入明细。", "limitation": "未知不能填零；不能从存在订阅计算经营成果。", "evidenceIds": ["e26", "e27", "e28"], "relatedIds": [], "metric": {"value": "未核实", "unit": "净收入", "basis": "截至 2026-10-01，本次公开材料未提供可复算规模"}}, {"id": "aud-verdict", "companyId": "clubhouse", "section": "exec", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "把获客、使用、留存、付费机制和利润分开", "text": "证据支持的命题强弱不同；同一个大数字不能跨层替代。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e8", "e6", "e26"], "relatedIds": ["ser-downloads", "chg-revisit"]}, {"id": "p-activation", "companyId": "clubhouse", "section": "status", "kind": "inference", "role": "proof", "status": "有信号", "title": "激活：首次获得价值", "text": "历史访问及房间活动说明发生了使用，未定义首次价值事件。", "limitation": "没有注册到有效互动的同批分母。", "evidenceIds": ["e6", "e13"], "relatedIds": ["d-gaps"], "proof": {"proposition": "激活：首次获得价值", "state": "有信号", "evidence": "历史访问及房间活动说明发生了使用，未定义首次价值事件。", "gap": "没有注册到有效互动的同批分母。", "next": "取得新用户批次、首次有效互动事件和观察窗。"}}, {"id": "p-cohort", "companyId": "clubhouse", "section": "status", "kind": "inference", "role": "proof", "status": "未证明", "title": "同批留存", "text": "安装序列衡量新增获取，不跟踪同一批人。", "limitation": "未找到可比的 D7/D30 留存。", "evidenceIds": ["e8", "e9"], "relatedIds": ["d-gaps"], "proof": {"proposition": "同批留存", "state": "未证明", "evidence": "安装序列衡量新增获取，不跟踪同一批人。", "gap": "未找到可比的 D7/D30 留存。", "next": "按加入周、来源、地区与版本比较成熟批次。"}}, {"id": "p-revisit", "companyId": "clubhouse", "section": "status", "kind": "inference", "role": "proof", "status": "未证明", "title": "回访频率", "text": "2023 年创始人解释朋友同时在线与长对话协调困难。", "limitation": "这是问题自述；缺每人回访分布，不能量化全体流失。", "evidenceIds": ["e15"], "relatedIds": ["d-gaps"], "proof": {"proposition": "回访频率", "state": "未证明", "evidence": "2023 年创始人解释朋友同时在线与长对话协调困难。", "gap": "这是问题自述；缺每人回访分布，不能量化全体流失。", "next": "查活跃天数、回访间隔与退出原因，区分新增和老用户。"}}, {"id": "p-content", "companyId": "clubhouse", "section": "status", "kind": "inference", "role": "proof", "status": "有信号", "title": "内容沉淀带来后续价值", "text": "2021 年 Replays 提供回放；2023 年 Chats 引入异步参与。", "limitation": "功能上线不是回放使用或留存提升的证明。", "evidenceIds": ["e25", "e16"], "relatedIds": ["d-gaps"], "proof": {"proposition": "内容沉淀带来后续价值", "state": "有信号", "evidence": "2021 年 Replays 提供回放；2023 年 Chats 引入异步参与。", "gap": "功能上线不是回放使用或留存提升的证明。", "next": "查回放触达、后续回房与关系沉淀的批次结果。"}}, {"id": "p-creator", "companyId": "clubhouse", "section": "status", "kind": "inference", "role": "proof", "status": "未证明", "title": "创作者持续供给", "text": "有创作者支持和 Payments 机制。", "limitation": "覆盖资格和津贴计划不能代替持续开房或净收益。", "evidenceIds": ["e10", "e11"], "relatedIds": ["d-gaps"], "proof": {"proposition": "创作者持续供给", "state": "未证明", "evidence": "有创作者支持和 Payments 机制。", "gap": "覆盖资格和津贴计划不能代替持续开房或净收益。", "next": "定义合格创作者批次，查连续开房、收入与补贴依赖。"}}, {"id": "p-monetize", "companyId": "clubhouse", "section": "status", "kind": "inference", "role": "proof", "status": "有信号", "title": "变现机制与可持续性", "text": "当前 Plus 和 Coins 机制可核实；早期创作者 Payments 不抽成。", "limitation": "付款规模、平台净收入、续费及服务成本仍未核实。", "evidenceIds": ["e11", "e26", "e27", "e28"], "relatedIds": ["d-gaps"], "proof": {"proposition": "变现机制与可持续性", "state": "有信号", "evidence": "当前 Plus 和 Coins 机制可核实；早期创作者 Payments 不抽成。", "gap": "付款规模、平台净收入、续费及服务成本仍未核实。", "next": "分产品核对收款、退款、渠道费、奖励支出和续费。"}}, {"id": "ser-downloads", "companyId": "clubhouse", "section": "status", "kind": "fact", "role": "series", "status": "原始测量与转述分列", "title": "2021 年安装序列", "text": "同一估算方，1–4 月平台范围仍以当时 iOS 产品为背景。", "limitation": "4 月值为媒体转述，5 月后 Android 扩大平台范围，未把它接成同口径留存趋势。", "evidenceIds": ["e8", "e9"], "relatedIds": ["p-cohort"], "series": {"unit": "万次", "definition": "全球月安装估算，不代表独立使用者", "points": [{"period": "2021-01", "value": 240, "basis": "Sensor Tower 原始文章", "evidenceIds": ["e8"]}, {"period": "2021-02", "value": 960, "basis": "Sensor Tower 原始文章", "evidenceIds": ["e8"]}, {"period": "2021-03", "value": 270, "basis": "Sensor Tower 原始文章", "evidenceIds": ["e8"]}, {"period": "2021-04", "value": 92.2, "basis": "9to5Mac 转述 Sensor Tower；2021-05-03 才报道", "evidenceIds": ["e9"]}, {"period": "2021-05", "value": null, "basis": "Android 推出，平台范围变化", "missingReason": "本次未取得可直接续接的同口径原始值", "evidenceIds": ["e13"]}]}}, {"id": "ser-wau", "companyId": "clubhouse", "section": "status", "kind": "fact", "role": "series", "status": "公司披露", "title": "历史周访问与当前缺口", "text": "保留缺口，不通过安装量补出活跃用户。", "limitation": "单个历史披露不构成持续趋势。", "evidenceIds": ["e6"], "relatedIds": [], "series": {"unit": "万人", "definition": "公告所述前一周访问人数，事件定义未公开", "points": [{"period": "2021-01", "value": 200, "basis": "Welcoming More Voices 自报", "evidenceIds": ["e6"]}, {"period": "2026-10 核对", "value": null, "basis": "本次公开材料范围", "missingReason": "没有取得同定义当前数据", "evidenceIds": []}]}}, {"id": "chg-revisit", "companyId": "clubhouse", "section": "status", "kind": "inference", "role": "change", "status": "有边界的判断", "title": "判断更新：撤回“从未收费”", "text": "新资料必须改动首页、产品组合、证明状态和调查优先级。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e26", "e27", "e28"], "relatedIds": ["c-verdict", "a-portfolio", "p-monetize", "a-next"], "change": {"before": "待核对草稿称从未收费、没有承担收费的产品。", "newEvidence": "2025–2026 官方帮助中心披露 Plus 订阅和 Coins 购买机制。", "direction": "上调", "after": "收费机制存在；付费规模与经营可持续性仍未证明。", "impact": "修正首页与产品盘点；下一步从“有无收费”转向净收入、续费、奖励和服务成本。"}}, {"id": "a-products", "companyId": "clubhouse", "section": "products", "kind": "inference", "role": "asset", "status": "有边界的判断", "title": "按时期拆产品，不把更新当结果", "text": "用户既可进入实时对话，也可通过异步内容参与；购买行为与供给激励另列。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e11", "e13", "e16", "e25", "e26", "e27"], "relatedIds": [], "fields": [{"label": "实时房间｜历史有使用披露", "value": "现场听与说；2023 年公告明确继续保留。"}, {"label": "Replays｜2021-11-08 上线", "value": "公开房间可选择留存回放；实际消费比例未知。"}, {"label": "Chats｜2023-09 推出", "value": "异步语音参与；对回访的改善未核实，不推定为当前主收入。"}, {"label": "Payments｜2021 年试验", "value": "支持创作者收款；上线时平台不抽成。"}, {"label": "Plus｜当前可核验机制", "value": "订阅附加功能；人数与收入份额未知。"}, {"label": "Coins / Rewards｜当前规则", "value": "付费 Coins 用于互动；Gold 奖励规则另算，不能等同交易额。"}]}, {"id": "a-portfolio", "companyId": "clubhouse", "section": "products", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "已有收费产品，主收入来源仍不能指定", "text": "产品组合包含参与、内容复用、创作者激励与付费功能。没有收入分部数据，不能指定旗舰收费产品。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e26", "e27", "e16"], "relatedIds": ["p-monetize"]}, {"id": "a-channels", "companyId": "clubhouse", "section": "channels", "kind": "inference", "role": "asset", "status": "有边界的判断", "title": "渠道角色与归属", "text": "下列入口有产品或公告依据；贡献占比与获客成本未核实。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e13", "e17"], "relatedIds": [], "fields": [{"label": "邀请｜历史准入与扩散", "value": "由现有用户发出，公司控制规则；转化贡献未知。"}, {"label": "社区活动｜关系与供给", "value": "Orientation / Town Hall 为人工运营动作；依赖主持与用户参与。"}, {"label": "公开链接｜开放后的入口", "value": "俱乐部、创作者和活动可分发链接；外部受众归属不等于公司可控。"}, {"label": "官网与商店｜转化与品牌", "value": "可找到下载入口；不能由存在入口判断其为主获客渠道。"}, {"label": "媒体与名人｜可能放大", "value": "本次未取得可归因明细，不把曝光直接计作持续获客资产。"}, {"label": "下一判断", "value": "按首触、进入房间、有效互动、回访分别记录，不先指定唯一主渠道。"}]}, {"id": "a-assets", "companyId": "clubhouse", "section": "assets-map", "kind": "inference", "role": "asset", "status": "有边界的判断", "title": "资产必须连到动作与控制权", "text": "把团队经验、社区组织与外部时机分开，才知道哪些能迁移。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e6", "e13", "e15", "e24"], "relatedIds": [], "fields": [{"label": "团队经验｜内部可调用", "value": "两位创始人自述长期尝试社交产品；降低产品探索难度是解释，不是效果测量。"}, {"label": "社区运营｜内部动作＋用户配合", "value": "小批准入、迎新与例会可安排；参与和口碑仍需验证。"}, {"label": "融资｜外部取得后可调配", "value": "可支持工程、支持与发现；不能购买已被证明的留存。"}, {"label": "居家场景｜外部环境", "value": "同步社交需求的可能窗口；公司无法控制，影响幅度未识别。"}, {"label": "扩张约束", "value": "每项新投入应对应容量或体验瓶颈；缺口是可比批次结果和资源效率。"}]}, {"id": "pf-clubhouse", "companyId": "clubhouse", "section": "assets-map", "kind": "inference", "role": "profile", "status": "有边界的判断", "title": "Clubhouse 起点与未证实部分", "text": "初始交付是让人参与现场语音，不等于初始收入。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e6", "e11", "e13", "e26"], "relatedIds": [], "fields": [{"label": "起点资产", "value": "社交产品经验、小范围测试社区、融资支持。"}, {"label": "第一批用户", "value": "官方称少量内测者；精确名单、招募贡献未核实。"}, {"label": "第一个产品", "value": "2020 年 3 月上线的语音社交；未将无法核实的前身故事作为已证事实。"}, {"label": "第一种收入", "value": "最早公司收入时间未核实；2021 Payments 不抽成，当前存在 Plus。"}, {"label": "结果", "value": "公开材料可重建产品动作，不能补全同批留存和利润。"}, {"label": "启示", "value": "先比较可组织的初始群体与价值事件，再比较功能。"}]}, {"id": "team", "companyId": "clubhouse", "section": "team-map", "kind": "fact", "role": "team", "status": "公开身份", "title": "公开角色与内部职责边界", "text": "依据两位创始人的联名公告，不替内部团队补写分工。", "limitation": "当前组织规模、个人工时及具体内部责任未核实。", "evidenceIds": ["e6", "e15"], "relatedIds": [], "people": [{"name": "Paul Davison", "role": "联合创始人", "background": "公告自述此前开发 Highlight 等社交产品。", "responsibility": "与另一位创始人共同发布产品方向及组织重置信；更细分工未核实。", "commitment": "实际投入时间未披露于本次材料。", "evidenceIds": ["e6", "e15"]}, {"name": "Rohan Seth", "role": "联合创始人", "background": "公告自述此前探索帮助朋友相遇的社交产品。", "responsibility": "与另一位创始人共同发布产品方向及组织重置信；更细分工未核实。", "commitment": "实际投入时间未披露于本次材料。", "evidenceIds": ["e6", "e15"]}]}, {"id": "s-summary", "companyId": "clubhouse", "section": "origin", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "从小范围交付到扩大参与，再调整参与方式", "text": "发展路径能核对；成功归因需要比时间线更多的数据。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e6", "e13", "e15", "e16"], "relatedIds": ["dec-2021-scale"]}, {"id": "s1", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "01 音频探索后上线", "text": "官方回顾经过音频探索后发布 Clubhouse。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e6"], "relatedIds": [], "stage": "起点 · 2020-03", "fields": [{"label": "结果证据", "value": "获得可参与对话的产品；最早 cohort 结果未提供。"}, {"label": "机制判断", "value": "将对话作为交付单位，可用首次互动验证价值。", "kind": "inference"}]}, {"id": "s2", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "02 小范围邀请内测", "text": "从小批测试社区逐步加入新用户。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e13"], "relatedIds": [], "stage": "准入 · 2020–2021", "fields": [{"label": "结果证据", "value": "存在准入控制；没有邀请与开放的可比实验。"}, {"label": "机制判断", "value": "控制密度与承载量是可解释机制，不能断言稀缺本身造成成功。", "kind": "inference"}]}, {"id": "s3", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "03 人工迎新与社区例会", "text": "安排 Orientation 与 Town Hall。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e13"], "relatedIds": [], "stage": "运营 · 内测期", "fields": [{"label": "结果证据", "value": "可核实人工运营动作；参与转化未披露。"}, {"label": "机制判断", "value": "人工协助找到人和反馈问题，值得拆成可记录流程。", "kind": "inference"}]}, {"id": "s4", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "04 新增安装快速放大又回落", "text": "安装估算从 240 万到 960 万，再至 270 万。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e8"], "relatedIds": [], "stage": "获客 · 2021-01 至 03", "fields": [{"label": "结果证据", "value": "新增获取波动明显；原因及同批使用变化未识别。"}, {"label": "机制判断", "value": "新增和留存是两项问题，不用一条曲线解释全部经营。", "kind": "inference"}]}, {"id": "s5", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "05 支持创作者供给", "text": "宣布 Creator First，并推出 Payments 试验。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e10", "e11"], "relatedIds": [], "stage": "激励 · 2021-03 至 04", "fields": [{"label": "结果证据", "value": "有支持方案和交易机制；实际执行量与持续供给未知。"}, {"label": "机制判断", "value": "把供给激励与公司收入分别计账。", "kind": "inference"}]}, {"id": "s6", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "06 扩大组织并推进规模能力", "text": "C 轮公告称团队在当年已增至原来的四倍，并提出继续投入发现、支持等能力。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e24"], "relatedIds": [], "stage": "扩张 · 2021-04", "fields": [{"label": "结果证据", "value": "这是已发生扩编与未来方向；缺内部收益和留存依据。"}, {"label": "机制判断", "value": "问题是扩张依据能否支撑持续需求，不能直接判为按峰值盲目扩张。", "kind": "inference"}]}, {"id": "s7", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "07 扩大可进入范围", "text": "推出 Android 后取消等待与邀请要求。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e13"], "relatedIds": [], "stage": "开放 · 2021-05 至 07", "fields": [{"label": "结果证据", "value": "公司披露新增规模；跨平台后前后口径变化。"}, {"label": "机制判断", "value": "去除设备与准入门槛可扩大获取，不能自动改善体验。", "kind": "inference"}]}, {"id": "s8", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "08 缩减组织并推出异步参与", "text": "宣布组织缩减超过一半；之后推出 Chats，保留直播。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e15", "e16"], "relatedIds": [], "stage": "调整 · 2023-04 至 09", "fields": [{"label": "结果证据", "value": "动作与理由可查；产品调整后的因果效果未知。"}, {"label": "机制判断", "value": "将同时在线约束改为异步参与，是针对一类障碍的假设。", "kind": "inference"}]}, {"id": "s9", "companyId": "clubhouse", "section": "origin", "kind": "fact", "role": "step", "status": "时期与证据分列", "title": "09 重新核对当前机制", "text": "帮助中心存在 Plus 与 Coins 付费规则。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e26", "e27"], "relatedIds": [], "stage": "现状 · 2026-10 核对", "fields": [{"label": "结果证据", "value": "收费机制成立；当前经营规模与盈利未核实。"}, {"label": "机制判断", "value": "不能沿用 2021 年不抽成规则推断今天全部业务。", "kind": "inference"}]}, {"id": "c-tradeoff", "companyId": "clubhouse", "section": "origin", "kind": "inference", "role": "tradeoff", "status": "有边界的判断", "title": "已发生的取舍与研究者建议分列", "text": "邀请与开放、创作者激励和平台收入、同步与异步需要分别解释。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e11", "e13", "e16", "e24"], "relatedIds": [], "fields": [{"label": "已证实的取舍", "value": "从邀请转开放；早期 Payments 平台不抽成；Chats 加入而直播保留。"}, {"label": "研究者建议", "value": "给扩张设置可比 cohort 与供给质量观察门槛。"}, {"label": "未知", "value": "内部备选、成本测算与是否存在可接受收购报价均未核实，不补写动机。"}]}, {"id": "c-loop", "companyId": "clubhouse", "section": "growth", "kind": "inference", "role": "loop", "status": "部分边有动作证据", "title": "把增长回路作为待验证的边", "text": "有入口和供给动作，不代表所有反馈都闭合。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e13", "e15", "e25"], "relatedIds": ["p-revisit", "p-content"], "edges": [{"from": "邀请或链接", "to": "进入对话", "mechanism": "降低找到房间的路径成本", "status": "入口存在；转化率未知", "evidenceIds": ["e13"]}, {"from": "参与对话", "to": "再次参与", "mechanism": "价值与关系应形成回访理由", "status": "管理层承认协调障碍；频次结果未知", "evidenceIds": ["e15"]}, {"from": "听众", "to": "持续供给者", "mechanism": "部分人主持或组织下一次对话", "status": "没有角色转换与持续供给分母", "evidenceIds": ["e10"]}, {"from": "对话内容", "to": "后续消费", "mechanism": "Replays 使内容可复用", "status": "功能已上线；回访贡献未知", "evidenceIds": ["e25"]}, {"from": "更多房间", "to": "相关内容匹配", "mechanism": "发现改善才可能提高下一轮价值", "status": "规模投入有公告；体验增益未核实", "evidenceIds": ["e24"]}]}, {"id": "dec-verdict", "companyId": "clubhouse", "section": "decisions", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "复盘选择，避免用事后结果替当时信息", "text": "下列三项选择都给出可知范围；备选为研究构造，非内部会议记录。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e24", "e13", "e15"], "relatedIds": []}, {"id": "dec-2021-scale", "companyId": "clubhouse", "section": "decisions", "kind": "inference", "role": "decision", "status": "有边界的判断", "title": "2021-04：融资与规模投入", "text": "完成 C 轮并继续投入规模、发现与支持。", "limitation": "内部讨论、完整指标和反事实结果未获得。", "evidenceIds": ["e24", "e8", "e15", "e9"], "relatedIds": [], "decision": {"period": "2021-04", "context": "服务与发现能力需要承接增长。", "knownThen": "公告确认当年团队已增至原来的四倍；3 月安装回落的文章仅标 4 月，不能确认内部决策时已知。4 月下载在 5 月才报道。", "options": "实际融资；研究者备选为分阶段扩编或限定社区试验，是否被管理层讨论未知。", "chosen": "完成 C 轮并继续投入规模、发现与支持。", "outcome": "2023 年发生组织收缩；两者的因果联系未识别。", "tradeoff": "更快扩容与更高组织复杂度之间的权衡；真实成本未知。", "assessment": "应追问扩张依据是否覆盖留存与服务质量，不能据公开缺口断言公司没有内部证据。", "falsifier": "若当时成熟 cohort、供给质量和单位成本稳定，过早扩张的解释会减弱。"}}, {"id": "dec-2021-open", "companyId": "clubhouse", "section": "decisions", "kind": "inference", "role": "decision", "status": "有边界的判断", "title": "2021-05 至 07：Android 与开放注册", "text": "扩大设备覆盖并取消等待与邀请限制。", "limitation": "内部讨论、完整指标和反事实结果未获得。", "evidenceIds": ["e13"], "relatedIds": [], "decision": {"period": "2021-05 至 07", "context": "设备和邀请限制可进入人群。", "knownThen": "公司公开回顾分批准入用于承载社区；同时表达向所有人开放的目标。", "options": "实际全面开放；研究者备选为按地区或容量分批，不代表内部备选。", "chosen": "扩大设备覆盖并取消等待与邀请限制。", "outcome": "披露新增规模，但没有匹配对照和 cohort 留存。", "tradeoff": "更大覆盖可能提高供给多样性，也增加匹配与治理负担。", "assessment": "开放验证了触达边界变化，尚不能单独证明核心体验改善或恶化。", "falsifier": "如按地区、版本和渠道匹配的批次显示有效互动及留存改善，应上调开放的价值判断。"}}, {"id": "dec-2023-reset", "companyId": "clubhouse", "section": "decisions", "kind": "inference", "role": "decision", "status": "有边界的判断", "title": "2023：组织重置与异步 Chats", "text": "收缩团队，推出异步 Chats，保留直播。", "limitation": "内部讨论、完整指标和反事实结果未获得。", "evidenceIds": ["e15", "e16"], "relatedIds": [], "decision": {"period": "2023-04 至 09", "context": "管理层称同步协调和组织响应存在障碍。", "knownThen": "问题是管理层自述；并称仍有数年资金储备，不应写成现金耗尽。", "options": "实际缩减组织并变更产品；仅优化同步匹配是研究者构造的对照。", "chosen": "收缩团队，推出异步 Chats，保留直播。", "outcome": "产品与组织动作有记录；结果指标不在本次材料中。", "tradeoff": "减少同时在线要求，可能改变直播氛围及创作者分发习惯。", "assessment": "这是针对协调约束的设计假设，需要分人群验证。", "falsifier": "若使用 Chats 的可比批次回访未改善，或新增摩擦抵消便利，应下调该机制解释。"}}, {"id": "dx-decline", "companyId": "clubhouse", "section": "decline", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "把回落的三类解释放在同一张证据表", "text": "没有可识别的反事实，不把相关性排成唯一失败原因。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e8", "e15", "e16", "e21", "e23"], "relatedIds": [], "fields": [{"label": "环境变化", "value": "支持：管理层描述疫情后协调困难。反证或限制：2021 年安装已回落，地区开放不同步；需地区×批次比较。"}, {"label": "平台竞争", "value": "支持：Spaces 与 Stage 提供相近形式。限制：功能推出不证明用户迁移；需交叉使用、离开原因和渠道变化。"}, {"label": "自身匹配与参与方式", "value": "支持：产品调整明确回应找朋友及时间约束。限制：管理层解释不是因果测量；需首次互动、回访和相关内容命中。"}, {"label": "当前判断", "value": "三者可共同作用；回访障碍有直接问题自述，大小与主因仍不排序。"}]}, {"id": "c-external", "companyId": "clubhouse", "section": "transfer", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "交付可迁移条件，不替公司下运营命令", "text": "以下是给未来研究与借鉴任务的候选顺序；具体采用仍取决于用户业务。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": [], "relatedIds": ["q-purpose", "q-data"]}, {"id": "c-transfer", "companyId": "clubhouse", "section": "transfer", "kind": "recommendation", "role": "transfer", "status": "条件性建议", "title": "先验证局部价值，再扩大参与范围", "text": "不从一个历史案例推出普适增长公式。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e13", "e15", "e24"], "relatedIds": [], "fields": [{"label": "现在复制", "value": "若已有可组织的小群体，记录迎新→有效互动→再次参与；先验证价值和供给稳定性。"}, {"label": "以后复制", "value": "跨设备与大范围开放：需要当前批次留存、相关供给和服务容量支撑。"}, {"label": "谨慎借鉴", "value": "创作者支持：区分补贴带来的活动与补贴减少后的供给。"}, {"label": "暂不复制", "value": "按融资估值或曝光峰值确定扩编规模；缺的是经营依据，不是品牌热度。"}, {"label": "阶段进入条件", "value": "阈值由业务成本与观察窗预先约定；不能照搬消费社交的统一 D30 标准。"}]}, {"id": "d-gaps", "companyId": "clubhouse", "section": "next", "kind": "recommendation", "role": "contract", "status": "条件性建议", "title": "下一轮证据与数据约定", "text": "优先补能区分解释的记录；无法取得时保留条件性判断。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e8", "e15", "e26", "e27"], "relatedIds": [], "fields": [{"label": "用户价值与留存", "value": "去重匿名 ID、加入批次、渠道、地区、版本、有效互动事件、D7/D30 观察窗；数据持有人待确认。"}, {"label": "供给持续性", "value": "主持者批次、每周有效房间、再次交付、参与者反馈、奖励或补贴；不得以创作者资格人数代替。"}, {"label": "付费与经济性", "value": "分 Plus / Coins 的收款、退款、渠道费、奖励、服务成本和续费；GMV、净收款与会计收入分列。"}, {"label": "获取方式与责任", "value": "公开披露由研究者核对；内部明细只在持有人授权后分析；无权限不反复向用户索要。"}, {"label": "更新与窗口", "value": "下一次证据审阅时更新；运营试验按周记录，未成熟批次保留未到期；关联 proof、decision、change。"}, {"label": "代理证据边界", "value": "下载、排名与评论只能帮助定位调查，不能替代同批留存或真实利润。"}]}, {"id": "a-next", "companyId": "clubhouse", "section": "next", "kind": "recommendation", "role": "action", "status": "条件性建议", "title": "按结论影响安排调查", "text": "先解决最能改变判断的缺口，不给外部公司虚构负责人。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": [], "relatedIds": ["p-cohort", "p-monetize", "chg-revisit"], "milestones": [{"period": "第一轮：定义", "action": "列清产品时期、使用事件和新旧用户批次，检查资料能否比较。", "owner": "研究者", "observe": "是否有去重对象、分母和成熟窗口。", "decision": "口径不可比则拆表；不输出拼接趋势。"}, {"period": "第二轮：留存机制", "action": "若有权限，比较同渠道同地区批次的回访与相关内容；否则补访谈和问题证据。", "owner": "研究者；数据持有人待确认", "observe": "同批留存、回访间隔和退出原因；新旧版本差异及混杂因素。", "decision": "直接批次证据可上调或下调解释；仅 MAU、安装和评分变化不触发留存结论。"}, {"period": "第三轮：付费结果", "action": "核对分产品收款、退款、续费、平台费用及奖励支出。", "owner": "研究者；财务资料持有人待确认", "observe": "净收入与单位贡献，补贴减少后的续费或复购。", "decision": "有机制但无规模仍保持未证明可持续性；不可把未知填零。"}, {"period": "复盘", "action": "改首屏、产品组合、证明表和迁移建议，并记录改变原因。", "owner": "研究者", "observe": "结论与证据版本是否一致。", "decision": "证据不足时维持有边界判断，并停止无增量重复检索。"}]}, {"id": "q-purpose", "companyId": "clubhouse", "section": "next", "kind": "fact", "role": "question", "status": "已确认范围", "title": "用途已确认：可复用研究方法示例", "text": "本例用于学习如何取证、形成判断与组织结果。未来若服务于用户业务，再询问其目标、阶段与资源。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": [], "relatedIds": ["c-transfer"], "fields": [{"label": "回答来源", "value": "本次方法与模板任务，2026-10-01。"}, {"label": "影响", "value": "保留外部研究与调查，不虚构投资结论或运营授权。"}]}, {"id": "q-data", "companyId": "clubhouse", "section": "next", "kind": "recommendation", "role": "question", "status": "条件性建议", "title": "可选问题：你是否持有能改变判断的材料？", "text": "仅当用户可能持有资料时问：是否有已获授权的匿名用户批次或分产品收款记录？可答没有、不方便或仅部分。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": [], "relatedIds": ["d-gaps", "p-cohort", "p-monetize"], "fields": [{"label": "为什么问", "value": "决定能否从公开机制研究推进到留存和经济性判断。"}, {"label": "没有时如何继续", "value": "保留缺口，继续核对公开动作与对标条件；不让用户替研究者猜内部数据。"}]}, {"id": "cov-check", "companyId": "clubhouse", "section": "next", "kind": "inference", "role": "judgment", "status": "有实质内容，关键数据缺口明确", "title": "内容覆盖与剩余缺口", "text": "公开动作已形成具体记录；关键经营结论仍是部分完成。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": [], "relatedIds": [], "fields": [{"label": "有实质依据", "value": "产品 a-products；团队 team；路径 s1–s9；三次决策 dec-*；三家对照见 comparisons。"}, {"label": "部分完成", "value": "六项 proof：缺激活、留存、创作者及财务明细；只证明所列机制。"}, {"label": "关键缺口", "value": "d-gaps 与 a-next 定义取证方式；不声称已完成经营尽调。"}, {"label": "研究范围", "value": "核对公开公告、帮助文档及所列测量；未取得内部 cohort、财务明细或独立用户访谈。"}]}, {"id": "cmp-verdict", "companyId": null, "section": "peers", "kind": "inference", "role": "judgment", "status": "有边界的判断", "title": "比较起点与机制，不用结局给商业模式定律", "text": "Houseparty 提醒区分战略关停与留存；Spaces 展示已有分发；Discord 区分社区功能与公开发现。", "limitation": "这些观察不证明只有持续社区才能留住人。", "evidenceIds": ["e19", "e21", "e23"], "relatedIds": []}, {"id": "c-matrix", "companyId": null, "section": "peers", "kind": "inference", "role": "comparison", "status": "有边界的判断", "title": "相近形式，不同起点与证明范围", "text": "每家公司在子页有相同结构的动作与迁移分析。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e18", "e19", "e21", "e23"], "relatedIds": [], "comparisonIds": ["pf-houseparty", "pf-spaces", "pf-discord"], "columns": ["起点资产", "第一批用户", "结果", "启示"]}, {"id": "pf-houseparty", "companyId": "houseparty", "section": "peers", "kind": "inference", "role": "profile", "status": "有边界的判断", "title": "Houseparty：战略结果不能反推用户原因", "text": "比较范围、事实与待检验机制一并保留。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e18", "e19"], "relatedIds": [], "fields": [{"label": "起点资产", "value": "所比较阶段已有视频社交产品与 Epic 组织背景；不是从零起步。"}, {"label": "第一批用户", "value": "这里比较 2020–2021 阶段，不能把疫情新增当成立时首批用户；原始招募未覆盖。"}, {"label": "第一个产品", "value": "本阶段为视频社交；公司最早产品不在本次核对范围。"}, {"label": "第一种收入", "value": "本次材料未核实，不能填零。"}, {"label": "结果", "value": "披露注册激增，后宣布关停。"}, {"label": "启示", "value": "规模披露不能证明留存；关停还需检查母公司资源选择。"}, {"label": "机制与风险", "value": "熟人参与可能形成回访，实际 cohort 结果未核实；不能当作 Clubhouse 的失败对照实验。"}]}, {"id": "pf-spaces", "companyId": "spaces", "section": "peers", "kind": "inference", "role": "profile", "status": "有边界的判断", "title": "Twitter Spaces：已有受众是起点条件", "text": "比较范围、事实与待检验机制一并保留。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e21"], "relatedIds": [], "fields": [{"label": "起点资产", "value": "平台账号、关注关系和现成分发位置。"}, {"label": "第一批用户", "value": "先小范围测试，后开放主持给至少 600 粉丝账号；不是从零积累受众。"}, {"label": "第一个产品", "value": "Twitter 内的实时语音对话。"}, {"label": "第一种收入", "value": "该公告未证明 Spaces 收入，不代入 Twitter 整体收入。"}, {"label": "结果", "value": "主持门槛与入口扩大；使用和经营结果未核实。"}, {"label": "启示", "value": "比较时把可调用受众当作前提，不能只抄语音功能。"}, {"label": "机制与风险", "value": "主持人已有粉丝→潜在听众→活动→关系反馈是候选回路，转化与增量仍未知。"}]}, {"id": "pf-discord", "companyId": "discord", "section": "peers", "kind": "inference", "role": "profile", "status": "有边界的判断", "title": "Discord：社区内活动与跨社区发现分开验证", "text": "比较范围、事实与待检验机制一并保留。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e22", "e23"], "relatedIds": [], "fields": [{"label": "起点资产", "value": "已有服务器社区、管理员与成员关系。"}, {"label": "第一批用户", "value": "既有社区的主持者与成员，随后试验跨社区发现。"}, {"label": "第一个产品", "value": "Stage 语音舞台功能；比较的是功能阶段，不是 Discord 创立史。"}, {"label": "第一种收入", "value": "本例没有核实 Stage 专属收入。"}, {"label": "结果", "value": "公司披露 Stage 采用；关闭 Discovery 后继续投入 Stage。"}, {"label": "启示", "value": "功能采用和发现获客各需指标；不能把前者当成留存优势证明。"}, {"label": "机制与风险", "value": "社区活动→参与与归属→下一次活动有可检验机制；需同批回访和新增成员接纳数据。"}]}, {"id": "hp-s1", "companyId": "houseparty", "section": "peers", "kind": "fact", "role": "step", "status": "历史动作", "title": "Houseparty 01 注册激增", "text": "2020 年 4 月报道一个月 5000 万次注册。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e18"], "relatedIds": [], "stage": "获取 · 2020-04", "fields": [{"label": "机制判断与结果边界", "value": "注册是获取信号；同批使用与收入不能由此推出。", "kind": "inference"}]}, {"id": "hp-s2", "companyId": "houseparty", "section": "peers", "kind": "fact", "role": "step", "status": "历史动作", "title": "Houseparty 02 宣布关停", "text": "2021 年 9 月宣布计划 10 月关停，团队转向 Epic 其他社交项目。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e19"], "relatedIds": [], "stage": "战略选择 · 2021-09", "fields": [{"label": "机制判断与结果边界", "value": "需要区分母公司机会成本与用户价值，不从关停独立推断流失原因。", "kind": "inference"}]}, {"id": "sp-s1", "companyId": "spaces", "section": "peers", "kind": "fact", "role": "step", "status": "历史动作", "title": "Spaces 01 小范围试验", "text": "2021 年公告回顾此前已经小范围测试。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e21"], "relatedIds": [], "stage": "试验 · 2020–2021", "fields": [{"label": "机制判断与结果边界", "value": "在已有社交图谱内增加参与方式，起点不同于独立新应用。", "kind": "inference"}]}, {"id": "sp-s2", "companyId": "spaces", "section": "peers", "kind": "fact", "role": "step", "status": "历史动作", "title": "Spaces 02 开放主持范围", "text": "2021-05-03 向至少 600 粉丝的账号开放主持。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e21"], "relatedIds": [], "stage": "开放 · 2021-05", "fields": [{"label": "机制判断与结果边界", "value": "门槛体现受众前提，不能据此判定成本为零或抢走了特定公司的用户。", "kind": "inference"}]}, {"id": "dc-s1", "companyId": "discord", "section": "peers", "kind": "fact", "role": "step", "status": "历史动作", "title": "Discord 01 社区语音舞台", "text": "2021 年 3 月推出 Stage，6 月试验 Discovery。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e22"], "relatedIds": [], "stage": "社区功能 · 2021", "fields": [{"label": "机制判断与结果边界", "value": "活动组织和跨社区获取是不同任务，应分别定义结果。", "kind": "inference"}]}, {"id": "dc-s2", "companyId": "discord", "section": "peers", "kind": "fact", "role": "step", "status": "历史动作", "title": "Discord 02 保留 Stage，关闭 Discovery", "text": "10 月公告决定关闭 Discovery，并继续投入 Stage。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e23"], "relatedIds": [], "stage": "调整 · 2021-10", "fields": [{"label": "机制判断与结果边界", "value": "采用披露与 onboarding、moderation 问题并存；仍缺同批留存比较。", "kind": "inference"}]}, {"id": "hp-transfer", "companyId": "houseparty", "section": "peers", "kind": "recommendation", "role": "transfer", "status": "条件性建议", "title": "Houseparty：用来检验结局归因", "text": "现在学：把新增、重复参与和组织资源选择分开。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e18", "e19"], "relatedIds": [], "fields": [{"label": "可以学", "value": "现在学：把新增、重复参与和组织资源选择分开。"}, {"label": "不能推导", "value": "不能照搬：从后来关停推出同期所有用户没有价值。"}, {"label": "风险与下一证据", "value": "补关停前的 cohort、经营结果与母公司目标，才可比较失败机制。"}]}, {"id": "sp-transfer", "companyId": "spaces", "section": "peers", "kind": "recommendation", "role": "transfer", "status": "条件性建议", "title": "Spaces：先确认你是否拥有分发", "text": "有条件学：利用已存在的受众测试新参与方式。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e21"], "relatedIds": [], "fields": [{"label": "可以学", "value": "有条件学：利用已存在的受众测试新参与方式。"}, {"label": "不能推导", "value": "不能照搬：把平台分发当作初创公司的免费资源。"}, {"label": "风险与下一证据", "value": "若没有可调用受众，先证明独立触达与首批有效参与。"}]}, {"id": "dc-transfer", "companyId": "discord", "section": "peers", "kind": "recommendation", "role": "transfer", "status": "条件性建议", "title": "Discord：把社区内和社区外分开", "text": "有条件学：在已有群体中验证活动，再测跨群体进入。", "limitation": "只支持所列时期、对象与命题，不外推未观察的结果。", "evidenceIds": ["e22", "e23"], "relatedIds": [], "fields": [{"label": "可以学", "value": "有条件学：在已有群体中验证活动，再测跨群体进入。"}, {"label": "不能推导", "value": "不能照搬：仅凭继续投入 Stage 宣称社区留存优于所有公开产品。"}, {"label": "风险与下一证据", "value": "分别测成员回访、新成员接纳与治理成本，检查是否真有可迁移结果。"}]}], "evidence": [{"id": "e6", "title": "Clubhouse：Welcoming More Voices", "date": "2021-01-24", "url": "https://joinclubhouse.ghost.io/welcoming-more-voices/", "support": "创始人起点、2020 年 3 月上线、当周约 200 万人访问及融资用途。", "limitation": "公司自述；访问事件和留存分母未定义；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e8", "title": "Sensor Tower：Social Audio Apps Growth", "date": "2021-04", "url": "https://sensortower.com/blog/social-audio-apps-growth", "support": "2021 年 1–3 月全球安装估算为 240、960、270 万次。", "limitation": "商店测量估算，不是独立活跃人数或同批留存；核对日 2026-10-01。", "nature": "第三方原始测量", "locator": "Breakout Hits"}, {"id": "e9", "title": "9to5Mac：Clubhouse April Downloads", "date": "2021-05-03", "url": "https://9to5mac.com/2021/05/03/clubhouse-downloads-plummet-to-900000-in-april-as-competition-grows/", "support": "转述 Sensor Tower 的 4 月全球下载估算 92.2 万次。", "limitation": "二手转述；不能当成独立测量或 4 月决策时已知信息；核对日 2026-10-01。", "nature": "媒体转述", "locator": "正文"}, {"id": "e10", "title": "Clubhouse：Creator First", "date": "2021-03", "url": "https://joinclubhouse.ghost.io/creator-first-accelerator/", "support": "宣布创作者设备、推广、津贴及品牌支持计划。", "limitation": "计划不等于实际覆盖人数、付款金额或创作者留存；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e11", "title": "Clubhouse：Introducing Payments", "date": "2021-04-05", "url": "https://joinclubhouse.ghost.io/introducing-payments/", "support": "启动创作者打赏试验，彼时平台不抽成。", "limitation": "仅说明该次上线规则，不能外推到公司全部时期的收入；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e12", "title": "TechCrunch：Clubhouse C 轮估值报道", "date": "2021-04-19", "url": "https://techcrunch.com/2021/04/19/clubhouse/", "support": "报道估值约 40 亿美元。", "limitation": "估值不是融资金额、收入或现金；未获得交易文件；核对日 2026-10-01。", "nature": "媒体报道", "locator": "正文"}, {"id": "e13", "title": "Clubhouse：Opening Day", "date": "2021-07-21", "url": "https://joinclubhouse.ghost.io/opening-day/", "support": "开放注册；回顾邀请、Orientation 与 Town Hall；自报团队由 8 至 58 人、Android 推出后新增约 1000 万人。", "limitation": "统计口径与独立审计未提供；新增和平均时长不证明同批留存；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e15", "title": "Clubhouse：Founders’ email", "date": "2023-04-27", "url": "https://joinclubhouse.ghost.io/april-27-2023/", "support": "缩减组织超过一半；解释同步协调困难与组织调整。", "limitation": "管理层解释而非因果识别；文中称仍有数年资金储备，不能改写成现金耗尽；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e16", "title": "Clubhouse：The new Clubhouse", "date": "2023-09-06", "url": "https://joinclubhouse.ghost.io/the-new-clubhouse/", "support": "推出异步 Chats，调整朋友关系模型，同时保留直播房间。", "limitation": "产品设计与预期效果不等于上线后的留存提升；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e17", "title": "Clubhouse 官网", "date": "2026-10-01（访问）", "url": "https://www.clubhouse.com/", "support": "当前仍有产品介绍和下载入口。", "limitation": "网页可访问不代表活跃规模、实际使用体验或盈利；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e18", "title": "TechCrunch：Houseparty 注册披露", "date": "2020-04-15", "url": "https://techcrunch.com/2020/04/15/houseparty-reports-50m-sign-ups-in-past-month-amid-covid-19-lockdowns/", "support": "转述一个月 5000 万次注册。", "limitation": "公司口径经媒体转述；不能与安装量直接横比；核对日 2026-10-01。", "nature": "媒体转述", "locator": "正文"}, {"id": "e19", "title": "TechCrunch：Houseparty 关停公告报道", "date": "2021-09-09", "url": "https://techcrunch.com/2021/09/09/epic-games-to-shut-down-houseparty-in-october-including-the-video-chat-fortnite-mode-feature/", "support": "报道计划 10 月关停及团队转投 Epic 的其他社交项目。", "limitation": "公司战略调整不能单独证明产品留存失败；核对日 2026-10-01。", "nature": "媒体报道", "locator": "正文"}, {"id": "e21", "title": "Twitter：Spaces is here, let’s chat", "date": "2021-05-03", "url": "https://blog.x.com/en_us/topics/product/2021/spaces-is-here", "support": "主持权限开放至至少 600 粉丝的账号，利用已有受众和时间线入口。", "limitation": "功能覆盖与设计理由不等于实际使用、留存或收入结果；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e22", "title": "Discord：Stage Discovery", "date": "2021-06-01", "url": "https://discord.com/blog/discover-the-next-great-community-in-stage-discovery", "support": "Stage 3 月推出，6 月在四国推出发现试验。", "limitation": "上线与使用叙述不提供对照组或留存增量；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e23", "title": "Discord：What’s Next for Communities", "date": "2021-10-01", "url": "https://discord.com/blog/whats-next-for-communities-at-discord", "support": "披露近百万社区用过 Stage；10 月 4 日关闭 Discovery，继续投入 Stage。", "limitation": "累计采用与月度活动社区不等于同批留存；不能推断所有公开发现都会失败；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "Focusing on the Future of Communities"}, {"id": "e24", "title": "Clubhouse：Growing a Global Community", "date": "2021-04-18", "url": "https://joinclubhouse.ghost.io/growing-a-global-community/", "support": "C 轮公告称当年团队已增至原来的四倍，继续投入规模、发现和支持。", "limitation": "不是未来增至四倍的计划；未公开内部决策时点和留存依据；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e25", "title": "Clubhouse：Introducing Replays", "date": "2021-11-08", "url": "https://joinclubhouse.ghost.io/clubhouse-replays-room-recording/", "support": "公开房间可选回放及音频下载。", "limitation": "功能存在不证明使用比例、传播效率或回访贡献；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e26", "title": "Clubhouse Plus Features", "date": "2025-10-22（更新）", "url": "https://support.clubhouse.com/hc/en-us/articles/45818422930835-Clubhouse-Plus-Features", "support": "订阅者功能和设置中的开通入口。", "limitation": "未给订阅用户数、续费率或净收入；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e27", "title": "Clubhouse：Rewards FAQ and Policies", "date": "2026-04-22（更新）", "url": "https://support.clubhouse.com/hc/en-us/articles/47352574166035-Rewards-FAQ-and-Policies", "support": "用户可购买 Coins 用于 Premium Reacts；Gold 为平台按规则授予的奖励。", "limitation": "Coins 消费、Gold 奖励与公司会计收入不可混算；没有规模与利润数据；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}, {"id": "e28", "title": "Clubhouse Plus：Subscription FAQ", "date": "2026-01-26（更新）", "url": "https://support.clubhouse.com/hc/en-us/articles/45818798443411-FAQ", "support": "订阅取消、购买渠道及退款流程。", "limitation": "收费机制可核验，但实际收款与续费仍未知；核对日 2026-10-01。", "nature": "公司原始披露", "locator": "正文"}]}</script>
+<script>
+'use strict';
+const partOrder = ['verdict', 'assets', 'decisions', 'choices', 'validation', 'paths', 'questions'];
+const profileColumns = ['起点资产', '第一批用户', '第一个产品', '第一种收入'];
+const names = {fact:'事实记录', inference:'机制解释', recommendation:'行动建议'};
+const byId = id => document.getElementById(id);
+function el(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+function link(text, id) { const a = el('a', text); a.href = `#${id}`; return a; }
+function pageLink(text, query = '', hash = '') {
+  const a = el('a', text), url = new URL(location.href);
+  url.search = query; url.hash = hash; a.href = url.href; return a;
+}
+async function start() {
+  const embedded = document.querySelector('script#research-data[type="application/json"]');
+  let data;
+  if (embedded) data = JSON.parse(embedded.textContent);
+  else {
+    const response = await fetch('research.json');
+    if (!response.ok) throw new Error('研究数据未能加载，请确认同目录 research.json 可访问。');
+    data = await response.json();
+  }
+  const companies = new Map(data.companies.map(c => [c.id, c]));
+  const records = new Map(data.records.map(r => [r.id, r]));
+  const evidence = new Map(data.evidence.map(e => [e.id, e]));
+  const sections = data.sections.slice().sort((a,b) => partOrder.indexOf(a.part) - partOrder.indexOf(b.part));
+  const sectionById = new Map(sections.map(s => [s.id, s]));
+  const detailViews = [
+    ...data.topics.map(t => ({data:t, title:t.title, query:`?view=${t.id}`, topic:t})),
+    ...data.companies.filter(c => c.case).map(c => ({data:c.case, title:`${c.name} 案例`, query:`?view=case&company=${c.id}`, company:c}))
+  ];
+  const company = byId('company'), search = byId('search'), kind = byId('kind'), sourceSearch = byId('source-search');
+  const query = new URLSearchParams(location.search);
+  let caseCompany = query.get('view') === 'case' ? companies.get(query.get('company')) : null;
+  if (!caseCompany?.case) caseCompany = null;
+  let topic = (data.topics || []).find(t => t.id === query.get('view')) || null;
+  const external = data.meta.taskType === 'external-company';
+  byId('reading-path').textContent = '研究对象 → 决策与下一步 → 公司对标 → 证据';
+  const view = () => caseCompany?.case || topic;
+  byId('overview-link').href = pageLink('').href;
+  for (const [benchmark, label] of [[false, `${companies.get(data.meta.subjectCompanyId).name} 研究`], [true, '公司对标']]) {
+    const items = detailViews.filter(v => (sectionById.get(v.data.parentSectionId).part === 'paths') === benchmark);
+    if (!items.length) continue;
+    const group = el('div', undefined, 'topic-group'); group.append(el('strong', label));
+    for (const v of items) group.append(pageLink(v.title, v.query));
+    byId('case-links').append(group);
+  }
+  for (const c of companies.values()) {
+    const option = el('option', `${c.name} · ${c.period}`); option.value = c.id; company.append(option);
+  }
+  company.value = companies.has(query.get('company')) ? query.get('company') : 'all';
+  for (const [id, value] of Object.entries({question:data.meta.question, scope:data.meta.scope, notice:data.meta.notice, date:`更新 ${data.meta.asOf}`})) byId(id).textContent = value;
+  const nav = byId('navigation');
+  let sourceOnly = new Set();
+  function citations(ids) {
+    const box = el('div', undefined, 'sources');
+    for (const id of ids) box.append(link(`${id} · ${evidence.get(id).title}`, id));
+    return box;
+  }
+  function metadata(r) {
+    const box = el('div', undefined, 'meta');
+    box.append(el('span', r.companyId ? companies.get(r.companyId).name : '全局'), el('span', names[r.kind], `badge ${r.kind}`), el('span', r.status));
+    if (sourceOnly.has(r.id)) box.append(el('span', '仅关联来源命中', 'badge'));
+    return box;
+  }
+  function footer(r) {
+    const box = el('div', undefined, 'record-footer');
+    box.append(el('p', `边界：${r.limitation}`, 'limit'), citations(r.evidenceIds));
+    if (r.relatedIds.length) {
+      const related = el('div', undefined, 'related');
+      for (const id of r.relatedIds) related.append(link(`关联：${records.get(id).title}`, id));
+      box.append(related);
+    }
+    return box;
+  }
+  function fields(r) {
+    const dl = el('dl');
+    for (const field of r.fields || []) {
+      if (kind.value !== 'all' && field.kind && field.kind !== kind.value) continue;
+      const row = el('div', undefined, 'field');
+      row.append(el('dt', field.kind ? `${field.label} · ${names[field.kind]}` : field.label), el('dd', field.value)); dl.append(row);
+    }
+    return dl;
+  }
+  function shell(r, tag = 'article') {
+    const node = el(tag, undefined, `record ${r.role}`); node.id = r.id; node.tabIndex = -1;
+    node.append(metadata(r), el('h3', r.title)); return node;
+  }
+  function metric(r) {
+    const node = shell(r), value = el('div', r.metric.value, 'metric-value');
+    value.append(el('span', r.metric.unit)); node.append(value, el('p', r.metric.basis), el('p', r.text)); return node;
+  }
+  function route(r) {
+    const node = shell(r); node.dataset.priority = r.route.priority;
+    node.prepend(el('p', r.route.priority, 'route-priority'));
+    node.append(el('p', r.text), el('p', `进入条件：${r.route.condition}`, 'route-condition')); return node;
+  }
+  function step(r) {
+    const node = shell(r, 'li'); node.prepend(el('p', r.stage || '阶段待确认', 'stage'));
+    node.append(el('p', r.text), fields(r)); return node;
+  }
+  function advice(r) {
+    const node = shell(r); node.append(el('p', r.text)); return node;
+  }
+  function meeting(r) {
+    const node = shell(r); node.prepend(el('p', r.meeting.confirmationType, 'eyebrow'));
+    const dl = el('dl');
+    for (const [key, label] of Object.entries({decision:'决定',basis:'依据',condition:'条件',owner:'确认角色',reviewAt:'复盘时间'})) {
+      const row = el('div', undefined, 'field'); row.append(el('dt', label), el('dd', r.meeting[key])); dl.append(row);
+    }
+    node.append(dl); return node;
+  }
+  function action(r) {
+    const node = shell(r); node.append(el('p', r.text));
+    const list = el('ol', undefined, 'milestones');
+    for (const item of r.milestones) {
+      const li = el('li'); li.append(el('strong', item.period), el('h4', item.action), el('p', `负责：${item.owner}`), el('p', `观察：${item.observe}`), el('p', item.decision, 'limit')); list.append(li);
+    }
+    node.append(list, fields(r)); return node;
+  }
+  function tableRegion(label, headers) {
+    const wrapper = el('div', undefined, 'table-scroll'); wrapper.tabIndex = 0;
+    wrapper.setAttribute('role', 'region'); wrapper.setAttribute('aria-label', `${label}，可横向滚动`);
+    const table = el('table'); table.append(el('caption', `${label} · 窄屏可横向滚动`));
+    const head = el('tr');
+    for (const label of headers) { const th = el('th', label); th.scope = 'col'; head.append(th); }
+    const thead = el('thead'); thead.append(head); table.append(thead);
+    const body = el('tbody'); table.append(body); wrapper.append(table); return {wrapper, body};
+  }
+  function comparison(r) {
+    const node = shell(r); node.append(el('p', r.text));
+    const labels = r.columns || profileColumns;
+    const {wrapper, body} = tableRegion(r.title, ['公司', ...labels]);
+    for (const id of r.comparisonIds) {
+      const profile = records.get(id), row = el('tr'), th = el('th'); th.scope = 'row';
+      th.append(link(companies.get(profile.companyId).name, id)); row.append(th);
+      for (const label of labels) {
+        const field = profile.fields.find(f => f.label === label);
+        const visible = field && (kind.value === 'all' || !field.kind || field.kind === kind.value);
+        row.append(el('td', !field ? '未记录' : visible ? field.value : '已按内容性质隐藏'));
+      }
+      body.append(row);
+    }
+    node.append(wrapper); return node;
+  }
+  function loop(r) {
+    const node = shell(r); node.append(el('p', r.text));
+    const list = el('ol', undefined, 'loop');
+    for (const edge of r.edges) {
+      const li = el('li'); li.append(el('strong', `${edge.from} → ${edge.to}`), el('p', edge.mechanism), el('small', edge.status), citations(edge.evidenceIds)); list.append(li);
+    }
+    node.append(list); return node;
+  }
+  function prose(r) { const node = shell(r); node.append(el('p', r.text), fields(r)); return node; }
+  function team(r) {
+    const node = shell(r); node.append(el('p', r.text));
+    const {wrapper, body} = tableRegion('团队与分工', ['成员／角色', '相关背景', '实际责任与确认状态', '投入与依赖', '证据']);
+    for (const person of r.people) {
+      const row = el('tr'), sources = el('td'); sources.append(citations(person.evidenceIds));
+      for (const value of [`${person.name} · ${person.role}`, person.background, person.responsibility, person.commitment]) row.append(el('td', value));
+      row.append(sources); body.append(row);
+    }
+    node.append(wrapper); return node;
+  }
+  function decision(r) {
+    const node = shell(r); node.append(el('p', r.text));
+    const dl = el('dl');
+    for (const [key, label] of Object.entries({period:'时间',context:'当时约束',knownThen:'当时可知信息',options:'可选路径及其证据身份',chosen:'实际选择',outcome:'之后观察到的结果',tradeoff:'机会成本与未知',assessment:'研究者复盘',falsifier:'会改变解释的证据'})) {
+      const row = el('div', undefined, 'field'); row.append(el('dt', label), el('dd', r.decision[key])); dl.append(row);
+    }
+    node.append(dl); return node;
+  }
+  function series(r) {
+    const node = shell(r); node.append(el('p', r.text), el('p', `${r.series.definition}；单位：${r.series.unit}`, 'limit'));
+    const {wrapper, body} = tableRegion(r.title, ['观察期', '数值与比例示意', '对象、分母与窗口', '来源']);
+    const max = Math.max(0, ...r.series.points.map(p => p.value ?? 0));
+    for (const point of r.series.points) {
+      const row = el('tr'), value = el('td'), sources = el('td');
+      value.append(el('span', point.value === null ? point.missingReason : `${point.value} ${r.series.unit}`));
+      if (point.value !== null) { const bar = el('span', undefined, 'data-bar'); bar.style.width = `${max ? point.value / max * 100 : 0}%`; bar.setAttribute('aria-hidden','true'); value.append(bar); }
+      sources.append(citations(point.evidenceIds)); row.append(el('th', point.period), value, el('td', point.basis), sources); body.append(row);
+    }
+    node.append(wrapper, el('p', '条长从零起，按本序列最大已知值缩放；逐行列出观察期，不暗示等长时间间隔。', 'chart-note')); return node;
+  }
+  function funnel(r) {
+    const node = shell(r); node.append(el('p', r.text), el('p', `批次：${r.funnel.cohort}；分支关系：${r.funnel.overlap}`, 'limit'));
+    const {wrapper, body} = tableRegion('同批漏斗与分支', ['阶段及上游', '人数 / 分母', '事件、窗口与分母定义', '已经支持 / 尚未支持', '来源']);
+    for (const point of r.funnel.nodes) {
+      const parent = r.funnel.nodes.find(p => p.id === point.parentId), row = el('tr'), sources = el('td');
+      sources.append(citations(point.evidenceIds));
+      row.append(el('th', `${parent ? `${parent.label} → ` : ''}${point.label}`), el('td', `${point.count ?? '未知'} / ${point.denominator ?? '未知'}`), el('td', point.basis), el('td', `支持：${point.proved}；未支持：${point.unproved}`), sources); body.append(row);
+    }
+    node.append(wrapper); return node;
+  }
+  function change(r) {
+    const node = shell(r); node.append(el('p', r.text), el('p', r.change.direction, 'proof-state'));
+    const dl = el('dl');
+    for (const [key, label] of Object.entries({before:'原判断',newEvidence:'新证据及性质',after:'新判断',impact:'路线、调查与图表的变化'})) {
+      const row = el('div', undefined, 'field'); row.append(el('dt', label), el('dd', r.change[key])); dl.append(row);
+    }
+    node.append(dl); return node;
+  }
+  const renderers = {metric, route, step, advice, meeting, action, comparison, loop, team, decision, series, funnel, change};
+  function renderRecord(r) { const node = (renderers[r.role] || prose)(r); node.append(footer(r)); return node; }
+  function proofTable(items) {
+    const {wrapper, body} = tableRegion('证明状态：判断与证据分开', ['命题与判断', '证据与支持边界', '缺口', '下一步']);
+    for (const r of items) {
+      const row = el('tr'); row.id = r.id; row.tabIndex = -1;
+      const name = el('th'); name.scope = 'row'; name.append(el('strong', r.proof.proposition), el('p', r.proof.state, 'proof-state'), metadata(r));
+      if (r.proof.state === '不适用') name.append(el('p', `原因：${r.proof.naReason}`));
+      const support = el('td'); support.append(el('p', r.proof.evidence), footer(r));
+      row.append(name, support, el('td', r.proof.gap), el('td', r.proof.next)); body.append(row);
+    }
+    return wrapper;
+  }
+  function grouped(items) {
+    const container = el('div', undefined, 'section-content');
+    const order = {judgment:0, metric:1, proof:2};
+    const roles = [...new Set(items.map(r => r.role))].sort((a,b) => (order[a] ?? 99) - (order[b] ?? 99));
+    for (const role of roles) {
+      const subset = items.filter(r => r.role === role);
+      if (role === 'proof') { container.append(proofTable(subset)); continue; }
+      if (role === 'advice') {
+        const board = el('div', undefined, 'advice-board');
+        for (const status of ['立即采用','带条件采用','明确删除','待确认']) {
+          const matches = subset.filter(r => r.adoption === status);
+          if (!matches.length) continue;
+          const lane = el('div', undefined, 'advice-lane'); lane.append(el('h3', status));
+          for (const r of matches) lane.append(renderRecord(r)); board.append(lane);
+        }
+        container.append(board); continue;
+      }
+      const group = el(role === 'step' ? 'ol' : 'div', undefined, role === 'step' ? 'timeline' : `${role}-group`);
+      for (const r of subset) group.append(renderRecord(r)); container.append(group);
+    }
+    return container;
+  }
+  function hero() {
+    const judgment = records.get(view()?.verdictId || data.meta.verdictId);
+    byId('title').textContent = caseCompany ? `${caseCompany.name} · ${caseCompany.period}` : topic ? `${topic.title} · ${data.meta.title}` : data.meta.title;
+    document.title = byId('title').textContent;
+    byId('question').textContent = caseCompany ? `本专题服务的决策：${data.meta.question}` : data.meta.question;
+    byId('scope').textContent = caseCompany ? `${caseCompany.period}；按起点资产、交易交付、取舍与回路迁移展开。` : data.meta.scope;
+    byId('summary-label').textContent = view() ? '专题判断 · 不随正文筛选重算' : '研究整体判断 · 不随正文公司筛选重算';
+    byId('overview-link').hidden = !view();
+    document.body.classList.toggle('detail-view', !!view());
+    byId('argument-route').hidden = !view();
+    byId('argument-route').textContent = view() ? view().argument.join(' → ') : '';
+    if (view()) {
+      const parent = sectionById.get(view().parentSectionId);
+      byId('overview-link').href = pageLink('', '', `#${parent.id}`).href;
+      byId('overview-link').textContent = `返回总览：${parent.title} →`;
+    }
+    byId('company-control').hidden = !!caseCompany;
+    const verdict = byId('hero-verdict'); verdict.replaceChildren(); verdict.hidden = kind.value === 'fact';
+    if (!verdict.hidden) verdict.append(el('p', names[judgment.kind], 'eyebrow'), el('h2', judgment.title), el('p', judgment.text), citations(judgment.evidenceIds));
+    byId('hero-boundary').textContent = `判断边界：${judgment.limitation}`;
+    const metrics = byId('hero-metrics'); metrics.replaceChildren(); metrics.hidden = !!view();
+    if (!view()) for (const id of data.meta.keyMetricIds) {
+      const r = records.get(id), box = el('article', undefined, 'metric-summary');
+      const value = el('p', r.metric.value, 'metric-value'); value.append(el('span', r.metric.unit));
+      box.append(el('h2', r.title), value, el('p', r.metric.basis), link('口径、边界与来源 →', r.id)); metrics.append(box);
+    }
+  }
+  for (const source of evidence.values()) {
+    const article = el('article', undefined, 'evidence'); article.id = source.id; article.tabIndex = -1;
+    article.append(el('h3', `${source.id} · ${source.title}`), el('p', `${source.nature} · ${source.date} · ${source.locator}`), el('p', source.support), el('p', `支持边界：${source.limitation}`, 'limit'));
+    if (source.url) {
+      let url;
+      try { url = new URL(source.url); } catch { /* Preserve this source's text when its URL is invalid. */ }
+      if (url && ['https:', 'http:'].includes(url.protocol) && /^https?:\/\/[^/?#\s]+(?:[/?#]|$)/.test(source.url)) {
+        const a = el('a', '打开原始来源'); a.href = url.href; article.append(a);
+      } else article.append(el('p', '来源链接无效；请按上述记录位置核对原始材料。', 'notice'));
+    }
+    const uses = data.records.filter(r => sourceIds(r).includes(source.id));
+    const backlinks = el('div', undefined, 'related');
+    for (const r of uses) backlinks.append(link(`返回：${r.title}`, r.id)); article.append(backlinks); byId('evidence-list').append(article);
+  }
+  function sourceIds(r) {
+    return [...r.evidenceIds, ...[r.edges, r.people, r.series?.points, r.funnel?.nodes].flatMap(items => (items || []).flatMap(item => item.evidenceIds))];
+  }
+  function recordText(r) {
+    const displayedFields = (r.fields || []).filter(f => kind.value === 'all' || !f.kind || f.kind === kind.value).map(f => [f.label, f.value]);
+    const comparisonFields = (r.comparisonIds || []).flatMap(id => records.get(id).fields.filter(f => (r.columns || profileColumns).includes(f.label) && (kind.value === 'all' || !f.kind || f.kind === kind.value)).map(f => [f.label, f.value]));
+    return [r.title, ['meeting','proof'].includes(r.role) ? '' : r.text, r.status, r.stage, r.adoption, r.limitation,
+      displayedFields, ...['metric','proof','route','meeting'].map(key => Object.values(r[key] || {})),
+      (r.milestones || []).map(item => Object.values(item)), (r.edges || []).map(e => [e.from,e.to,e.mechanism,e.status]),
+      (r.people || []).map(p => [p.name,p.role,p.background,p.responsibility,p.commitment]),
+      Object.values(r.decision || {}), Object.values(r.change || {}), r.series?.unit, r.series?.definition,
+      (r.series?.points || []).map(p => [p.period,p.value,p.basis,p.missingReason]), r.funnel?.cohort, r.funnel?.overlap,
+      (r.funnel?.nodes || []).map(p => [p.label,p.count,p.denominator,p.basis,p.proved,p.unproved]),
+      companies.get(r.companyId)?.name, comparisonFields].flat(Infinity).filter(v => v !== undefined).join(' ').toLocaleLowerCase();
+  }
+  function render() {
+    hero(); sourceOnly = new Set();
+    const term = search.value.trim().toLocaleLowerCase();
+    const modules = view()?.modules || sections;
+    const caseIds = new Set(modules.flatMap(m => view() ? m.recordIds : m.overviewIds));
+    const visible = data.records.filter(r => {
+      if (!caseIds.has(r.id)) return false;
+      if (!caseCompany && company.value !== 'all' && r.companyId && r.companyId !== company.value) return false;
+      if (kind.value !== 'all' && r.kind !== kind.value) return false;
+      const ownMatch = !term || recordText(r).includes(term);
+      const sourceMatch = sourceSearch.checked && sourceIds(r).some(id => JSON.stringify(evidence.get(id)).toLocaleLowerCase().includes(term));
+      if (!ownMatch && sourceMatch) sourceOnly.add(r.id);
+      return ownMatch || sourceMatch;
+    });
+    const content = byId('content'); content.replaceChildren(); nav.replaceChildren();
+    for (const [index, module] of modules.entries()) {
+      const subset = (view() ? module.recordIds : module.overviewIds).map(id => records.get(id)).filter(r => visible.includes(r));
+      const title = view() ? module.title : `${String(index + 1).padStart(2,'0')} ${module.title}`;
+      if (!view()) nav.append(link(title, module.id));
+      const section = el('section'); section.id = module.id; section.tabIndex = -1;
+      const heading = el('header', undefined, 'section-heading'); heading.append(el('h2', title));
+      if (kind.value === 'all') heading.append(el('p', module.thesis, 'section-intro'));
+      section.append(heading);
+      if (!subset.length && caseIds.size && (view() || module.overviewIds.length)) section.append(el('p', '当前组合条件下，本节没有匹配记录。'));
+      else {
+        section.append(grouped(subset));
+        if (kind.value === 'all') {
+          const conclusion = el('div', undefined, 'section-conclusion');
+          conclusion.append(el('strong', view() ? '专题结论' : '本研究整体结论 · 不随筛选重算'), el('p', module.conclusion));
+          if (module.evidenceIds) conclusion.append(citations(module.evidenceIds)); section.append(conclusion);
+        }
+      }
+      if (!view()) {
+        const details = el('div', undefined, 'detail-links');
+        for (const v of detailViews.filter(v => v.data.parentSectionId === module.id)) details.append(pageLink(`打开完整${v.title} →`, v.query));
+        section.append(details);
+      }
+      content.append(section);
+    }
+    if (view()) {
+      const action = sectionById.get(data.meta.actionSectionId);
+      const next = el('div', undefined, 'action-return'); next.append(el('strong', external ? '把分析接回下一步调查' : '把分析接回下一步行动'), pageLink(`返回${action.title} →`,'',`#${action.id}`)); content.append(next);
+    }
+    if (!view()) nav.append(link(`${String(sections.length + 1).padStart(2,'0')} 证据库`,'sources'));
+    const scope = caseCompany ? `${caseCompany.name} 案例专题` : `${topic ? `${topic.title}；` : '主报告；'}${company.value === 'all' ? '全部公司' : companies.get(company.value).name}＋全局记录`;
+    byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。当前页匹配 ${visible.length} / ${caseIds.size} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。补充论证请进入对应专题搜索；首屏摘要不随正文筛选重算；证据明细保持完整。`;
+    byId('empty').hidden = visible.length > 0 || caseIds.size === 0; syncLayout(); updateActiveSection();
+  }
+  const narrow = window.matchMedia('(max-width:1000px)');
+  function syncLayout() {
+    const offset = narrow.matches ? 20 : 60 + byId('filters').offsetHeight + 24;
+    document.documentElement.style.setProperty('--anchor-offset', `${offset}px`);
+  }
+  function updateActiveSection() {
+    const line = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--anchor-offset')) + 2;
+    const sections = [...document.querySelectorAll('main section')]; let active = sections[0];
+    for (const section of sections) if (section.getBoundingClientRect().top <= line) active = section;
+    for (const a of nav.querySelectorAll('a')) {
+      if (a.hash === `#${active.id}`) a.setAttribute('aria-current','location'); else a.removeAttribute('aria-current');
+    }
+  }
+  function revealHash() {
+    let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+    const record = records.get(id);
+    if (record && !byId(id)) {
+      const inCurrentView = view() ? view().modules.some(m => m.recordIds.includes(id)) : sections.some(s => s.overviewIds.includes(id));
+      if (!inCurrentView) {
+        const destination = sections.some(s => s.overviewIds.includes(id)) ? null : detailViews.find(v => v.data.modules.some(m => m.recordIds.includes(id)));
+        caseCompany = destination?.company || null; topic = destination?.topic || null;
+        const url = new URL(location.href); url.search = destination?.query || ''; history.replaceState(null,'',url);
+      }
+      company.value = record.companyId || 'all'; search.value = ''; kind.value = 'all'; render();
+    }
+    const target = byId(id); if (target) { target.scrollIntoView({block:'start'}); target.focus({preventScroll:true}); }
+  }
+  byId('filters').addEventListener('submit', e => e.preventDefault());
+  byId('filters').addEventListener('input', render);
+  byId('filters').addEventListener('change', render);
+  byId('filters').addEventListener('reset', e => { e.preventDefault(); company.value = caseCompany?.id || 'all'; kind.value = 'all'; search.value = ''; sourceSearch.checked = false; render(); });
+  window.addEventListener('hashchange',revealHash);
+  window.addEventListener('scroll',updateActiveSection,{passive:true}); window.addEventListener('resize',() => { syncLayout(); updateActiveSection(); });
+  document.addEventListener('click', e => { const a = e.target.closest('a[href^="#"]'); if (a && a.hash === location.hash) { e.preventDefault(); revealHash(); } });
+  function syncDirectory() { byId('directory').open = !narrow.matches; }
+  narrow.addEventListener('change',syncDirectory); syncDirectory(); render(); revealHash();
+}
+start().catch(error => { byId('notice').textContent = `页面未完成加载：${error.message} 请校验 JSON 与引用；直接打开时使用导出的单文件 HTML，多文件预览按 dashboard-data.md 启动静态服务。`; byId('notice').setAttribute('role','alert'); });
+</script>
 </body>
 </html>

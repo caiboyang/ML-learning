@@ -38,6 +38,16 @@ function checkReferences(d) {
       assert(!reachable.has(id),'Duplicate overview record'); reachable.add(id);
     });
   });
+  // Reachability through a detail page is insufficient for a main deliverable.
+  const mainRoles = new Set(['proof','step','decision','loop','advice','route','action','contract','transfer']);
+  for (const r of d.records) {
+    const subject = r.companyId === null || r.companyId === d.meta.subjectCompanyId;
+    const sectionCompanies = new Set(d.records.filter(item => item.section === r.section && item.companyId).map(item => item.companyId));
+    const standaloneCaseStep = r.role === 'step' && sectionCompanies.size === 1;
+    if (r.role === 'comparison' || (subject && mainRoles.has(r.role)) || standaloneCaseStep) {
+      assert(reachable.has(r.id), `Main deliverable hidden in detail: ${r.id}`);
+    }
+  }
   for (const r of d.records) {
     assert(!r.companyId || companies.has(r.companyId));
     assert(sections.has(r.section), `Missing parent section for ${r.id}`);
@@ -70,7 +80,8 @@ function checkReferences(d) {
   d.records.forEach(r => assert(reachable.has(r.id), `No overview or detail route to ${r.id}`));
 }
 checkReferences(data);
-checkReferences(read(path.join(assets, 'external-research.json')));
+const external = read(path.join(assets, 'external-research.json'));
+checkReferences(external);
 if (process.argv[2]) checkReferences(read(process.argv[2]));
 
 // Reproduce the renderer crash: every required payload must fail schema validation if absent.
@@ -100,9 +111,29 @@ for (const url of [null, 'https://example.com/path?q=1#x', 'http://localhost:876
 const noMissingReason = copy(data);
 delete noMissingReason.records.find(r => r.series).series.points.find(p => p.value === null).missingReason;
 assert(!validate(noMissingReason),'Missing time series reason passed');
-for (const mutate of [d => { delete d.sections[0].title; }, d => { delete d.sections[0].part; }, d => { d.topics[0].id = 'case'; }, d => { d.topics[0].modules = d.topics[0].modules.slice(0,2); }]) {
+for (const mutate of [d => { delete d.sections[0].title; }, d => { delete d.sections[0].part; }, d => { d.sections[0].overviewIds = []; }, d => { d.topics[0].id = 'case'; }, d => { d.topics[0].modules = d.topics[0].modules.slice(0,2); }]) {
   const broken = copy(data); mutate(broken); assert(!validate(broken),'Invalid section or detail structure passed');
 }
+// A nonempty main section must still contain every item, even if detail remains reachable.
+for (const [fixture, ids] of [[data, ['p-payment','adopt-scope','c-route-standard','d-contract','c-matrix']], [external, ['s3','dec-2021-open','c-loop','a-next']]]) {
+  for (const id of ids) {
+    const broken = copy(fixture), record = broken.records.find(r => r.id === id);
+    const section = broken.sections.find(s => s.id === record.section);
+    section.overviewIds = section.overviewIds.filter(item => item !== id);
+    if (!section.overviewIds.length) {
+      broken.records.push({...copy(broken.records.find(r => r.role === 'judgment')), id:'test-summary', section:section.id});
+      section.overviewIds.push('test-summary');
+    }
+    if (!broken.topics.some(t => t.modules.some(m => m.recordIds.includes(id)))) broken.topics[0].modules[0].recordIds.push(id);
+    assert.throws(() => checkReferences(broken), /Main deliverable hidden in detail/);
+  }
+}
+const standaloneCase = copy(data);
+standaloneCase.sections.push({id:'featured-case',title:'重点案例路径',part:'paths',overviewIds:['s-one','s-two','s-three'],thesis:'案例动作',conclusion:'证据边界',evidenceIds:[]});
+for (const id of ['s-one','s-two','s-three']) standaloneCase.records.find(r => r.id === id).section = 'featured-case';
+checkReferences(standaloneCase);
+standaloneCase.sections.at(-1).overviewIds.pop();
+assert.throws(() => checkReferences(standaloneCase), /Main deliverable hidden in detail: s-three/);
 const renamed = copy(data), oldId = renamed.sections[0].id;
 renamed.sections[0].id = 'another-deliverable';
 renamed.records.filter(r => r.section === oldId).forEach(r => { r.section = 'another-deliverable'; });
@@ -111,4 +142,4 @@ checkReferences(renamed);
 for (const mutate of [d => { d.sections[0].overviewIds = ['absent']; }, d => { d.topics[0].parentSectionId = 'absent'; }, d => { d.records[0].section = 'absent'; }]) {
   const broken = copy(data); mutate(broken); assert.throws(() => checkReferences(broken));
 }
-console.log('Both examples: schema, URL/missing-data regressions, arbitrary sections, record reachability and references passed.');
+console.log('Both examples: schema, main-deliverable coverage, URL/missing-data regressions, arbitrary sections, reachability and references passed.');

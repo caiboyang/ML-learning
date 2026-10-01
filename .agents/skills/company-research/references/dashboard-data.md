@@ -20,11 +20,11 @@ python3 scripts/export-report.py /path/to/research.json /path/to/company-report.
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
-在浏览器打开 `http://127.0.0.1:8765/`。这只是本机预览，不是部署。替换 JSON 中的虚构公司、数据、日期和证据；没有真实来源的条目不能仅删除“教学构造”标签就拿去使用。`notice` 应保留实际证据范围，例如内部自报、未审计或缺少留存。
+在浏览器打开 `http://127.0.0.1:8765/`。这只是本机预览，不是部署。替换 JSON 中的公司、数据、日期和证据；没有真实来源的条目不能仅删除“教学构造”标签就拿去使用。`notice` 应保留实际证据范围，例如内部自报、未审计或缺少留存。
 
 ## 数据结构
 
-[research.schema.json](../assets/research-dashboard/research.schema.json) 定义字段类型与枚举；[research.json](../assets/research-dashboard/research.json) 是自有业务示例；[external-research.json](../assets/research-dashboard/external-research.json) 是外部公司示例。两者都是虚构教学数据。所有文本按纯文本呈现，不接受 HTML；来源链接只接受具有有效 URI 的 HTTP/HTTPS；校验器必须启用 URI format。运行时遇到无效 URL 会保留来源正文并显示不可点击的提示，不中断报告加载。稳定 ID 使用小写字母、数字和连字符，必须全局唯一，且不能与页面固定 ID 冲突。
+[research.schema.json](../assets/research-dashboard/research.schema.json) 定义字段类型与枚举；[research.json](../assets/research-dashboard/research.json) 是虚构自有业务测试夹具；[external-research.json](../assets/research-dashboard/external-research.json) 是有来源的 Clubhouse 外部研究示例。前者只验证自有业务流程；后者展示真实证据的支持范围，均须按新任务重新取证。所有文本按纯文本呈现，不接受 HTML；来源链接只接受具有有效 URI 的 HTTP/HTTPS；校验器必须启用 URI format。运行时遇到无效 URL 会保留来源正文并显示不可点击的提示，不中断报告加载。稳定 ID 使用小写字母、数字和连字符，必须全局唯一，且不能与页面固定 ID 冲突。
 
 | 对象 | 字段 | 含义 |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 `taskType` 为 `own-business`（自有业务决策）或 `external-company`（外部公司研究）。`sections[]` 的 `id` 和 `title` 按实际议题填写，不限定六／七节。`part` 用于覆盖检查与排序，顺序为 `verdict → assets → decisions → choices → validation → paths → questions`，同 part 内保持 JSON 顺序。它落实“研究对象 → 决策与下一步 → 公司对标 → 证据”：`assets` 包括目标公司的自身路径与回路；`paths` 只放对标分析。自有业务可无 `decisions`；外部研究需要历史决策、借鉴条件与调查，不能只换标题。`questions` 的证据与问答覆盖也可由内置证据库、核验专题和调查中的问题完成，不必为枚举凑一个空主节。
 
-`overviewIds` 决定主节实际展示的摘要记录，可为空，此时展示论点、结论和子页入口。详细记录仍以 `record.section` 指向其主要主节，但放进专题模块展开；每条记录必须能从总览或某个专题访问。主节末尾按 `parentSectionId` 自动生成子页入口；记录 ID 不进入目录。来源库作为目录最后一项。
+`overviewIds` 决定主节展示的完整产物记录，每个分析节至少一项；内置证据库不属于 `sections[]`。具体分工以 [呈现规范](result-presentation.md#主页面与专题分工) 为准。语义校验要求研究对象或全局的 `proof / step / decision / loop / advice / route / action / contract / transfer` 及全部 `comparison` 出现在主页面；独立主节只涉及一家公司的案例步骤也须全部展示。普通对标的档案和步骤、补充 `series / funnel / change` 可仅在子页。记录通过 `record.section` 归属主节，子页可复用主产物并增加论证；每条记录必须能从主页面或专题访问。主节末尾按 `parentSectionId` 自动生成子页入口；记录 ID 不进入目录。来源库作为目录最后一项。
 
 `kind` 是 `fact`、`inference` 或 `recommendation`；`status` 单独解释已证明、有信号、待验证、现在复制等状态。内部自报不会因为选了 `fact` 而变成独立核验事实，证据的 `nature` 与记录的 `limitation` 必须保留。
 
@@ -59,8 +59,8 @@ python3 -m http.server 8765 --bind 127.0.0.1
 - `series` 包含 `unit, definition, points[]`；每点含 `period, value, basis, evidenceIds`；`value: null` 时必须有 `missingReason`，按数据原文显示缺失原因。数值非负或 `null`，缺失不变成零；不同指标分别建序列，口径变化写入 `basis`，不可比时拆序列。按观察顺序展示带数值的比例条与表格，条长从零起，不暗示等距时间。例如“已查资料但没有可靠数据”“尚未到观察期”必须区分；`basis` 继续说明对象、分母与窗口。
 - `funnel` 包含 `cohort, overlap, nodes[]`。每节点含 `id, parentId, label, count, denominator, basis, proved, unproved, evidenceIds`，节点 ID 在该漏斗内唯一，根的 `parentId: null`，其他父节点必须存在且无循环。人数和分母为非负整数或 `null`；已知人数不大于分母。每节点写事件、窗口、分母定义及支持／未支持判断，通常整条标为解释。分支可能重叠时说明交集，不相加也不串成连续转化。
 - `change` 包含 `before, newEvidence, direction, after, impact`；`direction` 为上调／下调／维持。记录新证据性质，并将变化落实到被关联的判断、图表与行动。
-- `companies[].case` 包含 `parentSectionId, argument, verdictId` 和 3–6 个 `modules[]`，重点案例通常用四模块；每个模块含 `id, title, thesis, conclusion, recordIds`，按互补资产、交易交付、取舍、回路迁移组织。记录可复用，不复制正文。没有充分材料的公司不生成空专题。
-- `topics[].id` 使用任意稳定 ID（保留 `case` 给公司案例路由），例如 `comparisons / advice / decision / audit`，通过 `?view=...` 直达。`parentSectionId` 指向主要展开的主节，`argument` 用 3–6 个短语呈现论证路线；正文为 3–6 个模块，不生成侧栏目录。顶部入口按主节是否属于对标分组。模块字段同公司专题，跨视图可复用记录；同一视图内一条记录只出现一次，避免重复锚点。对照页逐家公司同结构展开；建议页分类复盘；决策页区分自有路线和外部历史取舍；核验页包含口径、序列、漏斗分支、判断变化和数据合同。主报告目录只列主节；专题末尾按 `meta.actionSectionId` 回到验证或下一步调查。
+- `companies[].case` 包含 `parentSectionId, argument, verdictId` 和 3–6 个 `modules[]`，重点案例通常用四模块；每个模块含 `id, title, thesis, conclusion, recordIds`。模块内容按 [案例合同](research-contract.md#重点公司专题的最低结构) 填写，版式按呈现规范。
+- `topics[].id` 使用任意稳定 ID（保留 `case` 给公司案例路由），例如 `comparisons / advice / decision / audit`，通过 `?view=...` 直达。`parentSectionId` 指向主要展开的主节，`argument` 用 3–6 个短语呈现论证路线；模块数量受 schema 约束；类型和内容要求见 [呈现规范](result-presentation.md#主页面与专题分工)。模块字段同公司专题，跨视图可复用记录；同一视图内不得重复记录 ID。专题末尾由 `meta.actionSectionId` 生成返回入口。
 - 问答用 `role: question` 记录问题、回答、日期、原判断和变化，并通过 `relatedIds` 指向受影响的结论与行动。页面不保存回答、不调用模型；Agent 完成核对和推理后更新数据，再刷新呈现。
 
 最小记录示例（仍需放进完整数据并提供关联证据）：
@@ -87,7 +87,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 来源明细始终保留完整支持边界；团队行、序列点、漏斗节点与回路边的来源也参与反向索引和可选的来源搜索。“只看事实”不隐藏记录自身的限制。点击关联记录或来源的返回链接时，若目标被过滤，会恢复必要条件，再定位并聚焦。直接访问记录锚点也应可用。`?view=case&company=servicebench` 直接打开四模块专题；若目标在当前专题之外，总览包含该记录时回总览，否则进入包含它的专题，恢复必要筛选再定位。少量内容可删不必要的筛选，但不能删来源和口径。
 
-JSON 是唯一内容来源。每次用户回答后检查：证明状态、资产可用性、对标匹配、迁移分类、主路线、门槛、行动、摘要和图表。模板不会根据一句回答自动推理这些变化；Agent 负责更新所有受影响记录，并记录原因。
+JSON 是唯一内容来源。Agent 按 [研究合同](research-contract.md#怎样提问才有用) 处理回答并更新关联记录；模板只渲染，不自动推理。
 
 ## 验收
 
@@ -95,13 +95,13 @@ JSON 是唯一内容来源。每次用户回答后检查：证明状态、资产
 
 逐项填写 [研究合同的内容覆盖清单](research-contract.md#内容覆盖清单交付时逐项填写)，为团队、每家对标、数据核验、决策复盘等标出实际记录与支持证据。存在一个空组件、填了“未知”或通过结构校验，都不能替代实质分析。
 
-在 1280×900 和 390×844 视口操作公司切换、组合搜索、性质筛选、空结果、重置、目录、证据链接及返回；从带记录 hash 的 URL 重新进入，检查可读、聚焦与导航。检查控制台、正文溢出和键盘操作；还要确认桌面目录一屏可扫完、无记录子目录，子页无侧栏且只含 3–6 个论证标题；从窄屏拉宽，确认主目录自动展开，测试专题直达、返回行动、仅来源命中及隐藏判断的事实视图。打印当前视图时保留日期、范围和记录边界；需要全量打印时先重置筛选。
+在 1280×900 和 390×844 视口操作公司切换、组合搜索、性质筛选、空结果、重置、目录、证据链接及返回；从带记录 hash 的 URL 重新进入，检查可读、聚焦与导航。检查控制台、正文溢出和键盘操作；布局标准按 [呈现验收](result-presentation.md#展示验收) 检查；运行验证还包括跨断点目录状态、专题直达、返回行动、仅来源命中及隐藏判断的事实视图。打印当前视图时保留日期、范围和记录边界；需要全量打印时先重置筛选。
 
 单文件导出后移到另一目录并改名，使用 `file://` 打开；检查总览、四类专题、来源往返与被筛选记录的显露，不启动服务。另用外部研究数据验证关键决策、借鉴顺序和调查内容，而不是仅把同一份运营计划换标题。模板依赖 JavaScript；禁用脚本时只显示说明，需要无脚本阅读时另行生成正文版本。真实研究仍须按研究合同补齐专题与证据深度。
 
 ## 仓库在线演示
 
-仓库的 `company-research/demo/` 包含源文件和两份数据的生成副本，以及自有业务单文件 `report.html` 和外部公司单文件 `external.html`，用于演示，不单独编辑。从仓库根目录运行 `python3 scripts/sync-company-research-demo.py` 更新，运行同一命令加 `--check` 检查漂移；它不联网、不部署。模板与 skill 内导出脚本可复制到其他项目，不依赖仓库生成脚本。报告与 README 指向隐藏 skill 目录的链接使用 GitHub 源码绝对链接，避免 Jekyll 默认排除点目录带来的失效链接。
+仓库的 `company-research/demo/` 包含生成副本。默认入口 `index.html` 与 `external.html` 都是 Clubhouse 单文件报告；`report.html` 是次要的虚构自有业务测试示例。源模板的 `index.html` 仍是可复制的数据加载入口，两者由同步脚本明确区分，不手改生成文件。从仓库根目录运行 `python3 scripts/sync-company-research-demo.py` 更新，运行同一命令加 `--check` 检查漂移；它不联网、不部署。模板与 skill 内导出脚本可复制到其他项目，不依赖仓库生成脚本。报告与 README 指向隐藏 skill 目录的链接使用 GitHub 源码绝对链接，避免 Jekyll 默认排除点目录带来的失效链接。
 
 
 ## 可复现的仓库验证
@@ -114,4 +114,4 @@ python3 scripts/sync-company-research-demo.py
 npm test --prefix scripts
 ```
 
-测试覆盖两种任务数据、Schema、缺失原因、HTTP(S) URL、引用、父子页与记录可达性、单文件完整性和示例同步。复制 skill 到其他仓库后，可用支持 Draft 7 与 URI format 的校验器并执行上述语义检查，不依赖本仓库测试脚本。浏览器验收仍须另外进行。
+测试覆盖两种任务数据、Schema、缺失原因、HTTP(S) URL、引用、父子页与记录可达性、主产物完整性（包含“子页可达但主页面缺项”的负例）、单文件完整性和示例同步。复制 skill 到其他仓库后，可用支持 Draft 7 与 URI format 的校验器并执行上述语义检查，不依赖本仓库测试脚本。浏览器验收仍须另外进行。

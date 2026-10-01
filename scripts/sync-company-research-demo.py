@@ -11,10 +11,10 @@ args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 source = root / '.agents/skills/company-research/assets/research-dashboard'
 target = root / 'company-research/demo'
-files = ('index.html', 'styles.css', 'app.js', 'research.json', 'external-research.json', 'research.schema.json')
+files = ('styles.css', 'app.js', 'research.json', 'external-research.json', 'research.schema.json')
 exporter = runpy.run_path(str(root / '.agents/skills/company-research/scripts/export-report.py'))
 standalone = {name: exporter['build_html'](source / data) for name, data in
-              [('report.html', 'research.json'), ('external.html', 'external-research.json')]}
+              [('index.html', 'external-research.json'), ('report.html', 'research.json'), ('external.html', 'external-research.json')]}
 if args.check:
     changed = [name for name in files if not (target / name).is_file()
                or (target / name).read_bytes() != (source / name).read_bytes()]

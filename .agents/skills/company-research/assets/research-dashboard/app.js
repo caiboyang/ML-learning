@@ -338,8 +338,8 @@ async function start() {
       const next = el('div', undefined, 'action-return'); next.append(el('strong', external ? '把分析接回下一步调查' : '把分析接回下一步行动'), pageLink(`返回${action.title} →`,'',`#${action.id}`)); content.append(next);
     }
     if (!view()) nav.append(link(`${String(sections.length + 1).padStart(2,'0')} 证据库`,'sources'));
-    const scope = caseCompany ? `${caseCompany.name} 案例专题` : `${topic ? `${topic.title}；` : '总览摘要；'}${company.value === 'all' ? '全部公司' : companies.get(company.value).name}＋全局记录`;
-    byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。当前页匹配 ${visible.length} / ${caseIds.size} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。详细记录请进入对应专题搜索；摘要不随正文筛选重算；证据明细保持完整。`;
+    const scope = caseCompany ? `${caseCompany.name} 案例专题` : `${topic ? `${topic.title}；` : '主报告；'}${company.value === 'all' ? '全部公司' : companies.get(company.value).name}＋全局记录`;
+    byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。当前页匹配 ${visible.length} / ${caseIds.size} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。补充论证请进入对应专题搜索；首屏摘要不随正文筛选重算；证据明细保持完整。`;
     byId('empty').hidden = visible.length > 0 || caseIds.size === 0; syncLayout(); updateActiveSection();
   }
   const narrow = window.matchMedia('(max-width:1000px)');
