@@ -459,7 +459,7 @@
     {
       "id": "c-transfer",
       "companyId": null,
-      "section": "benchmark-comparison",
+      "section": "route-options",
       "kind": "recommendation",
       "role": "transfer",
       "status": "带条件采用",
@@ -1612,7 +1612,9 @@
       "id": "executive-conclusion",
       "title": "执行结论",
       "part": "verdict",
-      "overviewIds": [],
+      "overviewIds": [
+        "c-overview"
+      ],
       "thesis": "付款和短期留存有信号，复制交付仍缺证据。",
       "conclusion": "当前只支持有限付费试验；首屏判断的口径和证据在数据核验专题展开。",
       "evidenceIds": [
@@ -1680,7 +1682,15 @@
       "id": "data-audit",
       "title": "经营数据核验",
       "part": "assets",
-      "overviewIds": [],
+      "overviewIds": [
+        "p-delivery",
+        "p-payment",
+        "p-outcome",
+        "p-usage",
+        "p-repayment",
+        "p-supply",
+        "p-advertising"
+      ],
       "thesis": "8 个付款客户中 6 个观察到第 90 天仍付费；第 30 天没有可核对记录。",
       "conclusion": "这只支持短期付款留存，不能代替使用、成果、再次购买或独立交付证明。",
       "evidenceIds": [
@@ -1693,7 +1703,10 @@
       "title": "路线选择",
       "part": "choices",
       "overviewIds": [
-        "c-route"
+        "c-route",
+        "c-transfer",
+        "c-route-standard",
+        "c-route-market"
       ],
       "thesis": "先选当前可承担的路径，再列升级条件。",
       "conclusion": "有限试验优先；标准化和伙伴市场分别等待复用与分发证据。",
@@ -1706,7 +1719,12 @@
       "id": "advice-review",
       "title": "建议复盘",
       "part": "choices",
-      "overviewIds": [],
+      "overviewIds": [
+        "adopt-scope",
+        "adopt-template",
+        "adopt-delete",
+        "c-gates"
+      ],
       "thesis": "收窄交付范围可以采纳，标准化有条件，开放市场暂删。",
       "conclusion": "建议、承诺边界和会议确认在专题中逐项核对。",
       "evidenceIds": [
@@ -1719,7 +1737,8 @@
       "title": "90 天验证计划",
       "part": "validation",
       "overviewIds": [
-        "a-one"
+        "a-one",
+        "d-contract"
       ],
       "thesis": "先确认范围，再观察交付和再售。",
       "conclusion": "下一轮先补验收、总工时与第二实施者记录；停止条件必须先约定。",
@@ -1733,7 +1752,8 @@
       "title": "待确认问题",
       "part": "validation",
       "overviewIds": [
-        "q-one"
+        "q-one",
+        "audit-boundary"
       ],
       "thesis": "只问会改变路线的缺口。",
       "conclusion": "已回答的投入约束已反映在当前路线；下一问聚焦验收记录。",

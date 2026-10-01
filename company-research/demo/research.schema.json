@@ -1157,7 +1157,8 @@
           "items": {
             "$ref": "#/definitions/id"
           },
-          "uniqueItems": true
+          "uniqueItems": true,
+          "minItems": 1
         }
       },
       "required": [
