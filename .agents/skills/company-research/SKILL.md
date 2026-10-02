@@ -27,6 +27,6 @@ description: "研究公司的证明状态、起步资产、商业模式与发展
 
 ## 交付
 
-交付格式、实现、导出与测试以 [数据与模板约定](references/dashboard-data.md) 为准。真实外部研究示例为 [Clubhouse 数据](assets/research-dashboard/external-research.json)；[自有业务数据](assets/research-dashboard/research.json) 是明确标注的虚构测试夹具，不能转成实绩。
+交付格式、实现、导出与测试以 [数据与模板约定](references/dashboard-data.md) 为准。[自有业务数据](assets/research-dashboard/research.json) 与 [外部研究数据](assets/research-dashboard/external-research.json) 都是明确标注的虚构测试夹具，只演示字段和阅读流程；执行研究时重新取证，不将示例内容当成事实或指定的研究对象。
 
 交付前沿主判断追到动作、口径、直接证据和反证。关键资料取不到时说明已查范围、判断影响和下一步；通过页面或结构测试不等于研究完成。用户缩小范围时遵从其范围，保留对应证据边界。
