@@ -115,7 +115,7 @@ for (const mutate of [d => { delete d.sections[0].title; }, d => { delete d.sect
   const broken = copy(data); mutate(broken); assert(!validate(broken),'Invalid section or detail structure passed');
 }
 // A nonempty main section must still contain every item, even if detail remains reachable.
-for (const [fixture, ids] of [[data, ['p-payment','adopt-scope','c-route-standard','d-contract','c-matrix']], [external, ['s3','dec-2021-open','c-loop','a-next']]]) {
+for (const [fixture, ids] of [[data, ['p-payment','adopt-scope','c-route-standard','d-contract','c-matrix']], [external, ['x-first','x-open-decision','x-loop','x-investigation']]]) {
   for (const id of ids) {
     const broken = copy(fixture), record = broken.records.find(r => r.id === id);
     const section = broken.sections.find(s => s.id === record.section);

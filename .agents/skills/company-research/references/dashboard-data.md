@@ -24,7 +24,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 ## 数据结构
 
-[research.schema.json](../assets/research-dashboard/research.schema.json) 定义字段类型与枚举；[research.json](../assets/research-dashboard/research.json) 是虚构自有业务测试夹具；[external-research.json](../assets/research-dashboard/external-research.json) 是有来源的 Clubhouse 外部研究示例。前者只验证自有业务流程；后者展示真实证据的支持范围，均须按新任务重新取证。所有文本按纯文本呈现，不接受 HTML；来源链接只接受具有有效 URI 的 HTTP/HTTPS；校验器必须启用 URI format。运行时遇到无效 URL 会保留来源正文并显示不可点击的提示，不中断报告加载。稳定 ID 使用小写字母、数字和连字符，必须全局唯一，且不能与页面固定 ID 冲突。
+[research.schema.json](../assets/research-dashboard/research.schema.json) 定义字段类型与枚举；[research.json](../assets/research-dashboard/research.json) 是虚构自有业务测试夹具；[external-research.json](../assets/research-dashboard/external-research.json) 是虚构外部研究测试夹具。两者只验证相应任务的字段与阅读流程，不代表真实经营实绩，也不是完整调研的质量上限；新任务须独立取证。所有文本按纯文本呈现，不接受 HTML；来源链接只接受具有有效 URI 的 HTTP/HTTPS；校验器必须启用 URI format。运行时遇到无效 URL 会保留来源正文并显示不可点击的提示，不中断报告加载。稳定 ID 使用小写字母、数字和连字符，必须全局唯一，且不能与页面固定 ID 冲突。
 
 | 对象 | 字段 | 含义 |
 | --- | --- | --- |
@@ -101,7 +101,7 @@ JSON 是唯一内容来源。Agent 按 [研究合同](research-contract.md#怎�
 
 ## 仓库在线演示
 
-仓库的 `company-research/demo/` 包含生成副本。默认入口 `index.html` 与 `external.html` 都是 Clubhouse 单文件报告；`report.html` 是次要的虚构自有业务测试示例。源模板的 `index.html` 仍是可复制的数据加载入口，两者由同步脚本明确区分，不手改生成文件。从仓库根目录运行 `python3 scripts/sync-company-research-demo.py` 更新，运行同一命令加 `--check` 检查漂移；它不联网、不部署。模板与 skill 内导出脚本可复制到其他项目，不依赖仓库生成脚本。报告与 README 指向隐藏 skill 目录的链接使用 GitHub 源码绝对链接，避免 Jekyll 默认排除点目录带来的失效链接。
+仓库的 `company-research/demo/` 包含生成副本。默认入口 `index.html` 与 `report.html` 是虚构自有业务测试示例；`external.html` 是虚构外部研究测试示例。方法规范不绑定具体公司，示例仅用于检查展示与交互。源模板的 `index.html` 仍是可复制的数据加载入口，两者由同步脚本明确区分，不手改生成文件。从仓库根目录运行 `python3 scripts/sync-company-research-demo.py` 更新，运行同一命令加 `--check` 检查漂移；它不联网、不部署。模板与 skill 内导出脚本可复制到其他项目，不依赖仓库生成脚本。报告与 README 指向隐藏 skill 目录的链接使用 GitHub 源码绝对链接，避免 Jekyll 默认排除点目录带来的失效链接。
 
 
 ## 可复现的仓库验证

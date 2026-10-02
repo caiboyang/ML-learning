@@ -14,7 +14,7 @@ target = root / 'company-research/demo'
 files = ('styles.css', 'app.js', 'research.json', 'external-research.json', 'research.schema.json')
 exporter = runpy.run_path(str(root / '.agents/skills/company-research/scripts/export-report.py'))
 standalone = {name: exporter['build_html'](source / data) for name, data in
-              [('index.html', 'external-research.json'), ('report.html', 'research.json'), ('external.html', 'external-research.json')]}
+              [('index.html', 'research.json'), ('report.html', 'research.json'), ('external.html', 'external-research.json')]}
 if args.check:
     changed = [name for name in files if not (target / name).is_file()
                or (target / name).read_bytes() != (source / name).read_bytes()]
