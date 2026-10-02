@@ -40,7 +40,7 @@
           {
             "id": "case-validation",
             "title": "02 首次交易与交付验证",
-            "thesis": "先看真实动作，再解释它为什么有用。",
+            "thesis": "相同系统的人工交付先产生重复配置，第二实施者的复制结果仍未证明。",
             "conclusion": "从同系统服务到重复配置，再到第二实施者，后一步依赖前一步证据。",
             "recordIds": [
               "s-one",
@@ -51,7 +51,7 @@
           {
             "id": "case-tradeoffs",
             "title": "03 取舍与反模式",
-            "thesis": "有证据的取舍与研究者的建议分别标记。",
+            "thesis": "当前设定只支持有限服务，不能证明公司曾主动拒绝平台化。",
             "conclusion": "没有开放市场不证明曾经主动拒绝；不替历史补写动机。",
             "recordIds": [
               "c-tradeoff"
@@ -60,7 +60,7 @@
           {
             "id": "case-engine",
             "title": "04 回路与迁移",
-            "thesis": "逐条检验交付是否改善下一单成本与质量。",
+            "thesis": "重复配置可能降低下一单成本，但跨人质量与获客回流仍缺记录。",
             "conclusion": "当前可借鉴有限服务试验；复制与平台化仍需补证。",
             "recordIds": [
               "c-loop",
@@ -68,7 +68,7 @@
             ]
           }
         ],
-        "parentSectionId": "benchmark-comparison",
+        "parentSectionId": "featured-benchmark",
         "argument": [
           "互补资产",
           "交易与交付",
@@ -299,7 +299,7 @@
     {
       "id": "s-one",
       "companyId": "servicebench",
-      "section": "benchmark-comparison",
+      "section": "featured-benchmark",
       "kind": "fact",
       "role": "step",
       "status": "教学设定",
@@ -328,7 +328,7 @@
     {
       "id": "s-two",
       "companyId": "servicebench",
-      "section": "benchmark-comparison",
+      "section": "featured-benchmark",
       "kind": "fact",
       "role": "step",
       "status": "教学设定",
@@ -357,7 +357,7 @@
     {
       "id": "s-three",
       "companyId": "servicebench",
-      "section": "benchmark-comparison",
+      "section": "featured-benchmark",
       "kind": "inference",
       "role": "step",
       "status": "后续验证",
@@ -652,7 +652,7 @@
       "role": "contract",
       "status": "角色与记录位置待确认",
       "title": "下一轮经营数据合同",
-      "text": "下面是该案例的采集约定，不是要求用户一次填完的问卷。每个字段还需记录实际系统位置。",
+      "text": "先盘点已授权记录并复算，再补验收、工时与跨人交付缺口；已有字段引用原系统，不要求重复填报。",
       "limitation": "全部为教学构造，不代表真实公司；结论只在案例给定范围内成立。",
       "evidenceIds": [
         "e-case"
@@ -662,6 +662,10 @@
         "c-overview"
       ],
       "fields": [
+        {
+          "label": "现有记录盘点",
+          "value": "教学设定给出付款与短期留存汇总，但未给逐笔订单和使用日志。真实任务先读已授权记录，核对同批 ID、窗口与去重范围，再决定新增采集项。"
+        },
         {
           "label": "对象与付款",
           "value": "销售：客户 ID、订单、币种、实付、免费与退款；每笔交易更新。"
@@ -1072,7 +1076,7 @@
     {
       "id": "c-case-verdict",
       "companyId": "servicebench",
-      "section": "benchmark-comparison",
+      "section": "featured-benchmark",
       "kind": "inference",
       "role": "judgment",
       "status": "教学构造",
@@ -1583,6 +1587,28 @@
           "value": "记录独立线索来源、触达数、付费与退款；不同批次不拼接。"
         }
       ]
+    },
+    {
+      "id": "c-route-fallback",
+      "companyId": "loopdesk",
+      "section": "route-options",
+      "kind": "recommendation",
+      "role": "route",
+      "status": "教学构造",
+      "title": "备选：先做范围诊断",
+      "text": "若付费实施无法启动，先确认客户的系统和验收问题，再决定是否提出更小的服务。",
+      "limitation": "不是已获客户同意的方案；诊断同样需要范围与工时承诺，不能自动变成免费实施。",
+      "evidenceIds": [
+        "e-answer"
+      ],
+      "relatedIds": [
+        "c-route",
+        "a-one"
+      ],
+      "route": {
+        "priority": "备选",
+        "condition": "第 14 天仍无法确认主路线的系统或验收范围，但客户愿意提供诊断资料且现有容量允许时，转为一次范围诊断；否则暂停。"
+      }
     }
   ],
   "evidence": [
@@ -1629,7 +1655,7 @@
       "overviewIds": [
         "c-products"
       ],
-      "thesis": "先看实际交付，再看设想功能。",
+      "thesis": "当前可交付的是有限范围的人工清理服务，自助工具尚未验证。",
       "conclusion": "现有资源适合单一范围服务；产品化需要独立验证。",
       "evidenceIds": [
         "e-case",
@@ -1643,7 +1669,7 @@
       "overviewIds": [
         "c-channels"
       ],
-      "thesis": "渠道可调用程度决定本轮获客范围。",
+      "thesis": "可触达的三家老客户中只有一家有试点意向，伙伴分发尚不可调用。",
       "conclusion": "先向可触达客户验证，不把伙伴设想计作已有分发。",
       "evidenceIds": [
         "e-case",
@@ -1657,7 +1683,7 @@
       "overviewIds": [
         "c-assets"
       ],
-      "thesis": "资源必须连到承诺与限制。",
+      "thesis": "已有客户关系和 120 小时承诺容量足以约束试验范围，但不能证明复制交付。",
       "conclusion": "旧客户关系与有限工程时间可用，市场分发与规模供给缺证据。",
       "evidenceIds": [
         "e-case",
@@ -1671,7 +1697,7 @@
       "overviewIds": [
         "c-team"
       ],
-      "thesis": "逐人核对背景、实际职责与承诺。",
+      "thesis": "两名工程师有有限投入承诺，第二人独立交付能力与记录责任仍待确认。",
       "conclusion": "责任人和投入没有确认前，不把计划工时计作现成产能。",
       "evidenceIds": [
         "e-case",
@@ -1706,9 +1732,10 @@
         "c-route",
         "c-transfer",
         "c-route-standard",
-        "c-route-market"
+        "c-route-market",
+        "c-route-fallback"
       ],
-      "thesis": "先选当前可承担的路径，再列升级条件。",
+      "thesis": "现有资源支持单客户验证；范围未确认时只能有条件转向诊断。",
       "conclusion": "有限试验优先；标准化和伙伴市场分别等待复用与分发证据。",
       "evidenceIds": [
         "e-case",
@@ -1740,7 +1767,7 @@
         "a-one",
         "d-contract"
       ],
-      "thesis": "先确认范围，再观察交付和再售。",
+      "thesis": "系统、验收与排期未确认，当前试点不能直接进入扩张。",
       "conclusion": "下一轮先补验收、总工时与第二实施者记录；停止条件必须先约定。",
       "evidenceIds": [
         "e-case",
@@ -1755,11 +1782,27 @@
         "q-one",
         "audit-boundary"
       ],
-      "thesis": "只问会改变路线的缺口。",
+      "thesis": "客户系统不同且无法追加工时，下一项关键未知是单客户验收范围。",
       "conclusion": "已回答的投入约束已反映在当前路线；下一问聚焦验收记录。",
       "evidenceIds": [
         "e-case",
         "e-answer"
+      ]
+    },
+    {
+      "id": "featured-benchmark",
+      "title": "重点案例路径",
+      "part": "paths",
+      "overviewIds": [
+        "c-case-verdict",
+        "s-one",
+        "s-two",
+        "s-three"
+      ],
+      "thesis": "ServiceBench 的客户信任与工程交付更接近当前有限服务路线。",
+      "conclusion": "选择它而非 FlowHub，是因为当前缺伙伴网络；但用户客户系统不同，不能直接照搬共同配置。",
+      "evidenceIds": [
+        "e-case"
       ]
     },
     {
@@ -1769,7 +1812,7 @@
       "overviewIds": [
         "c-matrix"
       ],
-      "thesis": "在了解目标业务后再看借鉴对象。",
+      "thesis": "有限服务更接近当前起点，依赖伙伴分发的市场路线缺关键资产。",
       "conclusion": "ServiceBench 的有限服务路径较接近；FlowHub 的伙伴分发条件尚不具备。",
       "evidenceIds": [
         "e-case",
@@ -1783,7 +1826,7 @@
       "overviewIds": [
         "audit-change"
       ],
-      "thesis": "新回答必须落实到路线和行动。",
+      "thesis": "Q1 的系统差异与工时限制降低了多客户复制的可行性。",
       "conclusion": "保留原判断、新证据性质和变更原因；来源库在下方可追溯。",
       "evidenceIds": [
         "e-case",
@@ -1800,7 +1843,7 @@
         {
           "id": "compare-matrix",
           "title": "01 起点与结果矩阵",
-          "thesis": "用同一组维度比较。",
+          "thesis": "两种路径分别依赖老客户信任与伙伴网络，后者不在当前资产内。",
           "conclusion": "ServiceBench 更接近现有客户关系；FlowHub 依赖另一类渠道资产。",
           "recordIds": [
             "c-matrix"
@@ -1809,7 +1852,7 @@
         {
           "id": "compare-servicebench",
           "title": "02 ServiceBench：服务先于复制",
-          "thesis": "先给判断，再追踪动作与反馈。",
+          "thesis": "共同配置降低重复工作，但当前业务尚不具备同系统客户条件。",
           "conclusion": "当前可学有限服务；复制与平台化尚未证明。",
           "recordIds": [
             "c-case-verdict",
@@ -1852,7 +1895,7 @@
         {
           "id": "advice-adoption",
           "title": "01 逐项采纳",
-          "thesis": "按证据与条件拆既有建议。",
+          "thesis": "收窄范围可立即采用，模板化取决于重复配置，开放市场应退出本周期。",
           "conclusion": "只让当前可承担的动作进入本轮。",
           "recordIds": [
             "adopt-scope",
@@ -1863,7 +1906,7 @@
         {
           "id": "advice-gates",
           "title": "02 进入门槛",
-          "thesis": "采纳建议之前核对承诺边界。",
+          "thesis": "试验的系统与验收未确认，可控与可证门槛尚未满足。",
           "conclusion": "四道门槛和确认责任不能靠愿望替代。",
           "recordIds": [
             "c-gates"
@@ -1872,7 +1915,7 @@
         {
           "id": "advice-confirmations",
           "title": "03 会议确认",
-          "thesis": "明确谁确认、何时复盘。",
+          "thesis": "资源、验收责任与排期尚未落实到确认角色，当前路线仍有执行前提。",
           "conclusion": "预算与时间承诺需要逐项确认。",
           "recordIds": [
             "c-meeting",
@@ -1897,19 +1940,20 @@
         {
           "id": "decision-routes",
           "title": "01 当前路线及机会成本",
-          "thesis": "在现有投入内比较实际可行路径。",
+          "thesis": "有限实施优先；第 14 天范围仍未确认时，诊断仅在客户配合且容量允许时可替代。",
           "conclusion": "当前试验先于标准化与市场。",
           "recordIds": [
             "c-route",
             "c-route-standard",
             "c-route-market",
-            "c-transfer"
+            "c-transfer",
+            "c-route-fallback"
           ]
         },
         {
           "id": "decision-history",
           "title": "02 对标的历史取舍",
-          "thesis": "当时信息与事后解释分开。",
+          "thesis": "限定同系统服务减少了范围差异，但第二人独立交付结果仍未知。",
           "conclusion": "历史顺序支持提出机制，不能独立证明因果。",
           "recordIds": [
             "s-decision"
@@ -1918,7 +1962,7 @@
         {
           "id": "decision-commitment",
           "title": "03 决定与验证责任",
-          "thesis": "把选择连到门槛和待确认责任。",
+          "thesis": "客户与工程师尚未确认范围和排期，不能把建议当成已承诺行动。",
           "conclusion": "先确认范围、负责人和复盘时间。",
           "recordIds": [
             "c-gates",
@@ -1942,7 +1986,7 @@
         {
           "id": "audit-scope",
           "title": "01 身份与口径",
-          "thesis": "先核对对象和数据身份。",
+          "thesis": "新回答的一家意向客户与原八家付款客户不是同一批，不能合并转化率。",
           "conclusion": "意向批次不能拼入历史付款漏斗。",
           "recordIds": [
             "audit-boundary",
@@ -1952,7 +1996,7 @@
         {
           "id": "audit-observations",
           "title": "02 同批变化与分支",
-          "thesis": "每个观察值保留窗口与分母。",
+          "thesis": "原批次 90 天仍付费为 6/8，第 30 天缺记录；有效使用尚未证明。",
           "conclusion": "付费留存不证明使用、成果和供给复制。",
           "recordIds": [
             "c-retention",
@@ -1965,7 +2009,7 @@
         {
           "id": "audit-judgments",
           "title": "03 证明与判断变化",
-          "thesis": "新数据可以改变路线。",
+          "thesis": "历史付款信号保留，但新回答使当前多客户试验收窄为单客户。",
           "conclusion": "降低多客户复制预期，但不抹掉已有付款。",
           "recordIds": [
             "p-delivery",
@@ -1981,7 +2025,7 @@
         {
           "id": "audit-next",
           "title": "04 下一轮数据合同",
-          "thesis": "先补能改变判断的记录。",
+          "thesis": "验收、完整工时与第二人结果的缺口阻止了复制判断升级。",
           "conclusion": "来源、责任、窗口与字段一起确认。",
           "recordIds": [
             "d-contract"
@@ -1995,6 +2039,102 @@
         "证明边界",
         "下一轮记录"
       ]
+    }
+  ],
+  "coverage": [
+    {
+      "item": "任务与证明状态",
+      "status": "部分完成",
+      "recordIds": [
+        "c-overview",
+        "p-payment",
+        "p-outcome"
+      ],
+      "gap": "仅为教学数据，未取得真实付款或成果证据。"
+    },
+    {
+      "item": "业务、团队与分工",
+      "status": "部分完成",
+      "recordIds": [
+        "c-products",
+        "c-channels",
+        "c-assets",
+        "c-team"
+      ],
+      "gap": "责任与容量为构造设定；实际验收负责人仍需确认。"
+    },
+    {
+      "item": "每家对标",
+      "status": "部分完成",
+      "recordIds": [
+        "c-profile",
+        "c-alternative",
+        "f-verdict"
+      ],
+      "gap": "两个对标均为虚构，缺真实动作及结果来源。"
+    },
+    {
+      "item": "重点案例",
+      "status": "关键缺口",
+      "recordIds": [
+        "c-case-verdict",
+        "s-one",
+        "s-two",
+        "s-three",
+        "c-tradeoff",
+        "c-loop"
+      ],
+      "gap": "已按设定选择有限服务路径，但没有真实候选公司的原始资料；不能声称迁移效果已获验证。"
+    },
+    {
+      "item": "数据核验",
+      "status": "部分完成",
+      "recordIds": [
+        "audit-boundary",
+        "audit-series",
+        "audit-funnel"
+      ],
+      "gap": "只有构造汇总，第 30 天缺记录，未提供原始日志与逐笔对账。"
+    },
+    {
+      "item": "判断更新与下一轮记录",
+      "status": "部分完成",
+      "recordIds": [
+        "q-one",
+        "audit-change",
+        "d-contract"
+      ],
+      "gap": "展示虚构回答的更新流程；真实系统字段与记录位置尚未核对。"
+    },
+    {
+      "item": "自有业务决策",
+      "status": "部分完成",
+      "recordIds": [
+        "c-route",
+        "c-route-fallback",
+        "c-gates",
+        "c-meeting",
+        "a-one"
+      ],
+      "gap": "主路线、备选与角色尚待实际用户确认。"
+    },
+    {
+      "item": "外部公司决策",
+      "status": "不适用",
+      "recordIds": [],
+      "gap": "本任务类型为自有业务决策，对标历史复盘服务于当前路线。"
+    },
+    {
+      "item": "增长放缓或衰退",
+      "status": "不适用",
+      "recordIds": [],
+      "gap": "本示例未设定增长衰退事件，当前问题是交付复制。"
+    },
+    {
+      "item": "可交付性",
+      "status": "部分完成",
+      "recordIds": [],
+      "gap": "这里只演示结构与交互；真实交付仍需内容、目标浏览器及离线验收。"
     }
   ]
 }

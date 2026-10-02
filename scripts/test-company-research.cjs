@@ -3,18 +3,29 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const Ajv = require('ajv');
 const addFormats = require('ajv-formats');
 const root = path.resolve(__dirname, '..');
 const assets = path.join(root, '.agents/skills/company-research/assets/research-dashboard');
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const data = read(path.join(assets, 'research.json'));
-const validate = addFormats(new Ajv({allErrors:true})).compile(read(path.join(assets, 'research.schema.json')));
+const schema = read(path.join(assets, 'research.schema.json'));
+const validate = addFormats(new Ajv({allErrors:true})).compile(schema);
 const copy = value => JSON.parse(JSON.stringify(value));
+const coverageItems = schema.properties.coverage.items.properties.item.enum;
+const contract = fs.readFileSync(path.join(root,'.agents/skills/company-research/references/research-contract.md'),'utf8');
+const contractItems = [...contract.split('## 内容覆盖清单：交付时逐项填写')[1].matchAll(/^\| ([^|]+) \|/gm)].map(m => m[1]).filter(item => !['检查对象','---'].includes(item));
+assert.deepEqual(coverageItems,contractItems,'Schema coverage must match every contract row');
 
 function checkReferences(d) {
   assert(validate(d), JSON.stringify(validate.errors));
   const records = new Map(d.records.map(r => [r.id,r]));
+  assert.equal(new Set(d.coverage.map(c => c.item)).size,coverageItems.length,'Duplicate or missing coverage item');
+  for (const c of d.coverage) {
+    c.recordIds.forEach(id => assert(records.has(id),`Missing coverage record ${id}`));
+    if (c.status === '有实质依据' && c.item !== '可交付性') assert(c.recordIds.length,'Substantiated coverage needs records');
+  }
   const companies = new Set(d.companies.map(c => c.id));
   const sources = new Set(d.evidence.map(e => e.id));
   const views = [...d.topics, ...d.companies.filter(c => c.case).map(c => c.case)];
@@ -48,6 +59,15 @@ function checkReferences(d) {
       assert(reachable.has(r.id), `Main deliverable hidden in detail: ${r.id}`);
     }
   }
+  for (const c of d.companies.filter(c => c.case)) {
+    assert.equal(c.case.modules.length,4,'A company case needs four analysis modules');
+    for (const id of c.case.modules.flatMap(m => m.recordIds)) {
+      if (records.get(id)?.role === 'step') assert(reachable.has(id),`Main deliverable hidden in detail: ${id}`);
+    }
+  }
+  const hasTransfer = d.records.some(r => r.role === 'transfer');
+  const hasBenchmarkCase = d.companies.some(c => c.id !== d.meta.subjectCompanyId && c.case);
+  if (hasTransfer && !hasBenchmarkCase) assert.equal(d.coverage.find(c => c.item === '重点案例').status,'关键缺口','Missing benchmark case must be declared as a critical gap');
   for (const r of d.records) {
     assert(!r.companyId || companies.has(r.companyId));
     assert(sections.has(r.section), `Missing parent section for ${r.id}`);
@@ -83,6 +103,31 @@ checkReferences(data);
 const external = read(path.join(assets, 'external-research.json'));
 checkReferences(external);
 if (process.argv[2]) checkReferences(read(process.argv[2]));
+
+for (const mutate of [
+  d => { delete d.coverage; },
+  d => { d.coverage.pop(); },
+  d => { d.coverage[1].item = d.coverage[0].item; },
+  d => { d.coverage[0].recordIds = ['absent']; },
+  d => { d.coverage[0].gap = '   '; },
+  d => { d.coverage.find(c => c.status === '不适用').gap = ''; },
+  d => { d.coverage[0].status = '有实质依据'; d.coverage[0].recordIds = []; },
+  d => { d.companies.forEach(c => delete c.case); d.coverage.find(c => c.item === '重点案例').status = '有实质依据'; }
+]) {
+  const broken = copy(data); mutate(broken); assert.throws(() => checkReferences(broken));
+}
+const fallback = copy(data), alternative = fallback.records.find(r => r.route?.priority === '备选');
+assert(alternative,'Missing conditional fallback fixture');
+alternative.route.condition = ''; assert(!validate(fallback),'Fallback without switching condition passed');
+
+// Exercise the same field-kind rule used by rendering and comparison search.
+const appPrelude = fs.readFileSync(path.join(assets,'app.js'),'utf8').split('async function start()')[0];
+const fieldVisible = vm.runInNewContext(appPrelude + '\nfieldVisible;');
+assert.equal(fieldVisible({value:'fact'},'fact','inference'),false);
+assert.equal(fieldVisible({value:'fact'},'fact','fact'),true);
+assert.equal(fieldVisible({kind:'inference'},'fact','inference'),true);
+assert.equal(fieldVisible({kind:'inference'},'fact','fact'),false);
+assert.equal(fieldVisible({kind:'recommendation'},'fact','all'),true);
 
 // Reproduce the renderer crash: every required payload must fail schema validation if absent.
 const payloads = {metric:'metric',loop:'edges',comparison:'comparisonIds',profile:'fields',proof:'proof',meeting:'meeting',route:'route',advice:'adoption',action:'milestones',team:'people',decision:'decision',series:'series',funnel:'funnel',change:'change'};
@@ -129,10 +174,8 @@ for (const [fixture, ids] of [[data, ['p-payment','adopt-scope','c-route-standar
   }
 }
 const standaloneCase = copy(data);
-standaloneCase.sections.push({id:'featured-case',title:'重点案例路径',part:'paths',overviewIds:['s-one','s-two','s-three'],thesis:'案例动作',conclusion:'证据边界',evidenceIds:[]});
-for (const id of ['s-one','s-two','s-three']) standaloneCase.records.find(r => r.id === id).section = 'featured-case';
 checkReferences(standaloneCase);
-standaloneCase.sections.at(-1).overviewIds.pop();
+standaloneCase.sections.find(s => s.id === 'featured-benchmark').overviewIds = standaloneCase.sections.find(s => s.id === 'featured-benchmark').overviewIds.filter(id => id !== 's-three');
 assert.throws(() => checkReferences(standaloneCase), /Main deliverable hidden in detail: s-three/);
 const renamed = copy(data), oldId = renamed.sections[0].id;
 renamed.sections[0].id = 'another-deliverable';

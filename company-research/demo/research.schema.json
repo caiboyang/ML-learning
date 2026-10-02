@@ -221,6 +221,78 @@
         "additionalProperties": false
       },
       "minItems": 0
+    },
+    "coverage": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "enum": [
+              "任务与证明状态",
+              "业务、团队与分工",
+              "每家对标",
+              "重点案例",
+              "数据核验",
+              "判断更新与下一轮记录",
+              "自有业务决策",
+              "外部公司决策",
+              "增长放缓或衰退",
+              "可交付性"
+            ]
+          },
+          "status": {
+            "enum": [
+              "有实质依据",
+              "部分完成",
+              "关键缺口",
+              "不适用"
+            ]
+          },
+          "recordIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/id"
+            },
+            "uniqueItems": true
+          },
+          "gap": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "status",
+          "recordIds",
+          "gap"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "部分完成",
+                    "关键缺口",
+                    "不适用"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "gap": {
+                  "pattern": "\\S",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      }
     }
   },
   "required": [
@@ -229,7 +301,8 @@
     "records",
     "evidence",
     "sections",
-    "topics"
+    "topics",
+    "coverage"
   ],
   "additionalProperties": false,
   "definitions": {
@@ -532,6 +605,7 @@
               "enum": [
                 "当前推荐",
                 "第二阶段",
+                "备选",
                 "暂缓"
               ]
             },

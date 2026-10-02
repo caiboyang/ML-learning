@@ -14,6 +14,9 @@ function pageLink(text, query = '', hash = '') {
   const a = el('a', text), url = new URL(location.href);
   url.search = query; url.hash = hash; a.href = url.href; return a;
 }
+function fieldVisible(field, recordKind, filterKind) {
+  return filterKind === 'all' || (field.kind || recordKind) === filterKind;
+}
 async function start() {
   const embedded = document.querySelector('script#research-data[type="application/json"]');
   let data;
@@ -79,7 +82,7 @@ async function start() {
   function fields(r) {
     const dl = el('dl');
     for (const field of r.fields || []) {
-      if (kind.value !== 'all' && field.kind && field.kind !== kind.value) continue;
+      if (!fieldVisible(field, r.kind, kind.value)) continue;
       const row = el('div', undefined, 'field');
       row.append(el('dt', field.kind ? `${field.label} · ${names[field.kind]}` : field.label), el('dd', field.value)); dl.append(row);
     }
@@ -96,7 +99,7 @@ async function start() {
   function route(r) {
     const node = shell(r); node.dataset.priority = r.route.priority;
     node.prepend(el('p', r.route.priority, 'route-priority'));
-    node.append(el('p', r.text), el('p', `进入条件：${r.route.condition}`, 'route-condition')); return node;
+    node.append(el('p', r.text), el('p', `${r.route.priority === '备选' ? '切换条件' : '进入条件'}：${r.route.condition}`, 'route-condition')); return node;
   }
   function step(r) {
     const node = shell(r, 'li'); node.prepend(el('p', r.stage || '阶段待确认', 'stage'));
@@ -139,7 +142,7 @@ async function start() {
       th.append(link(companies.get(profile.companyId).name, id)); row.append(th);
       for (const label of labels) {
         const field = profile.fields.find(f => f.label === label);
-        const visible = field && (kind.value === 'all' || !field.kind || field.kind === kind.value);
+        const visible = field && fieldVisible(field, profile.kind, kind.value);
         row.append(el('td', !field ? '未记录' : visible ? field.value : '已按内容性质隐藏'));
       }
       body.append(row);
@@ -265,6 +268,16 @@ async function start() {
       box.append(el('h2', r.title), value, el('p', r.metric.basis), link('口径、边界与来源 →', r.id)); metrics.append(box);
     }
   }
+  const coverageTable = tableRegion('研究覆盖清单', ['检查对象', '完成状态', '对应记录', '缺口或不适用原因']);
+  for (const item of data.coverage) {
+    const row = el('tr'), title = el('th', item.item), references = el('td'); title.scope = 'row';
+    for (const id of item.recordIds) references.append(link(records.get(id).title, id));
+    references.className = 'coverage-records';
+    if (!item.recordIds.length) references.append(el('span', '无对应记录；见右侧说明'));
+    row.append(title, el('td', item.status), references, el('td', item.gap || '无已知关键缺口；仍需核对所列依据'));
+    coverageTable.body.append(row);
+  }
+  byId('coverage-list').append(coverageTable.wrapper);
   for (const source of evidence.values()) {
     const article = el('article', undefined, 'evidence'); article.id = source.id; article.tabIndex = -1;
     article.append(el('h3', `${source.id} · ${source.title}`), el('p', `${source.nature} · ${source.date} · ${source.locator}`), el('p', source.support), el('p', `支持边界：${source.limitation}`, 'limit'));
@@ -283,8 +296,11 @@ async function start() {
     return [...r.evidenceIds, ...[r.edges, r.people, r.series?.points, r.funnel?.nodes].flatMap(items => (items || []).flatMap(item => item.evidenceIds))];
   }
   function recordText(r) {
-    const displayedFields = (r.fields || []).filter(f => kind.value === 'all' || !f.kind || f.kind === kind.value).map(f => [f.label, f.value]);
-    const comparisonFields = (r.comparisonIds || []).flatMap(id => records.get(id).fields.filter(f => (r.columns || profileColumns).includes(f.label) && (kind.value === 'all' || !f.kind || f.kind === kind.value)).map(f => [f.label, f.value]));
+    const displayedFields = (r.fields || []).filter(f => fieldVisible(f, r.kind, kind.value)).map(f => [f.label, f.value]);
+    const comparisonFields = (r.comparisonIds || []).flatMap(id => {
+      const profile = records.get(id);
+      return [companies.get(profile.companyId).name, ...profile.fields.filter(f => (r.columns || profileColumns).includes(f.label) && fieldVisible(f, profile.kind, kind.value)).map(f => [f.label, f.value])];
+    });
     return [r.title, ['meeting','proof'].includes(r.role) ? '' : r.text, r.status, r.stage, r.adoption, r.limitation,
       displayedFields, ...['metric','proof','route','meeting'].map(key => Object.values(r[key] || {})),
       (r.milestones || []).map(item => Object.values(item)), (r.edges || []).map(e => [e.from,e.to,e.mechanism,e.status]),
@@ -337,9 +353,9 @@ async function start() {
       const action = sectionById.get(data.meta.actionSectionId);
       const next = el('div', undefined, 'action-return'); next.append(el('strong', external ? '把分析接回下一步调查' : '把分析接回下一步行动'), pageLink(`返回${action.title} →`,'',`#${action.id}`)); content.append(next);
     }
-    if (!view()) nav.append(link(`${String(sections.length + 1).padStart(2,'0')} 证据库`,'sources'));
+    if (!view()) nav.append(link(`${String(sections.length + 1).padStart(2,'0')} 覆盖清单`,'coverage'), link(`${String(sections.length + 2).padStart(2,'0')} 证据库`,'sources'));
     const scope = caseCompany ? `${caseCompany.name} 案例专题` : `${topic ? `${topic.title}；` : '主报告；'}${company.value === 'all' ? '全部公司' : companies.get(company.value).name}＋全局记录`;
-    byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。当前页匹配 ${visible.length} / ${caseIds.size} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。补充论证请进入对应专题搜索；首屏摘要不随正文筛选重算；证据明细保持完整。`;
+    byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。当前页匹配 ${visible.length} / ${caseIds.size} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。补充论证请进入对应专题搜索；首屏摘要不随正文筛选重算；覆盖清单与证据明细保持完整。`;
     byId('empty').hidden = visible.length > 0 || caseIds.size === 0; syncLayout(); updateActiveSection();
   }
   const narrow = window.matchMedia('(max-width:1000px)');
