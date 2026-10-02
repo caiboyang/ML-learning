@@ -23,7 +23,57 @@
     {
       "id": "roomguild",
       "name": "RoomGuild",
-      "period": "早期，教学构造"
+      "period": "早期，教学构造",
+      "case": {
+        "parentSectionId": "featured-benchmark",
+        "argument": [
+          "主持资产",
+          "首次交付",
+          "取舍与边界",
+          "回路与迁移"
+        ],
+        "verdictId": "roomguild-verdict",
+        "modules": [
+          {
+            "id": "room-assets",
+            "title": "01 互补起点资产",
+            "thesis": "主持人的信誉与固定时间支持小组启动，尚不支持跨主题扩张。",
+            "conclusion": "先核对承诺容量，不能仅凭行业关系复制。",
+            "recordIds": [
+              "roomguild-profile"
+            ]
+          },
+          {
+            "id": "room-validation",
+            "title": "02 首次交付与重复验证",
+            "thesis": "首轮限定主题已完成，第二次使用与工时仍缺记录。",
+            "conclusion": "单次交付不支持规模化结论。",
+            "recordIds": [
+              "roomguild-first",
+              "roomguild-repeat"
+            ]
+          },
+          {
+            "id": "room-tradeoffs",
+            "title": "03 取舍与反模式",
+            "thesis": "主题边界提高相关性的可能收益伴随受众范围限制。",
+            "conclusion": "不把研究建议写成管理层已作出的取舍。",
+            "recordIds": [
+              "roomguild-tradeoff"
+            ]
+          },
+          {
+            "id": "room-engine",
+            "title": "04 回路与迁移",
+            "thesis": "组织密度可能改善回访，但主持持续性与收费前提仍缺证据。",
+            "conclusion": "仅借鉴验证顺序，先补持续参与和供给证据。",
+            "recordIds": [
+              "roomguild-loop",
+              "roomguild-transfer"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "clipnet",
@@ -596,7 +646,7 @@
       "role": "contract",
       "status": "教学构造",
       "title": "所需数据与目前缺口",
-      "text": "列清对象、事件、时间窗、来源和可获得性。",
+      "text": "先检查已授权可得记录能否定义有效参与并重建同批窗口；没有后台权限时保留该边界，再列调查缺口。",
       "limitation": "仅为虚构示例；观察结果不能独立证明因果。",
       "evidenceIds": [
         "x-source"
@@ -613,7 +663,7 @@
         },
         {
           "label": "供给与退出",
-          "value": "主持次数、持续时长、工时与退出原因；公开资料没有时询问用户能否提供。"
+          "value": "主持次数、持续时长、工时与退出原因；先核对可得记录，仅在用户可能持有且愿意提供时询问，不假定后台权限。"
         },
         {
           "label": "更新责任",
@@ -944,14 +994,15 @@
         },
         {
           "label": "启示",
-          "value": "可学组织密度，付费前提不能直接迁移"
+          "value": "可学组织密度，付费前提不能直接迁移",
+          "kind": "recommendation"
         }
       ]
     },
     {
       "id": "roomguild-verdict",
       "companyId": "roomguild",
-      "section": "peer-comparison",
+      "section": "featured-benchmark",
       "kind": "inference",
       "role": "judgment",
       "status": "教学构造",
@@ -966,7 +1017,7 @@
     {
       "id": "roomguild-first",
       "companyId": "roomguild",
-      "section": "peer-comparison",
+      "section": "featured-benchmark",
       "kind": "inference",
       "role": "step",
       "status": "教学构造",
@@ -996,7 +1047,7 @@
     {
       "id": "roomguild-repeat",
       "companyId": "roomguild",
-      "section": "peer-comparison",
+      "section": "featured-benchmark",
       "kind": "inference",
       "role": "step",
       "status": "教学构造",
@@ -1124,7 +1175,8 @@
         },
         {
           "label": "启示",
-          "value": "可学降低同步协调成本，不能据此证明参与质量"
+          "value": "可学降低同步协调成本，不能据此证明参与质量",
+          "kind": "recommendation"
         }
       ]
     },
@@ -1291,6 +1343,35 @@
         "结果",
         "启示"
       ]
+    },
+    {
+      "id": "roomguild-tradeoff",
+      "companyId": "roomguild",
+      "section": "peer-comparison",
+      "kind": "inference",
+      "role": "tradeoff",
+      "status": "教学构造",
+      "title": "固定主题的取舍与未知",
+      "text": "限定主题与固定时间可能提高相关性，也限制潜在参与者；会员付费不能直接证明续费。",
+      "limitation": "设定只给出限定主题和预约动作，没有管理层动机或放弃其他路线的记录。",
+      "evidenceIds": [
+        "x-source"
+      ],
+      "relatedIds": [
+        "roomguild-first",
+        "roomguild-repeat"
+      ],
+      "fields": [
+        {
+          "label": "设定内动作",
+          "value": "限定主题与首批用户，先提供预约讨论。"
+        },
+        {
+          "label": "分析建议",
+          "value": "先量回访与组织工时，再扩大主题；这不是已证实的历史决策。",
+          "kind": "recommendation"
+        }
+      ]
     }
   ],
   "evidence": [
@@ -1343,7 +1424,7 @@
       "overviewIds": [
         "x-status"
       ],
-      "thesis": "仍在运转与形成稳定增长是两种判断。",
+      "thesis": "示例仍有活动，但第 6 月周参与不能证明稳定增长。",
       "conclusion": "不能把放缓写成停止运营。",
       "evidenceIds": [
         "x-source"
@@ -1369,7 +1450,7 @@
       "overviewIds": [
         "x-channels"
       ],
-      "thesis": "入口数量不是有效参与质量。",
+      "thesis": "邀请与公共入口的有效参与质量尚未分群核验，无法选出可重复渠道。",
       "conclusion": "自有、邀请与公共入口分开核验。",
       "evidenceIds": [
         "x-source"
@@ -1395,7 +1476,7 @@
       "overviewIds": [
         "x-team"
       ],
-      "thesis": "背景、责任和投入分开记录。",
+      "thesis": "主持关系已有设定，但持续投入和活动责任缺少承诺证据。",
       "conclusion": "未披露投入不能计为可调用资源。",
       "evidenceIds": [
         "x-source"
@@ -1425,7 +1506,7 @@
         "x-loop-summary",
         "x-loop"
       ],
-      "thesis": "讨论价值必须反馈到返回和持续主持。",
+      "thesis": "重复参与与持续主持尚未互相强化，示例回路未闭合。",
       "conclusion": "当前链路未闭合，缺口不能用注册增长填补。",
       "evidenceIds": [
         "x-source"
@@ -1453,7 +1534,7 @@
       "overviewIds": [
         "x-decline"
       ],
-      "thesis": "环境、竞争与自身回路同时检验。",
+      "thesis": "现有序列不足以区分环境回落、竞争替代和自身匹配障碍。",
       "conclusion": "目前无法定单一原因，需用下一轮资料区分。",
       "evidenceIds": [
         "x-source"
@@ -1466,7 +1547,7 @@
       "overviewIds": [
         "x-transfer"
       ],
-      "thesis": "先复制验证顺序，后考虑扩张形式。",
+      "thesis": "当前主持关系更支持小范围重复参与试验，尚不支持扩大公共入口。",
       "conclusion": "需要相同资产与用户动机；不以终局功能为起点。",
       "evidenceIds": [
         "x-source"
@@ -1481,8 +1562,23 @@
         "x-question",
         "x-data-contract"
       ],
-      "thesis": "调查责任属于研究者，不是目标公司排期。",
+      "thesis": "缺同批回访与主持工时，当前无法判断匹配和供给哪个约束更强。",
       "conclusion": "拿不到资料时保留范围与影响，得到回答后重写结论。",
+      "evidenceIds": [
+        "x-source"
+      ]
+    },
+    {
+      "id": "featured-benchmark",
+      "title": "重点案例路径",
+      "part": "paths",
+      "overviewIds": [
+        "roomguild-verdict",
+        "roomguild-first",
+        "roomguild-repeat"
+      ],
+      "thesis": "RoomGuild 的主持关系和预约组织最接近当前待检验的重复参与机制。",
+      "conclusion": "选择它而非 ClipNet，是因为当前已有主持关系，缺少可直接调用的异步内容资产；并不证明预约必然更好。",
       "evidenceIds": [
         "x-source"
       ]
@@ -1494,7 +1590,7 @@
       "overviewIds": [
         "x-comparison"
       ],
-      "thesis": "用组织方式不同的对照检验机制。",
+      "thesis": "预约组织和异步内容依赖不同资产，当前不能直接迁移收费或内容沉淀结果。",
       "conclusion": "预约信誉与异步内容提供不同前提，不能一概照搬。",
       "evidenceIds": [
         "x-source"
@@ -1522,7 +1618,7 @@
             "x-weekly",
             "x-return"
           ],
-          "thesis": "周参与与同批返回不能混用。",
+          "thesis": "整体周参与与首批返回描述不同人群，不能拼成一条留存趋势。",
           "conclusion": "保留分母与窗口。"
         },
         {
@@ -1532,7 +1628,7 @@
             "x-series",
             "x-funnel"
           ],
-          "thesis": "缺数据不等于零，分支不相加。",
+          "thesis": "参与序列有下降，漏斗仍缺有效事件定义，不能独立归因。",
           "conclusion": "观察到下降但不能独立归因。"
         },
         {
@@ -1545,7 +1641,7 @@
             "x-proof-repayment",
             "x-proof-monetization"
           ],
-          "thesis": "免费社区需检验参与、供给和商业化条件。",
+          "thesis": "激活与返回有信号，持续主持和商业化仍缺证据。",
           "conclusion": "订阅续费不适用不意味着跳过商业模式。"
         },
         {
@@ -1555,7 +1651,7 @@
             "x-change",
             "x-data-contract"
           ],
-          "thesis": "回答改变结论与后续调查。",
+          "thesis": "去除重复邀请后激活判断下调，供给和经营结论仍未升级。",
           "conclusion": "当前指标与结论已应用更正。"
         }
       ]
@@ -1565,38 +1661,53 @@
       "title": "自身路径分析",
       "parentSectionId": "own-origin",
       "argument": [
-        "第一场",
-        "扩展入口",
-        "改变节奏"
+        "起点资产",
+        "首次交付与扩展",
+        "取舍",
+        "回路与迁移"
       ],
       "verdictId": "x-verdict",
       "modules": [
         {
-          "id": "origin-1",
-          "title": "01 邀请主持人完成首批讨论",
+          "id": "origin-assets",
+          "title": "01 互补起点资产",
+          "thesis": "主持关系与音频工具能组织首批场次，但持续承诺未知。",
+          "conclusion": "首次组织能力不能代替重复供给。",
           "recordIds": [
-            "x-first"
-          ],
-          "thesis": "先用关系资产解决“谁来组织第一场”，再观察受邀者参与。",
-          "conclusion": "本步行为与效果保持分开。"
+            "x-assets",
+            "x-team"
+          ]
         },
         {
-          "id": "origin-2",
-          "title": "02 从邀请扩展到公共发现",
+          "id": "origin-validation",
+          "title": "02 首次交付与路径",
+          "thesis": "邀请、公共入口与预约依次改变参与条件，效果证据未同步齐备。",
+          "conclusion": "保留三个阶段的动作和观察边界。",
           "recordIds": [
-            "x-open"
-          ],
-          "thesis": "把陌生人接入已有房间；同时改变用户构成和内容匹配难度。",
-          "conclusion": "本步行为与效果保持分开。"
-        },
-        {
-          "id": "origin-3",
-          "title": "03 试验预约小组",
-          "recordIds": [
+            "x-first",
+            "x-open",
             "x-groups"
-          ],
-          "thesis": "从即时发现转向可计划的主题与时间。",
-          "conclusion": "本步行为与效果保持分开。"
+          ]
+        },
+        {
+          "id": "origin-tradeoffs",
+          "title": "03 关键取舍",
+          "thesis": "扩大入口与增加预约分别交换了发现范围和组织成本。",
+          "conclusion": "同期下降不能单独证明扩入口导致下降。",
+          "recordIds": [
+            "x-open-decision",
+            "x-group-decision"
+          ]
+        },
+        {
+          "id": "origin-transfer",
+          "title": "04 回路与迁移",
+          "thesis": "参与尚未稳定反馈到回访与持续主持，扩张前仍需区分断点。",
+          "conclusion": "迁移以主题匹配、重复参与和组织容量为前提。",
+          "recordIds": [
+            "x-loop",
+            "x-transfer"
+          ]
         }
       ]
     },
@@ -1617,7 +1728,7 @@
           "recordIds": [
             "x-loop"
           ],
-          "thesis": "逐边说明机制和证据。",
+          "thesis": "主题匹配尚未形成可验证的回访与主持回流。",
           "conclusion": "当前回路尚未闭合。"
         },
         {
@@ -1626,7 +1737,7 @@
           "recordIds": [
             "x-funnel"
           ],
-          "thesis": "先保留事件窗口和分母。",
+          "thesis": "首批参与不等于固定习惯，返回窗口仍需独立核对。",
           "conclusion": "激活不能替代习惯。"
         },
         {
@@ -1636,7 +1747,7 @@
             "x-proof-creators",
             "x-proof-monetization"
           ],
-          "thesis": "供给成本与付款意愿分别验证。",
+          "thesis": "主持工时与付款意愿缺失，使持续供给和变现判断无法升级。",
           "conclusion": "增长与商业可持续均需补证。"
         }
       ]
@@ -1658,7 +1769,7 @@
           "recordIds": [
             "x-open-decision"
           ],
-          "thesis": "先看当时可知信息。",
+          "thesis": "公共入口扩大了受众范围，但同期下降的原因仍无法区分。",
           "conclusion": "同期下降不证明选择导致下降。"
         },
         {
@@ -1667,7 +1778,7 @@
           "recordIds": [
             "x-group-decision"
           ],
-          "thesis": "试验目的与观测结果分开。",
+          "thesis": "预约针对协调问题，新功能观察窗不足以证明转型有效。",
           "conclusion": "窗口不足，不能写成转型成功。"
         },
         {
@@ -1676,7 +1787,7 @@
           "recordIds": [
             "x-decline"
           ],
-          "thesis": "同时检验环境、竞争和产品机制。",
+          "thesis": "环境、竞争与产品解释均未被可比批次数据排除。",
           "conclusion": "调查优先级来自能区分解释的证据。"
         }
       ]
@@ -1698,7 +1809,7 @@
           "recordIds": [
             "x-comparison"
           ],
-          "thesis": "同字段比较不同机制。",
+          "thesis": "专业主持信誉与异步内容资产分别降低不同参与阻力，不能直接互换。",
           "conclusion": "不把形式相似等同于资源相同。"
         },
         {
@@ -1712,7 +1823,7 @@
             "roomguild-loop",
             "roomguild-transfer"
           ],
-          "thesis": "按同一顺序拆起点、行为、反馈与迁移。",
+          "thesis": "固定主题有助于限定相关人群，长期回访与单位经济仍未知。",
           "conclusion": "只迁移前提满足的动作；未知结果保持未知。"
         },
         {
@@ -1726,10 +1837,108 @@
             "clipnet-loop",
             "clipnet-transfer"
           ],
-          "thesis": "按同一顺序拆起点、行为、反馈与迁移。",
+          "thesis": "异步资料降低同时在线要求，但资料使用与互动质量尚未证明。",
           "conclusion": "只迁移前提满足的动作；未知结果保持未知。"
         }
       ]
+    }
+  ],
+  "coverage": [
+    {
+      "item": "任务与证明状态",
+      "status": "部分完成",
+      "recordIds": [
+        "x-verdict",
+        "x-proof-activation",
+        "x-proof-retention"
+      ],
+      "gap": "仅为虚构外部研究；没有真实经营证据。"
+    },
+    {
+      "item": "业务、团队与分工",
+      "status": "部分完成",
+      "recordIds": [
+        "x-products",
+        "x-channels",
+        "x-assets",
+        "x-team"
+      ],
+      "gap": "持续投入与职责承诺未在设定中提供。"
+    },
+    {
+      "item": "每家对标",
+      "status": "部分完成",
+      "recordIds": [
+        "roomguild-profile",
+        "clipnet-profile",
+        "x-comparison"
+      ],
+      "gap": "两个对标仅有教学设定，缺真实原始资料和长期结果。"
+    },
+    {
+      "item": "重点案例",
+      "status": "关键缺口",
+      "recordIds": [
+        "roomguild-verdict",
+        "roomguild-first",
+        "roomguild-repeat",
+        "roomguild-tradeoff",
+        "x-first",
+        "x-open",
+        "x-groups"
+      ],
+      "gap": "已展示重点对标与目标自身四模块；真实候选资料尚未取得，取舍动机、长期结果与迁移效果不能确认。"
+    },
+    {
+      "item": "数据核验",
+      "status": "部分完成",
+      "recordIds": [
+        "x-series",
+        "x-funnel",
+        "x-proof-retention"
+      ],
+      "gap": "有效参与事件定义不足，未提供原始记录，不能将构造序列当作真实测量。"
+    },
+    {
+      "item": "判断更新与下一轮记录",
+      "status": "部分完成",
+      "recordIds": [
+        "x-change",
+        "x-data-contract",
+        "x-question"
+      ],
+      "gap": "口径更正为教学演示，真实系统字段与读取范围尚未取得。"
+    },
+    {
+      "item": "自有业务决策",
+      "status": "不适用",
+      "recordIds": [],
+      "gap": "本任务是外部研究，没有目标公司的经营授权。"
+    },
+    {
+      "item": "外部公司决策",
+      "status": "部分完成",
+      "recordIds": [
+        "x-open-decision",
+        "x-group-decision",
+        "x-investigation"
+      ],
+      "gap": "只有构造决策与观察，内部备选和因果证据不足。"
+    },
+    {
+      "item": "增长放缓或衰退",
+      "status": "部分完成",
+      "recordIds": [
+        "x-decline",
+        "x-series"
+      ],
+      "gap": "缺少区分环境、竞争和产品机制的可比批次与退出原因。"
+    },
+    {
+      "item": "可交付性",
+      "status": "部分完成",
+      "recordIds": [],
+      "gap": "演示不代表真实研究完成；实际任务仍需内容与目标环境验收。"
     }
   ]
 }

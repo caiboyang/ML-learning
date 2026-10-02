@@ -78,6 +78,8 @@ dt { font-size:14px; color:var(--muted); } dd { margin:0; }
 .route-group,.advice-board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
 .route-priority { color:var(--accent); font-size:13px; font-weight:700; }
 .record.route[data-priority="当前推荐"] { border-top:4px solid var(--accent); }
+.record.route[data-priority="备选"] { border-top:4px dashed var(--accent); }
+.coverage-records a { display:block; margin-bottom:8px; }
 .route-condition { border-top:1px solid var(--line); padding-top:12px; font-size:14px; }
 .advice-lane { background:#e7edf4; padding:12px; }
 .advice-lane > h3 { padding:0 8px; font-size:16px; }
