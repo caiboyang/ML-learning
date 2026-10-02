@@ -129,6 +129,28 @@ assert.equal(fieldVisible({kind:'inference'},'fact','inference'),true);
 assert.equal(fieldVisible({kind:'inference'},'fact','fact'),false);
 assert.equal(fieldVisible({kind:'recommendation'},'fact','all'),true);
 
+// Mixed-kind records and comparison cells must survive the outer record filter.
+const recordMatchesKind = vm.runInNewContext(appPrelude + '\nrecordMatchesKind;');
+const selectedFields = vm.runInNewContext(appPrelude + '\nselectedFields;');
+for (const [fixture, ids, kind] of [[data,['s-one','s-two'],'inference'], [external,['roomguild-tradeoff'],'recommendation']]) {
+  const records = new Map(fixture.records.map(r => [r.id,r]));
+  for (const id of ids) {
+    const record = records.get(id);
+    assert.notEqual(record.kind,kind);
+    assert(recordMatchesKind(record,kind,records),`${id} lost matching child fields`);
+    assert(selectedFields(record,kind).every(f => (f.kind || record.kind) === kind));
+  }
+}
+const profiles = new Map([['profile',{role:'profile',kind:'fact',fields:[
+  {label:'起点资产',value:'asset'}, {label:'启示',kind:'recommendation',value:'next step'}
+]}]]);
+const matrix = {role:'comparison',kind:'inference',comparisonIds:['profile'],columns:['起点资产','启示']};
+assert(recordMatchesKind(matrix,'fact',profiles));
+assert(recordMatchesKind(matrix,'recommendation',profiles));
+assert(!recordMatchesKind({...matrix,columns:['起点资产']},'recommendation',profiles),'Hidden columns must not match');
+assert(!recordMatchesKind({role:'metric',kind:'fact',fields:[{kind:'inference'}]},'inference',profiles),'Renderer-ignored fields must not match');
+assert(!recordMatchesKind({role:'asset',kind:'fact'},'inference',profiles));
+
 // Reproduce the renderer crash: every required payload must fail schema validation if absent.
 const payloads = {metric:'metric',loop:'edges',comparison:'comparisonIds',profile:'fields',proof:'proof',meeting:'meeting',route:'route',advice:'adoption',action:'milestones',team:'people',decision:'decision',series:'series',funnel:'funnel',change:'change'};
 for (const [role,key] of Object.entries(payloads)) {
