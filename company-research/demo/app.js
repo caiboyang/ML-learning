@@ -17,6 +17,14 @@ function pageLink(text, query = '', hash = '') {
 function fieldVisible(field, recordKind, filterKind) {
   return filterKind === 'all' || (field.kind || recordKind) === filterKind;
 }
+const fieldRoles = new Set(['judgment','asset','profile','step','tradeoff','transfer','gate','question','contract','action']);
+function selectedFields(record, filterKind) {
+  return fieldRoles.has(record.role) ? (record.fields || []).filter(f => fieldVisible(f, record.kind, filterKind)) : [];
+}
+function recordMatchesKind(record, filterKind, records) {
+  if (filterKind === 'all' || record.kind === filterKind || selectedFields(record, filterKind).length) return true;
+  return (record.comparisonIds || []).some(id => selectedFields(records.get(id), filterKind).some(f => (record.columns || profileColumns).includes(f.label)));
+}
 async function start() {
   const embedded = document.querySelector('script#research-data[type="application/json"]');
   let data;
@@ -66,6 +74,7 @@ async function start() {
   function metadata(r) {
     const box = el('div', undefined, 'meta');
     box.append(el('span', r.companyId ? companies.get(r.companyId).name : '全局'), el('span', names[r.kind], `badge ${r.kind}`), el('span', r.status));
+    if (kind.value !== 'all' && r.kind !== kind.value) box.append(el('span', `仅展示${names[kind.value]}字段；原记录为${names[r.kind]}`, 'badge'));
     if (sourceOnly.has(r.id)) box.append(el('span', '仅关联来源命中', 'badge'));
     return box;
   }
@@ -81,8 +90,7 @@ async function start() {
   }
   function fields(r) {
     const dl = el('dl');
-    for (const field of r.fields || []) {
-      if (!fieldVisible(field, r.kind, kind.value)) continue;
+    for (const field of selectedFields(r, kind.value)) {
       const row = el('div', undefined, 'field');
       row.append(el('dt', field.kind ? `${field.label} · ${names[field.kind]}` : field.label), el('dd', field.value)); dl.append(row);
     }
@@ -134,7 +142,8 @@ async function start() {
     const body = el('tbody'); table.append(body); wrapper.append(table); return {wrapper, body};
   }
   function comparison(r) {
-    const node = shell(r); node.append(el('p', r.text));
+    const node = shell(r);
+    if (kind.value === 'all' || kind.value === r.kind) node.append(el('p', r.text));
     const labels = r.columns || profileColumns;
     const {wrapper, body} = tableRegion(r.title, ['公司', ...labels]);
     for (const id of r.comparisonIds) {
@@ -207,7 +216,12 @@ async function start() {
     node.append(dl); return node;
   }
   const renderers = {metric, route, step, advice, meeting, action, comparison, loop, team, decision, series, funnel, change};
-  function renderRecord(r) { const node = (renderers[r.role] || prose)(r); node.append(footer(r)); return node; }
+  function renderRecord(r) {
+    const fieldOnly = kind.value !== 'all' && r.kind !== kind.value && r.role !== 'comparison';
+    const node = fieldOnly ? shell(r, r.role === 'step' ? 'li' : 'article') : (renderers[r.role] || prose)(r);
+    if (fieldOnly) node.append(fields(r));
+    node.append(footer(r)); return node;
+  }
   function proofTable(items) {
     const {wrapper, body} = tableRegion('证明状态：判断与证据分开', ['命题与判断', '证据与支持边界', '缺口', '下一步']);
     for (const r of items) {
@@ -296,11 +310,12 @@ async function start() {
     return [...r.evidenceIds, ...[r.edges, r.people, r.series?.points, r.funnel?.nodes].flatMap(items => (items || []).flatMap(item => item.evidenceIds))];
   }
   function recordText(r) {
-    const displayedFields = (r.fields || []).filter(f => fieldVisible(f, r.kind, kind.value)).map(f => [f.label, f.value]);
+    const displayedFields = selectedFields(r, kind.value).map(f => [f.label, f.value]);
     const comparisonFields = (r.comparisonIds || []).flatMap(id => {
       const profile = records.get(id);
-      return [companies.get(profile.companyId).name, ...profile.fields.filter(f => (r.columns || profileColumns).includes(f.label) && fieldVisible(f, profile.kind, kind.value)).map(f => [f.label, f.value])];
+      return [companies.get(profile.companyId).name, ...selectedFields(profile, kind.value).filter(f => (r.columns || profileColumns).includes(f.label)).map(f => [f.label, f.value])];
     });
+    if (kind.value !== 'all' && r.kind !== kind.value) return [r.title, r.status, r.limitation, companies.get(r.companyId)?.name, displayedFields, comparisonFields].flat(Infinity).filter(v => v !== undefined).join(' ').toLocaleLowerCase();
     return [r.title, ['meeting','proof'].includes(r.role) ? '' : r.text, r.status, r.stage, r.adoption, r.limitation,
       displayedFields, ...['metric','proof','route','meeting'].map(key => Object.values(r[key] || {})),
       (r.milestones || []).map(item => Object.values(item)), (r.edges || []).map(e => [e.from,e.to,e.mechanism,e.status]),
@@ -318,7 +333,7 @@ async function start() {
     const visible = data.records.filter(r => {
       if (!caseIds.has(r.id)) return false;
       if (!caseCompany && company.value !== 'all' && r.companyId && r.companyId !== company.value) return false;
-      if (kind.value !== 'all' && r.kind !== kind.value) return false;
+      if (!recordMatchesKind(r, kind.value, records)) return false;
       const ownMatch = !term || recordText(r).includes(term);
       const sourceMatch = sourceSearch.checked && sourceIds(r).some(id => JSON.stringify(evidence.get(id)).toLocaleLowerCase().includes(term));
       if (!ownMatch && sourceMatch) sourceOnly.add(r.id);
@@ -353,7 +368,7 @@ async function start() {
       const action = sectionById.get(data.meta.actionSectionId);
       const next = el('div', undefined, 'action-return'); next.append(el('strong', external ? '把分析接回下一步调查' : '把分析接回下一步行动'), pageLink(`返回${action.title} →`,'',`#${action.id}`)); content.append(next);
     }
-    if (!view()) nav.append(link(`${String(sections.length + 1).padStart(2,'0')} 覆盖清单`,'coverage'), link(`${String(sections.length + 2).padStart(2,'0')} 证据库`,'sources'));
+    if (!view()) nav.append(link(`${String(sections.length + 1).padStart(2,'0')} 证据库`,'sources'));
     const scope = caseCompany ? `${caseCompany.name} 案例专题` : `${topic ? `${topic.title}；` : '主报告；'}${company.value === 'all' ? '全部公司' : companies.get(company.value).name}＋全局记录`;
     byId('results').textContent = `范围：${scope}；${kind.value === 'all' ? '全部性质' : names[kind.value]}；搜索：${term || '无'}（${sourceSearch.checked ? '含关联来源' : '正文与公司名'}）。当前页匹配 ${visible.length} / ${caseIds.size} 条记录（非经营统计），其中仅来源命中 ${sourceOnly.size} 条。补充论证请进入对应专题搜索；首屏摘要不随正文筛选重算；覆盖清单与证据明细保持完整。`;
     byId('empty').hidden = visible.length > 0 || caseIds.size === 0; syncLayout(); updateActiveSection();
