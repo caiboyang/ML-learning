@@ -59,7 +59,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 - `decision` 包含 `period, context, knownThen, options, chosen, outcome, tradeoff, assessment, falsifier`，分别呈现当时约束和信息、备选身份、实际选择、后续观察、机会成本、研究者复盘与反证。与面向未来的 `route`、会议确认 `meeting` 分开。
 - `series` 包含 `unit, definition, points[]`；每点含 `period, value, basis, evidenceIds`；`value: null` 时必须有 `missingReason`，按数据原文显示缺失原因。数值非负或 `null`，缺失不变成零；不同指标分别建序列，口径变化写入 `basis`，不可比时拆序列。按观察顺序展示带数值的比例条与表格，条长从零起，不暗示等距时间。例如“已查资料但没有可靠数据”“尚未到观察期”必须区分；`basis` 继续说明对象、分母与窗口。
 - `funnel` 包含 `cohort, overlap, nodes[]`。每节点含 `id, parentId, label, count, denominator, basis, proved, unproved, evidenceIds`，节点 ID 在该漏斗内唯一，根的 `parentId: null`，其他父节点必须存在且无循环。人数和分母为非负整数或 `null`；已知人数不大于分母。每节点写事件、窗口、分母定义及支持／未支持判断，通常整条标为解释。分支可能重叠时说明交集，不相加也不串成连续转化。
-- `change` 包含 `before, newEvidence, direction, after, impact`；`direction` 为上调／下调／维持。记录新证据性质，并将变化落实到被关联的判断、图表与行动。
+- `change` 包含 `before, newEvidence, direction, after, impact`；`direction` 为上调／下调／维持。用户回答、研究新证据和纠错都使用此结构。在 `newEvidence` 写触发类型、日期和证据身份，`evidenceIds` 关联依据；纠错另写原错误及更正依据，撤回无来源说法时说明核查范围。将变化落实到被关联的判断、图表与行动。
 - `companies[].case` 包含 `parentSectionId, argument, verdictId` 和四个 `modules[]`，公司案例使用四模块；每个模块含 `id, title, thesis, conclusion, recordIds`。模块内容按 [案例合同](research-contract.md#重点公司专题的最低结构) 填写，版式按呈现规范。
 - `topics[].id` 使用任意稳定 ID（保留 `case` 给公司案例路由），例如 `comparisons / advice / decision / audit`，通过 `?view=...` 直达。`parentSectionId` 指向主要展开的主节，`argument` 用 3–6 个短语呈现论证路线；模块数量受 schema 约束；类型和内容要求见 [呈现规范](result-presentation.md#主页面与专题分工)。模块字段同公司专题，跨视图可复用记录；同一视图内不得重复记录 ID。专题末尾由 `meta.actionSectionId` 生成返回入口。
 - 问答用 `role: question` 记录问题、回答、日期、原判断和变化，并通过 `relatedIds` 指向受影响的结论与行动。页面不保存回答、不调用模型；Agent 完成核对和推理后更新数据，再刷新呈现。
@@ -96,11 +96,22 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 来源明细始终保留完整支持边界；团队行、序列点、漏斗节点与回路边的来源也参与反向索引和可选的来源搜索。“只看事实”不隐藏记录自身的限制。点击关联记录或来源的返回链接时，若目标被过滤，会恢复必要条件，再定位并聚焦。直接访问记录锚点也应可用。`?view=case&company=servicebench` 直接打开四模块专题；若目标在当前专题之外，总览包含该记录时回总览，否则进入包含它的专题，恢复必要筛选再定位。少量内容可删不必要的筛选，但不能删来源和口径。
 
-JSON 是唯一内容来源。Agent 按 [研究合同](research-contract.md#怎样提问才有用) 处理回答并更新关联记录；模板只渲染，不自动推理。
+JSON 是唯一内容来源。Agent 按 [研究合同](research-contract.md#下一轮经营数据合同) 处理用户回答、研究新证据与纠错并更新关联记录；模板只渲染，不自动推理。
 
 ## 验收
 
-先用支持 Draft 7 的 JSON Schema 校验器验证结构，再检查 schema 不表达的语义：ID 全局唯一（漏斗节点另有局部命名空间）；不与固定页面 ID 重复；公司、来源、关联记录全部存在；首屏引用角色正确；主节标题与 part 覆盖、任意 section ID、父子页引用、行动入口与总览记录归属正确，每条记录有可访问页面；同视图无重复记录、漏斗父节点存在且无环、数量不超过分母；每个关键判断有证据或明确缺口；实际金额与比率复算一致。另检查覆盖项与合同一致、无重复、引用有效，及路径借鉴任务是否有重点案例或明确关键缺口。校验 schema 不等于核实业务事实。
+先运行随 skill 分发的 [validate-report.cjs](../scripts/validate-report.cjs)。需要 Node.js 18+ 与 npm；依赖由 skill 内的 `scripts/package.json` 和锁文件固定为 AJV 8 与 URI format 插件。从 skill 根目录运行（安装一次，后续校验不联网）：
+
+```sh
+npm ci --prefix scripts --ignore-scripts
+node scripts/validate-report.cjs /path/to/research.json
+```
+
+成功退出码为 0，结构／语义或输入错误为 1，用法错误为 2。相同 `limitation` 文本（去掉首尾空白、合并连续空白）出现在至少 5 条记录时，输出警告、重复文本、次数和全部记录 ID；警告不导致失败。逐条核对是谁自述、什么时期、缺什么分母或核验，不用改写措辞规避提醒；确有共用边界时可保留并说明。
+
+随附虚构夹具有意保留共用的“教学构造”边界，兼作警告测试；它说明整份数据的虚构身份，不能替代真实研究中逐条证据的具体限制。
+
+脚本验证 Draft 7 Schema（含 URI format）及 schema 不表达的语义：ID 全局唯一（漏斗节点另有局部命名空间）；不与固定页面 ID 重复；公司、来源、关联记录全部存在；首屏引用角色正确；主节标题与 part 覆盖、任意 section ID、父子页引用、行动入口与总览记录归属正确，每条记录有可访问页面；同视图无重复记录、漏斗父节点存在且无环、数量不超过分母。脚本还检查覆盖项无遗漏或重复、引用有效，及路径借鉴任务是否有重点案例或明确关键缺口。人工另查每个关键判断是否有实质证据或明确缺口、实际金额与比率是否复算一致；校验通过不等于核实业务事实。
 
 逐项填写 [研究合同的内容覆盖清单](research-contract.md#内容覆盖清单交付时逐项填写)，为团队、每家对标、数据核验、决策复盘等标出实际记录与支持证据。存在一个空组件、填了“未知”或通过结构校验，都不能替代实质分析。
 
@@ -115,12 +126,12 @@ JSON 是唯一内容来源。Agent 按 [研究合同](research-contract.md#怎�
 
 ## 可复现的仓库验证
 
-验证工具只用于开发，不进入交付 HTML。仓库 `scripts/package.json` 与锁文件固定 AJV 8 和 URI format 插件。需要 Node.js/npm 与 Python 3；从仓库根目录运行：
+验证工具不进入交付 HTML。依赖与校验规则均随 skill 分发；仓库回归测试直接调用该校验器，不另写一套语义规则，并核对覆盖项与合同一致。仓库测试另需 Python 3；从仓库根目录运行：
 
 ```sh
-npm ci --prefix scripts --ignore-scripts
+npm ci --prefix .agents/skills/company-research/scripts --ignore-scripts
 python3 scripts/sync-company-research-demo.py
 npm test --prefix scripts
 ```
 
-测试覆盖两种任务数据、Schema、覆盖清单的缺项／重复／无效引用／空缺口、备选切换条件、字段性质继承、缺失原因、HTTP(S) URL、引用、父子页与记录可达性、主产物完整性（包含“子页可达但主页面缺项”的负例）、单文件完整性和示例同步。复制 skill 到其他仓库后，可用支持 Draft 7 与 URI format 的校验器并执行上述语义检查，不依赖本仓库测试脚本。浏览器验收仍须另外进行。
+测试覆盖两种任务数据、Schema、覆盖清单的缺项／重复／无效引用／空缺口、备选切换条件、字段性质继承、缺失原因、HTTP(S) URL、引用、父子页与记录可达性、主产物完整性（包含“子页可达但主页面缺项”的负例）、单文件完整性和示例同步；另做隔离复制后的命令行验收与重复限制警告测试。复制整个 skill 目录后，按上方命令安装依赖并校验新数据；无需仓库测试脚本、示例生成器或原仓库路径。浏览器验收仍须另外进行。
