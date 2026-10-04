@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="学习笔记风格的独立示范：结构图、连贯章节、设计取舍与可展开自测。">
+  <title>一次请求里有什么 — 学习笔记样式示范</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --void: #07090F; --night: #0E1320; --surface: #141A2A; --rule: #232C44;
+      --paper: #E8E5DD; --paper-dim: #B6B2A6; --paper-muted: #A39C92;
+      --phosphor: #7BE3D7; --phosphor-glow: #A7F2EA; --amber: #FFB57A; --rose: #FF8FA3;
+      --diagram-paper: #F5F5F0; --diagram-ink: #222222;
+      --serif: 'Newsreader', 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+      --heading: 'Inter Tight', 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif;
+      --sans: 'Inter', 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', 'SFMono-Regular', 'Consolas', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body { margin: 0; background: var(--void); color: var(--paper); font: 19px/1.78 var(--serif); -webkit-font-smoothing: antialiased; }
+    a { color: var(--phosphor); text-underline-offset: 4px; text-decoration-color: rgba(123,227,215,.45); overflow-wrap: anywhere; }
+    a:hover { color: var(--phosphor-glow); }
+    :focus-visible { outline: 2px solid var(--phosphor); outline-offset: 4px; }
+    p { margin: 0 0 20px; } strong { color: var(--paper); font-weight: 600; }
+    code { font: .84em var(--mono); color: var(--phosphor-glow); background: rgba(123,227,215,.07); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    .mono { font: 12px/1.7 var(--mono); letter-spacing: .08em; }
+    .skip { position: absolute; top: -80px; left: 20px; z-index: 2; padding: 10px 18px; background: var(--surface); }
+    .skip:focus { top: 12px; }
+    .hero { padding: 84px 28px 56px; border-bottom: 1px solid var(--rule); background: radial-gradient(900px 450px at 85% 0%, rgba(123,227,215,.12), transparent 70%), var(--night); }
+    .hero-inner { max-width: 880px; margin: auto; }
+    .eyebrow { color: var(--phosphor); margin-bottom: 18px; }
+    h1 { font: 700 clamp(36px, 6vw, 66px)/1.15 var(--heading); letter-spacing: -.025em; margin: 0 0 26px; }
+    .accent { color: var(--phosphor); }
+    .lede { max-width: 760px; color: var(--paper-dim); font-size: 21px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 38px; padding: 24px 0; border-block: 1px solid var(--rule); }
+    .label { color: var(--paper-muted); font: 11px/1.7 var(--mono); letter-spacing: .08em; }
+    .value { margin-top: 7px; font: 15px/1.6 var(--sans); }
+    main { max-width: 836px; margin: auto; padding: 40px 28px 0; }
+    .reading-map, .toc { border: 1px solid var(--rule); border-radius: 10px; background: var(--night); padding: 22px; margin-bottom: 28px; font: 15px/1.8 var(--sans); }
+    .reading-map h2, .toc h2 { font: 600 20px/1.4 var(--heading); margin: 0 0 18px; }
+    .reading-map p:last-child { margin-bottom: 0; }
+    .toc ol { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 28px; margin: 0; padding-left: 25px; }
+    .toc li::marker { color: var(--phosphor); }
+    .toc p { margin: 8px 0 0; font-size: 13px; color: var(--paper-dim); }
+    section.essay { margin: 76px 0; }
+    .section-head { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--rule); padding-top: 24px; margin-bottom: 18px; }
+    .section-num { color: var(--phosphor); font: 12px var(--mono); white-space: nowrap; }
+    h2.section-title { margin: 0; font: 700 28px/1.35 var(--heading); }
+    h3 { margin: 30px 0 14px; font: 600 20px/1.45 var(--heading); }
+    .outcome { color: var(--paper-muted); font: 15px/1.7 var(--sans); }
+    .deck { border-left: 2px solid var(--phosphor); padding-left: 16px; color: var(--phosphor-glow); font-size: 21px; }
+    figure { margin: 28px 0; }
+    .diagram { background: var(--diagram-paper); color: var(--diagram-ink); border-radius: 10px; padding: 20px 12px; overflow-x: auto; }
+    .diagram svg { display: block; width: 100%; min-width: 560px; height: auto; }
+    figcaption, .source { margin-top: 12px; color: var(--paper-muted); font: 13px/1.7 var(--sans); }
+    .call { border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 8px; padding: 18px 20px; margin: 26px 0; background: var(--surface); color: var(--paper-dim); font: 15px/1.75 var(--sans); }
+    .call.pit { border-left-color: var(--rose); }
+    .call h3 { color: var(--amber); font: 600 15px var(--sans); margin: 0 0 12px; }
+    .call.pit h3 { color: var(--rose); } .call p:last-child { margin: 0; }
+    .tbl-wrap { overflow-x: auto; margin: 26px 0; }
+    table { width: 100%; min-width: 520px; border-collapse: collapse; font: 14px/1.65 var(--sans); }
+    caption { text-align: left; color: var(--paper-muted); margin-bottom: 12px; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+    th { color: var(--phosphor); font-weight: 500; } td { color: var(--paper-dim); }
+    pre { overflow-x: auto; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; margin: 24px 0; }
+    pre code { padding: 0; background: none; color: var(--paper-dim); font: 13px/1.8 var(--mono); overflow-wrap: normal; }
+    details { margin: 26px 0; padding: 16px 20px; background: var(--night); border: 1px solid var(--rule); border-radius: 8px; font: 15px/1.75 var(--sans); }
+    summary { cursor: pointer; color: var(--phosphor); } details p { margin: 15px 0 0; color: var(--paper-dim); }
+    .deep-dive { border-style: dashed; background: transparent; }
+    .bridge { color: var(--paper-dim); font: 15px/1.8 var(--sans); }
+    .next-step { display: inline-block; margin-top: 14px; font: 14px/1.6 var(--sans); }
+    footer { border-top: 1px solid var(--rule); padding: 40px 28px 70px; }
+    .foot-inner { max-width: 780px; margin: auto; color: var(--paper-muted); font: 14px/1.8 var(--sans); }
+    @media (max-width: 640px) {
+      .hero { padding: 60px 22px 36px; } main { padding-inline: 22px; }
+      .meta-grid, .toc ol { grid-template-columns: 1fr; }
+      .section-head { display: block; } .section-num { display: block; margin-bottom: 12px; }
+      h2.section-title { font-size: 25px; } body { font-size: 18px; } .lede, .deck { font-size: 20px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow mono">学习笔记 · 独立样式示范</p>
+    <h1>一次请求里有什么<br><span class="accent">从结构到变化</span></h1>
+    <p class="lede">用同一份请求观察数据的位置和更新。本页展示布局与组件，所有字段都是教学构造；使用时替换为研究对象的真实结构与证据。</p>
+    <div class="meta-grid">
+      <div><div class="label">读者前提</div><div class="value">知道请求与响应的区别</div></div>
+      <div><div class="label">学习结果</div><div class="value">指出哪些字段改变、哪些保持不变</div></div>
+      <div><div class="label">证据范围</div><div class="value">教学构造，不代表具体产品</div></div>
+    </div>
+  </div>
+</header>
+<main id="main">
+  <aside class="reading-map" aria-labelledby="map-title">
+    <h2 id="map-title">主线：先定位，再追踪变化</h2>
+    <p>先拆开请求 R1，区分稳定设置与任务输入；再观察下一次请求 R2，判断一次追加改变了什么。</p>
+  </aside>
+  <nav class="toc" aria-labelledby="toc-title">
+    <h2 id="toc-title">阅读路径</h2>
+    <ol>
+      <li><a href="#structure">请求由哪两部分组成？</a><p>画出包含关系，找到每个字段的位置。</p></li>
+      <li><a href="#change">追加输入后，哪里发生变化？</a><p>用同一对象的前后值核对结论。</p></li>
+    </ol>
+  </nav>
+  <section class="essay" id="structure" aria-labelledby="structure-title">
+    <div class="section-head"><span class="section-num">01</span><h2 class="section-title" id="structure-title">请求由哪两部分组成？</h2></div>
+    <p class="outcome">读完能指出：设置与输入属于同一次请求，但承担不同职责。</p>
+    <p class="deck">先看包含关系，再读字段值。</p>
+    <p>示例把请求 R1 分成设置和输入两部分。设置保存语言偏好，输入保存本次要处理的任务；外层编号标识这一份请求。</p>
+    <figure>
+      <div class="diagram" tabindex="0" role="region" aria-label="请求结构图，窄屏可左右滚动">
+        <svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">请求 R1 的结构</title>
+          <desc id="diagram-desc">外层请求 R1 包含设置 language 等于 zh，以及输入 task 等于解释边界条件。它展示包含关系，不表示执行时序。</desc>
+          <rect x="12" y="12" width="676" height="216" rx="10" fill="none" stroke="#475569" stroke-width="2"/>
+          <g fill="#222222" font-family="system-ui, sans-serif">
+            <text x="32" y="46" font-size="20" font-weight="600">请求 R1</text>
+            <rect x="32" y="70" width="290" height="130" rx="8" fill="#DDF2ED" stroke="#4D8078"/>
+            <text x="52" y="105" font-size="18">设置 settings</text>
+            <text x="52" y="150" font-size="17">language: zh</text>
+            <rect x="348" y="70" width="308" height="130" rx="8" fill="#E5E7EF" stroke="#667085"/>
+            <text x="368" y="105" font-size="18">输入 input</text>
+            <text x="368" y="150" font-size="17">task: 解释边界条件</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>图 1 · 教学构造。先读外框，再读两个内框；此图表示包含关系，不表示时序。窄屏可在图内横向滚动。</figcaption>
+    </figure>
+    <aside class="call"><h3>设计取舍</h3><p>把设置和输入分开便于解释各自的来源。这个分组本身不能证明系统会缓存设置，也不能证明传输成本下降。</p></aside>
+    <details class="deep-dive"><summary>展开字段示例</summary>
+      <pre tabindex="0" role="region" aria-label="请求 JSON 示例，可横向滚动"><code class="language-json">{
+  "id": "R1",
+  "settings": { "language": "zh" },
+  "input": { "task": "解释边界条件" }
+}</code></pre>
+    </details>
+    <p class="bridge">位置明确后，下一步观察用户追加一个要求会改变哪些字段。</p>
+    <a class="next-step" href="#change">继续：比较 R1 与 R2 →</a>
+  </section>
+  <section class="essay" id="change" aria-labelledby="change-title">
+    <div class="section-head"><span class="section-num">02</span><h2 class="section-title" id="change-title">追加输入后，哪里发生变化？</h2></div>
+    <p class="outcome">读完能依据前后值解释变化，避免从表面相同推断实现机制。</p>
+    <p>用户接着要求“给出一个反例”。教学示例用 R2 表示下一次请求：语言偏好仍为中文，任务文字增加了这个要求。</p>
+    <div class="tbl-wrap" tabindex="0" role="region" aria-label="请求前后对照表，可横向滚动">
+      <table>
+        <caption>表 1 · R1 与 R2 的构造值，窄屏可左右滚动</caption>
+        <thead><tr><th scope="col">字段</th><th scope="col">R1</th><th scope="col">R2</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">settings.language</th><td>zh</td><td>zh（未变）</td></tr>
+          <tr><th scope="row">input.task</th><td>解释边界条件</td><td>解释边界条件，并给出一个反例（改变）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <aside class="call pit"><h3>反例：值未变，不等于无需发送</h3><p>这份表只比较数据值，没有展示实际传输。因此不能单靠它判断设置是否被再次发送。</p></aside>
+    <h3>自测：这张表能证明缓存命中吗？</h3>
+    <p>先说明已有证据，再指出还缺少什么。</p>
+    <details id="answer"><summary>查看答案与推理</summary><p>不能。表中只有两个字段的前后值；判断缓存行为还需要对应实现或运行证据。相同的值可以来自重新发送，也可以来自其他机制。</p></details>
+    <p class="bridge">回到整体：先用结构图找位置，再用前后对照追踪变化；机制结论需要另外核对证据。</p>
+    <a class="next-step" href="#map-title">回到学习地图 ↑</a>
+  </section>
+</main>
+<footer><div class="foot-inner">本页是可复制的样式起点，不是产品研究结论。实际笔记应以真实案例替换示范，并在论断和图表旁添加具体来源。</div></footer>
+</body>
+</html>
