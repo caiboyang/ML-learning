@@ -1,0 +1,10 @@
+{
+  "name": "company-research-validator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portable research schema and semantic validator",
+  "dependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  }
+}
