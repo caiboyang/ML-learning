@@ -45,16 +45,16 @@
 | 平台 | 一句话概括 |
 |---|---|
 | **OpenClaw** | 「绝对余量」触发 + 分阶段 map-reduce 摘要；**safeguard mode** 另有质量审计重试。compaction 与 tool-result pruning 是**两套独立机制**，且 pruning 按 **prompt cache TTL** 决定何时动手。 |
-| **Hermes** | 「双层百分比」触发（agent 层配置 50%，但 <512K 模型被下限抬到 **75%** / gateway 85%）+ 四阶段压缩；独有 **exchange 级 micro-compaction**（每回合吞掉一个 exchange 的滚动摘要；Goose 有 tool 级的同类物，§18.9），并在这条路径上把「**用户消息永不被吸收**」写成结构性不变量；批量路径则是弱得多的保证——只保底 `min_tail_user_messages` 条（默认 1），更早的用户消息照样进摘要。 |
+| **Hermes** | 「双层百分比」触发（agent 层配置 50%，但 <512K 模型被下限抬到 **75%** / gateway 85%）+ 四阶段压缩；独有 **exchange 级 micro-compaction**（每回合吞掉一个 exchange 的滚动摘要；Goose 有 tool 级的对标机制，§18.9），并在这条路径上把「**用户消息永不被吸收**」写成结构性不变量；批量路径则是弱得多的保证——只保底 `min_tail_user_messages` 条（默认 1），更早的用户消息照样进摘要。 |
 | **OpenHands SDK** | 把 compaction 建模成**事件**（`Condensation`），View 由事件流重放得出；用**二分查找 + 真实 tokenizer** 精确定位切点；condenser 可**管道串联**。 |
 | **Codex CLI** | 最激进：压缩后**丢弃全部 assistant/tool 消息**，只保留 canonical context + **20K token 预算内的原文用户消息** + 摘要；支持**服务端 compaction**和**不做摘要**的 token-budget 模式。 |
-| **opencode** | 「绝对余量」触发，`DEFAULT_BUFFER` 与 OpenClaw 生效值同为 **20,000**；把整段历史**压平成文本**再压缩，于是 tool 配对问题不复存在；失败一律「什么都不做」。 |
+| **opencode** | 「绝对余量」触发，`DEFAULT_BUFFER` 与 OpenClaw 生效值同为 **20,000**；把整段历史**拍平成纯文本**再压缩，于是 tool 配对问题不复存在；失败一律「什么都不做」。 |
 | **kimi-code** | 唯一**同时用百分比与绝对余量**触发（0.85 ‖ 剩余 50K）；摘要 prompt 是**第一人称交接笔记**且明确**拒绝固定 section**，还要求模型如实标注「未经验证」的步骤。 |
 | **Cline** | 双策略（deterministic `basic` vs LLM `agentic`），0.9 触发 / 0.7 目标；file ops 由代码而非 LLM 注入；compaction 本身是**插件/hook 扩展点**。 |
 | **Goose** | 摘要产物是**受 schema 约束的 JSON**，再用**用户可覆盖的 Jinja 模板**渲染；消息不删除，靠 `agent_visible`/`user_visible` **双可见性**分离模型视图与 UI 视图。 |
 | **Letta** | 四种 compaction 模式（含 Claude-Code 式 **self-compact**）；摘要里专门写 **Lookup hints**，与其可检索的 recall memory 配套；另有 sleeptime agent 在后台整理记忆。 |
 | **Google ADK** | 唯一的**区间式**模型：compaction 是带 `[start_ts, end_ts]` 的事件，多个区间可重叠共存，靠 subsumption 规则挑覆盖者；触发有**滑动窗口 cadence**（含 `overlap_size` 让相邻摘要**故意重叠**）和 token 阈值两族。 |
-| **DeepSeek Harness** | 把摘要调用设计成**上一次请求的前缀延长**（复用对话自己的 system + tools + 消息，指令挪到最后一条 user 消息），从而复用 provider 的 KV cache——本报告里对这件事最完整的一次表述。压缩是**可选的 capability seam**，事件溯源 + 位置 replace；**先落 `compaction/start` 再叫摘要器**（并明说这是与 Codex / Claude Code 相反的刻意选择）；重试凭证是 **surface 世代号**而非压缩函数返回值；checkpoint **强制英文**——与 ADK 那条「自报对话语言」正好相反。 |
+| **DeepSeek Harness** | 把摘要调用设计成**上一次请求的前缀延长**（复用对话自己的 system + tools + 消息，指令挪到最后一条 user 消息），从而复用 provider 的 KV cache——本报告里对这件事最完整的一次表述。压缩是**可选的 capability seam**，事件溯源 + 位置 replace；**先落 `compaction/start` 再调用摘要模型**（并明说这是与 Codex / Claude Code 相反的刻意选择）；重试凭证是 **surface 世代号**而非压缩函数返回值；checkpoint **强制英文**——与 ADK 那条「自报对话语言」正好相反。 |
 | **Antigravity** | **闭源**，官方未公开压缩算法。官方确证的是一套**上下文分区 + 渐进加载**策略：subagent 不继承父会话历史（明说为防 context pollution）、Skill 先只暴露 name/description 匹配后才读全文、会话历史按 cwd 隔离且可 `/fork`、KI 摘要常驻而 artifacts 按相关性加载。 |
 | **LangGraph / LangChain** | **LangGraph core** 只给 `pre_model_hook` + `RemoveMessage` 等原语；但建立在它之上的 **LangChain v1 agent layer** 已提供可选的 `SummarizationMiddleware`，支持 token/message/fraction 触发、可配置保留量、结构化摘要与 tool-pair 安全切点。两层不能混为「都没有内建策略」。 |
 | **AutoGen** | 四个内置 context 实现**全是确定性的**，没有一个调 LLM。默认 `Unbounded`；`HeadAndTail` 把中段换成一句 `Skipped N messages.`；`TokenLimited` 每次从**正中间**弹出一条直到装下。 |
@@ -115,7 +115,7 @@ flowchart LR
 
 于是头尾保留的实质是：**把有损压缩的损失，分配到模型本来就利用率最低的位置**。中间那段即便不压，模型也未必看得清；压掉它的边际损失最小。
 
-这解释了一个乍看奇怪的现象——头部保护的数字都很小：
+这解释了一个看似反直觉的工程现象——头部保留的消息配额普遍极少且克制：
 
 | 项目 | 头部保护量 |
 |---|---|
@@ -125,7 +125,7 @@ flowchart LR
 
 头部要的不是「多」，而是**任务定义和硬约束**——system prompt 加最初一两轮就够覆盖，再往后是执行细节，属于可压缩内容。
 
-Hermes 的衰减机制（§4.3）把这条推得更远：早期回合在第一次压缩时已经进了摘要，**此后连那 3 条也不再保护**，只剩 system prompt 永久受保护。源码给的理由是不让早期回合「fossilize」。所以更准确的表述是——头部值得保护的是**任务定义**，而不是「最早的那几条消息」；一旦任务定义已经被摘要接管，原始的早期消息就没有特殊地位了。
+Hermes 的衰减机制（§4.3）把这条推得更远：早期回合在第一次压缩时已经进了摘要，**此后连那 3 条也不再保护**，只剩 system prompt 永久受保护。源码给出的设计考量是避免早期对话僵化（fossilize）占死上下文空间。所以更准确的表述是——头部真正需要保护的是**任务定义与硬约束**，而不是「最早的那几条历史消息」；一旦任务目标已被摘要平稳接管，原始的早期消息就没有必要继续享受豁免了。
 
 对比尾部：Hermes 20K token、OpenClaw 20K token、Cline 20K token、Gemini CLI 后 30%——保护量普遍大一个数量级。因为尾部承载的是**当前工作状态**，模型的下一步动作直接依赖它。
 
@@ -223,7 +223,7 @@ Hermes 把这个思路做到了更细的粒度——它不是把 tool result 换
 
 【机制解释】这是在区分**「发生了什么」**和**「具体输出是什么」**：前者是不可再生的事件记录（我确实跑过测试、它确实通过了 47 行输出），后者是可再生的内容（要看输出就再跑一次）。保留事件、丢弃内容，是上面那个排序框架的精细版本。
 
-对比 OpenClaw 的通用占位符 `[Old tool result content cleared]`——同样省了 token，但把「发生过什么」也一起丢了，是一个几乎免费的信息保留机会没有利用。
+对比 OpenClaw 的通用占位符 `[Old tool result content cleared]`——同样省了 token，但把「发生过什么」也一并丢弃，白白错失了一个近乎零成本的信息保留机会。
 
 ### 2.7 要不要告诉模型「上下文快满了」——本报告唯一一条有争议的建议
 
@@ -310,7 +310,7 @@ flowchart TD
 
 OpenClaw 那条思路值得单独说：**还在缓存窗口内的前缀，裁掉它非但不省钱，反而打断 cache 前缀导致整段重读**；等它自然过期再裁，才是真省。这是把「压缩时机」与「缓存生命周期」对齐，而不是各管各的。
 
-第三条（dsh）针对的是另一半浪费，很容易被忽略：**压缩这个动作本身要多发一次请求，而那次请求通常一个 cache 都命中不了**。因为常规写法是「专门的 summarizer system prompt + 压平成文本的历史」——第一个 token 就与刚刚跑过的对话请求不同，整段缓存前缀作废。于是最大的那次历史被**全价读两遍**：一遍是触发压力的对话请求，一遍是摘要请求。解法是把摘要指令从请求最前面挪到对话最后面，让摘要调用成为同一个前缀的延长（§13.1）。Letta 的 `self_compact_*` 已经做了同一件事的一半（§11.1）。
+第三条（dsh）针对的是另一半浪费，很容易被忽略：**压缩这个动作本身要多发一次请求，而那次请求通常一个 cache 都命中不了**。因为常规写法是「专门的 summarizer system prompt + 拍平成纯文本的历史」——第一个 token 就与刚刚跑过的对话请求不同，整段缓存前缀作废。于是最大的那次历史被**全价读两遍**：一遍是触发压力的对话请求，一遍是摘要请求。解法是把摘要指令从请求最前面挪到对话最后面，让摘要调用成为同一个前缀的延长（§13.1）。Letta 的 `self_compact_*` 已经做了同一件事的一半（§11.1）。
 
 Hermes 则把 caching 与 compaction 写进同一篇文档，并给出一条推论：**模型身份是 cache key 的一部分**，所以 `/model` 切换、主模型 fallback、credential pool 轮换到不同账号，都会导致下一次请求零命中。结论写得很硬：「Don't add features that silently swap the model or credentials mid-session.」
 
@@ -1034,7 +1034,7 @@ _SUMMARY_INPUT_MAX_CHARS = 160_000   # ≈40K token
 
 `_sanitize_tool_pairs()` 收尾：孤儿 tool result 删除，孤儿 tool call 补一个 stub result。
 
-### 4.4 Micro-compaction：Hermes 的独门武器（exchange 级；Goose 有 tool 级同类物）
+### 4.4 Micro-compaction：Hermes 的独门武器（exchange 级；Goose 有 tool 级对标机制）
 
 默认**关闭**（`compression.micro_compact: true` 开启）。它不是「到阈值才压」，而是**每回合的空闲时间吞掉一个 exchange**：
 
@@ -1536,7 +1536,7 @@ if (remaining > 0) {
 
 > 这与 §3.6 OpenClaw 的 `TURN_PREFIX_SUMMARIZATION_PROMPT` 是同一个问题的两种答案：一条消息横跨切点时怎么办。OpenClaw 专门为「被切开的前半段」写了一份 prompt，让后半段能被读懂；opencode 直接按字符切，不做任何语义弥合。前者更讲究，后者更简单——但 opencode 的代价是可能从一个词、一个 JSON 结构中间切断。
 
-### 7.3 把历史压平成文本，于是 tool 配对问题消失了
+### 7.3 把历史拍平成纯文本，于是 tool 配对问题消失了
 
 `serialize()` 把每条消息渲染成纯文本行：
 
@@ -1550,7 +1550,7 @@ if (remaining > 0) {
 
 `TOOL_OUTPUT_MAX_CHARS = 2_000`（与 ADK 的 2000 字符截断又是同一个数）。
 
-> **这是 opencode 与其余各家最大的结构性差异**：待压缩区和保留区**都是字符串**，不是结构化消息数组。§17.4 说十一家里九家显式处理 tool call/result 配对——opencode 不在其中，不是因为它疏忽，而是因为**压平成文本之后根本不存在「配对被破坏」这回事**。摘要与 recent 都以文本形式重新入模。
+> **这是 opencode 与其余各家最大的结构性差异**：待压缩区和保留区**都是字符串**，不是结构化消息数组。§17.4 说十一家里九家显式处理 tool call/result 配对——opencode 不在其中，不是因为它疏忽，而是因为**拍平成纯文本之后根本不存在「配对被破坏」这回事**。摘要与 recent 都以文本形式重新入模。
 >
 > 代价是真实的：provider 侧的 tool 语义（结构化参数、tool_call_id 关联、原生 tool 消息角色）全部丢失，模型只能从 `[Assistant tool call]:` 这样的文本前缀去理解。这是「简化实现」与「保真」之间一次明确的取舍。
 
@@ -1764,7 +1764,7 @@ OVERFLOW_STATUS_RECOVERY_RATIO = 0.5
 
 ```ts
 export const DEFAULT_MAX_INPUT_TOKENS       = 128_000;
-export const COMPACTION_TRIGGER_RATIO       = 0.9;    // 最晚触发的百分比制
+export const COMPACTION_TRIGGER_RATIO       = 0.9;    // 默认比例阈值 90%
 export const DEFAULT_TARGET_RATIO           = 0.7;
 export const DEFAULT_PRESERVE_RECENT_TOKENS = 20_000;
 const LONG_CONVERSATION_TARGET_RATIO        = 0.5;    // 长会话压得更狠
@@ -2383,7 +2383,7 @@ compaction 在 dsh 里**不是 agent loop 的一部分**，而是一个可选的
 
 ### 13.1 最本质的差异：摘要调用被设计成「上一次请求的前缀延长」
 
-绝大多数实现的摘要调用是**另起一个请求**：一个专门的 summarizer system prompt，后面跟压平成一段文本的历史。dsh 曾经也是，然后专门发了一篇 bug-fix note 把它改掉（`2026-07-21-compaction-summary-prefix-cache-reuse.md`）：
+绝大多数实现的摘要调用是**另起一个请求**：一个专门的 summarizer system prompt，后面跟拍平成纯文本的历史。dsh 曾经也是，然后专门发了一篇 bug-fix note 把它改掉（`2026-07-21-compaction-summary-prefix-cache-reuse.md`）：
 
 > 【实现明说】"A provider caches on the request's leading token sequence, so a first token that differs — a different system prompt — invalidates the entire cached prefix. Every compaction therefore paid full prompt-processing cost for the whole replayed history **twice**: once for the conversation request that tripped pressure, and again for the summarization call, defeating the cache exactly when the conversation is largest."
 
@@ -3165,7 +3165,7 @@ flowchart TD
 | OpenClaw | 上一个 boundary 之后 | `keepRecentTokens` 20000 | ✓ `pendingToolCallIds` | 分块时把被困的用户消息救出来 |
 | Hermes | `protect_first_n` 3 + system | token 预算(阈值×0.2)，条数下限 max(3, min(20, **8**)) | ✓ `_align_boundary_backward` | **`min_tail_user_messages` 保证优先于 token 预算** |
 | OpenHands | `keep_first` 2 | 由 target 反推 | ✓ `manipulation_indices` | — |
-| opencode | — | `DEFAULT_KEEP_TOKENS` 8000，允许按字符劈开边界那条消息 | ✗ 压平成文本后不存在配对问题 | — |
+| opencode | — | `DEFAULT_KEEP_TOKENS` 8000，允许按字符劈开边界那条消息 | ✗ 拍平成纯文本后不存在配对问题 | — |
 | kimi-code | — | 压缩后由 `compactionHandoff` 只留真实用户消息（头 2K + 尾，上限 20K） | 由 `dropLeadingToolResults` 在收缩时维持配对 | **只有用户消息被保留**，且按来源白名单判定何为「真实用户消息」 |
 | Codex（本地总结重组） | canonical initial context | **不保留 assistant/tool 原始项** | 不保留原始调用／结果对 | **20K token 预算内原文保留** |
 | Gemini CLI *(附录 A)* | `getInitialChatHistory` | 最后 30% 字符 | — | — |
@@ -3344,7 +3344,7 @@ dsh 在另一头：section 最多（8 个），且把「不许缺」写成了硬
 
 ### 17.4 tool call / result 配对不可破坏
 
-9/11 显式处理。两个例外的理由完全不同：**Codex** 的本地总结重组不保留 assistant/tool 原始项，因此这一步不选择要保留的调用／结果对；这不代表发送请求时不检查配对；**opencode** 把历史压平成文本，配对这个概念不再存在（§7.3）。四种实现：
+9/11 显式处理。两个例外的理由完全不同：**Codex** 的本地总结重组不保留 assistant/tool 原始项，因此这一步不选择要保留的调用／结果对；这不代表发送请求时不检查配对；**opencode** 把历史拍平成纯文本，配对这个概念不再存在（§7.3）。四种实现：
 - 分组扫描（OpenClaw `pendingToolCallIds`、Goose tool pair）
 - 边界对齐（Hermes `_align_boundary_backward/forward`、**dsh** `toolPairingBalancedBefore/After` —— dsh 把这两个谓词提到 seam 层导出，让任何后端都用同一套边界判定）
 - 预计算合法下标（OpenHands `manipulation_indices`）
@@ -3370,7 +3370,7 @@ dsh 在另一头：section 最多（8 个），且把「不许缺」写成了硬
 | Letta | `TOOL_RETURN_TRUNCATION_CHARS` |
 | Cline | `summarizeToolResults()` 统计 + budget projection |
 | ADK | `_MAX_TOOL_CONTENT_CHARS = 2000`，注释直言「so compaction does not **inflate the very context it exists to shrink**」 |
-| **opencode** | `TOOL_OUTPUT_MAX_CHARS = 2_000`，在 `serialize()` 压平成文本时截断——全场最简形态 |
+| **opencode** | `TOOL_OUTPUT_MAX_CHARS = 2_000`，在 `serialize()` 拍平成纯文本时截断——全场最简形态 |
 | **dsh** | 独立可选服务 `ctx.toolResultPruner`（8192 字符阈值 / 头 4096 / 尾 1024），**只在压力已够格之后跑**，跑完重测；若压力因此回到阈值以下，**整个 LLM 调用被跳过** |
 | *Gemini CLI（附录 A）* | *`COMPRESSION_FUNCTION_RESPONSE_TOKEN_BUDGET = 50_000`，已弃用，不计入 8/11* |
 
@@ -3657,7 +3657,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 **OpenClaw 该从 Hermes 学：**
 1. **micro-compaction** —— 把一次大压缩摊成 N 次小压缩，配合 OpenClaw 已有的 cache-ttl 思路可以做得比 Hermes 更省
 2. **完整的防抖/熔断状态机** —— 尤其 `should_compress_info()` 返回原因让上层能告警「会话已超阈值但压不动」
-3. **tool result 的信息化降级 + 去重** —— `[Old tool result content cleared]` 这种通用占位符浪费了一个几乎免费的信息保留机会
+3. **tool result 的信息化降级 + 去重** —— `[Old tool result content cleared]` 这种通用占位符白白浪费了一个近乎零成本的信息保留机会
 
 ---
 
@@ -3693,7 +3693,7 @@ OpenClaw 这条很特别：**压缩后重新注入项目约定**，因为工作�
 28. **把摘要指令挪到对话末尾，让摘要调用成为对话请求的前缀延长**（dsh；Letta self-compact 已做了一半）—— 投入产出比可以排进前三：改动只是「把 summarizer system prompt 换成最后一条 user 消息，并原样带上对话自己的 system + tools」，换来的是那次额外调用**不再全价重读整段历史**，而且省的正好是会话最长那一刻。前提是摘要用主模型，所以它与第 9 条互斥，取舍见 §18.5
 29. **用「模型可见状态是否真的变了」而不是「压缩函数是否成功返回」来决定要不要重试**（dsh 的 `surface.replaceGeneration`）—— 两个反直觉但正确的结果：返回了结果却没改动 surface 的后端不能授权重试；只跑成了免 LLM 裁剪、摘要那步抛了异常，反而可以（§13.3）
 30. **摘要必须严格小于它替换的内容，作为落盘的前置条件**（dsh）—— 与第 15 条同一目标、位置相反：前置比较不需要回滚路径，也不会出现「已经改坏了但要撤回」的中间状态。注意两边要用同一个计价口径，且比较的是**加了框架之后**的替换消息
-31. **压缩前先把锁写进日志，再叫摘要器**（dsh 的 `compaction/start`，并明说这是与 Codex / Claude Code 相反的刻意选择）—— 崩在摘要中间会留下一个可检测的孤儿锁，而不是一条谎称压缩完成的记录；自动与手动路径共用同一把锁。配套需要一个「陈旧孤儿 vs 活孤儿」的判据（dsh 用 `session/end-seed`），否则 resume / fork 出来的会话会被永久卡死
+31. **压缩前先把锁写进日志，再调用摘要模型**（dsh 的 `compaction/start`，并明说这是与 Codex / Claude Code 相反的刻意选择）—— 崩在摘要中间会留下一个可检测的孤儿锁，而不是一条谎称压缩完成的记录；自动与手动路径共用同一把锁。配套需要一个「陈旧孤儿 vs 活孤儿」的判据（dsh 用 `session/end-seed`），否则 resume / fork 出来的会话会被永久卡死
 32. **别让压缩成为唯一改变上下文占用、却不更新 UI 的动作**（dsh 的 context meter 修复）—— 压缩不产生 provider usage，所以任何直接读 usage 的占用指示器都会在**用户最可能去看它的那一刻**纹丝不动。修法是「provider 采样当锚点 + 增量用估算」；被否掉的「补一条合成 usage 记录」那个方案的理由值得记住：那是**在持久日志里撒谎**，而不只是显示错一个数（§13.5）
 
 ---
