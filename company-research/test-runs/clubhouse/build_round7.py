@@ -49,7 +49,8 @@ d["coverage"] = [
     cov("任务与证明状态", "有实质依据", ["verdict", "p-activation", "p-cohort", "p-revisit", "p-content", "p-creator", "p-monetize"]),
     cov("业务、团队与分工", "部分完成", ["a-products", "a-channels", "team"], "内部分工、每人投入未公开；只写到两位创始人的对外角色。"),
     cov("每家对标", "部分完成", ["cmp-matrix", "pf-spaces", "pf-stage", "pf-greenroom", "pf-houseparty"], "四家只有档案和一个关键动作，没有逐家完整的起点—动作—反馈—迁移拆解。"),
-    cov("重点案例", "有实质依据" if with_case else "有实质依据", case_ids),
+    cov("重点案例", "有实质依据", case_ids) if with_case else
+    cov("重点案例", "关键缺口", [], "本版按 --no-case 生成，未收录重点案例：缺少逐步动作、结果、取舍和反馈回路的四模块拆解。"),
     cov("数据核验", "部分完成", ["ser-installs", "ser-wau", "m-wau", "m-installs"], "同批留存从未公开；周活只有两个公司口径的点。"),
     cov("判断更新与下一轮记录", "部分完成", ["data-needs"], "本次没有新证据触发判断更新，没有 change 记录。"),
     cov("自有业务决策", "不适用", [], "外部公司研究，不替 Clubhouse 制定路线。"),
