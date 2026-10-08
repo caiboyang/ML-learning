@@ -1,10 +1,13 @@
 ---
 layout: default
+lang: zh-Hans
 title: "Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理"
 description: "沿固定提交分析执行循环、指令与 Skills 加载、MCP 连接和工具曝光，重点展开上下文管理、WorldState 与三条 compaction 路径。"
 ---
 
 # Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理
+
+**中文** · [English](Codex_Harness_Research.en.html)
 
 > 配套学习页：[Codex Harness 分析：从请求到执行与恢复](learn/)。先读学习页建立执行顺序，再用本手册核对源码、常量和适用条件。<br>
 > 阅读约定：**【来源事实】** 指本快照源码直接支持的行为，**【综合解释】** 指对机制的归纳，**【实践建议】** 指需要自行评测的工程取舍。<br>
