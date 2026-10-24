@@ -21,6 +21,8 @@ node <skill-dir>/scripts/test_browser.cjs http://127.0.0.1:8765 /tmp/presentatio
 
 它针对模板示例验证双窗、彩排记录、导出、暂停/回访/刷新/重置、窄屏，并保存每页截图。动态 loop 额外验证轨迹确实移动、节点错峰强调、离页暂停、缩略图静止、深浅主题和 reduced-motion。执行前先构建 `assets/template/deck.json`。自定义 deck 的内容、视频、可访问性仍按实际材料检查；不要为通过示例测试改动用户内容。
 
+配色改动另测深浅页、讲稿、黄色 cue 和缩略图。生成器先验证文字角色对比度；浏览器检查实际应用和布局。可用 `scripts/test_palettes.cjs ROOT_URL EVIDENCE_DIR`：先将同一 bundled deck 的 `palette` 分别设为 forest、blue、plum，生成到同一 HTTP 根目录下的同名子目录。该测试检查三套配色、相同 loop 尺寸、深浅色轨迹、讲稿和静态缩略图，并保存截图；不代替实体投影验证。
+
 自动测试与截图互补。参照 [Playwright 截图比较](https://playwright.dev/docs/test-snapshots) 的限制，不在字体/OS/浏览器不同的环境承诺逐像素相同，也不用粗略亮度或空白率当设计质量分。
 
 ## 彩排、离线与交付

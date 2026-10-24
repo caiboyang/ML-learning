@@ -1,18 +1,18 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Illustration style reference</title><link rel="stylesheet" href="template/style.css"><style>
-:root{--ivory:#f0ecdf;--sans:'DM Sans',sans-serif}
+:root{--ivory:var(--light-surface,#f0ecdf);--sans:'DM Sans',sans-serif}
 .appliance-gallery{display:flex;gap:55px;align-items:flex-end;justify-content:space-around;margin-top:18px;position:relative}
-.appliance-gallery:before{content:'';position:absolute;left:8%;right:8%;bottom:70px;border-top:1px solid #7b987a66;z-index:-1}
+.appliance-gallery:before{content:'';position:absolute;left:8%;right:8%;bottom:70px;border-top:1px solid var(--illustration-shadow,#7b987a66);z-index:-1}
 .appliance-gallery>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:25px;min-width:0}
 .appliance-gallery p{font-size:clamp(25px,2.2vw,33px);letter-spacing:-.03em;white-space:nowrap}
-.appliance{display:block;position:relative;width:170px;height:205px;border:2px solid #376b49;border-radius:10px;background:var(--ivory);box-shadow:9px 10px 0 #b7c6ac66;flex-shrink:0}
-.washer:before{content:'';position:absolute;left:22px;right:22px;top:62px;aspect-ratio:1;border:3px solid #376b49;border-radius:50%;background:radial-gradient(ellipse at 45% 40%,#dce4d2,#b6c8aa);box-shadow:inset 0 0 0 7px var(--ivory),inset 0 0 0 9px #71916c}
-.washer:after{content:'•••';position:absolute;left:19px;right:19px;top:8px;height:34px;border-bottom:1px solid #376b49;font:31px var(--sans);letter-spacing:10px}
+.appliance{display:block;position:relative;width:170px;height:205px;border:2px solid var(--light-accent,#376b49);border-radius:10px;background:var(--ivory);box-shadow:9px 10px 0 var(--illustration-shadow,#b7c6ac66);flex-shrink:0}
+.washer:before{content:'';position:absolute;left:22px;right:22px;top:62px;aspect-ratio:1;border:3px solid var(--light-accent,#376b49);border-radius:50%;background:radial-gradient(ellipse at 45% 40%,var(--illustration-soft,#dce4d2),var(--illustration-mid,#b6c8aa));box-shadow:inset 0 0 0 7px var(--ivory),inset 0 0 0 9px var(--light-muted,#71916c)}
+.washer:after{content:'•••';position:absolute;left:19px;right:19px;top:8px;height:34px;border-bottom:1px solid var(--light-accent,#376b49);font:31px var(--sans);letter-spacing:10px}
 .fridge{width:140px;height:240px}
-.fridge:before{content:'';position:absolute;top:74px;left:0;right:0;border-top:2px solid #376b49}
-.fridge:after{content:'';position:absolute;left:17px;top:91px;height:58px;border-left:4px solid #376b49;border-radius:5px;box-shadow:0 -57px 0 -1px #376b49}
-.aircon{width:250px;height:114px;margin-bottom:60px;border-radius:15px;background:linear-gradient(#f7f3e8,#e6e9da)}
-.aircon:before{content:'';position:absolute;left:18px;right:18px;bottom:16px;height:15px;border-top:2px solid #376b49;border-bottom:2px solid #376b49}
-.aircon:after{content:'';position:absolute;left:40%;right:40%;bottom:-46px;height:32px;border-left:2px solid #83a07d;border-right:2px solid #83a07d;transform:skewX(-16deg)}
+.fridge:before{content:'';position:absolute;top:74px;left:0;right:0;border-top:2px solid var(--light-accent,#376b49)}
+.fridge:after{content:'';position:absolute;left:17px;top:91px;height:58px;border-left:4px solid var(--light-accent,#376b49);border-radius:5px;box-shadow:0 -57px 0 -1px var(--light-accent,#376b49)}
+.aircon{width:250px;height:114px;margin-bottom:60px;border-radius:15px;background:linear-gradient(var(--light-surface,#f7f3e8),var(--illustration-soft,#e6e9da))}
+.aircon:before{content:'';position:absolute;left:18px;right:18px;bottom:16px;height:15px;border-top:2px solid var(--light-accent,#376b49);border-bottom:2px solid var(--light-accent,#376b49)}
+.aircon:after{content:'';position:absolute;left:40%;right:40%;bottom:-46px;height:32px;border-left:2px solid var(--light-muted,#83a07d);border-right:2px solid var(--light-muted,#83a07d);transform:skewX(-16deg)}
 .scene-appliances h2{font-size:clamp(63px,5.8vw,84px)}
 @media(max-width:700px){.appliance-gallery{flex-wrap:wrap;gap:35px}.appliance-gallery>div{flex-basis:220px}.appliance-gallery p{white-space:normal;text-align:center}}
 </style></head><body><section class="scene scene-appliances paper" aria-label="Illustration style reference"><div class="scene-content"><h2>Simple shapes.<br><em>Familiar objects.</em></h2><div class="appliance-gallery"><div><span class="appliance washer" aria-hidden="true"></span><p>Washing machine</p></div><div><span class="appliance fridge" aria-hidden="true"></span><p>Refrigerator</p></div><div><span class="appliance aircon" aria-hidden="true"></span><p>Air conditioner</p></div></div></div></section></body></html>

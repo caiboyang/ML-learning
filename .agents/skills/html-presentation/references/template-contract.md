@@ -4,7 +4,7 @@
 
 复制 `assets/template/deck.json` 到自己的工作目录，旁边可放 `assets/`。用 build.py 生成完整目录，再通过静态 HTTP 服务打开。生成目录是可发布结果；不要只上传 index.html。
 
-顶层字段：`id`（短英文 slug，稳定且区别不同演讲）、`title`、`speaker`、`language`、`budget_label`、`slides`。
+顶层字段：`id`（短英文 slug，稳定且区别不同演讲）、`title`、`speaker`、`language`、`budget_label`、`slides`。可选 `palette`（forest / blue / plum）和 `colors`（语义角色覆盖），见 [配色指南](color.md)。
 
 每页字段：
 
@@ -19,7 +19,7 @@
 - `media_seconds`：可选，估算中加上的视频等媒体播放秒数；勿同时用长停顿冒充媒体。
 - `kind: "qa"`：总口播估算不计问答页。
 
-`index.html`、`notes.html` 和 `timing.json` 均由生成器产出。缩略图直接嵌入同一 scene 的静态副本，不能独立编辑。修改源后重新 build；删除或排序也由同一个 slides 数组处理。
+`index.html`、`notes.html`、`theme.css` 和 `timing.json` 均由生成器产出。缩略图直接嵌入同一 scene 的静态副本，不能独立编辑。修改源后重新 build；删除或排序也由同一个 slides 数组处理。
 
 ## 可直接使用的投影组件
 
@@ -34,7 +34,7 @@
 
 ### 动态三步闭环（反馈 / 迭代 / 重试）
 
-复制 [assets/components/loop.html](../assets/components/loop.html) 的完整 SVG，放进该页的 `html`，位于 h2 与 support 之间。`assets/template/deck.json` 的 `loop` 页是完整可构建示例。生成器不会自动读取或 include 组件文件；作者在内容源中嵌入 SVG 后，现有 build.py 会原样生成投影及缩略图，共享 style.css 已包含动画，无需逐个 demo 写内联样式或新 JavaScript。
+复制 [assets/components/loop.html](../assets/components/loop.html) 的完整 SVG，放进该页的 `html`，位于 h2 与 support 之间。`assets/template/deck.json` 的 `loop` 页是完整可构建示例。生成器不会自动读取或 include 组件文件；作者在内容源中嵌入 SVG 后，现有 build.py 会原样生成投影及缩略图，共享 style.css 已包含动画，theme.css 提供用户选定的颜色，无需逐个 demo 写内联样式或新 JavaScript。
 
 按主题只替换以下文字，保留 class、viewBox 和路径：
 
@@ -42,7 +42,7 @@
 - `cycle-repeat`：说明返回条件，例如 `Adjust and retry, if worthwhile.`。若存在成功退出或停止，在 support 说明 `Pass: expand a step. Miss: fix or stop.`；不要让观众误以为必须无限重复。
 - SVG 的 `aria-label`：同步说明步骤顺序与返回条件。口播和 cue 按同一顺序讲。
 
-这套 SVG 有闭合轨迹、方向箭头、沿轨迹移动的线段及依次强调的节点。深绿/暖纸色自动随 theme 切换，`.scene.is-current` 时播放，离页暂停；缩略图保持静态；reduced-motion 关闭动画但保留箭头、节点与返回说明。组件没有全局 ID，可在多个页面重复使用而不发生 marker 引用冲突。
+这套 SVG 有闭合轨迹、方向箭头、沿轨迹移动的线段及依次强调的节点。深底/浅底颜色自动随 theme 和 palette 切换，`.scene.is-current` 时播放，离页暂停；缩略图保持静态；reduced-motion 关闭动画但保留箭头、节点与返回说明。组件没有全局 ID，可在多个页面重复使用而不发生 marker 引用冲突。
 
 参考中的三个步骤是可替换内容，不要求所有演讲出现 loop。只有真实存在反馈返回时才选这个组件；普通检查清单和线性流程不要画成闭环。需要更多步骤或长说明时先重新组织内容，再单独验证布局，不能缩小字硬塞进现有节点。
 
@@ -74,8 +74,8 @@
 html-presentation/
   SKILL.md
   agents/openai.yaml
-  references/{authoring,presenter,template-contract}.md
-  scripts/{build,validate,test_build}.py
+  references/{authoring,color,presenter,speechwriting,template-contract,verification}.md
+  scripts/{build,palettes,validate,test_build}.py
   assets/components/loop.html
   assets/template/{deck.json,style.css,speaker.css,app.js,notes.js}
 ```

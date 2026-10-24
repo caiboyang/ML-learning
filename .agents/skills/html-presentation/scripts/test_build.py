@@ -6,6 +6,7 @@ from pathlib import Path
 
 from build import TEMPLATE, build
 from validate import validate_site
+from palettes import PRESETS, resolve_palette
 
 
 class PresentationBuildTests(unittest.TestCase):
@@ -73,6 +74,38 @@ class PresentationBuildTests(unittest.TestCase):
         self.deck['slides'] = [loop, second]
         build(self.deck, self.output)
         self.assertEqual(validate_site(self.output), 2)
+
+    def test_palettes_reach_all_views_and_rebuild_clears_overrides(self):
+        for name in PRESETS:
+            with self.subTest(palette=name):
+                self.deck['palette'] = name
+                colors = resolve_palette(self.deck)
+                build(self.deck, self.output)
+                self.assertEqual(validate_site(self.output), 4)
+                css = (self.output / 'theme.css').read_text()
+                self.assertIn('--dark-surface:' + colors['dark_surface'], css)
+                self.assertIn('href="theme.css"', (self.output / 'index.html').read_text())
+                notes = (self.output / 'notes.html').read_text()
+                self.assertIn('href="theme.css"', notes)
+                self.assertIn('href=&quot;theme.css&quot;', notes)
+        self.deck.update(palette='blue', colors={'light_accent': '#1e4f91'})
+        build(self.deck, self.output)
+        self.assertIn('#1e4f91', (self.output / 'theme.css').read_text())
+        self.deck.update(palette='forest', colors={})
+        build(self.deck, self.output)
+        self.assertNotIn('#1e4f91', (self.output / 'theme.css').read_text())
+
+    def test_invalid_palette_and_low_contrast_fail_before_output(self):
+        cases = [dict(palette='unknown'), dict(colors={'unknown': '#123456'}),
+                 dict(colors={'light_text': '#f0ecdf'}),
+                 dict(colors={'dark_muted': '#101e19'}),
+                 dict(colors={'highlight': '#fff;display:none'}), dict(colors=None)]
+        for fields in cases:
+            with self.subTest(fields=fields):
+                deck = dict(self.deck, **fields)
+                with self.assertRaises(ValueError):
+                    build(deck, self.output)
+                self.assertFalse(self.output.exists())
 
     def test_stale_thumbnail_is_detected(self):
         build(self.deck, self.output)
