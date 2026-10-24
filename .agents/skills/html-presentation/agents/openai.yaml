@@ -1,0 +1,4 @@
+interface:
+  display_name: "网页演讲与双屏讲稿"
+  short_description: "生成可现场演讲的网页、同步讲稿、键盘切页与双计时器，保留清晰的口播和动作提示"
+  default_prompt: "请用 $html-presentation 为这次演讲制作 slides 和联动讲稿，按听众背景写短句，并校准口播时长。"

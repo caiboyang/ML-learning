@@ -85,3 +85,7 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ---
 *More notes will be added here soon...*
+
+## 网页演讲工具包
+
+- [HTML presentation skill + template](.agents/skills/html-presentation/SKILL.md)：从一份内容源生成投影页与讲稿页，包含双屏联动、键盘切页、总用时/本页计时、缩略图和黄色动作提示。模板可独立运行，真实演讲素材保存在 ai-study-community。

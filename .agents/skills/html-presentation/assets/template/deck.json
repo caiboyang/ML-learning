@@ -1,0 +1,87 @@
+{
+  "id": "small-steps-demo",
+  "title": "Small steps. Real progress.",
+  "speaker": "Your name",
+  "language": "en",
+  "budget_label": "演讲预算 3 分钟 · Q&A 2 分钟",
+  "slides": [
+    {
+      "id": "cover",
+      "title": "Small steps. Real progress.",
+      "label": "PRESENTATION TEMPLATE",
+      "html": "<h1>Small steps.<br><em>Real progress.</em></h1><p class=\"support\">Your name · Your event</p>",
+      "budget_seconds": null,
+      "purpose": "一句话建立主题；不重复主持人的介绍。",
+      "notes": [
+        {
+          "cue": "主持人介绍结束后开始；黄色提示不读。"
+        },
+        {
+          "say": "Today I want to share a simple way to turn an idea into something we can test."
+        },
+        {
+          "cue": "按 ↓ 进入正文；准备开始时按 T 计时。"
+        }
+      ]
+    },
+    {
+      "id": "start",
+      "title": "Start with one question",
+      "label": "ONE IDEA PER SCREEN",
+      "theme": "paper",
+      "html": "<h2>What do we need<br>to <em>learn next?</em></h2><p class=\"support\">Choose one thing you can test.</p>",
+      "budget_seconds": 60,
+      "purpose": "先说明听众为什么需要关心，再进入例子。",
+      "notes": [
+        {
+          "say": "A small test can help us learn before we make a bigger choice. We do not need to answer every question at once."
+        },
+        {
+          "cue": "停顿；这是陈述，不要求观众回答。"
+        },
+        {
+          "say": "Start with the one question that matters most. Then make something small enough to test."
+        }
+      ]
+    },
+    {
+      "id": "loop",
+      "title": "Build. Try. Improve.",
+      "label": "SHOW THE PROCESS",
+      "html": "<h2>Build small.<br><em>Learn sooner.</em></h2><div class=\"loop\" role=\"img\" aria-label=\"Build, try, improve, then repeat\"><div class=\"loop-stages\"><strong>Build</strong><span>→</span><strong>Try</strong><span>→</span><strong>Improve</strong></div><div class=\"loop-return\">← Repeat with what you learned</div></div><p class=\"support\">Feedback changes the next version.</p>",
+      "budget_seconds": 120,
+      "purpose": "用可见的返回箭头解释循环；不只把三个词摆成一排。",
+      "notes": [
+        {
+          "say": "Make a first version. Let someone try it. Use what you learn to make it better."
+        },
+        {
+          "cue": "先讲正向三步，再指返回箭头。"
+        },
+        {
+          "say": "The first version does not need to answer everything. It needs to help you decide what to do next."
+        },
+        {
+          "cue": "这一页正文不长；预算不是需要填满的时长。"
+        }
+      ]
+    },
+    {
+      "id": "qa",
+      "title": "Your questions",
+      "label": "Q&A",
+      "html": "<h2>Your<br><em>questions.</em></h2><p class=\"support\">Thank you.</p>",
+      "budget_seconds": 120,
+      "kind": "qa",
+      "purpose": "为问答保留时间。",
+      "notes": [
+        {
+          "say": "Thank you. I am happy to take your questions."
+        },
+        {
+          "cue": "问答开始；这里不再添加新论点。"
+        }
+      ]
+    }
+  ]
+}
