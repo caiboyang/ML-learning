@@ -237,7 +237,10 @@
   });
 
   document.body.classList.add('notes-deck');
-  show(0, false);
+  // #top identifies overview mode, not the slide currently being presented.
+  const initialId = location.hash === '#top' ? clock.pageId : location.hash.slice(1);
+  const initialIndex = notes.findIndex(note => note.id === initialId);
+  show(Math.max(0, initialIndex), false);
   readHash();
   timerReady = true;
   updatePageTimer();
