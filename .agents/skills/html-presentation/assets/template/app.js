@@ -20,18 +20,18 @@ function playFilm() {
   film.play().catch(() => {
     playbackBlocked = true;
     reportState();
-    filmHint.textContent = 'Press V to play with sound';
+    filmHint.textContent = '按 V 播放（有声）';
     filmHint.hidden = false;
   });
 }
 film?.addEventListener('play', () => { filmHint.hidden = true; playbackBlocked = false; reportState(); });
 film?.addEventListener('pause', () => {
-  filmHint.textContent = film.ended ? 'Press ↓ to continue · R to replay' : 'Press V to resume';
+  filmHint.textContent = film.ended ? '按 ↓ 继续 · R 重播' : '按 V 继续播放';
   filmHint.hidden = false;
   reportState();
 });
 film?.addEventListener('ended', () => {
-  filmHint.textContent = 'Press ↓ to continue · R to replay';
+  filmHint.textContent = '按 ↓ 继续 · R 重播';
   filmHint.hidden = false;
   reportState();
 });

@@ -19,7 +19,7 @@
 
 ## 同步合同
 
-- notes 建立 `crypto.randomUUID()` 的 session，保存到同一标签的 sessionStorage。两页用 `data-deck-id` + 所在路径隔离不同演讲，再加 session 隔离不同演讲者窗口。
+- notes 用 `crypto.getRandomValues()` 建立 UUID 格式的 session（支持私有 HTTP 预览，不依赖仅限安全上下文的 randomUUID），保存到同一标签的 sessionStorage。两页用 `data-deck-id` + 所在路径隔离不同演讲，再加 session 隔离不同演讲者窗口。
 - 讲稿通过 `window.open(index.html?presenter=<session>#<id>)` 打开投影。两边使用同名 `BroadcastChannel`。要求相同 origin、浏览器配置文件、设备；它不是跨设备同步服务。
 - `slide {id}` 是指令；稳定语义 ID 是身份，页码只是显示。投影收到后调用与本地键盘相同的 `go()`，保留动画和 reduced-motion。
 - `ready` / `hello` 建立连接；`ping` / `state` 每 2 秒更新存活状态和视频状态。投影刷新后发 ready，notes 重发当前页；6.5 秒未响应标为断开。重新打开按钮复用命名窗口。

@@ -3,7 +3,7 @@
   "title": "Small steps. Real progress.",
   "speaker": "Your name",
   "language": "en",
-  "budget_label": "演讲预算 3 分钟 · Q&A 2 分钟",
+  "budget_label": "预计 3 分钟",
   "slides": [
     {
       "id": "cover",
@@ -14,7 +14,7 @@
       "purpose": "一句话建立主题；不重复主持人的介绍。",
       "notes": [
         {
-          "cue": "主持人介绍结束后开始；黄色提示不读。"
+          "cue": "演讲 3 分钟，问答 2 分钟。主持人介绍结束后开始；黄色提示不读。"
         },
         {
           "say": "Today I want to share a simple way to turn an idea into something we can test."

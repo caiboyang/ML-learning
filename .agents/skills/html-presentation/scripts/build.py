@@ -76,10 +76,10 @@ def build(deck, output, asset_dir=None):
         links.append(f'<li><a href="#{ident}"><span>{number:02d}</span>{escape(title)}</a></li>')
         articles.append(
             f'<article class="slide-note" id="{ident}" data-budget-seconds="{budget if budget is not None else ""}">'
-            f'<div class="note-top"><p class="eyebrow">SLIDE {number:02d} / {total}</p><span class="time">{time_label}</span></div>'
+            f'<div class="note-top"><p class="eyebrow">第 {number:02d} / {total} 屏</p><span class="time">{time_label}</span></div>'
             f'<div class="note-heading"><div><h2>{escape(title)}</h2><p class="purpose">{escape(slide.get("purpose", ""))}</p></div>'
             f'<figure class="slide-thumbnail"><div class="thumbnail-window"><iframe srcdoc="{escape(preview)}" title="第 {number} 屏缩略图" loading="lazy" tabindex="-1" aria-hidden="true"></iframe></div><figcaption>第 {number} 屏</figcaption></figure></div>'
-            f'<div class="spoken" lang="{escape(deck.get("language", "en"))}"><span class="label">只读正文 · 黄色【提示】不读</span>{spoken}</div></article>')
+            f'<div class="spoken" lang="{escape(deck.get("language", "en"))}"><span class="label" lang="zh-CN">只读正文 · 黄色【提示】不读</span>{spoken}</div></article>')
     common = f'data-deck-id="{escape(deck["id"])}" data-speaker="{escape(deck["speaker"])}"'
     title = escape(deck['title'])
     index = f'<!doctype html><html lang="{escape(deck.get("language", "en"))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="theme.css"><script src="app.js" defer></script></head><body {common}><main id="presentation">' + '\n'.join(scenes) + '</main><div class="reading-progress"><span id="progressFill"></span></div></body></html>'
@@ -88,7 +88,7 @@ def build(deck, output, asset_dir=None):
              '回到讲稿，↑ ↓ 或 Page Up / Page Down 翻页，Home / End 到首尾。T 同时开始或暂停两个计时器；换页只重置本页用时。'
              + media_guide + '深底大字区域是口播，黄色提示不读。两栏先读左栏再读右栏。'
              '时间预算不是必须讲满的时间；估算按英文 100–120 词/分钟加媒体时长，不包含临场展开和停顿，以彩排实测为准。')
-    notes = (f'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{title} · 讲稿</title><link rel="stylesheet" href="speaker.css"><link rel="stylesheet" href="theme.css"><script src="notes.js" defer></script></head><body {common} data-budget-label="{escape(deck.get("budget_label", "预算与估算见每页；以彩排为准"))}"><main><header id="top"><p class="eyebrow">SPEAKER GUIDE</p><h1>{title}</h1><div class="notice">{guide}</div><a href="index.html" target="_blank" rel="noopener">独立打开演示（不联动）</a></header><section class="quick"><h2>逐屏速查</h2><ol>'
+    notes = (f'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{title} · 讲稿</title><link rel="stylesheet" href="speaker.css"><link rel="stylesheet" href="theme.css"><script src="notes.js" defer></script></head><body {common} data-budget-label="{escape(deck.get("budget_label", "未设总预算"))}"><main><header id="top"><p class="eyebrow">演讲者讲稿</p><h1>{title}</h1><div class="notice">{guide}</div><a href="index.html" target="_blank" rel="noopener">独立打开演示（不联动）</a></header><section class="quick"><h2>逐屏速查</h2><ol>'
              + ''.join(links) + '</ol></section>' + '\n'.join(articles) + '</main></body></html>')
     output.mkdir(parents=True, exist_ok=True)
     for name in ['style.css', 'speaker.css', 'app.js', 'notes.js']:

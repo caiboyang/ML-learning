@@ -18,6 +18,18 @@ const path = require('node:path');
     page.on('pageerror', e => errors.push(e.message));
     await page.clock.install({ time: new Date('2026-01-01T12:00:00Z') });
     await page.goto(`${url}/notes.html`);
+    // The budget stays readable and single-line beside the actual clocks.
+    for (const width of [1280, 1024]) {
+      await page.setViewportSize({ width, height: 720 });
+      const budget = page.locator('.timer-budget');
+      assert.equal(await budget.innerText(), '预计 3 分钟');
+      assert.equal(await budget.evaluate(el => getComputedStyle(el).fontSize), '18px');
+      assert.ok(await budget.evaluate(el => el.scrollWidth <= el.clientWidth));
+      const box = await budget.boundingBox();
+      const next = await page.locator('.timer-page').boundingBox();
+      assert.ok(box.x + box.width <= next.x, 'Budget must not overlap page timer');
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
     const stored = () => page.evaluate(() => JSON.parse(sessionStorage.getItem(
       Object.keys(sessionStorage).find(key => key.startsWith('presentation-timer:')))));
     const expectedPage = async (id) => {
@@ -28,6 +40,8 @@ const path = require('node:path');
     await page.getByRole('button', { name: '打开演示窗口', exact: true }).click();
     const audience = await popup;
     await audience.waitForLoadState();
+    assert.match(new URL(audience.url()).searchParams.get('presenter'),
+      /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
     await audience.getByRole('button', { name: /准备投影/ }).click();
     await expectedPage('cover');
     await page.keyboard.press('ArrowDown');

@@ -43,7 +43,7 @@ body.notes-deck .script-scroll .spoken p.delivery-cue{font-size:15px}
 .timer-page{border-left:1px solid #78937d;padding-left:18px}
 .timer-elapsed,.page-elapsed{font:600 30px/1 ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .timer-budget,.page-budget{color:#c3d9b5;font-size:12px;font-variant-numeric:tabular-nums}
-.timer-budget{max-width:100px}
+.timer-budget{font-size:18px;font-weight:600;white-space:nowrap}
 .timer-page[data-timing="over"] .page-elapsed,.timer-page[data-timing="over"] .page-budget{color:#ffb4a0}
 .speaker-timer button{font:inherit;padding:6px 12px;border:1px solid #8aa486;border-radius:6px;background:transparent;color:inherit;cursor:pointer;white-space:nowrap}
 .speaker-timer .timer-toggle{background:#e3eddc;color:#193b2b;border-color:#e3eddc;min-width:82px}

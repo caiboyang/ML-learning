@@ -6,6 +6,8 @@
 
 顶层字段：`id`（短英文 slug，稳定且区别不同演讲）、`title`、`speaker`、`language`、`budget_label`、`slides`。可选 `palette`（forest / blue / plum）和 `colors`（语义角色覆盖），见 [配色指南](color.md)。
 
+`language` 指投影及口播语言（本模板为 en），不决定控制界面语言。`budget_label` 使用简短中文，如「预计 5 分钟」；省略时显示「未设总预算」。计时栏默认 18px、单行，窄屏隐藏该辅助文案以保留计时读数。问答时长、无互动等安排放到中文 cue 或备课说明，不放进时钟旁边。
+
 每页字段：
 
 - `id`：稳定英文 slug，唯一；不要使用保留的 `top`。翻页、hash、同步、讲稿、缩略图都由它连接。
@@ -55,7 +57,7 @@
 ```html
 <h2>A short demo.</h2>
 <video id="demo-film" src="assets/demo.mp4" poster="assets/poster.jpg" playsinline preload="metadata"></video>
-<p id="film-hint" hidden>Press V to play with sound</p>
+<p id="film-hint" hidden>按 V 播放（有声）</p>
 ```
 
 素材放在 deck.json 旁的 assets/；build 会复制。修改主文件中的视频名即可，不改运行时的固定 ID。给 `media_seconds` 填实际时长。有声自动播放须先在投影窗完成准备手势；浏览器仍可拒绝，使用 V 手动播放。视频和字幕必须与当前讲稿对应。

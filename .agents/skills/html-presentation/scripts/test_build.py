@@ -25,7 +25,7 @@ class PresentationBuildTests(unittest.TestCase):
         self.deck['slides'] = [self.deck['slides'][2], self.deck['slides'][0]]
         build(self.deck, self.output)
         self.assertEqual(validate_site(self.output), 2)
-        self.assertIn('SLIDE 01 / 2', (self.output / 'notes.html').read_text())
+        self.assertIn('第 01 / 2 屏', (self.output / 'notes.html').read_text())
 
     def test_short_budget_is_not_the_speech_estimate(self):
         self.deck['slides'][1]['budget_seconds'] = 30

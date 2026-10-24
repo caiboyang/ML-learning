@@ -109,7 +109,15 @@
 
   const status = toolbar.querySelector('.sync-status');
   const sessionKey = `presentation-session:${deckKey}`;
-  const session = sessionStorage.getItem(sessionKey) || crypto.randomUUID();
+  // getRandomValues also works on private HTTP previews; retain the UUID channel format.
+  function createSession() {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    return Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('')
+      .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+  }
+  const session = sessionStorage.getItem(sessionKey) || createSession();
   sessionStorage.setItem(sessionKey, session);
   const channel = new BroadcastChannel(`presentation-${deckKey}-${session}`);
   let lastSeen = 0;
