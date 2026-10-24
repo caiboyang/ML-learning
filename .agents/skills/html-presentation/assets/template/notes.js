@@ -18,11 +18,12 @@
   const timerKey = `presentation-timer:${deckKey}`;
   timer.querySelector('.timer-budget').textContent = document.body.dataset.budgetLabel;
   let clock = JSON.parse(sessionStorage.getItem(timerKey)) || { elapsed: 0, startedAt: null, pageId: null, pageElapsed: 0, pageStartedAt: null };
+  clock.visits ||= [];
   let timerReady = false;
   const timerToggle = timer.querySelector('.timer-toggle');
-  function elapsedTime(page = false) {
+  function elapsedTime(page = false, now = Date.now()) {
     const startedAt = page ? clock.pageStartedAt : clock.startedAt;
-    return (page ? clock.pageElapsed : clock.elapsed) + (startedAt === null ? 0 : Date.now() - startedAt);
+    return (page ? clock.pageElapsed : clock.elapsed) + (startedAt === null ? 0 : now - startedAt);
   }
   function formatTime(seconds) {
     return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
@@ -45,6 +46,8 @@
   function updatePageTimer() {
     if (!timerReady) return;
     if (clock.pageId !== notes[current].id) {
+      const elapsed = elapsedTime(true);
+      if (clock.pageId && elapsed > 0) clock.visits.push({ id: clock.pageId, elapsed_ms: elapsed });
       clock.pageId = notes[current].id;
       clock.pageElapsed = 0;
       clock.pageStartedAt = clock.startedAt === null ? null : Date.now();
@@ -65,10 +68,44 @@
   }
   timerToggle.addEventListener('click', toggleTimer);
   timer.querySelector('.timer-reset').addEventListener('click', () => {
-    clock = { elapsed: 0, startedAt: null, pageId: notes[current].id, pageElapsed: 0, pageStartedAt: null };
+    clock = { elapsed: 0, startedAt: null, pageId: notes[current].id, pageElapsed: 0, pageStartedAt: null, visits: [] };
     saveTimer();
   });
   setInterval(renderTimer, 250);
+
+  // Kept in the overview so live notes and projection remain uncluttered.
+  const exportButton = document.createElement('button');
+  exportButton.type = 'button';
+  exportButton.className = 'export-rehearsal';
+  exportButton.textContent = '导出本次彩排时间（重置前保存）';
+  document.querySelector('.quick').prepend(exportButton);
+  exportButton.addEventListener('click', () => {
+    const now = Date.now();
+    const visits = [...clock.visits];
+    const active = elapsedTime(true, now);
+    if (clock.pageId && active > 0) visits.push({ id: clock.pageId, elapsed_ms: active });
+    const report = {
+      deck_id: document.body.dataset.deckId,
+      exported_at: new Date(now).toISOString(),
+      running: clock.startedAt !== null,
+      total_elapsed_ms: elapsedTime(false, now),
+      visits,
+      slides: notes.map(note => {
+        const matching = visits.filter(visit => visit.id === note.id);
+        const elapsed = matching.reduce((sum, visit) => sum + visit.elapsed_ms, 0);
+        const budget = note.dataset.budgetSeconds === '' ? null : Number(note.dataset.budgetSeconds) * 1000;
+        return { id: note.id, title: note.querySelector('h2').textContent,
+          visits: matching.length, elapsed_ms: elapsed, budget_ms: budget,
+          difference_ms: budget === null || !matching.length ? null : elapsed - budget };
+      })
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${document.body.dataset.deckId}-rehearsal.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
 
   const status = toolbar.querySelector('.sync-status');
   const sessionKey = `presentation-session:${deckKey}`;
