@@ -18,6 +18,7 @@ class PresentationBuildTests(unittest.TestCase):
     def test_build_without_video_has_matching_pages_and_assets(self):
         build(self.deck, self.output)
         self.assertEqual(validate_site(self.output), 4)
+        self.assertNotIn('视频页 V', (self.output / 'notes.html').read_text())
 
     def test_delete_and_reorder_keep_notes_and_thumbnails_together(self):
         self.deck['slides'] = [self.deck['slides'][2], self.deck['slides'][0]]
@@ -56,10 +57,11 @@ class PresentationBuildTests(unittest.TestCase):
         assets = Path(self.temp.name) / 'assets'
         assets.mkdir()
         (assets / 'clip.mp4').write_bytes(b'test fixture, not real media')
-        self.deck['slides'][1].update(html='<video src="assets/clip.mp4"></video>', media_seconds=69)
+        self.deck['slides'][1].update(id='video', html='<video id="demo-film" src="assets/clip.mp4"></video><p id="film-hint" hidden></p>', media_seconds=69)
         report = build(self.deck, self.output, assets)
         self.assertGreaterEqual(report[1]['estimate_seconds'][0], 69)
         self.assertEqual(validate_site(self.output), 4)
+        self.assertIn('视频页 V', (self.output / 'notes.html').read_text())
         (self.output / 'assets/clip.mp4').unlink()
         with self.assertRaisesRegex(AssertionError, 'Missing local asset'):
             validate_site(self.output)

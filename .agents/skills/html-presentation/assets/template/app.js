@@ -141,7 +141,7 @@ if (presenterSession && /^[a-f0-9-]{36}$/.test(presenterSession)) {
   reportState('ready');
   const setup = document.createElement('div');
   setup.className = 'projection-setup';
-  setup.innerHTML = '<p>先将这个窗口拖到扩展屏，再点击下方按钮。之后回到讲稿，用 ↑ ↓ 翻页；视频页用 V 暂停、R 重播。</p><button type="button">准备投影 · 全屏并启用视频</button>';
+  setup.innerHTML = `<p>先将这个窗口拖到扩展屏，再点击下方按钮。之后回到讲稿，用 ↑ ↓ 翻页。${film ? '视频页用 V 暂停、R 重播。' : ''}</p><button type="button">准备投影 · ${film ? '全屏并启用视频' : '进入全屏'}</button>`;
   document.body.append(setup);
   setup.querySelector('button').addEventListener('click', () => {
     if (document.documentElement.requestFullscreen) {

@@ -26,7 +26,7 @@ body.notes-deck .script-content{flex:1;min-height:0;column-count:2;column-gap:44
 body.notes-deck .spoken p{font-size:var(--script-size,26px);line-height:1.4;letter-spacing:0;margin:0 0 12px;orphans:2;widows:2}
 body.notes-deck .spoken p.delivery-cue{display:block;width:fit-content;max-width:100%;padding:5px 10px;margin:5px 0 8px;border-left-width:3px;font-size:calc(var(--script-size,26px)*.58);line-height:1.35;break-inside:avoid;break-after:avoid}
 body.notes-deck .spoken p.delivery-cue+p{margin-top:0}
-body.notes-deck .script-scroll .script-content{column-count:1;overflow-y:auto;scrollbar-color:#8aa486 #183e2b;scrollbar-width:thin}
+body.notes-deck .script-scroll .script-content{columns:auto;overflow-y:auto;scrollbar-color:#8aa486 #183e2b;scrollbar-width:thin}
 body.notes-deck .script-scroll .spoken p{font-size:22px}
 body.notes-deck .script-scroll .spoken p.delivery-cue{font-size:15px}
 @media(max-width:800px){body.notes-deck main{padding:51px 10px 10px}.notes-toolbar{padding:0 12px;gap:12px}.notes-keys span{display:none}body.notes-deck .spoken{padding:16px}body.notes-deck .script-content{column-count:1}.notes-deck .purpose{display:none}body.notes-deck .note-heading h2{font-size:18px}body.notes-deck .slide-note.is-current{grid-template-rows:18px 54px minmax(0,1fr)}}
@@ -52,4 +52,15 @@ body.notes-deck .script-scroll .spoken p.delivery-cue{font-size:15px}
 body.notes-deck main{padding-top:118px}body.notes-overview main{padding-top:139px}
 @media(max-width:1000px){.timer-help,.timer-budget{display:none}.speaker-timer{gap:12px;padding:0 12px}.timer-total,.timer-page{gap:9px}.timer-page{padding-left:12px}}
 @media(max-width:700px){.speaker-timer{top:76px;height:100px;flex-wrap:wrap;align-content:center;gap:10px 12px}.timer-total,.timer-page{font-size:12px}.timer-elapsed,.page-elapsed{font-size:26px}.speaker-timer button{padding:5px 9px}body.notes-deck main{padding-top:184px}body.notes-overview main{padding-top:195px}}
+}
+
+/* Narrow screens use real vertical overflow, with controls on explicit rows. */
+@media screen and (max-width:700px){
+.notes-toolbar{display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:30px 18px;align-content:center;gap:4px 8px}
+.notes-keys{display:none}.sync-status{grid-column:1/-1;grid-row:2;width:auto;max-width:none}
+.notes-toolbar .open-presentation{justify-self:end}
+body.notes-deck .slide-note.is-current{grid-template-rows:auto 54px minmax(0,1fr)}
+body.notes-deck .note-top{flex-wrap:nowrap;align-items:start}
+body.notes-deck .note-top .eyebrow{flex:none}
+body.notes-deck .time{white-space:normal;line-height:1.4;text-align:right;min-width:0}
 }

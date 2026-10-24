@@ -21,6 +21,27 @@
 
 `index.html`、`notes.html` 和 `timing.json` 均由生成器产出。缩略图直接嵌入同一 scene 的静态副本，不能独立编辑。修改源后重新 build；删除或排序也由同一个 slides 数组处理。
 
+## 可直接使用的投影组件
+
+`html` 只写正文，生成器负责外层 scene、页码和标签。最小标题页：
+
+```html
+<h2>A small test.<br><em>A better decision.</em></h2>
+<p class="support">Learn before making a larger change.</p>
+```
+
+`h2` 是大标题，`em` 是衬线强调行，`support` 是简短辅助文字；`theme: "paper"` 切换浅底。三步闭环用现成类名：
+
+```html
+<h2>Test. Learn. <em>Adjust.</em></h2>
+<div class="loop">
+  <div class="loop-stages"><strong>Try</strong><span>→</span><strong>Check</strong><span>→</span><strong>Adjust</strong></div>
+  <div class="loop-return">↖ Try again with what you learned</div>
+</div>
+```
+
+当前页会依次强调步骤；离页暂停，reduced-motion 关闭动画。以上是可复用组件，不是每个主题必须包含的流程。新布局需要作者自行实现并验证；生成器不自动推断 HTML 的视觉布局，也不保证任意长度都能放进一屏。
+
 ## 可选视频
 
 当前模板复用经过现场使用的单视频控制，不实现多媒体播放列表。需要视频时新增或替换一页，使用 `id: "video"`，在 html 放：

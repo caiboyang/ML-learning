@@ -80,9 +80,10 @@ def build(deck, output, asset_dir=None):
     common = f'data-deck-id="{escape(deck["id"])}" data-speaker="{escape(deck["speaker"])}"'
     title = escape(deck['title'])
     index = f'<!doctype html><html lang="{escape(deck.get("language", "en"))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title><link rel="stylesheet" href="style.css"><script src="app.js" defer></script></head><body {common}><main id="presentation">' + '\n'.join(scenes) + '</main><div class="reading-progress"><span id="progressFill"></span></div></body></html>'
+    media_guide = '视频页 V 播放/暂停、R 重播。' if any(s['id'] == 'video' for s in deck['slides']) else ''
     guide = ('同一台电脑、同一个浏览器的两个窗口，系统设为扩展屏。点击“打开演示窗口”，拖到投影屏后点击“准备投影”。'
              '回到讲稿，↑ ↓ 或 Page Up / Page Down 翻页，Home / End 到首尾。T 同时开始或暂停两个计时器；换页只重置本页用时。'
-             '视频页 V 播放/暂停、R 重播。绿色区域是口播，黄色提示不读。两栏先读左栏再读右栏。'
+             + media_guide + '绿色区域是口播，黄色提示不读。两栏先读左栏再读右栏。'
              '时间预算不是必须讲满的时间；估算按英文 100–120 词/分钟加媒体时长，不包含临场展开和停顿，以彩排实测为准。')
     notes = (f'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{title} · 讲稿</title><link rel="stylesheet" href="speaker.css"><script src="notes.js" defer></script></head><body {common} data-budget-label="{escape(deck.get("budget_label", "预算与估算见每页；以彩排为准"))}"><main><header id="top"><p class="eyebrow">SPEAKER GUIDE</p><h1>{title}</h1><div class="notice">{guide}</div><a href="index.html" target="_blank" rel="noopener">独立打开演示（不联动）</a></header><section class="quick"><h2>逐屏速查</h2><ol>'
              + ''.join(links) + '</ol></section>' + '\n'.join(articles) + '</main></body></html>')
