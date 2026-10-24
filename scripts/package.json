@@ -1,0 +1,9 @@
+{
+  "name": "company-research-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development-only validation for the portable company research template",
+  "scripts": {
+    "test": "node test-company-research.cjs && python3 test-company-research-export.py && python3 sync-company-research-demo.py --check"
+  }
+}
