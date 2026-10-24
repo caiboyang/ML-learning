@@ -6,7 +6,7 @@ layout: null
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>把历史扔掉 — SKILL.state 论文精读</title>
+<title>摆脱历史包袱：SKILL.state 论文深度精读与批判</title>
 <meta name="description" content="SKILL.state (arXiv:2608.26263) 详细学习笔记：用显式可变执行状态替代 append-only 对话历史。含可交互的执行循环演示与 horizon 滑杆，并与十五平台 context compression 研究逐项对照。" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -289,8 +289,8 @@ layout: null
     <li><a href="#s7">数据四：换成开源权重模型之后</a></li>
     <li><a href="#s8">对照我的压缩研究：六层坐标系里它站在哪</a></li>
     <li><a href="#s9">我的分析：论文没测的那一维（prompt cache）</a></li>
-    <li><a href="#s10">它不成立的地方：六条我要反驳的</a></li>
-    <li><a href="#s11">今天能抄什么：混合架构</a></li>
+    <li><a href="#s10">它不成立的地方：六个值得商榷的关键反驳点</a></li>
+    <li><a href="#s11">工程落地能借鉴什么：混合架构设计</a></li>
     <li><a href="#s12">自测 · 来源 · 口径</a></li>
   </ol>
 </nav>
@@ -1385,7 +1385,7 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
 
 <!-- ============ 10 ============ -->
 <section class="essay" id="s10">
-  <div class="section-head"><span class="section-num">10</span><h2 class="section-title">它不成立的地方：六条我要反驳的</h2></div>
+  <div class="section-head"><span class="section-num">10</span><h2 class="section-title">它不成立的地方：六个值得商榷的关键反驳点</h2></div>
   <div class="section-sub">读完全文之后我真正的保留意见</div>
 
   <p class="deck">前面九节我基本在替这篇论文说话，因为它的核心主张确实成立。这一节讲它<em>不能推广到哪里</em>——而这恰恰是我最关心的部分，因为我研究的那十五个平台，几乎全都落在它不成立的那一侧。</p>
@@ -1524,7 +1524,7 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
 
 <!-- ============ 11 ============ -->
 <section class="essay" id="s11">
-  <div class="section-head"><span class="section-num">11</span><h2 class="section-title">今天能抄什么：混合架构</h2></div>
+  <div class="section-head"><span class="section-num">11</span><h2 class="section-title">工程落地能借鉴什么：混合架构设计</h2></div>
   <div class="section-sub">不用等到有 schema 才能用上这篇论文</div>
 
   <p class="deck">这篇论文最好的用法不是「照着换掉你的运行时」，而是把它的洞察拆下来，插进你已有的压缩系统里。因为它证明的那件事，其实是可以<em>按字段增量采用</em>的。</p>
@@ -1579,7 +1579,7 @@ SKILL.state = 65,408                                  <span class="c"># 全程�
       <td class="num"><b>2</b></td>
       <td>在 schema 里加一个 <code>tested_hypotheses</code> 类字段：<b>显式记下试过且失败的路</b>。<br>&#9888; <b>必须同时给它封顶</b>：设条数上限（保留最近 N 条 + 一个计数），或定期让模型归并成更抽象的排除规则</td>
       <td>InterCode CTF 54.2% vs 46.4%，论文把提升主要归因于这个字段</td>
-      <td>十一家的摘要模板里有 Done / In-Progress / Blocked，<b>但没有一家有「已排除」这一格</b>。这是清单里可以新增的一条。<br><b>封顶那半条是我加的</b>——不封顶就是把膨胀从对话通道搬到状态通道（见<a href="#s10">第 10 节反驳一</a>）</td>
+      <td>十一家的摘要模板里有 Done / In-Progress / Blocked，<b>但没有一家有「已排除」这一格</b>。这是清单里可以新增的一条。<br><b>设置上限是我额外补充的工程防护</b>——如果不加封顶，无非是把上下文膨胀从对话历史转移到了状态通道（见<a href="#s10">第 10 节反驳一</a>）</td>
     </tr>
     <tr>
       <td class="num"><b>3</b></td>
