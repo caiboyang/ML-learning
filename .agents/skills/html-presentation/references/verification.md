@@ -19,7 +19,7 @@ node <skill-dir>/scripts/test_browser.cjs http://127.0.0.1:8765 /tmp/presentatio
 
 若使用已安装的 Chrome，可在命令前设置 `PLAYWRIGHT_CHANNEL=chrome`；Playwright 模块须在 Node 的解析路径中。
 
-它针对模板示例验证双窗、彩排记录、导出、暂停/回访/刷新/重置、窄屏，并保存每页截图。执行前先构建 `assets/template/deck.json`。自定义 deck 的内容、视频、可访问性仍按实际材料检查；不要为通过示例测试改动用户内容。
+它针对模板示例验证双窗、彩排记录、导出、暂停/回访/刷新/重置、窄屏，并保存每页截图。动态 loop 额外验证轨迹确实移动、节点错峰强调、离页暂停、缩略图静止、深浅主题和 reduced-motion。执行前先构建 `assets/template/deck.json`。自定义 deck 的内容、视频、可访问性仍按实际材料检查；不要为通过示例测试改动用户内容。
 
 自动测试与截图互补。参照 [Playwright 截图比较](https://playwright.dev/docs/test-snapshots) 的限制，不在字体/OS/浏览器不同的环境承诺逐像素相同，也不用粗略亮度或空白率当设计质量分。
 

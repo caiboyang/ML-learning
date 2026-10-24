@@ -107,6 +107,31 @@ const path = require('node:path');
       await expectedPage(id);
       await audience.waitForTimeout(800); // Smooth scroll reaches the destination.
       await audience.screenshot({ path: path.join(output, `slide-${id}.png`) });
+      if (id === 'loop') {
+        const flow = audience.locator('#loop .cycle-flow');
+        const offset = () => flow.evaluate(el => getComputedStyle(el).strokeDashoffset);
+        const before = await offset();
+        await audience.waitForTimeout(400);
+        assert.notEqual(await offset(), before, 'Loop path must visibly move');
+        assert.deepEqual(await audience.locator('#loop .cycle-node').evaluateAll(nodes =>
+          nodes.map(el => getComputedStyle(el).animationDelay)), ['0s', '2s', '4s']);
+        assert.equal(await page.frameLocator('#loop iframe').locator('.cycle-flow')
+          .evaluate(el => getComputedStyle(el).animationPlayState), 'paused');
+        await audience.locator('#loop').evaluate(el => el.classList.add('paper'));
+        assert.equal(await flow.evaluate(el => getComputedStyle(el).stroke), 'rgb(55, 111, 72)');
+        await audience.screenshot({ path: path.join(output, 'loop-paper.png') });
+        await audience.locator('#loop').evaluate(el => el.classList.remove('paper'));
+        await audience.emulateMedia({ reducedMotion: 'reduce' });
+        assert.equal(await flow.evaluate(el => getComputedStyle(el).animationName), 'none');
+        assert.ok(await audience.locator('#loop .cycle-arrow').isVisible());
+        await audience.emulateMedia({ reducedMotion: 'no-preference' });
+      } else if (id === 'qa') {
+        const flow = audience.locator('#loop .cycle-flow');
+        assert.equal(await flow.evaluate(el => getComputedStyle(el).animationPlayState), 'paused');
+        const before = await flow.evaluate(el => getComputedStyle(el).strokeDashoffset);
+        await audience.waitForTimeout(300);
+        assert.equal(await flow.evaluate(el => getComputedStyle(el).strokeDashoffset), before);
+      }
     }
     await page.screenshot({ path: path.join(output, 'notes-desktop.png') });
     const narrow = await context.newPage();
@@ -126,7 +151,7 @@ const path = require('node:path');
     await fallback.screenshot({ path: path.join(output, 'slide-local-font-fallback.png') });
     await localOnly.close();
     assert.equal(errors.length, 0, errors.join('\n'));
-    console.log('PASS: popup sync/reload, rehearsal pause/revisit/reload/export/reset, screenshots and narrow notes.');
+    console.log('PASS: popup sync/reload, rehearsal pause/revisit/reload/export/reset, loop motion/themes/thumbnail/reduced-motion, screenshots and narrow notes.');
   } finally {
     await browser.close();
   }

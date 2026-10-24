@@ -66,6 +66,14 @@ class PresentationBuildTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'Missing local asset'):
             validate_site(self.output)
 
+    def test_loop_can_be_reused_on_multiple_pages_in_both_themes(self):
+        loop = copy.deepcopy(next(s for s in self.deck['slides'] if s['id'] == 'loop'))
+        second = copy.deepcopy(loop)
+        second.update(id='second-loop', theme='paper')
+        self.deck['slides'] = [loop, second]
+        build(self.deck, self.output)
+        self.assertEqual(validate_site(self.output), 2)
+
     def test_stale_thumbnail_is_detected(self):
         build(self.deck, self.output)
         path = self.output / 'index.html'

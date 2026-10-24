@@ -30,17 +30,23 @@
 <p class="support">Learn before making a larger change.</p>
 ```
 
-`h2` 是大标题，`em` 是衬线强调行，`support` 是简短辅助文字；`theme: "paper"` 切换浅底。三步闭环用现成类名：
+`h2` 是大标题，`em` 是衬线强调行，`support` 是简短辅助文字；`theme: "paper"` 切换浅底。
 
-```html
-<h2>Test. Learn. <em>Adjust.</em></h2>
-<div class="loop">
-  <div class="loop-stages"><strong>Try</strong><span>→</span><strong>Check</strong><span>→</span><strong>Adjust</strong></div>
-  <div class="loop-return">↖ Try again with what you learned</div>
-</div>
-```
+### 动态三步闭环（反馈 / 迭代 / 重试）
 
-当前页会依次强调步骤；离页暂停，reduced-motion 关闭动画。以上是可复用组件，不是每个主题必须包含的流程。新布局需要作者自行实现并验证；生成器不自动推断 HTML 的视觉布局，也不保证任意长度都能放进一屏。
+复制 [assets/components/loop.html](../assets/components/loop.html) 的完整 SVG，放进该页的 `html`，位于 h2 与 support 之间。`assets/template/deck.json` 的 `loop` 页是完整可构建示例。生成器不会自动读取或 include 组件文件；作者在内容源中嵌入 SVG 后，现有 build.py 会原样生成投影及缩略图，共享 style.css 已包含动画，无需逐个 demo 写内联样式或新 JavaScript。
+
+按主题只替换以下文字，保留 class、viewBox 和路径：
+
+- 三个 `cycle-word`：例如 `Small trial` → `Check` → `Decide`，用短标签。
+- `cycle-repeat`：说明返回条件，例如 `Adjust and retry, if worthwhile.`。若存在成功退出或停止，在 support 说明 `Pass: expand a step. Miss: fix or stop.`；不要让观众误以为必须无限重复。
+- SVG 的 `aria-label`：同步说明步骤顺序与返回条件。口播和 cue 按同一顺序讲。
+
+这套 SVG 有闭合轨迹、方向箭头、沿轨迹移动的线段及依次强调的节点。深绿/暖纸色自动随 theme 切换，`.scene.is-current` 时播放，离页暂停；缩略图保持静态；reduced-motion 关闭动画但保留箭头、节点与返回说明。组件没有全局 ID，可在多个页面重复使用而不发生 marker 引用冲突。
+
+参考中的三个步骤是可替换内容，不要求所有演讲出现 loop。只有真实存在反馈返回时才选这个组件；普通检查清单和线性流程不要画成闭环。需要更多步骤或长说明时先重新组织内容，再单独验证布局，不能缩小字硬塞进现有节点。
+
+旧 `.loop-stages` / `.loop-return` 仍保留以兼容已有内容；新闭环采用 SVG 组件，不能把旧版只有节点强调的效果当成完整流动动画。新布局需要作者自行实现并验证；生成器不保证任意长度都能放进一屏。
 
 ## 可选视频
 
@@ -70,6 +76,7 @@ html-presentation/
   agents/openai.yaml
   references/{authoring,presenter,template-contract}.md
   scripts/{build,validate,test_build}.py
+  assets/components/loop.html
   assets/template/{deck.json,style.css,speaker.css,app.js,notes.js}
 ```
 

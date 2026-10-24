@@ -14,6 +14,20 @@ h3{font-size:38px;font-weight:500;letter-spacing:-.035em;line-height:1.1}.suppor
 /* Iframe thumbnails have no #presentation and must stay visible without JavaScript. */
 body>.scene .scene-content{opacity:1;transform:none}.loop{max-width:1200px}.loop-stages{display:flex;align-items:center;justify-content:space-between;gap:24px;font-size:clamp(30px,3.2vw,48px)}.loop-stages strong{font-weight:500;padding:20px 25px;border:1px solid var(--line);border-radius:14px;animation:stage-light 6s ease infinite;animation-play-state:paused}.loop-stages strong:nth-of-type(2){animation-delay:2s}.loop-stages strong:nth-of-type(3){animation-delay:4s}.loop-stages span{color:var(--mint)}.loop-return{margin:0 35px;padding:22px 0 0;border:2px solid #78937d;border-top:0;border-radius:0 0 30px 30px;text-align:center;color:var(--muted);font-size:26px;padding-bottom:16px}.is-current .loop-stages strong{animation-play-state:running}
 @keyframes stage-light{0%,33%,100%{background:transparent}8%,25%{background:#547c4938;border-color:#c5edca}}
+/* Reusable closed loop: flow follows the path; only the current slide animates. */
+.cycle{width:100%;height:auto;max-height:245px;overflow:visible;--cycle-bg:var(--forest);--cycle-ink:var(--mint);--cycle-glow:#c5edca66;flex-shrink:0}
+.paper .cycle{--cycle-bg:var(--ivory);--cycle-ink:#376f48;--cycle-glow:#376f4866}
+.cycle-track{fill:none;stroke:var(--line);stroke-width:2}
+.cycle-flow{fill:none;stroke:var(--cycle-ink);stroke-width:3;stroke-dasharray:65 935;stroke-linecap:round;animation:cycle-flow 6s linear infinite;animation-play-state:paused}
+.cycle-arrow{fill:none;stroke:var(--cycle-ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cycle-node rect{fill:var(--cycle-bg);stroke:var(--line);stroke-width:2}
+.cycle-node{animation:cycle-node 6s ease infinite;animation-play-state:paused}
+.cycle-node:nth-of-type(2){animation-delay:2s}.cycle-node:nth-of-type(3){animation-delay:4s}
+.cycle-word{font:500 36px var(--sans);fill:currentColor;text-anchor:middle}
+.cycle-mask{fill:var(--cycle-bg)}.cycle-repeat{font:24px var(--sans);fill:var(--muted);text-anchor:middle}
+.scene.is-current .cycle-flow,.scene.is-current .cycle-node{animation-play-state:running}
+@keyframes cycle-flow{to{stroke-dashoffset:-1000}}
+@keyframes cycle-node{0%,34%,100%{filter:none}8%,26%{filter:drop-shadow(0 0 8px var(--cycle-glow))}}
 video{width:100%;max-height:65vh;object-fit:contain;background:#000}#film-hint{font-size:22px;color:var(--muted)}.projection-setup{position:fixed;inset:0;background:#101e19ed;color:var(--ivory);z-index:50;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px;padding:48px}.projection-setup p{max-width:700px;font-size:24px;line-height:1.5}.projection-setup button{font:600 22px var(--sans);padding:18px 28px;border:0;border-radius:8px;background:var(--mint);color:var(--ink);cursor:pointer}
 @media(max-width:700px){.scene{padding:85px 6vw 65px;min-height:100dvh;height:auto}.scene-content{min-height:calc(100dvh - 150px)}h1,h2{font-size:clamp(40px,8vw,65px)}.scene-label{font-size:13px}.support{font-size:25px}.loop-stages{gap:10px;font-size:21px}.loop-stages strong{padding:12px 9px}.loop-return{font-size:20px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}.scene .scene-content{opacity:1;transform:none}}
