@@ -18,6 +18,20 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 ### 4. Agent Engineering
 
+* 🎓 [Codex Harness 分析：从请求到执行与恢复](https://caiboyang.github.io/ML-learning/codex-harness/learn/)
+  * *面向已经理解 harness 的读者，按“整体地图 → 请求解剖 → 输入加载 → 执行变化 → 压缩恢复 → 横向评价”六章推进。交互剖面标出 instructions / tools、input history 与程序状态的位置；逐项查看 role、内容类别、来源，并切换执行阶段与 Responses / Lite 前缀。最后比较 OpenHands SDK、LangChain agent 的责任分配，讨论 Codex 的设计收益与代价。*
+  * *源码推演与运费边界测试案例按需展开，保留四份 transcript 快照、三态分析和自测。与下面的源码手册配套：**图解展示 Codex 的实现，手册核对调用链、常量与证据边界**；实现对照点名来源，示例输出明确标为教学构造。*
+
+* 📚 [Codex Harness 源码分析：执行循环、Skills、MCP 与上下文管理](https://caiboyang.github.io/ML-learning/codex-harness/Codex_Harness_Research.html)（[Markdown 原文](codex-harness/Codex_Harness_Research.md)）
+  * *基于 OpenAI 官方仓库固定提交 `944d6fd1ba4b` 的调用链审计，拆解执行循环、Skills 多来源发现与按需读取、MCP 生命周期、Direct / Deferred / Code Mode 工具曝光，以及压缩与 checkpoint、WorldState 三态和 merge patch、ModelMessages 与指令 provenance。追踪 fragment 的请求元数据、history/notes 与压力提醒的启用条件，以及 Responses Lite 和 WebSocket 的缓存边界；源码事实、设计解释和未验证的服务端行为分别说明。*
+
+* 🎓 [从一个 Agent 到一支可控团队 — Multi-Agent Systems 十步学习路径](https://caiboyang.github.io/ML-learning/multi-agent-systems/learn/)
+  * *从 single-agent baseline 开始，用十步建立多智能体系统的决策与工程坐标：什么时候值得拆分、为什么要按上下文边界拆、ADK 的 hierarchy / Sequential / Parallel / Loop 如何表达控制流，以及 planning 为什么不等于 multi-agent。后半程用任务合同、局部失败恢复、single-agent 对照评测和一个最小研究 Lab，把“多开几个 agent”变成可验证的系统设计。页面提供步骤导航与可展开自测答案。*
+  * *与下面的研究笔记配套：**这篇给取舍和顺序，那篇给完整 schema、失败轨迹、评估矩阵与来源边界**。建议先走完十步，再把研究笔记当作实现参考。*
+
+* 📚 [Multi-Agent Systems 研究笔记：何时拆分、如何协作、怎样评测](https://caiboyang.github.io/ML-learning/multi-agent-systems/Multi_Agent_Systems_Research.html)（[Markdown 原文](multi-agent-systems/Multi_Agent_Systems_Research.md)）
+  * *基于 Anthropic、Google ADK 与 LangChain 三份一手材料，建立 decomposition / assignment / execution / communication / synthesis / evaluation 六维坐标系；区分来源事实、综合解释与实践建议，并覆盖 provider-neutral 的任务合同、端到端失败恢复、成本与延迟权衡、single-agent baseline 评估矩阵、自测题和渐进式最小 Lab。*
+
 * 🎓 [把上下文压小而不压坏 — 从零学 Agent Context Compression](https://caiboyang.github.io/ML-learning/agent-context-compression/learn/)
   * *十步学习路径，从零基础起步。假设你只知道「LLM 有上下文窗口」，读完能自己设计并评估一套压缩策略。先看一次 agent 被撑爆的死亡现场，再讲窗口这堵墙的三个反直觉性质（每轮重发全部历史、装得下≠用得好、墙的位置未必是文档写的那个）；然后建立六层坐标系，手把手走完最小可用实现的六步，逐个拆解五个必踩的坑；最后是三个决定系统形态的设计选择、压缩解决不了的边界，以及怎么验证自己压对了。*
   * *与下面的知识库配套：**这篇给取舍和顺序，那篇给源码和常量**。建议先读这篇建立坐标系，再拿那篇当参考手册查。*
@@ -26,6 +40,13 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *十五个平台的横向对照。十一个开源平台有可核实的内建压缩策略：OpenClaw、Hermes Agent、OpenHands SDK、Codex CLI、opencode、kimi-code、Cline、Goose、Letta、Google ADK、DeepSeek Harness；另纳入压缩算法未公开的闭源 Antigravity，以及代表三种责任划分的框架生态：LangGraph core / LangChain agent middleware（原语 + 可选内建策略）、AutoGen（确定性视图）、CrewAI（overflow-only）。已弃用的 Gemini CLI 移入附录保留设计分析，不计入统计（个人账户 2026-06-18 停服，企业与付费 API key 路径仍可用）。逐文件读源码 + 官方文档交叉验证，附版本快照矩阵；冲突处以源码为准，结尾单列一致性说明。*
   * *另设一节**效果评测**，梳理 2026 年的实证工作：CompactionRL（只换摘要器就有 6.5 分区间）、ConstraintRot（压缩把治理约束违规率从 0% 抬到 30%，最高 59%）、Slipstream（按轨迹而非文本判定保真度），并逐条对应回设计清单。*
   * *先建立统一的六层参照模型（测量/触发/选点/减法/重组/持久化）解决各家术语打架的问题；再用一整节讲**设计理念**——头尾保留中间压缩在利用长上下文检索的 U 形曲线（Lost in the Middle）、迭代更新在规避有损压缩的级联失真、保留用户原话背后的信息论不对称、为什么不能告诉模型"上下文快满了"、摘要器为何是一个信任降级点、压缩与 prompt cache 的根本张力（含 DeepSeek Harness 那条「让摘要调用本身成为缓存前缀的延长」的解法）；然后逐家深挖，最后横向对比触发哲学（绝对余量 vs 百分比 vs cadence）、减法哲学、持久化模型，以及 OpenClaw × Hermes 逐项对照与可借鉴设计清单。*
+
+* 🎓 [SKILL.state：从压缩历史到维护状态 — 可视化学习页](https://caiboyang.github.io/ML-learning/agent-context-compression/skill-state/learn/)
+  * *用立体状态图、仓库逐步演示、三组读图练习和四道自测建立直觉；接着 Compression Research 的六层模型，判断自己的 agent 适合纯状态还是状态与证据回捞的混合设计。*
+  * *与下面的参考文档配套：**学习页给顺序、图解和练习；参考页给完整实验、研究对照与批判分析**。两页可以直接互跳。*
+
+* 📄 [SKILL.state 参考与批判文档 — 与十五平台压缩研究对照](https://caiboyang.github.io/ML-learning/agent-context-compression/skill-state/)
+  * *逐项拆解论文方法与 Tables 1–11，展开长程执行、噪声、恢复、公开 benchmark、预算和小模型结果；对照已有压缩机制研究，讨论状态有界、基线设计、缓存成本建模与工程迁移。实验结果、建模假设和批判意见应分别核对来源。*
 
 * 🎓 [把「感觉变好了」变成一个数字 — 从零学 Agent Evals](https://caiboyang.github.io/ML-learning/agent-evals/learn/)
   * *十步学习路径，从零基础起步。假设你写过 agent 但没系统做过 eval，读完能自己设计、实现并校准一套评测。先算一笔账：真实成功率 75% 的 agent 什么都不改重跑一遍，**35.5% 看起来更好、29.0% 打平、35.5% 看起来更差**——噪声本身是对称的，方向是流程给的（只在上涨时宣布改进、重跑到满意为止、确认偏误），所以「把观察到的上涨当证据」等于把那 35.5% 全收成假阳性。然后讲 agent 为什么不能像软件那样测（没有 stack trace，因为失败的是推理；trace 才是事实来源），建立 run / trace / thread 三层坐标系与 task / trial / grader / outcome 的词汇表，拆解三种打分器的死角，讲透 **pass@k 与 pass^k** 和被普遍跳过的误差棒（50 个任务的 95% 区间有 ±13.6 分；配对比较、加题优先于加重复、聚类标准误可达朴素值 3 倍）。*
@@ -42,6 +63,25 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
 
 * 📚 [从 MCP 1.0 到 MCP 2.0：协议模型与迁移参考手册](https://caiboyang.github.io/ML-learning/mcp-2.0/MCP_2_0_Research.html)（[Markdown 原文](mcp-2.0/MCP_2_0_Research.md)）
   * *从 API / RPC / JSON-RPC 与 MCP 1.0 的协议基础，逐层深挖 MCP 2.0 的 stateless 请求、MRTR、显式状态 handle、缓存、extensions、auth 和兼容迁移；配套时序图、状态机、线级示例与官方日期版本来源，适合作为查阅手册。*
+
+### 5. Quantitative Trading
+
+* 🎓 [一个很小的优势，重复很多次 — 从零学量化交易](https://caiboyang.github.io/ML-learning/quantitative-trading/learn/)
+  * *从零基础起步，只要求均值/方差/回归的直觉和一点 Python。开场摆两个都为真却互相打脸的事实：Medallion 基金 1988–2018 年化毛收益 **66%**，而 452 个已发表的市场异象里 **65%** 用规范口径重做后连 t &gt; 1.96 都过不了。整个专题围绕这条张力展开——量化确实有效，而寻找量化策略的过程会系统性地生产假象。*
+  * *八步主线围绕唯一一条核心公式 **IR = TC × IC × √BR**（Grinold 1989 + Clarke-de Silva-Thorley 2002 的约束修正）组织：量化的取舍是牺牲单次准度（真实 IC 只有 0.02–0.06，方向正确率约 50.6%–51.9%）换取重复次数。配一个可拖动的交互控件——相关性 ρ 从 0 拨到 0.05，2000 次名义下注就塌到不足 20 次。随后是量化系统的六个模块（alpha 模型只占六分之一）、alpha 的四个来源、第一个能自己写出来的算法，以及组合构建（Markowitz 为何是「误差最大化器」、Black-Litterman、HRP、分数 Kelly）与执行成本（Almgren-Chriss 的 U 型曲线；冲击成本按 √规模 增长如何构成策略容量的硬上限）。*
+  * *三个 deep dive 子页从主线进入：**三个算法**逐行拆解（截面动量含一段会报错的参考代码 vs 修正版；统计套利的 PCA → 残差 → OU → s-score 全流程，及 Sharpe **1.44 → 0.90** 的衰减为何比 1.44 本身更重要；做市的保留价格与最优价差，及模型未建模的逆向选择）；**验证与自欺**是全专题最重要的一页（5 年日线 + 45 个独立配置，最好那个的样本内 Sharpe 期望就到 1，配 Harvey-Liu-Zhu 的 t &gt; 3.0、Hou-Xue-Zhang 的 65%/82% 复制失败率、McLean-Pontiff 的发表后 −58%，串成「发现→发表→套利」三段衰减链，另含回测偏差七条查表与 DSR 的六项最小记录清单）；**书单与论文表**给 24 篇论文 + 8 本书的直达链接，逐条标注正式版与工作稿的年份差异、以及本次核对到了哪一层。*
+  * *另附一个纯标准库的可运行实验：**默认模式的合成数据里故意不含任何动量**，先看框架在纯噪声上交出什么。它把 240 个月与 60 个月的 Sharpe 分布并排画出来——毛期望为 0 的策略，短样本里最幸运的种子仍能跑到 Sharpe +1.19。把「种子」换成「你调过的参数」，就是那条 45 次尝试的机制在你自己机器上的重现。*
+  * *⚠️ 技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，用于说明方法的性质与局限，不代表未来表现。*
+
+### 6. Company Research
+
+* [公司调研执行 Skill](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/SKILL.md)：给 Agent 使用的通用工作规范。以证明状态、可调用起步资产、对标行为路径、分阶段迁移为主线，收敛当前路线，交付四道门槛、验证计划与经营数据合同。先复算已授权内部记录；缺少只有用户知道的信息时分轮提问，并据回答更新判断。
+  * 将这份规范交给所用 Agent，要求其阅读 `SKILL.md`，按研究合同、呈现规范和校验流程完成调研。例如：「分析这家公司的起步资产、首批客户和发展动作，判断哪些经验现在能用于我的业务；缺少内部信息时分轮问我。」深度、案例模板、决策门槛和问答要求见 [研究合同](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/research-contract.md)。
+  * [结果呈现规范](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/result-presentation.md) 定义具体议题目录、主报告与子页关系、重点案例、决策与数据页、可见覆盖清单、图表、排版和交互；[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md) 提供可运行 HTML/CSS/JS 起点及 JSON schema。方法规范不绑定具体公司；演示使用明确标注的虚构测试数据，覆盖自有业务决策与外部公司研究。
+* [公司调研方法报告（Markdown）](https://github.com/caiboyang/ML-learning/blob/main/company-research/Company_Research_Methodology_Report.md)：说明如何选择研究切口、判断证明状态、重建路径、比较迁移条件，以及如何组织页面和展示数据；不以某家公司为主线，仅维护 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
+
+* [交互模板演示](https://caiboyang.github.io/ML-learning/company-research/demo/) · [数据核验](https://caiboyang.github.io/ML-learning/company-research/demo/?view=audit) · [横向对照](https://caiboyang.github.io/ML-learning/company-research/demo/?view=comparisons)：使用虚构数据展示完整主产物、专题论证和证据往返。演示由源模板生成，更新或检查方法见 [同步脚本](scripts/sync-company-research-demo.py)。
+* [自有业务单文件示例](company-research/demo/report.html) · [外部研究单文件示例](company-research/demo/external.html) · [导出脚本](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/scripts/export-report.py)：两份示例均为虚构测试数据。完整调研默认交付可离线打开的 HTML，提供横向对照、决策和数据核验专题，不自动部署。验证依赖与命令见[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md#可复现的仓库验证)。
 
 ---
 *More notes will be added here soon...*
