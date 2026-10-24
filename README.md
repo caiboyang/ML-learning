@@ -73,5 +73,15 @@ Welcome to my Machine Learning and AI study notes repository! This repository co
   * *另附一个纯标准库的可运行实验：**默认模式的合成数据里故意不含任何动量**，先看框架在纯噪声上交出什么。它把 240 个月与 60 个月的 Sharpe 分布并排画出来——毛期望为 0 的策略，短样本里最幸运的种子仍能跑到 Sharpe +1.19。把「种子」换成「你调过的参数」，就是那条 45 次尝试的机制在你自己机器上的重现。*
   * *⚠️ 技术与研究方法学习材料，**不构成投资建议**；文中历史业绩数字均来自公开文献，用于说明方法的性质与局限，不代表未来表现。*
 
+### 6. Company Research
+
+* [公司调研执行 Skill](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/SKILL.md)：给 Agent 使用的通用工作规范。以证明状态、可调用起步资产、对标行为路径、分阶段迁移为主线，收敛当前路线，交付四道门槛、验证计划与经营数据合同。先复算已授权内部记录；缺少只有用户知道的信息时分轮提问，并据回答更新判断。
+  * 将这份规范交给所用 Agent，要求其阅读 `SKILL.md`，按研究合同、呈现规范和校验流程完成调研。例如：「分析这家公司的起步资产、首批客户和发展动作，判断哪些经验现在能用于我的业务；缺少内部信息时分轮问我。」深度、案例模板、决策门槛和问答要求见 [研究合同](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/research-contract.md)。
+  * [结果呈现规范](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/result-presentation.md) 定义具体议题目录、主报告与子页关系、重点案例、决策与数据页、可见覆盖清单、图表、排版和交互；[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md) 提供可运行 HTML/CSS/JS 起点及 JSON schema。方法规范不绑定具体公司；演示使用明确标注的虚构测试数据，覆盖自有业务决策与外部公司研究。
+* [公司调研方法报告（Markdown）](https://github.com/caiboyang/ML-learning/blob/main/company-research/Company_Research_Methodology_Report.md)：说明如何选择研究切口、判断证明状态、重建路径、比较迁移条件，以及如何组织页面和展示数据；不以某家公司为主线，仅维护 Markdown。Agent 的执行顺序与验收以以上 skill 为准。
+
+* [交互模板演示](https://caiboyang.github.io/ML-learning/company-research/demo/) · [数据核验](https://caiboyang.github.io/ML-learning/company-research/demo/?view=audit) · [横向对照](https://caiboyang.github.io/ML-learning/company-research/demo/?view=comparisons)：使用虚构数据展示完整主产物、专题论证和证据往返。演示由源模板生成，更新或检查方法见 [同步脚本](scripts/sync-company-research-demo.py)。
+* [自有业务单文件示例](company-research/demo/report.html) · [外部研究单文件示例](company-research/demo/external.html) · [导出脚本](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/scripts/export-report.py)：两份示例均为虚构测试数据。完整调研默认交付可离线打开的 HTML，提供横向对照、决策和数据核验专题，不自动部署。验证依赖与命令见[数据与模板约定](https://github.com/caiboyang/ML-learning/blob/main/.agents/skills/company-research/references/dashboard-data.md#可复现的仓库验证)。
+
 ---
 *More notes will be added here soon...*
